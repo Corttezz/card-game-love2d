@@ -3,6 +3,7 @@ local ValueEasing = require("src.ui.ValueEasing")
 local EnemyKits = require("src.data.enemies")
 local Rng = require("src.systems.Rng")
 local IntentVisibility = require("src.systems.IntentVisibility")
+local BossMechanics = require("src.systems.BossMechanics")
 
 local Enemy = {}
 Enemy.__index = Enemy
@@ -46,6 +47,7 @@ function Enemy:setKit(kitId)
         local n = math.max(1, math.floor(self.maxHealth * passive.regenPct))
         self:addStatusEffect({ name = "regen", stacks = n, duration = 999 })
     end
+    BossMechanics.onSpawn(self)
     self:rollIntent()
 end
 
@@ -93,6 +95,11 @@ function Enemy:_chooseMove()
     if self._phaseOpener then
         local m = self:_findMove(self._phaseOpener)
         self._phaseOpener = nil
+        if m then return m end
+    end
+    local mechMove = BossMechanics.forcedMove(self)
+    if mechMove then
+        local m = self:_findMove(mechMove)
         if m then return m end
     end
     if t == 1 and self.kit.opener then
@@ -179,6 +186,7 @@ function Enemy:rollIntent(player)
         debuffs = debuffList(m),
         vuln = (player and player.hasDebuff and player:hasDebuff("vulnerable")) or nil,
     }
+    BossMechanics.shapeIntent(self, intent, m)
     self.intent = intent
     self.nextIntent = intent.kind
     self.nextIntentDamage = D
@@ -365,7 +373,9 @@ function Enemy:takeDamage(damage)
     end
     local effectiveDamage = math.max(0, damage - self.armor)
     self.armor = math.max(0, self.armor - damage)
+    local hpBefore = self.health
     self.health = math.max(0, self.health - effectiveDamage)
+    BossMechanics.onDamaged(self, hpBefore - self.health, "hit")
     self:_markDeathIfCrossed(wasAlive)
 
     if self.health < self.maxHealth * 0.3 then
@@ -461,7 +471,9 @@ end
 function Enemy:_applyDot(dmg)
     if not dmg or dmg <= 0 then return 0 end
     local wasAlive = self.health > 0
+    local hpBefore = self.health
     self.health = math.max(0, self.health - dmg)
+    BossMechanics.onDamaged(self, hpBefore - self.health, "dot")
     self:_markDeathIfCrossed(wasAlive)
     return dmg
 end

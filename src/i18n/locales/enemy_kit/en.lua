@@ -1,5 +1,6 @@
 return {
     moves = {
+        rune_cataclysm = { name = "Runic Cataclysm" },
         attack = { name = "Lunge" }, strong = { name = "Brutal Blow" },
         defend = { name = "Defensive Stance" }, buff = { name = "Rising Fury" },
         rusty_scythe = { name = "Rusty Scythe" }, crow_pecks = { name = "Crow Pecks" },
@@ -132,6 +133,7 @@ return {
     },
 
     intent = {
+        runes = "One strike per lit rune. Break runes this turn to remove strikes.",
         hit      = "Attacks for {value} damage.",
         multi    = "Attacks {hits} times: {value} damage each ({total} total).",
         pierce   = "PIERCES your Block.",
@@ -152,6 +154,8 @@ return {
     },
 
     status = {
+        runes = { name = "Ritual Runes",
+            desc = "{stacks} of {max} runes lit. At {max}, the Lich unleashes the Runic Cataclysm: one strike per rune. Every {value} damage you deal in a single turn breaks a rune (this turn: {dealt})." },
         frail      = { name = "Frail",
             desc = "Your defenses grant 25% less Block. Lasts {duration} turn(s)." },
         poison_self = { name = "Poison",
@@ -173,6 +177,8 @@ return {
     },
 
     msg = {
+        rune_gain = "Rune lit ({value})",
+        rune_break = "Rune shattered!",
         pierce         = "The blow pierces your Block: {value} damage!",
         strength_float = "+{value} DMG",
         summoned       = "The murder grows: +{value} crow(s)",

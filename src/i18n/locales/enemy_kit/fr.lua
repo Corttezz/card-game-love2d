@@ -1,5 +1,6 @@
 return {
     moves = {
+        rune_cataclysm = { name = "Cataclysme Runique" },
         attack = { name = "Charge" }, strong = { name = "Coup Brutal" },
         defend = { name = "Posture Défensive" }, buff = { name = "Fureur Montante" },
         rusty_scythe = { name = "Faux Rouillée" }, crow_pecks = { name = "Coups de Bec" },
@@ -132,6 +133,7 @@ return {
     },
 
     intent = {
+        runes = "Un coup par rune allumée. Brisez des runes ce tour pour lui retirer des coups.",
         hit      = "Attaque et inflige {value} dégâts.",
         multi    = "Attaque {hits} fois : {value} dégâts chacune ({total} au total).",
         pierce   = "TRANSPERCE votre Blocage.",
@@ -152,6 +154,8 @@ return {
     },
 
     status = {
+        runes = { name = "Runes du Rituel",
+            desc = "{stacks} runes allumées sur {max}. À {max}, la Liche déchaîne le Cataclysme Runique : un coup par rune. Chaque tranche de {value} dégâts infligés en un même tour brise une rune (ce tour : {dealt})." },
         frail      = { name = "Fragile",
             desc = "Vos défenses accordent 25 % de Blocage en moins. Dure {duration} tour(s)." },
         poison_self = { name = "Poison",
@@ -173,6 +177,8 @@ return {
     },
 
     msg = {
+        rune_gain = "Rune allumée ({value})",
+        rune_break = "Rune brisée !",
         pierce         = "Le coup transperce votre Blocage : {value} dégâts !",
         strength_float = "+{value} DÉGÂTS",
         summoned       = "La nuée grandit : +{value} corbeau(x)",

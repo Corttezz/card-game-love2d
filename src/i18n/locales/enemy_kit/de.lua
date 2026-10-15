@@ -1,5 +1,6 @@
 return {
     moves = {
+        rune_cataclysm = { name = "Runenkataklysmus" },
         attack = { name = "Ansturm" }, strong = { name = "Brutaler Hieb" },
         defend = { name = "Abwehrhaltung" }, buff = { name = "Wachsende Wut" },
         rusty_scythe = { name = "Rostige Sense" }, crow_pecks = { name = "Krähenhiebe" },
@@ -132,6 +133,7 @@ return {
     },
 
     intent = {
+        runes = "Ein Schlag pro leuchtender Rune. Zerbrich in diesem Zug Runen, um Schläge zu streichen.",
         hit      = "Greift an und verursacht {value} Schaden.",
         multi    = "Greift {hits}-mal an: je {value} Schaden ({total} insgesamt).",
         pierce   = "DURCHBRICHT deinen Block.",
@@ -152,6 +154,8 @@ return {
     },
 
     status = {
+        runes = { name = "Ritualrunen",
+            desc = "{stacks} von {max} Runen leuchten. Bei {max} entfesselt der Lich den Runenkataklysmus: ein Schlag pro Rune. Je {value} Schaden, den du in einem Zug verursachst, zerbricht eine Rune (dieser Zug: {dealt})." },
         frail      = { name = "Zerbrechlich",
             desc = "Deine Verteidigungen geben 25 % weniger Block. Hält {duration} Runde(n)." },
         poison_self = { name = "Gift",
@@ -173,6 +177,8 @@ return {
     },
 
     msg = {
+        rune_gain = "Rune entzündet ({value})",
+        rune_break = "Rune zerbrochen!",
         pierce         = "Der Hieb durchbricht deinen Block: {value} Schaden!",
         strength_float = "+{value} SCHADEN",
         summoned       = "Der Schwarm wächst: +{value} Krähe(n)",

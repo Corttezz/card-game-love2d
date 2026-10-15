@@ -1,5 +1,6 @@
 return {
     moves = {
+        rune_cataclysm = { name = "Cataclismo Rúnico" },
         attack = { name = "Investida" }, strong = { name = "Golpe Brutal" },
         defend = { name = "Postura Defensiva" }, buff = { name = "Fúria Crescente" },
         rusty_scythe = { name = "Foice Enferrujada" }, crow_pecks = { name = "Bicadas de Corvo" },
@@ -132,6 +133,7 @@ return {
     },
 
     intent = {
+        runes = "Um golpe por runa acesa. Quebre runas neste turno para tirar golpes.",
         hit      = "Ataca causando {value} de dano.",
         multi    = "Ataca {hits} vezes: {value} de dano cada ({total} no total).",
         pierce   = "ATRAVESSA o seu Bloqueio.",
@@ -152,6 +154,8 @@ return {
     },
 
     status = {
+        runes = { name = "Runas do Ritual",
+            desc = "{stacks} de {max} runas acesas. Com {max}, o Lich solta o Cataclismo Rúnico: um golpe por runa. A cada {value} de dano que você causa num mesmo turno, uma runa quebra (neste turno: {dealt})." },
         frail      = { name = "Frágil",
             desc = "Suas defesas rendem 25% menos Bloqueio. Dura {duration} turno(s)." },
         poison_self = { name = "Veneno",
@@ -173,6 +177,8 @@ return {
     },
 
     msg = {
+        rune_gain = "Runa acesa ({value})",
+        rune_break = "Runa quebrada!",
         pierce         = "Golpe atravessa o Bloqueio: {value} de dano!",
         strength_float = "+{value} DANO",
         summoned       = "A revoada cresce: +{value} corvo(s)",

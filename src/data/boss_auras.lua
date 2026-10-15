@@ -39,9 +39,6 @@ return {
             { kind = "mote", n = 6, px = 2, cu = 0.190, cv = 0.240, ru = 0.10,
               rv = 0.045, speed = 2.3, color = { 0.80, 0.96, 1.00 },
               color2 = { 0.55, 0.70, 1.00 } },
-            { kind = "rune", n = 5, px = 2, cu = 0.50, cv = 0.62, ru = 0.56,
-              rv = 0.07, speed = 0.7, color = { 0.62, 0.90, 1.00 },
-              color2 = { 0.50, 0.42, 0.95 } },
         },
         emit = {
             { kind = "wisp", px = 2, rate = 4.5, big = 0.35, area = { 0.30, 0.74, 0.80, 0.86 },

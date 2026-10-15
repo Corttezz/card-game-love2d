@@ -1,5 +1,6 @@
 return {
     moves = {
+        rune_cataclysm = { name = "Cataclismo Rúnico" },
         attack = { name = "Embestida" }, strong = { name = "Golpe Brutal" },
         defend = { name = "Postura Defensiva" }, buff = { name = "Furia Creciente" },
         rusty_scythe = { name = "Hoz Oxidada" }, crow_pecks = { name = "Picotazos de Cuervo" },
@@ -132,6 +133,7 @@ return {
     },
 
     intent = {
+        runes = "Un golpe por runa encendida. Rompe runas este turno para quitarle golpes.",
         hit      = "Ataca causando {value} de daño.",
         multi    = "Ataca {hits} veces: {value} de daño cada una ({total} en total).",
         pierce   = "ATRAVIESA tu Bloqueo.",
@@ -152,6 +154,8 @@ return {
     },
 
     status = {
+        runes = { name = "Runas del Ritual",
+            desc = "{stacks} de {max} runas encendidas. Con {max}, el Liche desata el Cataclismo Rúnico: un golpe por runa. Cada {value} de daño que causas en un mismo turno rompe una runa (este turno: {dealt})." },
         frail      = { name = "Frágil",
             desc = "Tus defensas otorgan un 25% menos de Bloqueo. Dura {duration} turno(s)." },
         poison_self = { name = "Veneno",
@@ -173,6 +177,8 @@ return {
     },
 
     msg = {
+        rune_gain = "Runa encendida ({value})",
+        rune_break = "¡Runa rota!",
         pierce         = "¡El golpe atraviesa tu Bloqueo: {value} de daño!",
         strength_float = "+{value} DAÑO",
         summoned       = "La bandada crece: +{value} cuervo(s)",

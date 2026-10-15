@@ -15,6 +15,7 @@ local ScoreSystem = require("src.systems.ScoreSystem")
 local AchievementSystem = require("src.systems.AchievementSystem")
 local UnlockSystem = require("src.systems.UnlockSystem")
 local ActSystem = require("src.systems.ActSystem")
+local BossMechanics = require("src.systems.BossMechanics")
 local Config = require("src.core.Config")
 local Sfx = require("src.systems.Sfx")
 local Debug = require("src.core.Debug")
@@ -919,11 +920,39 @@ function Game:_announcePhaseIfPending(sink)
     return true
 end
 
+function Game:_mechanicFx(res)
+    if not res then return end
+    local ok, BossTokens = pcall(require, "src.ui.BossTokens")
+    if ok and BossTokens.react then BossTokens.react(self, res) end
+end
+
+function Game:_announceMechanicIfPending(sink)
+    local e = self.enemy
+    if not e or not BossMechanics.hasPending(e) then return false end
+    local any = false
+    while BossMechanics.hasPending(e) do
+        local ev = BossMechanics.popEvent(e)
+        local enemyRef = e
+        local body = function()
+            if self.enemy ~= enemyRef then return end
+            self:_mechanicFx(BossMechanics.applyEvent(enemyRef, ev))
+        end
+        if sink then
+            sink[#sink + 1] = { label = "boss." .. tostring(ev.kind), fn = body, hold = "STATUS" }
+        else
+            CombatBeats.push("boss." .. tostring(ev.kind), body, "STATUS")
+        end
+        any = true
+    end
+    return any
+end
+
 function Game:settleEnemyDamage(sink)
     local died = self:announceDeathIfPending(sink)
     local raged = self:_announceEnrageIfPending(sink)
     local phased = self:_announcePhaseIfPending(sink)
-    return died or raged or phased
+    local mech = self:_announceMechanicIfPending(sink)
+    return died or raged or phased or mech
 end
 
 function Game:announceEnrageIfPending(sink)
@@ -1037,6 +1066,7 @@ function Game:enemyTurn()
         local function applyHit(damage, pierce)
             local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
             Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
+            BossMechanics.onHitLanded(self.enemy, it)
             local hpBefore = self.player.health
             self.player:takeDamage(damage, pierce)
             local effective = hpBefore - self.player.health
@@ -1079,7 +1109,8 @@ function Game:enemyTurn()
                     ER.triggerAttack(animKind, function()
                         applyHit(damage, it.pierce)
                         landed = true
-                    end, { swarm = it.swarm })
+                    end, { swarm = it.swarm,
+                        strike = BossMechanics.strikeFor(self.enemy, it) })
                 else
                     applyHit(damage, it.pierce)
                     landed = true
@@ -1219,6 +1250,16 @@ function Game:_pushEnemyTurnTail(beat)
         end), "DOT")
     end
 
+    for _, step in ipairs(BossMechanics.turnEndSteps(self.enemy)) do
+        CombatBeats.push("boss." .. step.kind, beat(function()
+            local res = BossMechanics.applyStep(self.enemy, step)
+            if res then
+                CombatBeats.extendCurrent("STATUS")
+                self:_mechanicFx(res)
+            end
+        end), "MICRO")
+    end
+
     CombatBeats.push("player.debuff_decay", beat(function()
         if self.player.decayDebuffs then self.player:decayDebuffs() end
     end), "MICRO")
@@ -1230,6 +1271,7 @@ function Game:_pushEnemyTurnTail(beat)
 
     CombatBeats.push("player.upkeep", beat(function()
         if not self.enemy:isAlive() or not self.player:isAlive() then return end
+        BossMechanics.onPlayerTurnStart(self)
         if self.player.onTurnStart then self.player:onTurnStart() end
         self.player:restoreMana()
 

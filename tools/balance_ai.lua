@@ -482,6 +482,22 @@ function AI.simulate(game, set, bctx, opts)
     return S
 end
 
+function AI.mechanicBonus(game, set, S)
+    local e = game.enemy
+    local BM = require("src.systems.BossMechanics")
+    local m = BM.spec(e)
+    if not m then return 0 end
+    if m.kind == "runes" then
+        local T = BM.runeThreshold(e)
+        local st = e._mech or {}
+        local dealt = (st.turnDmg or 0) + math.max(0, (e.health or 0) - S.eHp)
+        local breaks = math.max(0, math.floor(dealt / T) - (st.broke or 0))
+        breaks = math.min(breaks, BM.stacks(e, m.status))
+        return breaks * 0.5 * (e.baseDamage or e.damage or 0)
+    end
+    return 0
+end
+
 function AI.score(game, set, S, bctx)
     local p, e = game.player, game.enemy
     local dpt = dptOf(bctx)
@@ -560,6 +576,7 @@ function AI.score(game, set, S, bctx)
     end
     bonus = bonus - S.exhausts * 1.5
     bonus = bonus + 0.05 * math.max(0, (e.health or 0) - S.eHp)
+    bonus = bonus + AI.mechanicBonus(game, set, S)
 
     return (S.hp - S.hpLoss) - futureLoss + bonus
 end

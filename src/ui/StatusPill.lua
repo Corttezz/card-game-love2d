@@ -30,6 +30,7 @@ StatusPill.COLORS = {
     poison_self     = { 0.45, 0.75, 0.30 },
     burn_self       = { 0.90, 0.40, 0.20 },
     swarm           = { 0.40, 0.35, 0.45 },
+    runes           = { 0.30, 0.55, 0.70 },
     eclipse         = { 0.55, 0.30, 0.75 },
 }
 StatusPill.ICONS = {
@@ -54,6 +55,7 @@ StatusPill.ICONS = {
     poison_self     = "status_poison",
     burn_self       = "status_burn",
     swarm           = "status_crows",
+    runes           = "status_runes",
     eclipse         = "moon",
 }
 
@@ -210,6 +212,9 @@ function StatusPill.drawRow(effects, startX, startY, opts)
                 stacks = eff.stacks or 1,
                 duration = eff.duration or 1,
                 variant = eff.variant,
+                value = eff.value,
+                max = eff.max,
+                dealt = eff.dealt,
             })
         end
     end

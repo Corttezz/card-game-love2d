@@ -5,6 +5,7 @@ local LightEngine = require("engine.LightEngine")
 local EnemyEmissives = require("src.data.enemy_emissives")
 local EnemyPoses = require("src.data.enemy_poses")
 local BossAura = require("src.ui.BossAura")
+local BossTokens = require("src.ui.BossTokens")
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -180,6 +181,7 @@ function EnemyRenderer.clearCache()
     currentAnimName = nil
     ambientParticles = {}
     BossAura.reset()
+    BossTokens.reset()
     if EnemyRenderer._clearClipMetrics then EnemyRenderer._clearClipMetrics() end
 end
 
@@ -232,6 +234,7 @@ function EnemyRenderer.resetRun()
     ambientSpawnTimer = 0
     auraId = nil
     BossAura.reset()
+    BossTokens.reset()
     currentAnim = nil
     currentEnemyId = nil
     currentAnimName = nil
@@ -240,8 +243,10 @@ end
 function EnemyRenderer.triggerAttack(kind, onApex, opts)
     local dove = (opts and opts.swarm and auraId
         and BossAura.dive(auraId, ATK_WINDUP + ATK_LUNGE, ATK_RECOIL)) or false
-    attackFx = { t = 0, kind = dove and "command" or kind or "attack", onApex = onApex,
-                 apexFired = false, dove = dove }
+    local struck = (not dove and opts and opts.strike and auraId
+        and BossTokens.strike(auraId, opts.strike, ATK_WINDUP + ATK_LUNGE, ATK_RECOIL)) or false
+    attackFx = { t = 0, kind = (dove or struck) and "command" or kind or "attack", onApex = onApex,
+                 apexFired = false, dove = dove or struck }
     if not dove and currentEnemyId and currentAnimName ~= "death" then
         local clip = nil
         if kind == "strong" and SpriteAnimation.exists(currentEnemyId, "attack_strong", "south") then
@@ -385,6 +390,7 @@ function EnemyRenderer.update(dt)
     if knockTime > 0 then knockTime = math.max(0, knockTime - dt) end
     if slashTime > 0 then slashTime = math.max(0, slashTime - dt) end
     BossAura.update(dt, auraId, currentAnimName == "death")
+    BossTokens.update(dt, auraId, currentAnimName == "death")
 
     if #buffParticles > 0 then
         for i = #buffParticles, 1, -1 do
@@ -710,7 +716,10 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local driftX = EnemyRenderer.poseOffsetX(id, ih * scale,
         love.timer.getTime(), poseSink)
     auraId = (game.enemy.isBoss and BossAura.has(id)) and id or nil
-    if auraId then BossAura.setCountFrom(auraId, game.enemy) end
+    if auraId then
+        BossAura.setCountFrom(auraId, game.enemy)
+        BossTokens.sync(auraId, game.enemy)
+    end
 
     local footPad = curM.pad
     local frameIdx = hasAnim and currentAnim.currentFrame or 1
@@ -901,6 +910,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                      iw = iw, ih = ih, scale = scale, groundY = cy,
                      cx = bodyCx + driftX }
         BossAura.drawBack(auraId, auraRect)
+        BossTokens.drawBack(auraId, auraRect)
     end
 
     local pulse = 0.94 + (math.sin(t * 1.1) * 0.5 + 0.5) * 0.06
@@ -959,7 +969,10 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         end
     end
 
-    if auraRect then BossAura.drawFront(auraId, auraRect) end
+    if auraRect then
+        BossAura.drawFront(auraId, auraRect)
+        BossTokens.drawFront(auraId, auraRect)
+    end
 
     if defendTime > 0 then
         local k = 1 - defendTime / DEFEND_DUR

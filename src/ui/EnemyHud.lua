@@ -107,6 +107,10 @@ function EnemyHud.intentSpec(enemy, player)
     if it.charge then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.charge")
     end
+    if it.runes then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.runes", { hits = hits })
+        if hits <= 0 then text = "0" end
+    end
 
     local title = I18n.t("enemy_kit.moves." .. tostring(it.id or kind) .. ".name", nil,
         I18n.t("status.intent_" .. tostring(kind) .. ".name", nil, tostring(kind)))
@@ -238,8 +242,17 @@ function EnemyHud.collectPills(enemy)
     if enemy.attackPattern == "aggressive" and not hasStatus(enemy, "enraged") then
         list[#list + 1] = { name = "enraged", stacks = 1, duration = 1, showStacks = false }
     end
+    local BossMechanics = require("src.systems.BossMechanics")
     for _, e in ipairs(enemy.statusEffects or {}) do
-        list[#list + 1] = e
+        local vars = BossMechanics.pillVars(enemy, e.name)
+        if vars then
+            local copy = {}
+            for k, v in pairs(e) do copy[k] = v end
+            for k, v in pairs(vars) do copy[k] = v end
+            list[#list + 1] = copy
+        else
+            list[#list + 1] = e
+        end
     end
     return list
 end

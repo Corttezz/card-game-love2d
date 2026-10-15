@@ -129,7 +129,11 @@ Enemies.KITS = {
     },
     tower_lich = {
         opener = "essence_drain",
+        mechanic = { kind = "runes", status = "runes", start = 1, gain = 1, max = 4,
+                     breakPct = 0.15, move = "rune_cataclysm" },
         moves = {
+            { id = "rune_cataclysm", kind = "multi", weight = 0, mult = 0.5, hits = 1,
+              runes = true },
             { id = "frost_shield",  kind = "defend", weight = 0, armor = 1.8,
               debuff = { name = F, duration = 2 }, every = 3 },
             { id = "essence_drain", kind = "attack", weight = 35, mult = 0.8,
