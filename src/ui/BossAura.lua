@@ -137,9 +137,11 @@ function BossAura._updateSwarm(w, s, dt)
     end
 end
 
-BossAura.FLOCK = { enter = 0.95, leave = 0.8, stagger = 0.24, maxK = 2.2 }
+BossAura.FLOCK = { enter = 0.95, leave = 0.8, stagger = 0.24, big = 2 }
 
-local HIT_FEATHER = { kind = "feather", px = 3, sway = 6,
+local crowFrames = {}
+
+local HIT_FEATHER = { kind = "feather", px = 2, sway = 6,
                       color = { 0.16, 0.12, 0.26 }, color2 = { 0.62, 0.54, 0.95 } }
 
 local function flockSpec(spec)
@@ -654,12 +656,12 @@ function BossAura._crowPose(o, s, c, still)
         local a1x, a1y = sx + (mx - sx) * e, sy + (my - sy) * e
         local a2x, a2y = mx + (ox - mx) * e, my + (oy - my) * e
         return a1x + (a2x - a1x) * e, a1y + (a2y - a1y) * e,
-            1 + (F.maxK - 1) * (1 - e) * (1 - e), true, math.min(1, k * 4)
+            (e < 0.55) and F.big or 1, true, math.min(1, k * 4)
     elseif c.phase == "leave" then
         local k = math.min(1, c.t / F.leave)
         local e = k * k
         local ex, ey = (0.5 - c.side * 1.2) * iw, -0.4 * ih
-        return ox + (ex - ox) * e, oy + (ey - oy) * e, 1 + 0.6 * e, sn > 0, 1 - e * 0.6
+        return ox + (ex - ox) * e, oy + (ey - oy) * e, 1, sn > 0, 1 - e * 0.6
     elseif c.phase == "dive" then
         local tx, ty = s.tgtX or ox, s.tgtY or oy
         if c.t < c.apex then
@@ -667,35 +669,91 @@ function BossAura._crowPose(o, s, c, still)
             local kk = k * k
             local lift = math.sin(k * math.pi) * 0.10 * ih
             return ox + (tx - ox) * kk, oy + (ty - oy) * kk - lift,
-                1 + (F.maxK - 1) * kk, true, 1
+                (kk > 0.30) and F.big or 1, true, 1, "glide"
         end
         local k = math.min(1, (c.t - c.apex) / c.back)
         local e = 1 - (1 - k) * (1 - k)
         return tx + (ox - tx) * e, ty + (oy - ty) * e - math.sin(k * math.pi) * 0.18 * ih,
-            F.maxK + (1 - F.maxK) * e, true, 1
+            (e < 0.6) and F.big or 1, true, 1
     end
     return nil
 end
 
+function BossAura.crowFrames(dir)
+    if crowFrames[dir] ~= nil then return crowFrames[dir] or nil end
+    local list = {}
+    for i = 0, 31 do
+        local p = dir .. "/frame_" .. i .. ".png"
+        if not love.filesystem.getInfo(p) then break end
+        local img = love.graphics.newImage(p)
+        img:setFilter("nearest", "nearest")
+        list[#list + 1] = img
+    end
+    if #list == 0 then
+        Debug.warn("[BossAura] AVISO: corvo sem quadros em " .. tostring(dir))
+        crowFrames[dir] = false
+        return nil
+    end
+    crowFrames[dir] = list
+    return list
+end
+
+function BossAura.crowScale(artScale)
+    return math.max(1, floor((artScale or 1) * 0.5 + 0.5))
+end
+
+local function wrapPi(a)
+    return (a + math.pi) % 6.283185 - math.pi
+end
+
 local function drawFlock(r, o, s, front)
     if not s.flock then return end
+    local frames = BossAura.crowFrames(o.sprite)
+    if not frames then return end
     local still = reducedMotion()
     local t = still and 0 or s.t
+    local n = #frames
+    local base = BossAura.crowScale(r.scale)
     for _, c in ipairs(s.flock) do
-        local ax, ay, k, isFront, al = BossAura._crowPose(o, s, c, still)
+        local ax, ay, big, isFront, al, mode = BossAura._crowPose(o, s, c, still)
         if ax and isFront == front then
-            setK(ax, ay, (o.px or 1) * k)
-            local fr = CROW[CROW_SEQ[(floor(t * ((c.phase == "orbit") and 7 or 12)
-                + c.seed * 1.7) % 4) + 1]]
-            local a = s.fade * (al or 1) * (isFront and 1 or 0.75)
-            for _, d in ipairs(fr) do
-                local cc = d[3] and o.color2 or o.color
-                love.graphics.setColor(cc[1], cc[2], cc[3], a)
-                artRect(r, ax + d[1], ay + d[2], 1, 1)
+            local x = floor(r.x + ax * r.scale)
+            local y = floor(r.y + ay * r.scale)
+            local face, rot = c.face or 1, 0
+            if c.phase == "orbit" then
+                face = isFront and -1 or 1
+            elseif c.phase == "dive" and mode == "glide" then
+                local tx = r.x + (s.tgtX or ax) * r.scale
+                local ty = r.y + (s.tgtY or ay) * r.scale
+                local dx, dy = tx - x, ty - y
+                face = (dx < 0) and -1 or 1
+                rot = wrapPi(math.atan2(dy, dx) - ((face < 0) and math.pi or 0))
+                rot = math.max(-0.9, math.min(0.9, rot))
+                rot = floor(rot / 0.2618 + 0.5) * 0.2618
+            elseif c.lastX then
+                local dx = x - c.lastX
+                if math.abs(dx) > 0.5 then face = (dx < 0) and -1 or 1 end
             end
+            c.face, c.lastX = face, x
+            local fi
+            if mode == "glide" then
+                fi = math.min(n, 3)
+            else
+                local fps = (c.phase == "orbit") and 10 or 15
+                fi = (floor(t * fps + c.h1 * n) % n) + 1
+            end
+            local img = frames[fi]
+            local S = base * (big or 1)
+            local a = s.fade * (al or 1)
+            if isFront then
+                love.graphics.setColor(1, 1, 1, a)
+            else
+                love.graphics.setColor(0.70, 0.68, 0.80, a * 0.9)
+            end
+            love.graphics.draw(img, x, y, rot, face * S, S,
+                floor(img:getWidth() / 2), floor(img:getHeight() / 2))
         end
     end
-    setK(0, 0, 1)
 end
 
 local function orbitBodies(r, spec, s, front)

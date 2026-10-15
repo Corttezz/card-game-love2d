@@ -151,6 +151,29 @@ function M.run()
     t:eq("reducedMotion: 4 corvos aparecem já em órbita", BossAura.flockPhases(KING).orbit, 4)
     t:falsy("reducedMotion: nenhum mergulho", BossAura.dive(KING, 0.34, 0.42))
 
+    local crowImgs = BossAura.crowFrames(o.sprite)
+    t:truthy("corvo do bando é sprite animado (>= 4 quadros)", crowImgs and #crowImgs >= 4)
+    if crowImgs then
+        local cw, chh = crowImgs[1]:getDimensions()
+        t:truthy(string.format("corvo pequeno (%dx%d <= 32)", cw, chh), cw <= 32 and chh <= 32)
+    end
+    t:eq("órbita em escala inteira", BossAura.crowScale(2.3) % 1, 0)
+    t:eq("escala do mergulho é inteira", BossAura.FLOCK.big % 1, 0)
+    _G.gameSettings = { reducedMotion = false }
+    BossAura.reset()
+    settle(0, 0.1)
+    settle(3)
+    BossAura.dive(KING, 0.34, 0.42)
+    for _ = 1, 9 do BossAura.update(1 / 30, KING, false) end
+    local sAll = { iw = 148, ih = 129, t = 0, rot = 0, tgtX = -200, tgtY = 300 }
+    for _, c in ipairs({ { phase = "orbit", off = 0, h1 = 0.5, h2 = 0.5, seed = 1 },
+                         { phase = "dive", t = 0.3, apex = 0.34, back = 0.42,
+                           off = 0, h1 = 0.5, h2 = 0.5, seed = 1 },
+                         { phase = "enter", t = 0.1, side = 1, off = 0, h1 = 0.5, h2 = 0.5, seed = 1 } }) do
+        local _, _, big = BossAura._crowPose(o, sAll, c, false)
+        t:eq("corvo " .. c.phase .. " em escala inteira", (big or 1) % 1, 0)
+    end
+
     local StatusPill = require("src.ui.StatusPill")
     local iconName = StatusPill.ICONS.swarm
     t:eq("pill da revoada tem ícone próprio", iconName, "status_crows")

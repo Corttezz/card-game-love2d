@@ -241,3 +241,25 @@ shot_enemy_sheet [id]`.
   `CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=x lovec . test_one shot_rei_carnica`
   → `rei_carnica_*.png` no save dir (0, rasante, 3, 6, teto, mergulho a/b/c,
   bicada).
+
+### Rodada 2: corvo SPRITE, não forma procedural (14/Out/2026)
+
+Revisão do lead: o corvo de máscara 9x5 em blocos (e ampliado 2,2x no
+mergulho) lia como cruz/glitch. Trocado por sprite PixelLab:
+`assets/sprites/characters/enemies/carrion_king/crow/frame_0..6.png` (32x32,
+de perfil olhando pra direita, 7 quadros de batida de asa;
+`tools/pixellab_crow_sprite.py base|pick|anim|install`, base =
+create_image_pro com estilo do idle do rei, candidato 13; anim =
+animate_image 6 quadros + o original). `orbit.sprite` aponta a pasta;
+`BossAura.crowFrames` carrega com filtro nearest.
+- Escala SEMPRE inteira: órbita `crowScale(r.scale) = max(1, floor(scale/2 + 0.5))`,
+  rasante e mergulho em `FLOCK.big = 2` × isso (troca de degrau, nunca
+  ampliação fracionada). Posição truncada no pixel de tela.
+- Cada corvo com fase de asa própria (`h1`), 10 fps na órbita e 15 fora;
+  virado no sentido do voo (órbita: frente vai pra esquerda, fundo pra
+  direita; rasante/saída pelo deslocamento do quadro anterior). No mergulho
+  plana (quadro de asa aberta) apontando pro herói: rotação limitada a ±0,9
+  rad em degraus de 15°. Corvo de trás com tinta 0,70.
+- Penas do impacto em `px = 2` (com 3 viravam borrão).
+- O `CROW` procedural continua só no `orbitOne` genérico (nenhuma aura usa).
+
