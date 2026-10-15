@@ -1882,12 +1882,15 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
                 Palette.AGED_GOLD_LIGHT, 7, 2)
         end
     else
-        if offer.rarity then
+        if offer.bossJoker then
+            local label = require("src.i18n.TextCase").upper(I18n.t("reward.boss_joker_badge"))
+            marker(cx, pos.y - (offer.isNew and 27 or 15), label, Palette.AGED_GOLD_LIGHT, 9, 4)
+        elseif offer.rarity then
             local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
             marker(cx, pos.y - (offer.isNew and 27 or 15), label, Palette.forRarity(offer.rarity), 9, 4)
         end
         local below = pos.y + h + 15
-        if offer._rareReveal then
+        if offer._rareReveal and not offer.bossJoker then
             marker(cx, below, require("src.i18n.TextCase").upper(I18n.t("reward.rare_find")),
                 Palette.TOAST_GOLD, 9, 4)
             below = below + 15

@@ -1329,6 +1329,7 @@ local JOKER_EFFECT_SCORE = {
     on_defend_damage = 4,
     regen_per_turn = 5, strength_per_turn = 12, on_turn_start_draw = 15,
     channel_per_turn = 10, on_attack_debuff = 8,
+    echo_first_attack = 10, retain_armor = 14,
     damage_per_turn = -8,
 }
 

@@ -43,6 +43,7 @@ local function sortedIds(all)
 end
 
 local function classOk(c, classId)
+    if c.class == "boss" then return false end
     return classId == nil or c.class == nil or c.class == "basic" or c.class == classId
 end
 

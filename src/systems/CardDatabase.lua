@@ -11,6 +11,7 @@ local CARD_MODULES = {
     "src.data.cards.warrior",
     "src.data.cards.mage",
     "src.data.cards.rogue",
+    "src.data.cards.boss",
 }
 
 function CardDatabase:new()

@@ -79,6 +79,7 @@ return {
     },
 
     classes = {
+        boss = { name = "Boss" },
         warrior = { name = "Krieger",  desc = "Spezialist für Nahkampf und Widerstandskraft",
             passive_name = "Schwung", passive_desc = "Spiele 2+ Angriffe im selben Zug: +1 Stärke für diesen Kampf.",
             passive_short = "2 Angriffe in einem Zug: +1 Stärke." },
@@ -444,6 +445,7 @@ return {
         skip_no_card       = "Ohne Karte weiter",
         affinity_badge     = "AFFINITÄT",
         rare_find          = "SELTENER FUND",
+        boss_joker_badge = "Boss-Joker",
         affinity_line      = "Deck-Affinität: {tags}",
         continue           = "Weiter",
         refresh            = "Erneuern (${n})",
@@ -987,6 +989,7 @@ return {
         on_turn_start_draw         = "Ziehe {value} zusätzliche Karte(n) zu Zugbeginn",
         on_attack_debuff           = "Jede Angriffskarte wendet {stacks} {value} für {duration} Züge an",
         on_attack_debuff_poison    = "Jede Angriffskarte wendet {stacks} Gift an",
+        on_attack_debuff_burn      = "Jede Angriffskarte wendet {stacks} Brand an",
         strength_per_turn          = "Erhalte {value} Stärke zu Beginn jedes Zuges",
         echo_first_attack          = "Verdoppelt den Schaden deiner ersten Angriffskarte pro Zug",
         combo_boost_volley = "Salve zählt ×{value}",
@@ -1297,6 +1300,12 @@ return {
         joker_combo_volley      = { name = "Klingenregen", desc = "Salve zählt ×{value}." },
         joker_combo_wall        = { name = "Schildwall", desc = "Bollwerk zählt ×{value}." },
         joker_combo_pair        = { name = "Zwillingsspiegel", desc = "Paar zählt ×{value}." },
+        joker_boss_carrion      = { name = "Aaskrone", desc = "+{value} Schaden auf Angriffskarten. Heile {value2} LP pro gespielter Angriffskarte." },
+        joker_boss_lich         = { name = "Phylakterium des Lichs", desc = "Kanalisiere 1 Eis (Wert {value}) zu Beginn jedes Zuges." },
+        joker_boss_tyrant       = { name = "Herz des Tyrannen", desc = "Jede Angriffskarte wendet {stacks} Brand an." },
+        joker_boss_winter       = { name = "Winterägide", desc = "Dein Block verfällt NICHT: er stapelt sich zwischen Zügen. Verteidigungen geben +{value2} Block." },
+        joker_boss_colossus     = { name = "Wurzel des Kolosses", desc = "Regeneriere {value} LP zu Beginn jedes Zuges." },
+        joker_boss_eclipse      = { name = "Halo der Finsternis", desc = "Verdoppelt den Schaden deiner ersten Angriffskarte pro Zug. Ziehe {value2} zusätzliche Karte pro Zug." },
 
         warrior_taunt           = { name = "Provozieren",            desc = "Erhalte {def} Block. Wende Schwach für {duration} Züge an." },
         warrior_battle_orders   = { name = "Kommandoschrei",         desc = "Ziehe {value} Karten. Erhalte {value2} Stärke." },

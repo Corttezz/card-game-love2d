@@ -79,6 +79,7 @@ return {
     },
 
     classes = {
+        boss = { name = "Boss" },
         warrior = { name = "Warrior", desc = "Specialist in close combat and resilience",
             passive_name = "Momentum", passive_desc = "Play 2+ attacks in the same turn: +1 Strength this battle.",
             passive_short = "2 attacks in a turn: +1 Strength." },
@@ -444,6 +445,7 @@ return {
         skip_no_card       = "Continue without a card",
         affinity_badge     = "AFFINITY",
         rare_find          = "RARE FIND",
+        boss_joker_badge = "Boss joker",
         affinity_line      = "Deck affinity: {tags}",
         continue           = "Continue",
         refresh            = "Refresh (${n})",
@@ -987,6 +989,7 @@ return {
         on_turn_start_draw         = "Draw {value} extra card(s) at turn start",
         on_attack_debuff           = "Every attack card applies {stacks} {value} for {duration} turns",
         on_attack_debuff_poison    = "Every attack card applies {stacks} Poison",
+        on_attack_debuff_burn      = "Every attack card applies {stacks} Burn",
         strength_per_turn          = "Gain {value} Strength at the start of each turn",
         echo_first_attack          = "Doubles the damage of your first attack card each turn",
         combo_boost_volley = "Volley is worth ×{value}",
@@ -1297,6 +1300,12 @@ return {
         joker_combo_volley      = { name = "Rain of Blades", desc = "Volley is worth ×{value}." },
         joker_combo_wall        = { name = "Shield Wall", desc = "Wall is worth ×{value}." },
         joker_combo_pair        = { name = "Twin Mirror", desc = "Pair is worth ×{value}." },
+        joker_boss_carrion      = { name = "Carrion Crown", desc = "Every attack card deals +{value} damage and heals {value2} HP." },
+        joker_boss_lich         = { name = "Lich's Phylactery", desc = "Channel 1 Ice (value {value}) at the start of each turn." },
+        joker_boss_tyrant       = { name = "Tyrant's Heart", desc = "Every attack card applies {stacks} Burn." },
+        joker_boss_winter       = { name = "Winter Aegis", desc = "Your Block does NOT expire: it stacks between turns. Defenses grant +{value2} Block." },
+        joker_boss_colossus     = { name = "Colossus Root", desc = "Regenerate {value} HP at the start of each turn." },
+        joker_boss_eclipse      = { name = "Eclipse Halo", desc = "Doubles the damage of your first attack card each turn. Draw {value2} extra card each turn." },
 
         warrior_taunt           = { name = "Taunt",                  desc = "Gain {def} Block. Apply Weak for {duration} turns." },
         warrior_battle_orders   = { name = "Battle Orders",          desc = "Draw {value} cards. Gain {value2} Strength." },

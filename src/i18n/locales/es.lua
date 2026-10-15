@@ -79,6 +79,7 @@ return {
     },
 
     classes = {
+        boss = { name = "Jefe" },
         warrior = { name = "Guerrero", desc = "Especialista en combate cuerpo a cuerpo y resistencia",
             passive_name = "Ímpetu", passive_desc = "Juega 2+ ataques en el mismo turno: +1 de Fuerza en esta batalla.",
             passive_short = "2 ataques en un turno: +1 de Fuerza." },
@@ -444,6 +445,7 @@ return {
         skip_no_card       = "Seguir sin carta",
         affinity_badge     = "AFINIDAD",
         rare_find          = "HALLAZGO RARO",
+        boss_joker_badge = "Comodín del jefe",
         affinity_line      = "Afinidad con tu mazo: {tags}",
         continue           = "Continuar",
         refresh            = "Actualizar (${n})",
@@ -987,6 +989,7 @@ return {
         on_turn_start_draw         = "Roba {value} carta(s) extra al inicio del turno",
         on_attack_debuff           = "Cada carta de ataque aplica {stacks} de {value} durante {duration} turnos",
         on_attack_debuff_poison    = "Cada carta de ataque aplica {stacks} de Veneno",
+        on_attack_debuff_burn      = "Cada carta de ataque aplica {stacks} de Quemadura",
         strength_per_turn          = "Gana {value} de Fuerza al inicio de cada turno",
         echo_first_attack          = "Duplica el daño de tu primera carta de ataque del turno",
         combo_boost_volley = "Ráfaga vale ×{value}",
@@ -1297,6 +1300,12 @@ return {
         joker_combo_volley      = { name = "Lluvia de Hojas", desc = "Ráfaga vale ×{value}." },
         joker_combo_wall        = { name = "Muro de Escudos", desc = "Muralla vale ×{value}." },
         joker_combo_pair        = { name = "Espejo Gemelo", desc = "Pareja vale ×{value}." },
+        joker_boss_carrion      = { name = "Corona de Carroña", desc = "Cada carta de ataque causa +{value} de daño y cura {value2} PV." },
+        joker_boss_lich         = { name = "Filacteria del Liche", desc = "Canaliza 1 Hielo (valor {value}) al inicio de cada turno." },
+        joker_boss_tyrant       = { name = "Corazón del Tirano", desc = "Cada carta de ataque aplica {stacks} de Quemadura." },
+        joker_boss_winter       = { name = "Égida del Invierno", desc = "Tu Bloqueo NO expira: se acumula entre turnos. Las defensas dan +{value2} de Bloqueo." },
+        joker_boss_colossus     = { name = "Raíz del Coloso", desc = "Regenera {value} PV al inicio de cada turno." },
+        joker_boss_eclipse      = { name = "Halo del Eclipse", desc = "Duplica el daño de tu primera carta de ataque del turno. Roba {value2} carta extra por turno." },
 
         warrior_taunt           = { name = "Provocar",               desc = "Gana {def} de Bloqueo. Aplica Débil durante {duration} turnos." },
         warrior_battle_orders   = { name = "Grito de Mando",         desc = "Roba {value} cartas. Gana {value2} de Fuerza." },

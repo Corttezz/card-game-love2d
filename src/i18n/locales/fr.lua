@@ -79,6 +79,7 @@ return {
     },
 
     classes = {
+        boss = { name = "Boss" },
         warrior = { name = "Guerrier", desc = "Spécialiste du combat rapproche et de la résilience",
             passive_name = "Élan", passive_desc = "Jouez 2+ attaques dans le même tour : +1 Force pour ce combat.",
             passive_short = "2 attaques dans un tour : +1 Force." },
@@ -444,6 +445,7 @@ return {
         skip_no_card       = "Continuer sans carte",
         affinity_badge     = "AFFINITÉ",
         rare_find          = "TROUVAILLE RARE",
+        boss_joker_badge = "Joker du boss",
         affinity_line      = "Affinité avec votre deck: {tags}",
         continue           = "Continuer",
         refresh            = "Actualiser (${n})",
@@ -987,6 +989,7 @@ return {
         on_turn_start_draw         = "Pioche {value} carte(s) en plus en début de tour",
         on_attack_debuff           = "Chaque carte d'attaque applique {stacks} {value} pendant {duration} tours",
         on_attack_debuff_poison    = "Chaque carte d'attaque applique {stacks} Poison",
+        on_attack_debuff_burn      = "Chaque carte d'attaque applique {stacks} Brûlure",
         strength_per_turn          = "Gagne {value} de Force au début de chaque tour",
         echo_first_attack          = "Double les dégâts de votre première carte d'attaque du tour",
         combo_boost_volley = "La Salve vaut ×{value}",
@@ -1297,6 +1300,12 @@ return {
         joker_combo_volley      = { name = "Pluie de Lames", desc = "La Salve vaut ×{value}." },
         joker_combo_wall        = { name = "Mur de Boucliers", desc = "Le Rempart vaut ×{value}." },
         joker_combo_pair        = { name = "Miroir Jumeau", desc = "La Paire vaut ×{value}." },
+        joker_boss_carrion      = { name = "Couronne de Charogne", desc = "Chaque carte d'attaque inflige +{value} dégâts et soigne {value2} PV." },
+        joker_boss_lich         = { name = "Phylactère de la Liche", desc = "Canalise 1 Glace (valeur {value}) au début de chaque tour." },
+        joker_boss_tyrant       = { name = "Coeur du Tyran", desc = "Chaque carte d'attaque applique {stacks} Brûlure." },
+        joker_boss_winter       = { name = "Égide de l'Hiver", desc = "Votre Blocage n'expire PAS : il s'accumule entre les tours. Les défenses donnent +{value2} de Blocage." },
+        joker_boss_colossus     = { name = "Racine du Colosse", desc = "Régénère {value} PV au début de chaque tour." },
+        joker_boss_eclipse      = { name = "Halo de l'Éclipse", desc = "Double les dégâts de ta première carte d'attaque du tour. Pioche {value2} carte de plus par tour." },
 
         warrior_taunt           = { name = "Provocation",            desc = "Gagne {def} Blocage. Applique Faible pendant {duration} tours." },
         warrior_battle_orders   = { name = "Cri de Commandement",    desc = "Pioche {value} cartes. Gagne {value2} de Force." },

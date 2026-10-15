@@ -34,6 +34,19 @@ ANIM = os.environ.get("ICON_ANIM_OUT") or os.path.join(ROOT, "assets/sprites/ico
 # ganho do brilho, quadros, fps, `stagger`: nº de alvos varridos em
 # sequência (as três adagas uma depois da outra) separados no eixo x.
 SPECS = {
+    "joker_boss_carrion": dict(frames=12, fps=8, layers=[
+        dict(mode="points", points=[(25, 40), (38, 40)], phase=0.0,
+             glow=(255, 70, 40), gain=1.0),
+        dict(hue=(28, 55), smin=0.45, smax=1.0, vmin=0.55, vmax=1.0,
+             box=(0, 0, 64, 32), dir=(1.0, 0.25), width=4.0, gain=0.6,
+             stagger=1),
+    ]),
+    "joker_boss_winter": dict(frames=12, fps=8, layers=[
+        dict(mode="points", points=[(27, 24), (36, 24)], phase=0.0,
+             glow=(150, 220, 255), gain=0.9),
+        dict(hue=(185, 220), smin=0.15, smax=1.0, vmin=0.45, vmax=1.0,
+             dir=(1.0, 0.35), width=5.0, gain=0.55, stagger=1),
+    ]),
     # combo_volley: idle do PixelLab v3 (aprovado — brilho nas lâminas,
     # silhueta intacta); não assar aqui por cima.
     # 2ª volta (arte de personagem): veterano atrás dos escudos — olhos

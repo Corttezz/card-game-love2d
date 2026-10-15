@@ -71,6 +71,7 @@ function M.run(mode)
         if game.enemy.rollNextIntent then pcall(game.enemy.rollNextIntent, game.enemy) end
     end
     game.enemy.spriteId = bossId
+    run.currentNode.enemyId = bossId
     game.enemy.isBoss = true
     game.messageSystem = nil
     _G.game = game
@@ -327,7 +328,7 @@ function M.run(mode)
         if okCR then
             local cr = CardRewardScreen:new()
             cr:show(game, function() end, function() end, "rewards")
-            for _ = 1, 30 do step(); UiScale.begin(); cr:update(DT); UiScale.finish() end
+            for _ = 1, 150 do step(); UiScale.begin(); cr:update(DT); UiScale.finish() end
             shotUI("boss_cine_rewards_hall.png", GameplayScene.drawWorldOnly, function() cr:draw() end)
         end
     end

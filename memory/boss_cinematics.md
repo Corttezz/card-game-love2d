@@ -220,7 +220,8 @@ prova: `boss_cine_death_hall.png` do `shot_boss_cinematic death`.
 6. **Cash out** (`roundEval`, desenha `GameplayScene.draw` com mesa fechada):
    SALÃO + corpo; música mantida (pick → nil).
 7. **Espólios** (`cardReward` → `drawWorldOnly` = "hall"): salão + corpo;
-   chefe não dá coringa (decisão do dono); música mantida.
+   uma das 3 vagas é o coringa PRÓPRIO do chefe, que subiu do corpo no fim
+   da morte (passo `trophy`, [[boss_jokers]]); música mantida.
 8. **Encruzilhada** (`showMapSelection` → `advanceFloorInAct`, `journalEnd`):
    o nó muda → `isInteriorNode` cai → estrada; cura inter-ato no `nextPhase`
    do andar seguinte; faixa do ato novo entra aqui.

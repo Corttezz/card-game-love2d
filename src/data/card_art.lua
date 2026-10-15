@@ -124,6 +124,12 @@ return {
     joker_combo_volley      = { icon = "combo_volley",           bg = "storm",   accent = "AGED_GOLD",    decoration = "sparks" },
     joker_combo_wall        = { icon = "combo_wall",             bg = "metal",   accent = "AGED_GOLD",    decoration = "dust" },
     joker_combo_pair        = { icon = "combo_pair",             bg = "arcane",  accent = "AGED_GOLD",    decoration = "sparks" },
+    joker_boss_carrion        = { icon = "joker_boss_carrion", bg = "shadow", accent = "PURPLE", decoration = "smoke", effect = "holo" },
+    joker_boss_lich           = { icon = "joker_boss_lich", bg = "ice", accent = "CYAN_PALE", decoration = "sparks", effect = "holo" },
+    joker_boss_tyrant         = { icon = "joker_boss_tyrant", bg = "fire", accent = "ORANGE", decoration = "sparks", effect = "holo" },
+    joker_boss_winter         = { icon = "joker_boss_winter", bg = "ice", accent = "CYAN_PALE", decoration = "dust", effect = "holo" },
+    joker_boss_colossus       = { icon = "joker_boss_colossus", bg = "poison", accent = "MOSS", decoration = "smoke", effect = "holo" },
+    joker_boss_eclipse        = { icon = "joker_boss_eclipse", bg = "abyss", accent = "PURPLE", decoration = "sparks", effect = "holo" },
 
     warrior_adrenaline_rush = { icon = "warrior_adrenaline_rush", bg = "rage",   accent = "MAGENTA",   decoration = "flash", effect = "glow" },
     warrior_battle_orders   = { icon = "warrior_battle_orders",   bg = "wind",   accent = "AGED_GOLD", decoration = "dust"  },

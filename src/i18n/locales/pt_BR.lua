@@ -79,6 +79,7 @@ return {
     },
 
     classes = {
+        boss = { name = "Chefe" },
         warrior = {
             name = "Guerreiro",
             desc = "Especialista em combate corpo a corpo e resistência",
@@ -456,6 +457,7 @@ return {
         skip_no_card       = "Seguir sem carta",
         affinity_badge     = "AFINIDADE",
         rare_find          = "ACHADO RARO",
+        boss_joker_badge = "Coringa do chefe",
         affinity_line      = "Afinidade com seu deck: {tags}",
         continue           = "Continuar",
         refresh            = "Novas ofertas (${n})",
@@ -1002,6 +1004,7 @@ return {
         on_turn_start_draw         = "Compra {value} carta(s) extra no início do turno",
         on_attack_debuff           = "Cada carta de ataque aplica {stacks} de {value} por {duration} turnos",
         on_attack_debuff_poison    = "Cada carta de ataque aplica {stacks} de Veneno",
+        on_attack_debuff_burn      = "Cada carta de ataque aplica {stacks} de Queimadura",
         strength_per_turn          = "Ganha {value} de Força no início de cada turno",
         echo_first_attack          = "Dobra o dano da primeira carta de ataque do turno",
         combo_boost_volley = "Saraivada vale ×{value}",
@@ -1313,6 +1316,12 @@ return {
         joker_combo_volley      = { name = "Chuva de Lâminas", desc = "Saraivada vale ×{value}." },
         joker_combo_wall        = { name = "Muro de Escudos", desc = "Muralha vale ×{value}." },
         joker_combo_pair        = { name = "Espelho Gêmeo", desc = "Par vale ×{value}." },
+        joker_boss_carrion      = { name = "Coroa da Carniça", desc = "Cada carta de ataque causa +{value} de dano e cura {value2} de PV." },
+        joker_boss_lich         = { name = "Filactério do Lich", desc = "Canaliza 1 Gelo (valor {value}) no início de cada turno." },
+        joker_boss_tyrant       = { name = "Coração do Tirano", desc = "Cada carta de ataque aplica {stacks} de Queimadura." },
+        joker_boss_winter       = { name = "Égide do Inverno", desc = "Seu Bloqueio NÃO expira: acumula entre turnos. Defesas dão +{value2} de Bloqueio." },
+        joker_boss_colossus     = { name = "Raiz do Colosso", desc = "Regenera {value} de PV no início de cada turno." },
+        joker_boss_eclipse      = { name = "Halo do Eclipse", desc = "Dobra o dano da sua primeira carta de ataque do turno. Compra {value2} carta extra no início de cada turno." },
 
         warrior_taunt           = { name = "Provocar",               desc = "Ganha {def} de Bloqueio. Aplica Fraco por {duration} turnos." },
         warrior_battle_orders   = { name = "Grito de Comando",       desc = "Compra {value} cartas. Ganha {value2} de Força." },

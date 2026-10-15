@@ -64,6 +64,37 @@ HOST_OBJECT = "acbad108-e76b-4cf6-8247-dee3ab2427ab"
 #               memory/card_icon_animation.md.
 #   fps       : cadência de playback no jogo (meta.lua)
 ANIMS = {
+    "joker_boss_carrion": {
+        "object_id": "aaf4b699-7358-4b41-9471-8a8f75560123",
+        "anim": ("the two red eyes of the skull glow a little brighter and then dimmer, always staying red, and the two black crows at the sides blink their small eyes, and nothing else in the image changes at all"),
+        "frames": 4,
+        "fps": 8,
+    },
+    "joker_boss_lich": {
+        "object_id": "d7f5e22c-ec35-45ff-bb5c-da14ac7b17fa",
+        "anim": ("the lich skull, the ice crown and the purple hood are a frozen statue that never moves, the ONLY moving things are: the pale blue orb held in the bony hands pulsing with swirling frost light, and the blue eye lights in the skull flickering brighter and dimmer"),
+        "fps": 8,
+    },
+    "joker_boss_tyrant": {
+        "object_id": "775c8fc0-da18-49cd-88f9-7aba183276d4",
+        "anim": ("the black obsidian heart keeps exactly the same shape size and outline in every frame, the ONLY change is the molten orange lava veins on its surface glowing brighter and dimmer like a slow heartbeat, and one tiny ember rising from the top"),
+        "fps": 8,
+    },
+    "joker_boss_winter": {
+        "object_id": "64c14d5b-928e-4df1-a166-8bc8dc56dee3",
+        "anim": ("the ice shield and the silver skull are a frozen statue with exactly the same shape in every frame, the ONLY moving things are: a thin white glint of light sliding slowly across the ice surface from left to right, and the skull eye sockets glowing a soft pale blue"),
+        "fps": 8,
+    },
+    "joker_boss_colossus": {
+        "object_id": "f6423b02-5157-4af6-8299-32a134f76a37",
+        "anim": ("the skull and the twisted root trunk are a frozen statue that never moves, the ONLY moving things are: the small green mushrooms pulsing their glow brighter and dimmer, and a few tiny glowing green spores drifting slowly upward"),
+        "fps": 8,
+    },
+    "joker_boss_eclipse": {
+        "object_id": "2b4df792-e4a0-41b9-ba8c-88701969f436",
+        "anim": ("the black eclipse disc and the violet bat wings keep exactly the same shape in every frame, the ONLY moving things are: the thin gold corona ring shimmering with flickering light, and the small gold flames on top of the ring dancing"),
+        "fps": 9,
+    },
     # ===== rare (movimento visível ok) =====
     "warrior_standard_bearer": {
         "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",

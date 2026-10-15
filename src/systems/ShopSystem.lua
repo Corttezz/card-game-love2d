@@ -210,6 +210,7 @@ function ShopSystem:generateOffers()
         end
         if offer then table.insert(self.currentOffers, offer) end
     end
+    self:_applyBossJoker()
 
     self._offeredUpgradeIds = {}
     local upgradesLeft = cfg.upgrades
@@ -268,6 +269,38 @@ function ShopSystem.rewardJokerChance(nodeType)
     local odds = require("src.core.Config").Offers.REWARD_JOKER_CHANCE
     if type(odds) ~= "table" then return 1 end
     return tonumber(odds[nodeType or "battle"] or odds.battle) or 0
+end
+
+function ShopSystem:_applyBossJoker()
+    if self.mode ~= "rewards" or self.context.nodeType ~= "boss" then return nil end
+    local run = self.context.runManager and self.context.runManager.currentRun
+    local cardId = require("src.systems.BossJokers").offerFor(run)
+    if not cardId then return nil end
+    local cardData = self.cardDatabase:getCard(cardId)
+    if not cardData then return nil end
+    local slot = nil
+    for i, o in ipairs(self.currentOffers) do
+        if o.type == "card" then slot = i end
+    end
+    local offer = {
+        type = "card",
+        id = cardId,
+        name = cardData.name,
+        description = cardData.description,
+        cost = 0,
+        rarity = cardData.rarity,
+        image = cardData.image,
+        bossJoker = true,
+        isNew = require("src.systems.UnlockSystem").markDiscovered(cardId),
+    }
+    if slot then
+        self._offeredCardIds[self.currentOffers[slot].id] = nil
+        self.currentOffers[slot] = offer
+    else
+        table.insert(self.currentOffers, offer)
+    end
+    self._offeredCardIds[cardId] = true
+    return offer
 end
 
 function ShopSystem:generateCardOffer(extra)

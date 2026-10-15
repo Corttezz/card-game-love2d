@@ -528,5 +528,35 @@
     "object_id": "61281e85-9481-4d43-9e9a-f4ad193d6b3d",
     "group": "bfc6b6a9-51a9-4d62-bbdf-6828f63d0dea",
     "anim_hash": "ba91a3cefbca"
+  },
+  "joker_boss_carrion": {
+    "object_id": "aaf4b699-7358-4b41-9471-8a8f75560123",
+    "group": "2f05271e-08d8-4b9b-a316-06bc5f60eb52",
+    "anim_hash": "8943e32abb33"
+  },
+  "joker_boss_lich": {
+    "object_id": "d7f5e22c-ec35-45ff-bb5c-da14ac7b17fa",
+    "group": "55b3a246-6f9b-43d1-be38-10b2c8a1f45d",
+    "anim_hash": "aaeed33be2d7"
+  },
+  "joker_boss_tyrant": {
+    "object_id": "775c8fc0-da18-49cd-88f9-7aba183276d4",
+    "group": "318dc620-c595-41b1-ae58-c4447f0d580b",
+    "anim_hash": "5ac8d9a80d64"
+  },
+  "joker_boss_winter": {
+    "object_id": "64c14d5b-928e-4df1-a166-8bc8dc56dee3",
+    "group": "02796497-a3e3-4b79-b59f-48824643f005",
+    "anim_hash": "0d7d96df31a3"
+  },
+  "joker_boss_colossus": {
+    "object_id": "f6423b02-5157-4af6-8299-32a134f76a37",
+    "group": "3ad6c1b6-f3a6-4ff2-ab97-ae1e03bb7e8e",
+    "anim_hash": "0add9a697196"
+  },
+  "joker_boss_eclipse": {
+    "object_id": "2b4df792-e4a0-41b9-ba8c-88701969f436",
+    "group": "d22b0e9e-1561-494d-8b1c-0e5807b8049e",
+    "anim_hash": "a81c35ae5af3"
   }
 }

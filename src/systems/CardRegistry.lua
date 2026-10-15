@@ -252,7 +252,7 @@ function CardRegistry:_poolFor(classId, rarity)
     else
         ids = {}
         for id, card in pairs(self.cardDatabase:getAllCards()) do
-            if card.rarity == rarity then table.insert(ids, id) end
+            if card.rarity == rarity and card.class ~= "boss" then table.insert(ids, id) end
         end
         table.sort(ids)
     end

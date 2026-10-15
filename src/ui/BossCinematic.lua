@@ -23,7 +23,8 @@ BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = tru
 BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true,
                               lava = true,
                               crumble = true,
-                              dawn = true }
+                              dawn = true,
+                              trophy = true }
 
 local SOUNDS = {
     bossEyesIgnite     = { "audio/sfx/boss/boss_eyes_ignite.mp3",     0.70 },
@@ -210,6 +211,7 @@ local function clearFx()
 end
 
 local function finish()
+    require("src.ui.BossTrophy").stop()
     seq = nil
     dark = 0
     darkEase = nil
@@ -322,6 +324,7 @@ function BossCinematic.startDeath(game)
     local d = Data[id]
     local reduced = reducedMotion()
     local steps = (reduced and d.deathReduced) or d.death
+    steps = require("src.ui.BossTrophy").withTrophy(steps, game, reduced)
     if seq then finish() end
     begin("death", steps, id, reduced)
     return true
@@ -2494,6 +2497,8 @@ local function enterStep(st)
         darkEase = { from = dark, to = st.to or 0.9, t = 0, dur = fx.ecl.dur }
         playLoop("bossEclipseHum")
         mistTarget(1, 1.2)
+    elseif kind == "trophy" then
+        require("src.ui.BossTrophy").start(st, stage, seq.reduced)
     elseif kind == "descend" then
         fx.desc = { t = 0, dur = math.max(0.4, st.dur or 1.8), u = st.u or 0.5, v = st.v or 0.2,
                     backlit = st.backlit ~= false, anim = ownAnim(st.clip, st.dur) }
@@ -2509,6 +2514,7 @@ end
 
 local function exitStep(st)
     queenExit(st)
+    if st.kind == "trophy" then require("src.ui.BossTrophy").stop() end
     if st.kind == "eyes" then eyes = nil; stopLoop("bossEyesRumble") end
     if st.kind == "flyby" then
         if st.land then
@@ -2572,6 +2578,7 @@ function BossCinematic.update(dt, game, ctx)
         end
         if seq and seq.idx > #seq.steps then finish() end
     end
+    require("src.ui.BossTrophy").update(dt)
 
     if darkEase then
         darkEase.t = darkEase.t + dt
@@ -3185,6 +3192,7 @@ function BossCinematic.drawUI()
         love.graphics.setColor(1, 1, 1, 1)
     end
     queenDrawUI(w, h)
+    require("src.ui.BossTrophy").draw()
     if BossCinematic.canSkip() then
         local k = clamp01((seq.t - BossCinematic.SKIP_AFTER) / 0.4)
         local NavCursor = require("src.ui.NavCursor")

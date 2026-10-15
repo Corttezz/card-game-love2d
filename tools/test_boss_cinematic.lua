@@ -140,7 +140,7 @@ function M.run()
     pump(0.3, gd)
     t:truthy("camera lenta no EnemyRenderer", ER.getTimeScale() < 0.5)
     t:truthy("dessaturacao ativa", BC.desatAmount() > 0.1)
-    local nominalD = BC.duration(Data.carrion_king.death)
+    local nominalD = BC.duration(require("src.ui.BossTrophy").withTrophy(Data.carrion_king.death, gd, false))
     local eld = 0.3 + DT + runUntilDone(gd, nominalD + 2)
     t:falsy("morte terminou", BC.isActive())
     t:falsy("espolios liberados", BC.holdsEnd())
@@ -241,7 +241,7 @@ function M.run()
             t:truthy(tag .. ": morte detectada", BC.isActive() and BC.phase() == "death")
             t:truthy(tag .. ": morte segura espolios", BC.holdsEnd())
             local dsteps = reduced and (Data[id].deathReduced or Data[id].death) or Data[id].death
-            local nomD = BC.duration(dsteps)
+            local nomD = BC.duration(require("src.ui.BossTrophy").withTrophy(dsteps, gdb, reduced))
             local elD = DT + runUntilDone(gdb, nomD + 2)
             t:falsy(tag .. ": morte termina", BC.isActive())
             t:near(tag .. ": duracao da morte = soma nominal", elD, nomD, 0.1)
@@ -346,7 +346,7 @@ function M.run()
         gq._deathHandled = true
         BC.update(DT, gq, { inHall = true })
         t:truthy("rainha: morte detectada", BC.isActive() and BC.phase() == "death")
-        runUntilDone(gq, BC.duration(qd.death) + 2)
+        runUntilDone(gq, BC.duration(require("src.ui.BossTrophy").withTrophy(qd.death, gq, false)) + 2)
         t:falsy("rainha: morte terminou", BC.isActive())
         t:near("rainha: alvorada completa depois da morte", BC.eclipseDawn(), 1, 1e-3)
         BC.update(DT, gq, { inHall = true })
@@ -439,7 +439,7 @@ function M.run()
         t:truthy("colosso: morte ESCONDE o chefe real (o corpo em pedacos e o que se ve)", BC.hidesBoss())
         local sawGrasp, sawFall, sawRest = false, false, false
         local eld2 = 0
-        while BC.isActive() and eld2 < 8 do
+        while BC.isActive() and eld2 < 14 do
             BC.update(DT, gcd, { inHall = true })
             eld2 = eld2 + DT
             local d = BC._debug()
