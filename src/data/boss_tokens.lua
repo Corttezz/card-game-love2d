@@ -24,11 +24,12 @@ return {
 
     abyss_tyrant = {
         status = "chains", layout = "chains",
-        link = DIR .. "abyss_tyrant/mechanic/chain_link.png", linkRows = { 1, 30 },
+        link = DIR .. "abyss_tyrant/mechanic/chain_link.png", linkRows = { 0, 8 }, ringRows = 5,
+        hall = 3, grips = require("src.data.boss_chain_grips").abyss_tyrant,
         chains = {
-            { from = { 0.30, -0.55 }, to = { 0.50, 0.40 }, sag = 6 },
-            { from = { -0.34, "ground" }, to = { 0.18, 0.72 }, sag = 10 },
-            { from = { 1.34, "ground" }, to = { 0.83, 0.72 }, sag = 10 },
+            { from = { 258, 196 }, grip = "ankle_r", front = true, sag = 0.03 },
+            { from = { 90, 144 }, grip = "wrist_l", front = true, sag = 0.06 },
+            { from = { 310, 144 }, grip = "wrist_r", front = true, sag = 0.06 },
         },
         shard = { { 0.20, 0.18, 0.18 }, { 1.00, 0.55, 0.15 }, { 0.45, 0.30, 0.25 } },
         strikes = {

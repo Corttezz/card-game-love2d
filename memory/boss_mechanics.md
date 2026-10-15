@@ -76,8 +76,9 @@ do beat (nada alonga o turno).
   fortalece.
 - **Status/ícone.** `chains` → `status_chains`.
 - **Visual.** Correntes de verdade (elo em sprite repetido ao longo da linha)
-  saindo do chão do salão até o corpo; rompida = estala, os elos voam, a ponta
-  cai. O tirano dá o tranco (hurt) na ruptura.
+  saindo de pontos PINTADOS do salão até o corpo; rompida = estala em brasa,
+  as metades caem balançando e somem. O tirano dá o tranco (hurt) na ruptura.
+  UM sistema só desde 15/Out/2026 (ver "Correntes: um sistema só" abaixo).
 - **Golpe.** Fogo Infernal e Jorro de Cinzas mandam bolas de fogo (sprite) ao
   painel do herói; cada uma estoura em brasas no apex. Som da ruptura:
   `tyrant_chain_snap` (medido).
@@ -226,15 +227,69 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
   para as correntes que faltam E para fases de kit ainda não atingidas (a
   Rainha ganhou a marca dos 50% de graça).
 - Intent cambaleado ganha linha própria no tooltip (`enemy_kit.intent.staggered`).
-- Cena: `layout = "chains"`: 3 correntes (`chain_link.png`, 2 elos por quadro,
-  repetidos ao longo de uma curva com barriga) do teto à gola e do chão aos
-  punhos, atrás do corpo. Ordem de ruptura: punho direito, punho esquerdo,
-  gola (as de baixo são as mais visíveis). Rompida: duas metades em brasa que
-  despencam até o chão e somem em 0,9 s, estilhaços, o tirano dá o tranco
-  (`ER.triggerHurt`) e tremor de tela 7.
+- Cena: `layout = "chains"` (ver "Correntes: um sistema só" abaixo).
 - Golpe: Fogo Infernal e Jorro de Cinzas disparam `fireball.png` do núcleo do
   peito, girada na direção do voo em degraus de 15 graus, com rastro aditivo.
 - Sons: `tyrant_chain_snap` 0,45 (-26 dB), `impact-fire` 0,30/0,22 (-26/-29 dB).
+
+### Correntes: um sistema só (15/Out/2026)
+
+> "Por que está tendo dois tipos de correntes diferentes ali nesse boss de
+> fogo? ... verificar de onde cada corrente está saindo certinho ... padronizar
+> as correntes" (dono, captura do salão em combate com 3 no contador)
+
+**Causa.** Dois sistemas desenhavam corrente no mesmo chefe: o antigo
+`T3.bond` da cinemática (`BossCinematic`, 4 correntes FINAS procedurais de
+retângulos, âncoras `InteriorFX.HALLS[3].chainAnchors` nos pilares e nos
+chifres do portão, quebrando sozinho pela VIDA em 0,72/0,52/0,38/enfurecido,
+cruzando a tela em X) e o novo da mecânica (`BossTokens`, 3 correntes em
+sprite com pontas em coordenada do SPRITE: uma "do teto" a -0,55 da altura,
+atravessando o HUD do inimigo, e duas "do chão" a 34% de largura fora do
+corpo, saindo do vazio). Contagem 4 + 3 contra 3 da regra.
+
+**Agora.** Só `src/ui/BossTokens.lua` desenha corrente do tirano, e a fonte
+da verdade é a pilha `chains` do `BossMechanics` (3 = 75/50/25%):
+
+- Dado: `src/data/boss_tokens.lua` → `abyss_tyrant.chains[i] = { from = {x,y}
+  em px da ARTE do salão (`hall = 3`), grip = nome, front, sag }`. Ordem =
+  ordem de ruptura ao contrário (a de índice maior rompe primeiro):
+  1. tornozelo direito ← argola no PISO à direita dos pés (258,196), rompe nos 25%;
+  2. pulso esquerdo ← pilar escuro esquerdo onde a corrente PINTADA termina (90,144), 50%;
+  3. pulso direito ← pilar escuro direito, espelho (310,144), 75%.
+  Âncora → tela pelo cover-fit (`SceneBackground.getCoverTransform`, passado
+  como `opts.hallTr` do `GameplayScene` ao `EnemyRenderer.draw` → `auraRect`).
+  Sem `hallTr` não desenha (aviso `Debug.warn`), nunca inventa ponta.
+- Pegada no corpo: `src/data/boss_chain_grips.lua`, gerado por
+  `python tools/tyrant_chain_assets.py` (casamento de padrão do recorte 14x14
+  do idle quadro 0 em TODO quadro de TODO clipe: idle, stride, hurt, roar,
+  attack, attack_strong, death), em px do PRÓPRIO quadro. O `auraRect` leva
+  `clip`/`frame`, então a corrente acompanha a respiração, o tranco, o rugido
+  e o bote. O tool também escreve o `grips_sheet.png` de conferência.
+- Elo: `mechanic/chain_link.png` agora é 5x8 (aro de frente + elo de lado,
+  paleta do elo antigo), desenhado na ESCALA DE PIXEL do sprite
+  (`round(scale)`), ladrilhado ao longo de uma curva com barriga e girado em
+  degraus de pi/16. A argola da âncora é o próprio aro (linhas 0-4) e fica
+  na parede/piso mesmo depois de a corrente romper.
+- Ruptura: o beat `boss.chain_break` baixa a pilha → `_syncChains` rompe a
+  MESMA corrente (estilhaços no ponto de corte, metades em brasa aditiva que
+  balançam e caem, 0,9 s); som/tremor/hurt continuam no `BossTokens.react`.
+  Morte: `sync` marca `dead` com vida 0 e TODAS as restantes rompem na hora
+  (um som só, `deathSnap`).
+- Cinemática: o passo `chains` cria só `T3.bond = { id, state = drag }`;
+  durante o `walk_in` o `T3.drawBond` chama `BossTokens.drawChainsAt` com o
+  retângulo do andarilho (clipe `stride`, escala da perspectiva) e a folga vem
+  de `BossTokens.setSlack` (0,30 arrastando, tranco amortecido no pouso,
+  0 depois). O "SOLTO" (`T3.free`: rugido `tyrantUnchained` + aura + brasas)
+  dispara quando `BossTokens.chainState(id).intact` cai a 0, nunca pela vida.
+  Removidos: `chainAnchors`, `bonds`, `makeBond/ensureBond/chainShouldBreak/
+  bondGrip/snapChain/drawChainLinks`.
+- Travas: `test_boss_mechanics` (`testTyrantChains`: desenhadas = inteiras em
+  3/2/1/0 nas 4 resoluções 1600x900, 1920x1080, 1280x720, 1024x768; âncora
+  visível no recorte do cover-fit; toda pegada em pixel OPACO de todo quadro;
+  só `boss_tokens.lua` conhece o elo; a cinemática delega e não rompe por
+  vida) e `test_boss_cinematic` (drag/taut, folga volta a 0, solto só pela
+  mecânica). Capturas: `lovec . test_one shot_correntes_tirano` com
+  `SHOT_SIZE=WxH` → `correntes_tirano/` no save dir.
 
 ### Monarca (implementado)
 

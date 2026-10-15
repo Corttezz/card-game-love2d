@@ -80,12 +80,6 @@ return {
             flash = { 1.00, 0.55, 0.20 }, ghost = { 0.90, 0.40, 0.20 }, rim = { 1.00, 0.50, 0.20 },
             particle = { 0.35, 0.12, 0.06 }, particle2 = { 1.00, 0.60, 0.20 },
         },
-        bonds = {
-            { anchor = "pillarL", grip = { 0.19, 0.73 }, breakAt = 0.72, front = true },
-            { anchor = "pillarR", grip = { 0.81, 0.73 }, breakAt = 0.52, front = true },
-            { anchor = "hornL",   grip = { 0.47, 0.34 }, breakAt = 0.38, front = false },
-            { anchor = "hornR",   grip = { 0.53, 0.34 }, breakAt = "enraged", front = false },
-        },
         intro = {
             { kind = "dark",       dur = 0.70, to = 0.86 },
             { kind = "door_burst", dur = 0.50, u = 0.50, v = 0.46, debris = 18, shake = 18, lights = 0.40 },

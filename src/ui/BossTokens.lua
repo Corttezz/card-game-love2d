@@ -79,7 +79,10 @@ end
 function BossTokens.sync(id, enemy)
     local spec = SPECS[id]
     if not spec or not enemy or not enemy.getStatusStacks then return end
-    getState(id).want = max(0, floor(enemy:getStatusStacks(spec.status) or 0))
+    local st = getState(id)
+    st.want = max(0, floor(enemy:getStatusStacks(spec.status) or 0))
+    st.dead = (enemy.health or 1) <= 0
+    if not st.dead then st.deathSnap = nil end
 end
 
 local function alive(s)
@@ -286,22 +289,46 @@ local function advanceTokens(id, spec, s, dt, still)
     end
 end
 
-local function chainEnds(spec, s, ch)
-    local iw, ih = s.iw or 0, s.ih or 0
-    local function pt(p)
-        local y = (p[2] == "ground") and (s.groundArt or ih) or p[2] * ih
-        return p[1] * iw, y
-    end
-    local ax, ay = pt(ch.from)
-    local bx, by = pt(ch.to)
-    return ax, ay, bx, by
+function BossTokens.gripPoint(spec, ch, clip, frame)
+    local g = spec.grips
+    if not g then return nil end
+    local idx = 1
+    for i, nm in ipairs(g.names) do if nm == ch.grip then idx = i end end
+    local frames = g[clip or "idle"] or g.idle
+    local f = frames[((frame or 1) - 1) % #frames + 1]
+    if not f or not f[idx] then return nil end
+    return f[idx][1] + 0.5, f[idx][2] + 0.5
 end
 
-function BossTokens._syncChains(spec, s, dt, still)
+local warnedHall = false
+local function chainEnds(spec, r, ch)
+    local tr = r and r.hallTr
+    if not tr then
+        if not warnedHall then
+            warnedHall = true
+            Debug.warn("[BossTokens] correntes sem transform do salão: nada a ancorar")
+        end
+        return nil
+    end
+    local gx, gy = BossTokens.gripPoint(spec, ch, r.clip, r.frame)
+    if not gx then return nil end
+    local ax = (tr.ox + ch.from[1] * tr.scale - r.x) / r.scale
+    local ay = (tr.oy + ch.from[2] * tr.scale - r.y) / r.scale
+    return ax, ay, gx, gy
+end
+BossTokens._chainEnds = chainEnds
+
+function BossTokens.setSlack(id, k)
+    if not SPECS[id] then return end
+    getState(id).slack = max(0, k or 0)
+end
+
+function BossTokens._syncChains(spec, s, dt, still, dying)
     s.chains = s.chains or {}
-    local want = min(#spec.chains, s.want or 0)
+    local want = dying and 0 or min(#spec.chains, s.want or 0)
     local instant = still or not s.init
     s.init = true
+    local snapped = false
     for i = 1, #spec.chains do
         local c = s.chains[i]
         if not c then
@@ -313,12 +340,17 @@ function BossTokens._syncChains(spec, s, dt, still)
             c.broken, c.t = false, instant and 9 or 0
         elseif i > want and not c.broken then
             c.broken, c.t = true, instant and 9 or 0
-            if not instant and s.iw then
-                local ax, ay, bx, by = chainEnds(spec, s, spec.chains[i])
-                addShards(s, (ax + bx) / 2, (ay + by) / 2 + (spec.chains[i].sag or 0),
-                    spec.shard or { { 1, 1, 1 } }, 18, 38)
+            local e = s.ends and s.ends[i]
+            if not instant and e then
+                local mx, my = e[1] + (e[3] - e[1]) * 0.55, e[2] + (e[4] - e[2]) * 0.55
+                addShards(s, mx, my, spec.shard or { { 1, 1, 1 } }, 18, 38)
+                snapped = true
             end
         end
+    end
+    if snapped and dying and not s.deathSnap then
+        s.deathSnap = true
+        BossTokens.playSound(spec.sounds and spec.sounds.lose)
     end
 end
 
@@ -361,7 +393,7 @@ function BossTokens.update(dt, id, dying)
         reconcile(spec, s, dt, still)
         advanceTokens(id, spec, s, dt, still)
     elseif spec.layout == "chains" then
-        BossTokens._syncChains(spec, s, dt, still)
+        BossTokens._syncChains(spec, s, dt, still, dying or s.dead)
     elseif spec.layout == "moon" then
         local want = s.want or 0
         if s.phase ~= want then
@@ -675,59 +707,135 @@ local function linkCurve(r, ax, ay, mx, my, bx, by)
     return pts
 end
 
-local function drawLinks(img, pts, S, rows)
-    local period = (rows[2] - rows[1]) * S
+local STEP = math.pi / 16
+local function drawLinks(img, quad, pts, S, period)
     local ox = floor(img:getWidth() / 2)
-    local acc = 0
+    local acc = period
     for i = 2, #pts do
         local p0, p1 = pts[i - 1], pts[i]
         local dx, dy = p1[1] - p0[1], p1[2] - p0[2]
         local len = math.sqrt(dx * dx + dy * dy)
-        local ang = math.atan2(dy, dx) - math.pi / 2
+        local ang = floor((math.atan2(dy, dx) - math.pi / 2) / STEP + 0.5) * STEP
         local d = 0
         while acc + (len - d) >= period do
             d = d + (period - acc)
             acc = 0
             local k = d / max(len, 1e-6)
-            love.graphics.draw(img, floor(p0[1] + dx * k), floor(p0[2] + dy * k), ang, S, S,
-                ox, rows[1])
+            love.graphics.draw(img, quad, floor(p0[1] + dx * k), floor(p0[2] + dy * k), ang, S, S, ox, 0)
         end
         acc = acc + (len - d)
     end
 end
 
-local function drawChain(r, spec, s, ch, c)
-    local img = BossTokens.image(spec.link)
-    if not img then return end
-    local ax, ay, bx, by = chainEnds(spec, s, ch)
-    local still = reducedMotion()
-    local sway = still and 0 or math.sin(s.t * 1.3 + ax * 0.1) * 1.5
-    local mx, my = (ax + bx) / 2 + sway, (ay + by) / 2 + (ch.sag or 0)
-    local S = BossTokens.tokenScale(r.scale, spec.full)
-    local rows = spec.linkRows or { 0, img:getHeight() }
-    local alpha = s.fade or 1
-    if not c.broken then
-        love.graphics.setColor(0.86, 0.80, 0.78, alpha)
-        drawLinks(img, linkCurve(r, ax, ay, mx, my, bx, by), S, rows)
-        return
-    end
-    if c.t >= 0.9 or still then return end
-    local k = c.t / 0.9
-    alpha = alpha * (1 - k * k)
-    local drop = 0.5 * 220 * c.t * c.t
-    local floorY = s.groundArt or (s.ih or 0)
-    local m1x, m1y = mx, min(floorY, my + drop)
-    local m2x, m2y = (mx + bx) / 2, min(floorY, (my + by) / 2 + drop * 1.4)
-    love.graphics.setColor(1.00, 0.62, 0.30, alpha)
-    drawLinks(img, linkCurve(r, ax, ay, (ax + m1x) / 2, max(ay, m1y) + 2, m1x, m1y), S, rows)
-    drawLinks(img, linkCurve(r, bx, by, bx, (by + m2y) / 2 + 4, m2x, m2y), S, rows)
+function BossTokens.linkPixel(r)
+    return max(1, floor((r.scale or 1) + 0.5))
 end
 
-local function drawChains(r, spec, s)
-    if not s.chains then return end
-    for i, ch in ipairs(spec.chains) do
-        if s.chains[i] then drawChain(r, spec, s, ch, s.chains[i]) end
+local quads = {}
+local function linkQuads(img, spec)
+    local q = quads[spec.link]
+    if q then return q end
+    local rows = spec.linkRows or { 0, img:getHeight() }
+    local iw, ih = img:getDimensions()
+    q = {
+        link = love.graphics.newQuad(0, rows[1], iw, rows[2] - rows[1], iw, ih),
+        ring = love.graphics.newQuad(0, 0, iw, spec.ringRows or ih, iw, ih),
+        ringH = spec.ringRows or ih,
+        period = rows[2] - rows[1],
+    }
+    quads[spec.link] = q
+    return q
+end
+
+local function drawRing(img, q, r, x, y, S)
+    local sx, sy = r.x + x * r.scale, r.y + y * r.scale
+    love.graphics.draw(img, q.ring, floor(sx - img:getWidth() * S / 2), floor(sy - q.ringH * S / 2), 0, S, S)
+end
+
+local function drawChain(r, spec, s, i, ch, c)
+    local img = BossTokens.image(spec.link)
+    if not img then return false end
+    local ax, ay, bx, by = chainEnds(spec, r, ch)
+    if not ax then return false end
+    s.ends = s.ends or {}
+    s.ends[i] = { ax, ay, bx, by }
+    local q = linkQuads(img, spec)
+    local S = BossTokens.linkPixel(r)
+    local still = reducedMotion()
+    local lenArt = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
+    local slack = s.slack or 0
+    local sway = still and 0 or math.sin(s.t * 1.3 + i * 1.7) * (1 + slack * 10)
+    local sag = lenArt * ((ch.sag or 0.04) + slack)
+    local mx, my = (ax + bx) / 2 + sway, (ay + by) / 2 + sag
+    local alpha = s.fade or 1
+    local period = q.period * S
+    if not c.broken then
+        love.graphics.setColor(0.92, 0.86, 0.82, alpha)
+        drawLinks(img, q.link, linkCurve(r, ax, ay, mx, my, bx, by), S, period)
+        love.graphics.setColor(1, 1, 1, alpha)
+        drawRing(img, q, r, ax, ay, S)
+        return true
     end
+    love.graphics.setColor(1, 1, 1, alpha)
+    drawRing(img, q, r, ax, ay, S)
+    if c.t >= 0.9 or still then return false end
+    local k = c.t / 0.9
+    alpha = alpha * (1 - k * k)
+    local floorY = s.groundArt or (s.ih or 0)
+    local cx, cy = ax + (bx - ax) * 0.55, ay + (by - ay) * 0.55
+    local swing = math.exp(-3 * c.t) * math.cos(7 * c.t)
+    local function half(ox, oy, L)
+        local th = math.atan2(cx - ox, cy - oy) * swing
+        local ex, ey = ox + math.sin(th) * L, min(floorY, oy + math.cos(th) * L)
+        return linkCurve(r, ox, oy, (ox + ex) / 2, (oy + ey) / 2 + L * 0.06, ex, ey)
+    end
+    local p1 = half(ax, ay, lenArt * 0.55)
+    local p2 = half(bx, by, lenArt * 0.40)
+    love.graphics.setColor(1.00, 0.70, 0.45, alpha)
+    drawLinks(img, q.link, p1, S, period)
+    drawLinks(img, q.link, p2, S, period)
+    local hot = max(0, 1 - c.t / 0.45)
+    if hot > 0 then
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(1.00, 0.45, 0.10, 0.85 * hot)
+        drawLinks(img, q.link, p1, S, period)
+        drawLinks(img, q.link, p2, S, period)
+        love.graphics.setBlendMode("alpha")
+    end
+    return false
+end
+
+local function drawChains(r, spec, s, front)
+    if not s.chains then return end
+    s.drawn = s.drawn or {}
+    local n = 0
+    for i, ch in ipairs(spec.chains) do
+        if s.chains[i] and (ch.front ~= false) == front then
+            if drawChain(r, spec, s, i, ch, s.chains[i]) then n = n + 1 end
+        end
+    end
+    s.drawn[front and "front" or "back"] = n
+end
+
+function BossTokens.drawnChains(id)
+    local s = state[id]
+    local d = s and s.drawn
+    if not d then return 0 end
+    return (d.front or 0) + (d.back or 0)
+end
+
+function BossTokens.drawChainsAt(id, r)
+    local spec = id and SPECS[id]
+    if not (spec and spec.layout == "chains") then return end
+    local s = getState(id)
+    if s.want == nil then s.want = #spec.chains end
+    if not s.chains then BossTokens._syncChains(spec, s, 0, true) end
+    s.iw, s.ih = r.iw, r.ih
+    s.groundArt = (r.groundY - r.y) / r.scale
+    love.graphics.push("all")
+    drawChains(r, spec, s, false)
+    drawChains(r, spec, s, true)
+    love.graphics.pop()
 end
 
 local function prepare(r, s)
@@ -748,7 +856,7 @@ function BossTokens.drawBack(id, r)
     if (s.fade or 1) <= 0 then return end
     love.graphics.push("all")
     if spec.layout == "orbit" then drawOrbit(r, spec, s, false) end
-    if spec.layout == "chains" then drawChains(r, spec, s) end
+    if spec.layout == "chains" then drawChains(r, spec, s, false) end
     if spec.layout == "ground" then drawGround(r, spec, s, false) end
     love.graphics.pop()
 end
@@ -762,6 +870,7 @@ function BossTokens.drawFront(id, r)
     if spec.layout == "orbit" then drawOrbit(r, spec, s, true) end
     if spec.layout == "ground" then drawGround(r, spec, s, true) end
     if spec.layout == "moon" then drawMoon(r, spec, s) end
+    if spec.layout == "chains" then drawChains(r, spec, s, true) end
     drawBolts(r, spec, s)
     drawParts(r, s, true)
     love.graphics.pop()

@@ -490,6 +490,7 @@ function GameplayScene.draw()
         local function drawEnemy()
             return EnemyRenderer.draw(game, enemyCx, enemyCy, {
                 deathCy = deathCy,
+                hallTr = interiorHall and SceneBackground.getCoverTransform(sceneKey, width, sceneH) or nil,
                 shadowA = anchor.shadowA,
                 lightXr = anchor.lightXr,
                 sizeK = GameplayScene.bossSizeK(

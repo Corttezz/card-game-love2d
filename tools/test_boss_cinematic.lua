@@ -502,48 +502,36 @@ function M.run()
 
     do
         local IFX = require("src.ui.InteriorFX")
+        local BT = require("src.ui.BossTokens")
         local td = Data.abyss_tyrant
-        t:truthy("tirano: dado tem 4 correntes (bonds)", td.bonds ~= nil and #td.bonds == 4)
-        local anchors = IFX.HALLS[3].chainAnchors
-        t:truthy("tirano: salao 3 tem chainAnchors", anchors ~= nil)
-        for _, b in ipairs(td.bonds or {}) do
-            t:truthy("tirano: ancora '" .. tostring(b.anchor) .. "' pintada no salao 3",
-                anchors and anchors[b.anchor] ~= nil)
-            t:truthy("tirano: grip de '" .. tostring(b.anchor) .. "' dentro do sprite",
-                b.grip and b.grip[1] >= 0 and b.grip[1] <= 1 and b.grip[2] >= 0 and b.grip[2] <= 1)
-        end
-        local hasEnraged = false
-        for _, b in ipairs(td.bonds or {}) do if b.breakAt == "enraged" then hasEnraged = true end end
-        t:truthy("tirano: a ultima corrente e o ENFURECIDO (estado que o jogo ja tem)", hasEnraged)
+        t:falsy("tirano: sem correntes proprias na cinematica (bonds)", td.bonds ~= nil)
+        t:falsy("tirano: salao 3 sem chainAnchors (ancora mora no boss_tokens)", IFX.HALLS[3].chainAnchors ~= nil)
+        local stacks = 3
         local function tyrant(hp)
             local g = fakeBoss("abyss_tyrant")
             g.enemy.health, g.enemy.maxHealth = hp, 100
-            g.enemy.statusEffects = {}
-            g.enemy.hasStatus = function(self, name)
-                for _, e in ipairs(self.statusEffects) do if e.name == name then return true end end
-                return false
-            end
+            g.enemy.getStatusStacks = function(_, nm) return nm == "chains" and stacks or 0 end
             return g
         end
-        local function brokenCount()
-            local d = BC._debug()
-            if not d.bond then return -1 end
-            local n = 0
-            for _, ch in ipairs(d.bond.chains) do if ch.broken then n = n + 1 end end
-            return n
+        local function tick(g)
+            BT.sync("abyss_tyrant", g.enemy)
+            BT.update(DT, "abyss_tyrant", false)
+            BC.update(DT, g, { inHall = true })
         end
         local stage3 = {}
         for k2, v2 in pairs(stage) do stage3[k2] = v2 end
         stage3.hall = 3
         _G.gameSettings.reducedMotion = false
         BC.reset()
+        BT.reset()
+        stacks = 3
         local gt = tyrant(100)
         t:truthy("tirano: entrada aceita", BC.startIntro(gt))
         BC.setStage(stage3)
         local nomT = BC.duration(td.intro)
         local elt, sawDrag, sawTaut = 0, false, false
         while BC.isActive() and elt < nomT + 2 do
-            BC.update(DT, gt, { inHall = true })
+            tick(gt)
             elt = elt + DT
             local d = BC._debug()
             if d.bond and d.bond.state == "drag" then sawDrag = true end
@@ -551,49 +539,41 @@ function M.run()
         end
         t:truthy("tirano: entra ARRASTANDO as correntes (drag)", sawDrag)
         t:truthy("tirano: correntes esticam no pouso (taut)", sawTaut)
-        t:truthy("tirano: correntes sobrevivem ao fim da entrada", BC._debug().bond ~= nil)
-        t:eq("tirano: todas inteiras no comeco da luta", brokenCount(), 0)
-        BC.update(DT, gt, { inHall = true })
-        t:eq("tirano: 100% de vida = 0 rompidas", brokenCount(), 0)
-        gt.enemy.health = 70
-        BC.update(DT, gt, { inHall = true })
-        t:eq("tirano: 70% = 1 rompida", brokenCount(), 1)
-        t:truthy("tirano: faisca ao arrebentar (brasas)", BC._debug().feathers > 0)
-        gt.enemy.health = 50
-        BC.update(DT, gt, { inHall = true })
-        t:eq("tirano: 50% = 2 rompidas", brokenCount(), 2)
-        gt.enemy.health = 36
-        BC.update(DT, gt, { inHall = true })
-        t:eq("tirano: 36% = 3 rompidas", brokenCount(), 3)
-        t:falsy("tirano: ainda preso (nao esta solto)", BC._debug().bond.loose)
-        gt.enemy.statusEffects = { { name = "enraged" } }
-        BC.update(DT, gt, { inHall = true })
-        t:eq("tirano: ENFURECIDO = 4 rompidas", brokenCount(), 4)
-        t:truthy("tirano: SOLTO com todas rompidas", BC._debug().bond.loose)
+        for _ = 1, 30 do tick(gt) end
+        t:eq("tirano: depois da entrada a folga volta a zero", BT._debug("abyss_tyrant").slack, 0)
+        t:eq("tirano: as 3 correntes da mecanica inteiras", BT.chainState("abyss_tyrant").intact, 3)
+        t:falsy("tirano: preso nao tem aura de solto", BC._debug().free ~= nil)
+        stacks = 1
+        for _ = 1, 3 do tick(gt) end
+        t:eq("tirano: corrente segue a MECANICA, nao a vida", BT.chainState("abyss_tyrant").intact, 1)
+        t:falsy("tirano: com 1 corrente ainda preso", BC._debug().free ~= nil)
+        stacks = 0
+        tick(gt)
+        local fr = BC._debug().free
+        t:truthy("tirano: SOLTO quando a mecanica rompe a ultima", fr ~= nil)
+        t:truthy("tirano: solto agora (rugido novo)", fr and fr.t < 1)
         t:falsy("tirano: nada disso e cinematica (luta segue)", BC.isActive())
-        t:eq("tirano: vida intocada pelas correntes", gt.enemy.health, 36)
+        t:eq("tirano: vida intocada pelas correntes", gt.enemy.health, 100)
         BC.reset()
+        BT.reset()
         BC.setStage(stage3)
-        local gr2 = tyrant(45)
-        BC.update(DT, gr2, { inHall = true })
+        stacks = 0
+        local gr2 = tyrant(20)
+        tick(gr2)
+        tick(gr2)
         t:falsy("tirano (Continuar): sem entrada", BC.isActive())
-        t:truthy("tirano (Continuar): correntes nascem prontas", BC._debug().bond ~= nil)
-        t:eq("tirano (Continuar): 45% = 2 ja rompidas", brokenCount(), 2)
-        t:eq("tirano (Continuar): esticadas", BC._debug().bond.state, "taut")
-        t:falsy("tirano (Continuar): sem faisca ao nascer", BC._debug().feathers > 0)
-        gr2._deathHandled = true
-        gr2.enemy.health = 0
-        BC.update(DT, gr2, { inHall = true })
-        t:eq("tirano: morte solta todas as correntes", brokenCount(), 4)
+        local fr2 = BC._debug().free
+        t:truthy("tirano (Continuar sem correntes): ja solto, sem rugido", fr2 ~= nil and fr2.t >= 10)
         BC.reset()
         BC.setStage(stage3)
         BC.update(DT, tyrant(80), { inHall = false })
-        t:falsy("tirano fora do salao: sem correntes", BC._debug().bond ~= nil)
+        t:falsy("tirano fora do salao: sem aura", BC._debug().free ~= nil)
         BC.reset()
         BC.setStage(stage3)
         BC.update(DT, fakeBoss("carrion_king"), { inHall = true })
-        t:falsy("chefe sem bonds: sem correntes", BC._debug().bond ~= nil)
+        t:falsy("chefe sem correntes: sem bond", BC._debug().bond ~= nil)
         BC.reset()
+        BT.reset()
     end
 
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do

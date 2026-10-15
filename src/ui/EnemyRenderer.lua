@@ -908,7 +908,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     if auraId then
         auraRect = { x = drawX, y = drawY, w = iw * scale, h = ih * scale,
                      iw = iw, ih = ih, scale = scale, groundY = cy,
-                     cx = bodyCx + driftX }
+                     cx = bodyCx + driftX, clip = currentAnimName or "idle", frame = frameIdx,
+                     hallTr = opts and opts.hallTr }
         BossAura.drawBack(auraId, auraRect)
         BossTokens.drawBack(auraId, auraRect)
     end

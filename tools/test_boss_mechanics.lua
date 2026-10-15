@@ -275,6 +275,111 @@ local function testTyrant(t)
         "enemy_kit.status.chains.desc", "enemy_kit.msg.chain_break", "enemy_kit.msg.staggered" })
 end
 
+local function luaFiles(dir, out)
+    for _, f in ipairs(love.filesystem.getDirectoryItems(dir)) do
+        local path = dir .. "/" .. f
+        local info = love.filesystem.getInfo(path)
+        if info and info.type == "directory" then
+            luaFiles(path, out)
+        elseif f:match("%.lua$") then
+            out[#out + 1] = path
+        end
+    end
+    return out
+end
+
+local function testTyrantChains(t)
+    local ID = "abyss_tyrant"
+    local SB = require("src.ui.SceneBackground")
+    local spec = BossTokens.spec(ID)
+    t:eq("correntes: 3 correntes no dado da mecânica", #spec.chains, 3)
+    local hw, hh = SB.getSize("castle_hall_" .. spec.hall)
+    t:truthy("correntes: salão do tirano existe", hw ~= nil)
+    for _, clip in ipairs({ "idle", "stride", "hurt", "roar", "attack", "attack_strong", "death" }) do
+        local dir = "assets/sprites/characters/enemies/" .. ID .. "/animations/" .. clip .. "/south"
+        local n = 0
+        for _, f in ipairs(love.filesystem.getDirectoryItems(dir)) do
+            if f:match("%.png$") then n = n + 1 end
+        end
+        local frames = spec.grips[clip]
+        t:eq("correntes: pegada medida em todo quadro de " .. clip, frames and #frames or 0, n)
+        local bad = 0
+        for i = 1, n do
+            local data = love.image.newImageData(dir .. "/" .. (i - 1) .. ".png")
+            for _, ch in ipairs(spec.chains) do
+                local gx, gy = BossTokens.gripPoint(spec, ch, clip, i)
+                local px, py = math.floor(gx), math.floor(gy)
+                local inside = px >= 0 and py >= 0 and px < data:getWidth() and py < data:getHeight()
+                local _, _, _, a = 0, 0, 0, 0
+                if inside then _, _, _, a = data:getPixel(px, py) end
+                if not inside or a <= 0 then bad = bad + 1 end
+            end
+        end
+        t:eq("correntes: toda pegada cai no CORPO (pixel opaco) em " .. clip, bad, 0)
+    end
+    local savedGS = _G.gameSettings
+    _G.gameSettings = { reducedMotion = false }
+    for _, res in ipairs({ { 1600, 900 }, { 1920, 1080 }, { 1280, 720 }, { 1024, 768 } }) do
+        local W, H = res[1], res[2]
+        local tag = W .. "x" .. H
+        local tr = SB.getCoverTransform("castle_hall_" .. spec.hall, W, H)
+        local vx0, vx1 = math.max(0, -tr.ox / tr.scale), math.min(hw, (W - tr.ox) / tr.scale)
+        local vy0, vy1 = math.max(0, -tr.oy / tr.scale), math.min(hh, (H - tr.oy) / tr.scale)
+        for _, ch in ipairs(spec.chains) do
+            local ax, ay = ch.from[1], ch.from[2]
+            t:truthy(("correntes %s: âncora de %s visível na arte do salão"):format(tag, ch.grip),
+                ax >= vx0 + 4 and ax <= vx1 - 4 and ay >= vy0 + 4 and ay <= vy1 - 4)
+        end
+        local sc = 330 / 121
+        local gy = H * 0.78
+        local r = { x = W / 2 - 123 * sc / 2, y = gy - 124 * sc, scale = sc, iw = 123, ih = 126,
+                    groundY = gy, clip = "idle", frame = 1, hallTr = tr }
+        local canvas = love.graphics.newCanvas(W, H)
+        local n = 3
+        local fake = { health = 100, getStatusStacks = function(_, nm) return nm == "chains" and n or 0 end }
+        BossTokens.reset()
+        for _, want in ipairs({ 3, 2, 1, 0 }) do
+            n = want
+            settleTokens(ID, fake, 1.2)
+            love.graphics.setCanvas(canvas)
+            BossTokens.drawBack(ID, r)
+            BossTokens.drawFront(ID, r)
+            love.graphics.setCanvas()
+            t:eq(("correntes %s: %d na mecânica = %d desenhadas"):format(tag, want, want),
+                BossTokens.drawnChains(ID), want)
+            t:eq(("correntes %s: %d inteiras"):format(tag, want), BossTokens.chainState(ID).intact, want)
+        end
+        n = 3
+        BossTokens.reset()
+        settleTokens(ID, fake, 0.1)
+        local nohall = {}
+        for k, v in pairs(r) do nohall[k] = v end
+        nohall.hallTr = nil
+        love.graphics.setCanvas(canvas)
+        BossTokens.drawBack(ID, nohall)
+        BossTokens.drawFront(ID, nohall)
+        love.graphics.setCanvas()
+        t:eq("correntes " .. tag .. ": sem salão não inventa âncora", BossTokens.drawnChains(ID), 0)
+        canvas:release()
+    end
+    BossTokens.reset()
+    _G.gameSettings = savedGS
+    local owners = {}
+    for _, f in ipairs(luaFiles("src", {})) do
+        local src = love.filesystem.read(f) or ""
+        if src:find("chain_link", 1, true) or src:find("drawChainLinks", 1, true)
+            or src:find("chainAnchors", 1, true) or src:find("CHAIN_DARK", 1, true) then
+            owners[#owners + 1] = f
+        end
+    end
+    t:eq("correntes: um módulo só conhece o elo (" .. table.concat(owners, ", ") .. ")", #owners, 1)
+    t:eq("correntes: o dono é o dado da mecânica", owners[1], "src/data/boss_tokens.lua")
+    local cine = love.filesystem.read("src/ui/BossCinematic.lua") or ""
+    t:falsy("correntes: cinemática não desenha elo próprio", cine:find("love.graphics.rectangle(\"fill\", bx, by, 2 * P, 3 * P)", 1, true) ~= nil)
+    t:truthy("correntes: cinemática delega ao BossTokens", cine:find("drawChainsAt", 1, true) ~= nil)
+    t:falsy("correntes: cinemática não rompe por vida", cine:find("chainShouldBreak", 1, true) ~= nil)
+end
+
 local function testMonarch(t)
     local ID = "winter_monarch"
     local g = battleWith(ID, 400, 20)
@@ -608,6 +713,7 @@ function M.run()
     TK.seedRng(9090)
     testLich(t)
     testTyrant(t)
+    testTyrantChains(t)
     testMonarch(t)
     testColossus(t)
     testQueen(t)

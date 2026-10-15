@@ -239,11 +239,11 @@ function M.run(mode)
             local path = ("boss_cine_fight_%03d.png"):format(n)
             draw(path)
             local d = BossCinematic._debug()
-            local broken = 0
-            if d.bond then for _, ch in ipairs(d.bond.chains) do if ch.broken then broken = broken + 1 end end end
+            local cs = require("src.ui.BossTokens").chainState(game.enemy.spriteId)
+            local broken = cs.intact > 0 and (3 - cs.intact) or 3
             lines[#lines + 1] = ("%03d t=%.2f step=%s hp=%d/%d rompidas=%d solto=%s"):format(
                 n, simT - 100, label, game.enemy.health, game.enemy.maxHealth, broken,
-                tostring(d.bond and d.bond.loose or false))
+                tostring(d.free ~= nil))
             n = n + 1
         end
         shot("intact")
