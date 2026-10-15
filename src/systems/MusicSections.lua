@@ -109,7 +109,8 @@ end
 MusicSections.hpProbe = nil
 function MusicSections.hpFraction()
     if MusicSections.hpProbe then return MusicSections.hpProbe() end
-    local g = _G.game
+    local ok, GS = pcall(require, "src.scenes.GameplayScene")
+    local g = (ok and GS and GS.getGame and GS.getGame()) or _G.game
     local e = g and g.enemy
     if not e or not e.isBoss or not e.maxHealth or e.maxHealth <= 0 then return nil end
     return math.max(0, e.health or 0) / e.maxHealth

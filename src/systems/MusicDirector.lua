@@ -160,10 +160,17 @@ function MusicDirector.pick(state, run, nodeType, inHall, introPlaying)
     end
 
     if state == "playing" and nodeType == "boss" then
-        if inHall == false or introPlaying then return MusicDirector.SILENCE end
+        if inHall == false or introPlaying == true or introPlaying == "intro" then
+            return MusicDirector.SILENCE
+        end
+        if introPlaying == "death" then return nil end
         return MusicDirector.bossTrack(run)
     end
 
+    return MusicDirector.actTrack(run)
+end
+
+function MusicDirector.actTrack(run)
     local act = (run and run.actNumber) or 1
     local Config = require("src.core.Config")
     local ultimo = Config.TotalActs or 3
@@ -171,9 +178,22 @@ function MusicDirector.pick(state, run, nodeType, inHall, introPlaying)
     return "musicAct" .. act
 end
 
-local function tocandoAgora()
+MusicDirector.KEEP_STATES = { roundEval = true, cardReward = true }
+
+local function audioReal()
     local a = _G.audioSystem
+    if a and a.isAudioAvailable and a:isAudioAvailable() then return a end
+    return nil
+end
+
+local function tocandoAgora()
+    local a = audioReal()
     return a and a.currentMusic or nil
+end
+
+local function atualDe()
+    if audioReal() then return tocandoAgora() end
+    return MusicDirector._current
 end
 
 MusicDirector.hallProbe = nil
@@ -194,13 +214,20 @@ local function introNow(nodeType)
     if MusicDirector.introProbe then return MusicDirector.introProbe(nodeType) and true or false end
     if nodeType ~= "boss" then return false end
     local ok, BC = pcall(require, "src.ui.BossCinematic")
-    return (ok and BC and BC.phase and BC.phase() == "intro") and true or false
+    return (ok and BC and BC.phase and BC.phase()) or false
 end
 
 function MusicDirector.apply(state, run, nodeType)
     if not MusicDirector.enabled then return end
 
     local wanted = MusicDirector.pick(state, run, nodeType, inHallNow(nodeType), introNow(nodeType))
+    if not wanted and MusicDirector.KEEP_STATES[state] then
+        local atual = atualDe()
+        if atual == "menuMusic"
+            or (atual == nil and MusicDirector._current ~= MusicDirector.SILENCE) then
+            wanted = MusicDirector.actTrack(run)
+        end
+    end
     if not wanted then return end
 
     if wanted == MusicDirector.SILENCE then
@@ -227,7 +254,7 @@ function MusicDirector.apply(state, run, nodeType)
     local code = resolve(wanted)
     if not code then return end
 
-    local atual = tocandoAgora() or MusicDirector._current
+    local atual = atualDe()
 
     if wanted ~= MusicDirector._lastWanted then
         MusicDirector._lastWanted = wanted
@@ -238,6 +265,11 @@ function MusicDirector.apply(state, run, nodeType)
 
     if code == atual then
         MusicDirector._current = atual
+        local a = audioReal()
+        local e = a and a.sources[code]
+        if e and e.template and not e.template:isPlaying() and not a.musicCrossfade then
+            Sfx.playMusic(code, { fadeDuration = FADE_FAST })
+        end
         return
     end
 

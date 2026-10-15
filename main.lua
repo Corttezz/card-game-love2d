@@ -144,7 +144,9 @@ end
 _G.openCardPicker = function(mode, onDone)
     local prevState = currentState
     currentState = "rest"
+    restScreen.pickerFrom = prevState
     restScreen:show(game, function()
+        restScreen.pickerFrom = nil
         currentState = prevState
         if onDone then onDone(restScreen.lastPickDone == true) end
     end, mode or "forge")
@@ -173,6 +175,7 @@ local function openNonBattleNode(t, eventId)
     if t == BT.REST then
         mapScreen:hide()
         currentState = "rest"
+        restScreen.pickerFrom = nil
         setRunStage("rest")
         restScreen:show(game, function()
             currentState = "mapSelection"
@@ -363,6 +366,8 @@ _G.__cheatApi = {
         return {
             reward = cardRewardScreen, roundEval = roundEvalScreen, map = mapScreen,
             rest = restScreen, event = eventScreen, packOpen = packOpenScreen,
+            menu = menu, settings = settingsMenu, collection = collectionScreen,
+            classSelect = classSelectionScreen,
         }
     end,
 }
@@ -1456,7 +1461,11 @@ function love.update(dt)
     do
         local run = game and game.runManager and game.runManager.currentRun
         local node = run and run.currentNode
-        require("src.systems.MusicDirector").apply(currentState, run, node and node.type)
+        local musicState = currentState
+        if musicState == "rest" and restScreen and restScreen.pickerFrom then
+            musicState = restScreen.pickerFrom
+        end
+        require("src.systems.MusicDirector").apply(musicState, run, node and node.type)
         local nt = node and node.type
         require("src.systems.PlaceAudio").apply(dt, currentState, {
             nodeType = nt,

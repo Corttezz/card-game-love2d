@@ -86,7 +86,6 @@ function Menu:createButtons()
             I18n.t("menu.continue"),
             function()
                 self.visible = false
-                if Sfx.fadeMusicOut then Sfx.fadeMusicOut(0.5) end
                 if self.onContinueCallback then self.onContinueCallback() end
             end,
             Theme.Colors.SUCCESS,
@@ -808,7 +807,6 @@ function Menu:onPlayClick()
         return
     end
     self.visible = false
-    if Sfx.fadeMusicOut then Sfx.fadeMusicOut(0.5) end
     if _G.jiggleScreen then _G.jiggleScreen(0.8) end
     local ok, FlashShader = pcall(require, "src.ui.FlashShader")
     if ok and FlashShader and FlashShader.trigger then FlashShader.trigger(0.35, 0.4) end

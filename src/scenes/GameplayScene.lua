@@ -30,7 +30,14 @@ local pendingArrival = false
 local lastInterior = nil
 local interiorFade = 0
 local bossEntered = false
+local bossEnteredKey = nil
 local corpseUnderHand = false
+
+local function runFloorKey()
+    local run = game and game.runManager and game.runManager.currentRun
+    if not run then return nil end
+    return (run.actNumber or 1) .. ":" .. (run.floorInAct or 1)
+end
 
 local turnStage = nil
 local turnStageT = 0
@@ -52,7 +59,8 @@ function GameplayScene.isInteriorNode(nodeType, entered)
 end
 
 function GameplayScene.inBossRoom(nodeType)
-    return GameplayScene.isInteriorNode(nodeType, bossEntered)
+    return GameplayScene.isInteriorNode(nodeType,
+        bossEntered and bossEnteredKey == runFloorKey())
 end
 
 function GameplayScene.isQuiet()
@@ -77,10 +85,12 @@ end
 
 function GameplayScene._debugForceBossEntered()
     bossEntered = true
+    bossEnteredKey = runFloorKey()
 end
 
 function GameplayScene._onBossEntered()
     bossEntered = true
+    bossEnteredKey = runFloorKey()
     BossCinematic.startIntro(game)
 end
 

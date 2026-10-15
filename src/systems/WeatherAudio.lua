@@ -99,7 +99,7 @@ local beds = {}
 local ones = {}
 local lastPick = {}
 local curBiome = nil
-local lastUpdate = 0
+local idleT = 0
 local lastFirefly = -100
 local now = 0
 local rng = love.math.newRandomGenerator(4417)
@@ -215,7 +215,7 @@ local GATE_RATE = 1.0
 
 function WeatherAudio.update(dt, s)
     now = now + dt
-    lastUpdate = love.timer.getTime()
+    idleT = 0
     local gate = WeatherAudio.roadActive
     local cfg = WeatherAudio.BIOMES[s.biomeId]
     if s.biomeId ~= curBiome then
@@ -286,7 +286,8 @@ WeatherAudio.tickBed = tickBed
 WeatherAudio.stopVoice = stopVoice
 
 function WeatherAudio.watchdog(dt)
-    if love.timer.getTime() - lastUpdate > 0.3 then
+    idleT = idleT + (dt or 1 / 60)
+    if idleT > 0.3 then
         local any = false
         for _, bed in pairs(beds) do if #bed.voices > 0 then any = true break end end
         if any then fadeAll(dt or 1 / 60) end

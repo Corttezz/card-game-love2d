@@ -57,23 +57,7 @@ function Sfx.getMusicVolume()  local a = audio(); return a and a.groups.music  o
 function Sfx.getSfxVolume()    local a = audio(); return a and a.groups.sfx    or 1 end
 
 function Sfx.fadeMusicOut(duration)
-    local a = audio()
-    if not a then return end
-    duration = duration or 0.5
-
-    local EM = _G.EventManager
-    if not EM then
-        a:stopMusic()
-        return
-    end
-
-    local restoreTo = a.groups.music
-    EM.parallelEase(a.groups, "music", 0, duration, "smooth", "music_fade")
-    EM.parallel(duration + 0.05, function()
-        a:stopMusic()
-        a.groups.music = restoreTo
-        a.musicVolume  = restoreTo
-    end, "music_fade")
+    Sfx.silenceMusic(duration or 0.5)
 end
 
 return Sfx

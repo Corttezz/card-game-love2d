@@ -28,6 +28,8 @@ function EndScreens.setCallbacks(cb)
     S.callbacks = cb or {}
 end
 
+function EndScreens._callbacks() return S.callbacks end
+
 local function currentRun(game)
     return game and game.runManager and game.runManager.currentRun or nil
 end
