@@ -43,11 +43,11 @@ Config.Game = {
     ENEMY_POWER = { damage = 1.0, health = 1.0 },
     ENEMY_POWER_BY_ACT = {
         [1] = { damage = 1.0, health = 2.0 },
-        [2] = { damage = 0.95, health = 1.8 },
-        [3] = { damage = 0.9, health = 1.45 },
-        [4] = { damage = 0.9, health = 1.15 },
-        [5] = { damage = 0.85, health = 0.95 },
-        [6] = { damage = 0.85, health = 0.85 },
+        [2] = { damage = 0.95, health = 1.62 },
+        [3] = { damage = 0.9, health = 1.3 },
+        [4] = { damage = 0.9, health = 1.04 },
+        [5] = { damage = 0.85, health = 0.86 },
+        [6] = { damage = 0.85, health = 0.77 },
     },
 
     PLAYER_MAX_HEALTH = 60,
@@ -188,6 +188,8 @@ Config.Offers = {
     SUSTAIN_GUARANTEE   = true,
     SUSTAIN_WEIGHT_BONUS = 1.0,
     SUSTAIN_MIN_SOURCES = 2,
+
+    REWARD_JOKER_CHANCE = { battle = 0.04, elite = 0.40, mini_boss = 0.40, boss = 0.70 },
 
     DAILY_SALE     = true,
     DAILY_SALE_PCT = 0.25,

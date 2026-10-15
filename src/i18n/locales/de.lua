@@ -443,6 +443,7 @@ return {
         rewards_subtitle   = "Wähle 1 Karte für dein Grimoire oder geh ohne weiter",
         skip_no_card       = "Ohne Karte weiter",
         affinity_badge     = "AFFINITÄT",
+        rare_find          = "SELTENER FUND",
         affinity_line      = "Deck-Affinität: {tags}",
         continue           = "Weiter",
         refresh            = "Erneuern (${n})",

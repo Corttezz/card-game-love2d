@@ -602,3 +602,25 @@ Motivo: com a curva por ato o bot experiente vencia guerreiro 20%, mago 60%, lad
 | **final (c1234 sem multigolpe + r2)** | **53%** | **53%** | **50%** | |
 
 Final: expert_full 52% [42 a 62], average 1% (era 2%), IC de cada classe cerca de ±17 pp. A causa do ladino era a Toxinas crescendo na luta: mesmo com o veneno decaindo, o reforço que crescia turno a turno mantinha o dano acumulado subindo rápido demais. O decaimento sozinho quase não mexeu no DoT. O multigolpe barato não mudou o guerreiro e foi descartado. Valores adotados: `Enemy.POISON_DECAY = true`, `Game.TOXIN_GROWTH = 0`, `Game.ROGUE_POISON_OFFSET = 1`, `Game.IMPETUS_ATTACKS = 2`, `Config.Game.CLASS_MAX_HEALTH = { warrior = 70 }`.
+
+## Coringa raro (14/Out/2026)
+
+Os coringas de batalha comum carregavam boa parte do poder do bot experiente.
+Com a regra nova (`memory/rng_and_offers.md`, comum 4% / elite 40% / mini 40% /
+chefe 70%), bateria 30 runs por classe, seeds 720000+, selo 0, mesmas do
+`bal_final`:
+
+| Bateria | Guerreiro | Mago | Ladino |
+|---|---|---|---|
+| bal_final (antes) | 53% | 53% | 50% |
+| só a regra nova | 37% | 40% | 30% |
+| regra no teto das faixas (5/50/50/80) | 37% | 40% | |
+| **regra + vida do inimigo ×0,9 nos atos 2 a 6** | **43%** | **43%** | **40%** |
+
+Subir elite/chefe não devolve nada: o poder estava nos coringas de batalha
+comum, que o dono quer raros. Compensação adotada em `ENEMY_POWER_BY_ACT`:
+vida 2,0 · 1,62 · 1,3 · 1,04 · 0,86 · 0,77 (dano igual). Ato 1 intocado para a
+mordida do começo continuar. As três classes ficam na borda de baixo da banda
+40 a 60 (IC ±17 pp); o average segue 0 a 3%. Relatórios em
+`reports/balance/cr*_*` da worktree card-game-coringararo.
+O piso de vida do ato 6 em `test_difficulty_floor` desceu de 0,8 para 0,75 junto com essa compensação.

@@ -443,6 +443,7 @@ return {
         rewards_subtitle   = "Elige 1 carta para tu grimorio o sigue sin ninguna",
         skip_no_card       = "Seguir sin carta",
         affinity_badge     = "AFINIDAD",
+        rare_find          = "HALLAZGO RARO",
         affinity_line      = "Afinidad con tu mazo: {tags}",
         continue           = "Continuar",
         refresh            = "Actualizar (${n})",

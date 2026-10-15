@@ -487,6 +487,12 @@ function M.setup(policy)
             if os.getenv("BALANCE_ELITE_RAMP") == "1" then
                 CG.ELITE_RAMP = true
             end
+            local jo = os.getenv("BALANCE_JOKER_ODDS")
+            if jo and jo ~= "" then
+                for node, v in jo:gmatch("([%w_]+):([%d%.]+)") do
+                    CO.REWARD_JOKER_CHANCE[node] = tonumber(v)
+                end
+            end
             local su = os.getenv("BALANCE_SUSTAIN")
             if su and su ~= "" and su ~= "0" then
                 local bonus = tonumber(su:match(":([%d%.]+)")) or 1.0

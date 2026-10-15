@@ -52,9 +52,9 @@ local function body()
             for _, b in ipairs(r.battleLog) do
                 local s = 0
                 for _, v in pairs(b.dmg or {}) do s = s + v end
-                if s ~= (b.enemyMaxHp - b.enemyHpLeft) then okSum = false end
+                if s ~= (b.enemyMaxHp - b.enemyHpLeft + (b.enemyHealed or 0)) then okSum = false end
             end
-            t:check("registro: dano por fonte == vida tirada do inimigo, batalha a batalha", okSum)
+            t:check("registro: dano por fonte == vida tirada do inimigo (+ cura dele), batalha a batalha", okSum)
         end
     end
 

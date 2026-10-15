@@ -67,6 +67,9 @@ local ImageCache = require("src.ui.ImageCache")
 local ShopServices = require("src.systems.ShopServices")
 local ShopScene = require("src.ui.shop.ShopScene")
 local ShopLayout = require("src.ui.shop.ShopLayout")
+local RareReveal = require("src.ui.RareReveal")
+
+local RARE_PAUSE = 0.35
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -403,7 +406,11 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
 
     if self.mode == "rewards" then
         local Moveable = require("engine.Moveable")
-        for i, inst in ipairs(self.cardInstances) do
+        local normal, rare = {}, {}
+        for _, inst in ipairs(self.cardInstances) do
+            if CardRewardScreen.isRareOffer(inst) then rare[#rare + 1] = inst else normal[#normal + 1] = inst end
+        end
+        for i, inst in ipairs(normal) do
             inst._entryOy = -70
             local d = 0.15 + (i - 1) * 0.13
             dbg("entry AGENDADA carta %d: ease em t=+%.2fs (fila %s)", i, d, FXQ)
@@ -415,6 +422,10 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
             EventManager.parallel(d + 0.45, function()
                 Moveable.juice_up(inst, 0.22, 0.05)
             end, FXQ)
+        end
+        for k, inst in ipairs(rare) do
+            self:_revealRare(inst, { delay = 0.15 + #normal * 0.13 + 0.45 + RARE_PAUSE
+                + (k - 1) * (RareReveal.CHARGE + RareReveal.SIGNATURE_AT) })
         end
         dbgCards(self, "pos-show")
     end
@@ -548,6 +559,55 @@ function CardRewardScreen:show(game, onCardPurchased, onSkipped, mode)
     end
 end
 
+function CardRewardScreen.isRareOffer(inst)
+    return inst ~= nil and inst.type == "joker"
+end
+
+local function rareState(inst)
+    local holder = inst and (inst.shopOffer or inst)
+    return holder and holder._rareReveal
+end
+
+function CardRewardScreen:_isRareHidden(offerOrInst)
+    local st = offerOrInst and (offerOrInst._rareReveal or rareState(offerOrInst))
+    return RareReveal.hidden(st)
+end
+
+function CardRewardScreen:_revealRare(inst, opts)
+    if not inst then return nil end
+    opts = opts or {}
+    local holder = inst.shopOffer or inst
+    local st = RareReveal.new({ delay = opts.delay or 0, reduced = reducedMotion(),
+        seed = 7919 + (holder._slot or 1) * 131 })
+    holder._rareReveal = st
+    inst._entryOy = 0
+    local function current()
+        return (holder ~= inst and holder.cardInstance) or inst
+    end
+    st.hooks = {
+        onCharge = function()
+            Sfx.play("shopCrystalHum", { volume = 0.7 })
+        end,
+        onBurst = function(reduced)
+            local c = current()
+            if not reduced then
+                if c.start_materialize then
+                    c:start_materialize(DissolveShader.palette("joker"), true, 1.2)
+                end
+                Moveable.juice_up(c, 0.35, 0.1)
+                Sfx.play("packSealBreak", { volume = 0.8 })
+            end
+            Sfx.play("cardDiscovered")
+        end,
+        onSignature = function()
+            local c = current()
+            local sig = c.id and ("jokerSig_" .. c.id)
+            if sig and Sfx.has(sig) then Sfx.play(sig) else Sfx.play("jokerActivate") end
+        end,
+    }
+    return st
+end
+
 function CardRewardScreen:_makeCardInstance(offer)
     local cardData = self.cardDatabase:getCard(offer.id)
     if not cardData then
@@ -661,6 +721,7 @@ function CardRewardScreen:createOfferButtons()
                 pos.x, pos.y, btnW, btnH,
                 "",
                 function()
+                    if self:_isRareHidden(capturedOffer) then return end
                     self:setSelectedOffer(capturedOffer, capturedOffer._slot)
                 end
             )
@@ -1414,8 +1475,17 @@ function CardRewardScreen:update(dt)
         local mx, my = love.mouse.getPosition()
         my = my - (self.slideOffsetY or 0)
         for _, cardInstance in ipairs(self.cardInstances) do
+            local st = rareState(cardInstance)
+            if st then
+                local r = cardInstance._drawRect
+                RareReveal.update(st, dt, r and r.w, r and r.h, st.hooks)
+            end
             if cardInstance and cardInstance.updateMouse then
-                cardInstance:updateMouse(mx, my, dt, true)
+                if RareReveal.hidden(st) then
+                    cardInstance.isHovered = false
+                else
+                    cardInstance:updateMouse(mx, my, dt, true)
+                end
             end
         end
     end
@@ -1581,8 +1651,12 @@ function CardRewardScreen:draw()
                     or false
                 local r = self:_cardDrawRect(cardInstance)
                 cardInstance._drawRect = r
-                cardInstance:draw(r.drawX, r.drawY, false, true)
-                self:drawPriceOverlay(cardInstance, r)
+                local st = rareState(cardInstance)
+                if st then RareReveal.drawBack(st, r.x + r.w / 2, r.y + r.h / 2, r.w, r.h) end
+                if not RareReveal.hidden(st) then
+                    cardInstance:draw(r.drawX, r.drawY, false, true)
+                    self:drawPriceOverlay(cardInstance, r)
+                end
             end
         end
     end
@@ -1618,6 +1692,12 @@ function CardRewardScreen:draw()
         if offer.purchased and slot <= slotCount and self.cardPositions[slot] then
             self:_drawSoldSlot(self.cardPositions[slot])
         end
+    end
+
+    for _, cardInstance in ipairs(self.cardInstances) do
+        local st = rareState(cardInstance)
+        local r = cardInstance._drawRect
+        if st and r then RareReveal.drawFront(st, r.x + r.w / 2, r.y + r.h / 2, r.w, r.h) end
     end
 
     for _, cardInstance in ipairs(self.cardInstances) do
@@ -1784,6 +1864,7 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
     local offer = cardInstance.shopOffer
     if not offer or offer.purchased then return end
     if (cardInstance._entryOy or 0) > 1 then return end
+    if RareReveal.hidden(offer._rareReveal) then return end
     local pos = self.cardPositions[slot]
     if not pos then return end
     local w = pos.w or self.cardWidth
@@ -1805,8 +1886,14 @@ function CardRewardScreen:drawOfferBadges(cardInstance, slot)
             local label = require("src.i18n.TextCase").upper(I18n.t("rarity." .. offer.rarity, nil, offer.rarity))
             marker(cx, pos.y - (offer.isNew and 27 or 15), label, Palette.forRarity(offer.rarity), 9, 4)
         end
+        local below = pos.y + h + 15
+        if offer._rareReveal then
+            marker(cx, below, require("src.i18n.TextCase").upper(I18n.t("reward.rare_find")),
+                Palette.TOAST_GOLD, 9, 4)
+            below = below + 15
+        end
         if offer.affinity then
-            marker(cx, pos.y + h + 15,
+            marker(cx, below,
                 I18n.t("reward.affinity_badge"), Palette.AGED_GOLD_LIGHT, 8, 3)
         end
     end

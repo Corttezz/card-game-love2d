@@ -24,6 +24,7 @@ M.TOOL_RESULT_PRINTERS = {
     "tools/preview_card_anim.lua", "tools/preview_card_art_fix.lua", "tools/preview_card_live.lua",
     "tools/preview_cards.lua", "tools/preview_coinburst.lua", "tools/preview_editions.lua", "tools/preview_fx.lua",
     "tools/preview_rareglow.lua", "tools/preview_shop_props.lua", "tools/probe_continue.lua",
+    "tools/screenshot_rare_joker.lua",
     "tools/probe_i18n_key.lua", "tools/probe_locale_keys.lua", "tools/probe_shop_i18n.lua",
     "tools/probe_shop_shadow.lua", "tools/probe_skip_label.lua", "tools/scan_clones.lua",
     "tools/screenshot_achievements.lua", "tools/screenshot_attack.lua", "tools/screenshot_boot_entry.lua",

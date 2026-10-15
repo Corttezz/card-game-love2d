@@ -1146,6 +1146,7 @@ local function playBattle(game, label)
             node = node.type or "battle",
             enemy = game.enemy.spriteId or game.enemy.kitId or game.enemy.name,
             enemyMaxHp = game.enemy.maxHealth, enemyHpLeft = math.max(0, game.enemy.health or 0),
+            enemyHealed = game.enemy.healedTotal or 0,
             turns = turnCount, won = won,
             hpLost = math.max(0, dmgTakenBefore - game.player.health),
             hpEnd = math.max(0, game.player.health), maxHp = game.player.maxHealth,

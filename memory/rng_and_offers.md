@@ -167,3 +167,45 @@ poco_das_sanguessugas), crepúsculo (relicario_do_eclipse, corvo_mensageiro).
 - Arte 128×96 em `assets/sprites/ui/event_<id>.png` (PixelLab pixflux,
   contorno preto); `test_events` exige arte e texto nos 5 idiomas pros de
   bioma. Captura: `EVENT_ID=<id> EVENT_SIZE=1920x1080 love . screenshot_event de`.
+
+## Coringa raro na recompensa (14/Out/2026)
+
+Pedido do dono: "os jokers têm pouquíssimas chances de aparecer em batalhas
+normais e só aparecem com grande frequência em elite ou boss... e quando
+aparecerem, uma animaçãozinha diferente, bem feita, para ver que foi raro".
+
+- Medido antes (`love . test_one test_reward_jokers`, 400 recompensas por
+  classe/ato/nó, sem coringa possuído): comum 29% (A1) a 92% (A6), elite 41 a
+  95%, mini-chefe igual à comum (não tinha minRarity), chefe 98 a 99,6%, e no
+  chefe 72% das recompensas traziam 2+ coringas. A causa: coringa é carta
+  incomum/rara/lendária do pool, e o peso de raridade sobe por ato.
+- Regra nova, fonte única em `ShopSystem:generateOffers` (modo rewards):
+  UM sorteio no stream "shop" contra `Config.Offers.REWARD_JOKER_CHANCE[nodeType]`
+  (comum 0,04 · elite 0,40 · mini_boss 0,40 · boss 0,70; nó desconhecido = comum).
+  Se passar, a ÚLTIMA vaga pede `jokers = "only"` ao `CardRegistry:pickRewardCard`;
+  as outras pedem `jokers = "none"`. Medido depois: 3,5 a 4,4% · 37 a 41% ·
+  37 a 41% · 69 a 72%, nunca 2 coringas. O filtro respeita "nunca repete
+  coringa possuído" (todos possuídos = vaga vira carta normal) e a vaga de
+  sustento (1ª vaga; se só houver uma vaga, o sustento ganha). Raridade do
+  coringa: a sorteada; sem coringa nela, sobe (comum→incomum→rara) e depois
+  desce; lendária só se o peso do ato permitir.
+- A LOJA não muda (`jokers = nil`). Knob: `python tools/balance.py --joker-odds
+  "battle:0.04,elite:0.4,mini_boss:0.4,boss:0.7"` (`BALANCE_JOKER_ODDS`).
+- Revelação: `CardRewardScreen:_revealRare(inst, { delay })` (reutilizável; o
+  `show` chama sozinho para toda carta `type == "joker"` em rewards, em
+  sequência). Visual em `src/ui/RareReveal.lua`: as outras entram normais, pausa
+  de 0,35 s, CARGA (0,75 s: moldura dourada acende, feixe, motes convergindo,
+  `shopCrystalHum`), EXPLOSÃO (flash, anel, 40 faíscas com gravidade,
+  `start_materialize` com a paleta "joker", `juice_up`, `packSealBreak` +
+  `cardDiscovered`), som-assinatura do coringa 0,55 s depois (`jokerSig_<id>`,
+  senão `jokerActivate`), depois raios girando devagar + brasas subindo e o
+  selo "ACHADO RARO" (`reward.rare_find`) sob a carta. Todo efeito é desenhado
+  numa camada a 1/3 da resolução com filtro nearest (`RareReveal.PIX = 3`):
+  polígono suave ficava com "cara de IA". O estado mora na OFERTA
+  (`offer._rareReveal`), então sobrevive ao resize que recria as instâncias;
+  enquanto escondida a carta não recebe hover nem clique. `reducedMotion`:
+  nada se move nem se esconde, ficam brilho parado, raios fixos, selo e som.
+- Captura: `CARDGAME_HEADLESS=1 lovec . test_one screenshot_rare_joker` →
+  `tools/preview_out/coringa_raro/`.
+- Custo no balanceamento e compensação: ver `memory/balance_curves.md`
+  (seção "Coringa raro").

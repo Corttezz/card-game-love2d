@@ -128,11 +128,43 @@ function CardRegistry:pickRewardCard(opts)
             if #pool > 0 then rarity = r; break end
         end
     end
+    local ownedJokers = opts.ownedJokerIds or buildOwnedJokerSet(opts.runManager)
+    if opts.jokers == "none" or opts.jokers == "only" then
+        local wantJoker = opts.jokers == "only"
+        local function keep(ids)
+            local out = {}
+            for _, id in ipairs(ids) do
+                local cd = self.cardDatabase:getCard(id)
+                local isJoker = cd and cd.type == "joker" or false
+                if isJoker == wantJoker and not (isJoker and ownedJokers[id]) then out[#out + 1] = id end
+            end
+            return out
+        end
+        local filtered = keep(pool)
+        if #filtered == 0 then
+            local legOk = (opts.rarityWeights and (opts.rarityWeights.legendary or 0) > 0) or rarity == "legendary"
+            local from = RARITY_MIN_ORDER[rarity] or 1
+            local order = {}
+            for i = from + 1, #RARITY_ORDER do order[#order + 1] = RARITY_ORDER[i] end
+            for i = from - 1, 1, -1 do order[#order + 1] = RARITY_ORDER[i] end
+            for _, r in ipairs(order) do
+                if r ~= "legendary" or legOk then
+                    filtered = keep(self:_poolFor(opts.classId, r))
+                    if #filtered > 0 then rarity = r; break end
+                end
+            end
+        end
+        if #filtered == 0 then return nil end
+        pool = filtered
+    end
     if opts.requireSustain then
         local function onlySustain(ids)
             local out = {}
             for _, id in ipairs(ids) do
-                if CardRegistry.isSustainCard(self.cardDatabase:getCard(id)) then out[#out + 1] = id end
+                local cd = self.cardDatabase:getCard(id)
+                if CardRegistry.isSustainCard(cd) and not (opts.jokers == "none" and cd.type == "joker") then
+                    out[#out + 1] = id
+                end
             end
             return out
         end
@@ -160,8 +192,6 @@ function CardRegistry:pickRewardCard(opts)
 
     local actNumber = opts.actNumber or 1
     local affinityCap = AFFINITY_CAP_BY_ACT[math.min(actNumber, 3)] or 1.5
-
-    local ownedJokers = opts.ownedJokerIds or buildOwnedJokerSet(opts.runManager)
 
     local entries = {}
     for _, cardId in ipairs(pool) do

@@ -193,8 +193,21 @@ function ShopSystem:generateOffers()
         and self.cardRegistry:countSustain(self.context.deckIds) < (Offers.SUSTAIN_MIN_SOURCES or 2) then
         sustainSlot = true
     end
+    local jokerSlot = nil
+    if self.mode == "rewards" then
+        local chance = ShopSystem.rewardJokerChance(self.context.nodeType)
+        if chance > 0 and Rng.get():random("shop") < chance then jokerSlot = nCards end
+        if sustainSlot and jokerSlot == 1 then jokerSlot = nil end
+    end
     for i = 1, nCards do
-        local offer = self:generateCardOffer(sustainSlot and i == 1 and { requireSustain = true } or nil)
+        local extra = nil
+        if self.mode == "rewards" then
+            extra = { jokers = (i == jokerSlot) and "only" or "none", requireSustain = (sustainSlot and i == 1) or nil }
+        end
+        local offer = self:generateCardOffer(extra)
+        if not offer and extra and extra.jokers == "only" then
+            offer = self:generateCardOffer({ jokers = "none" })
+        end
         if offer then table.insert(self.currentOffers, offer) end
     end
 
@@ -251,9 +264,16 @@ function ShopSystem:applyDailySale()
     return o
 end
 
+function ShopSystem.rewardJokerChance(nodeType)
+    local odds = require("src.core.Config").Offers.REWARD_JOKER_CHANCE
+    if type(odds) ~= "table" then return 1 end
+    return tonumber(odds[nodeType or "battle"] or odds.battle) or 0
+end
+
 function ShopSystem:generateCardOffer(extra)
     local pick = self.cardRegistry:pickRewardCard({
         requireSustain = extra and extra.requireSustain or nil,
+        jokers = extra and extra.jokers or nil,
         classId = self.context.classId,
         rarityWeights = self.context.rarityWeights or self.rarityWeights,
         minRarity = self.context.minRarity,

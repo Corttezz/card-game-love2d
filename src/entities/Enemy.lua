@@ -319,6 +319,7 @@ function Enemy:healSelf(n)
     if not n or n <= 0 or self.health <= 0 then return 0 end
     local before = self.health
     self.health = math.min(self.maxHealth, self.health + n)
+    self.healedTotal = (self.healedTotal or 0) + (self.health - before)
     return self.health - before
 end
 
