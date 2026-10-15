@@ -80,6 +80,10 @@ function M.run()
     t:eq("chefe desconhecido cai na faixa generica",
          MD.pick("playing", chefe("chefe_inexistente", 2), "boss", true, false), MD.GENERIC_BOSS)
 
+    t:eq("fase death da cinematica: mantem o que toca (nunca comeca a faixa na morte)",
+         MD.pick("playing", rei, "boss", true, "death"), nil)
+    t:eq("fase intro como texto = silencio", MD.pick("playing", rei, "boss", true, "intro"), S)
+    t:eq("actTrack e a fonte unica da faixa do ato", MD.actTrack({ actNumber = 4 }), "musicAct4")
     t:eq("morte do chefe (fase death, salao) mantem a faixa dele",
          MD.pick("playing", rei, "boss", true, false), "musicBossCarrionKing")
     t:eq("cash out no salao da rainha mantem a faixa", MD.pick("roundEval", rainha, "boss", true), nil)
@@ -265,6 +269,24 @@ function M.run()
         audio2:fadeOutMusic(2)
         audio2:stopMusic()
         t:eq("stopMusic corta um fade-out em andamento", tocandoMusica(), 0)
+
+        audio2:playMusic("menuMusic")
+        MD.markCurrent("menuMusic")
+        MD.apply("roundEval", { actNumber = 3 }, "battle")
+        t:eq("Continuar no cash out com o menu tocando: entra a faixa do ato",
+             audio2.currentMusic, "musicAct3")
+        MD.apply("cardReward", { actNumber = 3 }, "battle")
+        t:eq("espolios mantem a faixa do ato", audio2.currentMusic, "musicAct3")
+        audio2:stopMusic()
+        MD.markCurrent("musicAct3")
+        MD.apply("cardReward", { actNumber = 3 }, "battle")
+        t:eq("faixa parada por fora com o espelho mentindo: o diretor religa",
+             audio2.currentMusic, "musicAct3")
+        audio2:fadeOutMusic(1)
+        MD.markCurrent(MD.SILENCE)
+        MD.apply("roundEval", { actNumber = 3 }, "boss")
+        t:eq("cash out depois de um silencio de chefe segue em silencio", audio2.currentMusic, nil)
+        audio2:stopMusic()
 
         MD.hallProbe, MD.introProbe = prevHall, prevIntro
         audio2:stopMusic()

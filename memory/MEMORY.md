@@ -43,6 +43,7 @@
 - [Joker Proc FX](joker_proc_fx.md) — contrato OBRIGATORIO: todo efeito de coringa tica visualmente no momento em que trabalha (pushJokerProc: cadeia no combate, direto no turn_start); checklist pra coringa novo
 - [Card Feel / Game Feel v1](card_feel.md) — identidade AV por tema de carta (CardFeel THEMES tag→som+burst), procs de joker Balatro (tick sequencial no slot, stagger estica), feedback do inimigo; sons impact-* ElevenLabs
 - [Boot Sequence](boot_sequence.md) — BootScene (loading + splash 3s) + Menu animado com intro stagger e música menuMusic
+- [Music Map](music_map.md) — mapa de TODA transição (menu, atos, chefe, Continuar por estágio, cheat) → faixa, fade e ambiente; 7 defeitos da auditoria 15/Out/2026 (inclui seções de chefe); trava test_music_flow com fontes falsas
 - [Audio System](audio_system.md) — AudioManager (Balatro port), polifonia, grupos, crossfade, settings persistidos
 - [Save System](save_system.md) — SaveManager + Migrations (atomic write, versioning); RunManager delega tudo
 - [Particles Unified](particles_unified.md) — ParticlesManager + Particles (Balatro port). CardParticles é shim. SmokeSystem segue independente.

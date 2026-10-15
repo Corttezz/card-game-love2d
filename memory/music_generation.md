@@ -210,6 +210,8 @@ Duas ferramentas, porque medem coisas diferentes:
 
 [[sfx_generation]] · [[audio_system]] · [[ui_layout_invariants]] · [[project_overview]]
 
+Mapa completo de transições e a trava de fluxo real: [[music_map]].
+
 ## Silêncio antes do chefe e faixa POR CHEFE (14/Out/2026, pedido do dono)
 
 Pedido: "imersão". Quando a bandeira do chefe aparece, a música do ato morre

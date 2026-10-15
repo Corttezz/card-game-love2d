@@ -26,6 +26,8 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 
 **Trilha em seções (chefes, 15/Out/2026): DESLIGADA.** `src/systems/MusicSections.lua` encadeia faixas de um chefe chamando `playMusic` por seção (código `<chefe>:<seção>`), mas o dono rejeitou o resultado: `ENABLED = false`, nenhum chefe em `BOSSES`, mp3 fora do repo. Ver [[music_generation]].
 
+**Quem escolhe a música é o `MusicDirector`** (observa o estado, ver [[music_map]]). Tela nenhuma chama `playMusic`/`stopMusic` para "preparar" a próxima: o `Sfx.fadeMusicOut` antigo baixava o volume do GRUPO e parava a faixa errada meio segundo depois (auditoria 15/Out/2026). Hoje ele é só um `silenceMusic`.
+
 **Regra de ouro:** use `Sfx.play("name")` (de `src/systems/Sfx.lua`). Sfx é facade único — também expõe `Sfx.playMusic`, `Sfx.stopMusic`, `Sfx.setMusicVolume/setSfxVolume/setMasterVolume`. AudioManager é no-op gracioso se áudio indisponível (WSL2 sem driver).
 
 **Persistência:** volumes / fullscreen / CRT / locale são salvos via `SaveManager.saveSettings(...)` quando alteram em `SettingsMenu`. `main.lua:love.load` chama `SaveManager.loadSettings()` ANTES de `AudioManager:new()` e passa os volumes no construtor.
