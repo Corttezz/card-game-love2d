@@ -383,72 +383,15 @@ end
 
 Showcase.CELL = 2
 
-local stageShader, stageShaderTried, whitePx
-local function getStageShader()
-    if stageShaderTried then return stageShader end
-    stageShaderTried = true
-    local ok, s = pcall(love.graphics.newShader, "shaders/reveal_stage.glsl")
-    if ok then stageShader = s
-    else Debug.warn("[UnlockShowcase] AVISO: shader do palco falhou: " .. tostring(s)) end
-    local data = love.image.newImageData(1, 1)
-    data:setPixel(0, 0, 1, 1, 1, 1)
-    whitePx = love.graphics.newImage(data)
-    whitePx:setFilter("nearest", "nearest")
-    return stageShader
-end
-
-local function rgb(c) return { c[1], c[2], c[3] } end
+local RevealGlow = require("src.ui.RevealGlow")
 
 local function drawGlow(cx, cy, r, t, alpha)
-    local sh = getStageShader()
-    if not sh then return end
-    local motion = not reducedMotion()
-    local size = math.floor(r * 2)
-    sh:send("size", { size, size })
-    sh:send("cell", Showcase.CELL)
-    sh:send("levels", 4)
-    sh:send("rays", 12)
-    sh:send("rot", motion and t * 0.22 or 0)
-    sh:send("rayOn", motion and 1 or 0)
-    sh:send("pulse", motion and (0.86 + 0.14 * math.sin(t * 2.4)) or 1)
-    sh:send("glowCol", rgb(Palette.AGED_GOLD))
-    sh:send("rayCol", rgb(Palette.AGED_GOLD_LIGHT))
-    love.graphics.setShader(sh)
-    love.graphics.setColor(1, 1, 1, alpha)
-    love.graphics.draw(whitePx, math.floor(cx - size / 2), math.floor(cy - size / 2), 0, size, size)
-    love.graphics.setShader()
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
-local function hash(seed, i, k)
-    local v = math.sin(i * 127.1 + k * 311.7 + seed * 74.7) * 43758.5453
-    return v - math.floor(v)
+    RevealGlow.halo(cx, cy, r, { t = t, alpha = alpha, motion = not reducedMotion(), cell = Showcase.CELL })
 end
 
 local function drawSparkles(cx, cy, r, t, alpha, seed)
-    if reducedMotion() then return end
-    local cell = Showcase.CELL
-    local function snap(v) return math.floor(v / cell) * cell end
-    for i = 1, 14 do
-        local ang = hash(seed, i, 1) * math.pi * 2
-        local rad = r * (0.42 + 0.56 * hash(seed, i, 2))
-        local phase = hash(seed, i, 3) * math.pi * 2
-        local speed = 1.6 + hash(seed, i, 4) * 1.8
-        local b = math.sin(t * speed + phase)
-        if b > 0.45 then
-            local x, y = snap(cx + math.cos(ang) * rad), snap(cy + math.sin(ang) * rad)
-            Palette.set(b > 0.9 and Palette.PARCHMENT_LIGHT or Palette.AGED_GOLD_LIGHT, alpha)
-            love.graphics.rectangle("fill", x, y, cell, cell)
-            if b > 0.8 then
-                Palette.set(Palette.AGED_GOLD_LIGHT, alpha * 0.8)
-                love.graphics.rectangle("fill", x - cell, y, cell, cell)
-                love.graphics.rectangle("fill", x + cell, y, cell, cell)
-                love.graphics.rectangle("fill", x, y - cell, cell, cell)
-                love.graphics.rectangle("fill", x, y + cell, cell, cell)
-            end
-        end
-    end
-    love.graphics.setColor(1, 1, 1, 1)
+    RevealGlow.sparkles(cx, cy, r, { t = t, alpha = alpha, seed = seed, motion = not reducedMotion(),
+        cell = Showcase.CELL })
 end
 
 local function steppedDisc(cx, cy, r)

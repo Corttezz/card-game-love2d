@@ -3,6 +3,7 @@ local BossJokers  = require("src.systems.BossJokers")
 local Sfx         = require("src.systems.Sfx")
 local I18n        = require("src.i18n.I18n")
 local FontManager = require("src.ui.FontManager")
+local RevealGlow  = require("src.ui.RevealGlow")
 
 local BossTrophy = {}
 
@@ -75,7 +76,7 @@ function BossTrophy.start(st, stage, reduced)
         t = 0, dur = st.dur or Data.step.dur, reduced = reduced and true or false,
         ox = ox, oy = oy, tx = w * Data.target.x, ty = h * Data.target.y,
         w = w, h = h, px = pixel(h),
-        parts = {}, spawnAcc = 0, revealed = false, rings = {}, angle = 0,
+        parts = {}, spawnAcc = 0, revealed = false, angle = 0,
     }
     if tr.reduced then
         tr.revealed = true
@@ -175,8 +176,6 @@ function BossTrophy.update(dt)
             tr.revealed = true
             tr.revealT = tr.t
             for _ = 1, tr.theme.burst do spawn(x, y, true) end
-            tr.rings[#tr.rings + 1] = { t = 0, dur = 0.6 }
-            tr.rings[#tr.rings + 1] = { t = -0.12, dur = 0.7 }
             sfx("bossRevealSting", nil)
             sfx("jokerSig_" .. tostring(tr.card), "jokerTick")
             local ok, CRT = pcall(require, "src.ui.CRTShader")
@@ -203,41 +202,19 @@ function BossTrophy.update(dt)
                 p.y = p.y + p.vy * dt
             end
         end
-        for i = #tr.rings, 1, -1 do
-            local r = tr.rings[i]
-            r.t = r.t + dt
-            if r.t >= r.dur then table.remove(tr.rings, i) end
-        end
     end
 end
 
 local function snap(v, px) return math.floor(v / px + 0.5) * px end
 
-local function drawGlow(x, y, r, color, a)
-    local px = tr.px
-    love.graphics.setBlendMode("add")
-    for i = 3, 1, -1 do
-        love.graphics.setColor(color[1], color[2], color[3], a * (0.16 + 0.10 * (3 - i)))
-        love.graphics.circle("fill", snap(x, px), snap(y, px), snap(r * (0.55 + 0.32 * i), px), 24)
-    end
-    love.graphics.setBlendMode("alpha")
+local function glowCell()
+    return math.max(2, math.floor(tr.h / 360))
 end
 
-local function drawRays(x, y, r, color, a)
-    local n = 10
-    local spin = tr.t * 0.35
-    love.graphics.setBlendMode("add")
-    love.graphics.setColor(color[1], color[2], color[3], a)
-    for i = 1, n do
-        local ang = spin + i * (math.pi * 2 / n)
-        local half = 0.07
-        local x1 = x + math.cos(ang - half) * r * 2.4
-        local y1 = y + math.sin(ang - half) * r * 2.4
-        local x2 = x + math.cos(ang + half) * r * 2.4
-        local y2 = y + math.sin(ang + half) * r * 2.4
-        love.graphics.polygon("fill", x, y, x1, y1, x2, y2)
-    end
-    love.graphics.setBlendMode("alpha")
+local function drawHalo(x, y, r, a, rays)
+    local th = tr.theme
+    RevealGlow.halo(x, y, r, { t = tr.t, alpha = a, motion = not tr.reduced, rayOn = rays,
+        cell = glowCell(), glow = th.glow, ray = th.ray })
 end
 
 local function drawParts()
@@ -302,7 +279,7 @@ function BossTrophy.draw()
     if tr.reduced then alpha = alpha * clamp01(tr.t / T.reducedIn) end
     if ph == "emerge" then
         local k = clamp01(tr.t / T.delay)
-        drawGlow(tr.ox, tr.oy, tr.h * 0.05 * (0.5 + k), tr.theme.glow, 0.8 * k)
+        drawHalo(tr.ox, tr.oy, tr.h * 0.12 * (0.5 + k), 0.9 * k, false)
         drawParts()
         love.graphics.setColor(1, 1, 1, 1)
         return
@@ -310,23 +287,14 @@ function BossTrophy.draw()
     local x, y, scale, angle = tr.x, tr.y, tr.scale, tr.angle
     local r = tr.h * Data.cardH * 0.5 * scale
     local rk = tr.revealed and clamp01((tr.t - (tr.revealT or 0)) / 0.35) or 0
+    local halo = r * (1.7 + 0.25 * rk * (1 - clamp01((tr.t - (tr.revealT or 0) - 0.35) / 1.2)))
+    drawHalo(x, y, halo, (0.7 + 0.3 * rk) * alpha, true)
     if not tr.reduced then
-        drawRays(x, y, r, tr.theme.ray, (0.05 + 0.08 * rk) * alpha)
+        RevealGlow.sparkles(x, y, halo, { t = tr.t, alpha = alpha * (0.4 + 0.6 * rk), seed = 31,
+            cell = glowCell(), color = tr.theme.ray })
     end
-    drawGlow(x, y, r * (1 + 0.25 * rk), tr.theme.glow, (0.55 + 0.35 * rk) * alpha)
     drawParts()
     local cardH = drawCard(x, y, scale, angle, alpha)
-    for _, ring in ipairs(tr.rings) do
-        if ring.t > 0 then
-            local k = ring.t / ring.dur
-            love.graphics.setBlendMode("add")
-            love.graphics.setColor(tr.theme.ray[1], tr.theme.ray[2], tr.theme.ray[3], (1 - k) * 0.8)
-            love.graphics.setLineWidth(tr.px)
-            love.graphics.circle("line", snap(x, tr.px), snap(y, tr.px), snap(r * (1 + k * 1.8), tr.px), 32)
-            love.graphics.setLineWidth(1)
-            love.graphics.setBlendMode("alpha")
-        end
-    end
     if tr.revealed then
         local na = alpha * clamp01((tr.t - (tr.revealT or 0) - 0.1) / 0.3)
         local name = I18n.cardName(tr.card)

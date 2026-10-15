@@ -227,7 +227,7 @@ function M.revealChecks(t)
     t:falsy("movimento reduzido: nunca escondido", list[1] and screen:_isRareHidden(list[1]))
     pumpScreen(screen, 2.0)
     t:truthy("movimento reduzido: som tocou sem explosao visual", list[1] and list[1]._rareReveal.burstDone
-        and #list[1]._rareReveal.sparks == 0)
+        and not RareReveal.haloParams(list[1]._rareReveal, 120, 180).motion)
     screen:hide()
     restore()
 end

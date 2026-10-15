@@ -1599,6 +1599,23 @@ function CardRewardScreen:_drawShop()
     end
 end
 
+function CardRewardScreen:_drawRareBacks()
+    for _, cardInstance in ipairs(self.cardInstances) do
+        if cardInstance and cardInstance.draw then
+            local offer = cardInstance.shopOffer
+            local slot = offer and offer._slot
+            local anim = slot and self.cardAnimations[slot]
+            local r = nil
+            if (anim and anim.scale or 1) > 0 then
+                r = self:_cardDrawRect(cardInstance)
+                local st = rareState(cardInstance)
+                if st then RareReveal.drawBack(st, r.x + r.w / 2, r.y + r.h / 2, r.w, r.h) end
+            end
+            cardInstance._drawRect = r
+        end
+    end
+end
+
 function CardRewardScreen:draw()
     if not self.visible then return end
     if self.mode == "shop" and self.scene then return self:_drawShop() end
@@ -1625,6 +1642,8 @@ function CardRewardScreen:draw()
         end
     end
 
+    self:_drawRareBacks()
+
     for _, cardInstance in ipairs(self.cardInstances) do
         if cardInstance and cardInstance.draw then
             local offer = cardInstance.shopOffer
@@ -1649,11 +1668,9 @@ function CardRewardScreen:draw()
                     and offer.cost and self.game
                     and not self.game.economySystem:canAfford(offer.cost)
                     or false
-                local r = self:_cardDrawRect(cardInstance)
+                local r = cardInstance._drawRect or self:_cardDrawRect(cardInstance)
                 cardInstance._drawRect = r
-                local st = rareState(cardInstance)
-                if st then RareReveal.drawBack(st, r.x + r.w / 2, r.y + r.h / 2, r.w, r.h) end
-                if not RareReveal.hidden(st) then
+                if not RareReveal.hidden(rareState(cardInstance)) then
                     cardInstance:draw(r.drawX, r.drawY, false, true)
                     self:drawPriceOverlay(cardInstance, r)
                 end
@@ -1692,12 +1709,6 @@ function CardRewardScreen:draw()
         if offer.purchased and slot <= slotCount and self.cardPositions[slot] then
             self:_drawSoldSlot(self.cardPositions[slot])
         end
-    end
-
-    for _, cardInstance in ipairs(self.cardInstances) do
-        local st = rareState(cardInstance)
-        local r = cardInstance._drawRect
-        if st and r then RareReveal.drawFront(st, r.x + r.w / 2, r.y + r.h / 2, r.w, r.h) end
     end
 
     for _, cardInstance in ipairs(self.cardInstances) do

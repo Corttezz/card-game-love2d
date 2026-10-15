@@ -99,6 +99,19 @@ opaca não cai). Captura: `love . test_one screenshot_bordas_cartas`
 (`BORDAS_TAG=<nome>`). Regra: canvas intermediário de algo que deforma
 vértices precisa de margem do tamanho da deformação máxima.
 
+## Brilho de destaque (`src/ui/RevealGlow.lua`, 15/Out/2026)
+
+Um só brilho para "você ganhou algo especial": o palco da conquista do
+`UnlockShowcase` (halo dither em células de 2 px + 12 espinhos + faíscas,
+`shaders/reveal_stage.glsl`). Usado no `UnlockShowcase`, no troféu do chefe
+(`BossTrophy`) e na revelação/escolha do coringa (`RareReveal`). Regras:
+(1) efeito de FUNDO de uma carta numa fileira desenha num passe antes de
+TODAS as cartas (`CardRewardScreen:_drawRareBacks`), nunca intercalado no
+laço das cartas, senão cobre a vizinha anterior; (2) efeito de frente, se um
+dia existir, só dentro da própria carta; (3) `reducedMotion` desliga giro,
+espinhos e faíscas, mantém o halo. Trava `test_reveal_glow` (diff de pixels
+do miolo das vizinhas com e sem o brilho).
+
 ## Armadilhas de render descobertas no UI Overhaul (Jul/2026)
 
 - **Fonte pixel: glifo "6" em tamanho 10 rasteriza como "G"** (não-integer

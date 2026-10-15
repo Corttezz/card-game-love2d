@@ -55,9 +55,6 @@ end
 
 function Ink.px(x, y, color, alpha, w, h)
     setBatchColor(color, alpha)
-    if batch:getCount() >= batch:getBufferSize() then
-        batch:setBufferSize(batch:getBufferSize() * 2)
-    end
     batch:add(math.floor(x), math.floor(y), 0, w or 1, h or 1)
 end
 

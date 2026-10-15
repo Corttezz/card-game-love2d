@@ -82,6 +82,33 @@ pelo contact sheet a 3x.
   coringa NÃO é do chefe: é a de todo coringa, e o dono não pediu para mudá-la.
   Trava: `test_card_hover_edges` (faixa acima da lendária em repouso vazia).
   Antes/depois: `tools/preview_out/bordas_cartas/recompensa_*.png`.
+- **Brilho do coringa = brilho de CONQUISTA** (15/Out/2026, dono: "a gente
+  poderia só estar utilizando o mesmo efeito que a gente tem em volta quando a
+  gente ganha uma conquista... esses efeitos estão ficando com um z-index maior
+  do que o das cartas ao lado"). O efeito detalhado é o palco do
+  `UnlockShowcase` (commit 0e908298, quando o dono chamou os raios vetoriais de
+  "muito tosco"): `shaders/reveal_stage.glsl` (halo radial posterizado em 4
+  degraus com Bayer 4x4 em células de 2 px + 12 espinhos finos girando) e as
+  faíscas de 1 célula. Agora mora em `src/ui/RevealGlow.lua`
+  (`halo(cx,cy,r,opts)` + `sparkles(cx,cy,r,opts)`), usado por
+  `UnlockShowcase`, `BossTrophy` e `RareReveal`. Saíram: na `RareReveal` a
+  camada pixelada de 3 px (retângulo de carga, feixe, aro retangular, quadrado
+  central, raios em triângulo, clarão retangular, anel, faíscas/poeira em
+  blocos) e o `drawFront` inteiro; no `BossTrophy` os discos em degraus
+  (`drawGlow`), os raios em triângulo e os anéis de choque. Na escolha o brilho
+  desenha num passe ANTES de todas as cartas
+  (`CardRewardScreen:_drawRareBacks`), alpha de repouso 0,5
+  (`RareReveal.REST_ALPHA`), raio 0,9 × o maior lado da carta; não existe
+  camada de frente. Revelação: o halo cresce na carga (0,3 → 1 do raio),
+  pico no estouro e assenta em 1,6 s; a carta materializa por cima.
+  `reducedMotion`: halo parado (sem giro, sem espinhos, sem faíscas), destaque
+  fica. As partículas temáticas do troféu (pena, brasa...) ficam: são a
+  identidade do chefe, não halo. Trava: `test_reveal_glow` (com o coringa do
+  chefe no MEIO, nenhum pixel do miolo das vizinhas muda com e sem o brilho,
+  movimento e reduzido; os três módulos usam `RevealGlow`; sem
+  polygon/pixelLayer/anel/retângulo em volta). Capturas:
+  `love . test_one screenshot_brilho_coringa` (`BRILHO_TAG=<nome>`),
+  `tools/preview_out/brilho_coringa/{antes,depois}_*.png`.
 - Composição com a vaga de coringa raro (`REWARD_JOKER_CHANCE`, chefe 70%,
   sempre a ÚLTIMA vaga): `_applyBossJoker` roda depois e troca a última vaga,
   então a recompensa do chefe nunca tem dois coringas.
@@ -100,8 +127,9 @@ pelo contact sheet a 3x.
   balançando → `fade` 0,45. Total 4,4 s (reduced 2,2 s: sem giro, sem
   partícula, a carta aparece já parada).
 - Tema por chefe em `themes`: partícula (pena/lasca/brasa/neve/esporo/pétala),
-  cores, brilho, raio, som de subida. Brilho em 3 degraus aditivos na grade de
-  pixel (`px = h/240`), partículas presas à grade.
+  cores, brilho, raio, som de subida. Brilho = `RevealGlow` (o da conquista)
+  tingido por `glow`/`ray` do tema, célula `h/360` (mín. 2); partículas presas
+  à grade `px = h/240`. Sem anéis desde 15/Out/2026.
 - Coordenadas: o `stage` vem no espaço do MUNDO (largura maior que a tela no
   salão); `start` converte por `screenW/stage.w`. Sem isso a carta nascia
   longe do corpo (1ª captura).
