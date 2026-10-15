@@ -322,6 +322,10 @@ function Menu:draw()
             if offY ~= 0 then button.y = origY + offY end
             button:draw()
             self:_drawButtonCrtFx(button)
+            if name == "collection" and a > 0.9
+                    and require("src.systems.UnlockSystem").freshCount() > 0 then
+                require("src.ui.DiscoveryMark").drawAlert(button.x + button.width - 4, button.y + 2)
+            end
             if offY ~= 0 then button.y = origY end
         end
     end

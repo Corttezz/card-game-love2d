@@ -35,10 +35,10 @@ function M.run()
         t:truthy("recarregado: segue descoberta", UnlockSystem.isCardDiscovered("warrior_iron_wave"))
         t:falsy("recarregado: não volta a ser inédita", UnlockSystem.markDiscovered("warrior_iron_wave"))
 
-        local fresh = UnlockSystem.takeFreshInCollection()
-        t:truthy("Coleção recebe a descoberta (persistida)", fresh.warrior_iron_wave)
-        t:falsy("descoberta antiga (cardsSeen) não pulsa", fresh.warrior_bash)
-        t:eq("2ª visita: lista vazia", next(UnlockSystem.takeFreshInCollection()), nil)
+        t:truthy("Coleção recebe a descoberta (persistida)", UnlockSystem.isFresh("warrior_iron_wave"))
+        t:falsy("descoberta antiga (cardsSeen) não pulsa", UnlockSystem.isFresh("warrior_bash"))
+        t:truthy("vista na Coleção: sai da novidade", UnlockSystem.clearFresh("warrior_iron_wave"))
+        t:eq("depois de vista: nada novo", UnlockSystem.freshCount(), 0)
 
         local game = TK.newRunGame("warrior")
         local reg = game.runManager.cardRegistry
@@ -96,9 +96,8 @@ function M.run()
         game.addMessage = function(_, text) msgs[#msgs + 1] = text end
         game:addCardToRun(target)
         game.addMessage = prevAdd
-        local I18n = require("src.i18n.I18n")
-        local want = I18n.t("messages.card_discovered", { name = I18n.cardName(target) })
-        t:eq("evento: carta inédita anuncia a descoberta", msgs[1], want)
+        t:eq("evento: carta inédita entra calada (descoberta silenciosa)", #msgs, 0)
+        t:truthy("evento: carta entregue fica descoberta", UnlockSystem.isCardDiscovered(target))
 
         local db = CardDatabase:new()
         local card = db:createCardInstance(db:getCard("warrior_iron_wave"))

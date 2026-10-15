@@ -276,25 +276,17 @@ function Game:addCardToRun(cardId, meta)
         return false
     end
 
-    local discovered = UnlockSystem.markDiscovered(cardId)
-    if discovered then require("src.ui.DiscoveryMark").chime() end
+    UnlockSystem.markDiscovered(cardId)
     AchievementSystem.onCardSeen(self, cardId)
 
     local cardData = self.deckManager.cardDatabase:getCard(cardId)
     if cardData and cardData.type == "joker" then
-        if discovered then
-            self:addMessage(msg("card_discovered", { name = I18nMod.cardName(cardData or cardId) }), "success")
-        end
         return self:addJokerToRun(cardId, meta)
     end
 
     local success = self.runManager:addCardToDeck(cardId, meta)
 
     if success then
-        if discovered then
-            self:addMessage(msg("card_discovered", { name = I18nMod.cardName(cardData or cardId) }), "success")
-        end
-
         self:synchronizeRunDeck()
 
         self:shuffleDeck()

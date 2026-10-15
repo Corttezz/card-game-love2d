@@ -107,6 +107,9 @@ function EndScreens.summary(kind, game)
     local gold = game and game.economySystem and game.economySystem.currentGold or 0
     add("label_gold", math.floor(gold))
     add("label_jokers", run.jokers and #run.jokers or 0)
+    local ur = game and game.unlockResult
+    add("label_discoveries", (ur and ur.newDiscoveries)
+        or require("src.systems.UnlockSystem").runDiscoveries())
     return { subtitle = subtitle, cells = cells }
 end
 
@@ -167,8 +170,8 @@ function EndScreens.layout(kind, game)
     local withDesc = true
     local btnH = pad + fh(sizes.btnTitle) + math.floor(6 * u) + fh(sizes.btnDesc) + pad
 
-    local cells = 8
-    local cols = (colW >= 720) and 4 or 2
+    local cells = #EndScreens.summary(kind, game).cells
+    local cols = (colW >= 900) and 5 or ((colW >= 720) and 4 or 2)
     local rows = math.ceil(cells / cols)
     local cellH = fh(sizes.label) + math.floor(5 * u) + fh(sizes.value)
     local rowGap = math.floor(10 * u)

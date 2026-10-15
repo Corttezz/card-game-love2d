@@ -210,14 +210,39 @@ function UnlockSystem.markDiscovered(cardId)
     u.discovered[cardId] = true
     u.freshInCollection = u.freshInCollection or {}
     u.freshInCollection[cardId] = true
+    u.runDiscoveries = (u.runDiscoveries or 0) + 1
     return true
 end
 
-function UnlockSystem.takeFreshInCollection()
+function UnlockSystem.isFresh(cardId)
     local u = state()
-    local fresh = u.freshInCollection or {}
-    u.freshInCollection = {}
-    return fresh
+    return (u.freshInCollection and u.freshInCollection[cardId]) and true or false
+end
+
+function UnlockSystem.freshSet()
+    local u = state()
+    u.freshInCollection = u.freshInCollection or {}
+    return u.freshInCollection
+end
+
+function UnlockSystem.freshCount()
+    local u = state()
+    local n = 0
+    for _ in pairs(u.freshInCollection or {}) do n = n + 1 end
+    return n
+end
+
+function UnlockSystem.clearFresh(cardId)
+    local u = state()
+    if not (u.freshInCollection and u.freshInCollection[cardId]) then return false end
+    u.freshInCollection[cardId] = nil
+    ProfileStats.flush()
+    return true
+end
+
+function UnlockSystem.runDiscoveries()
+    local u = state()
+    return u.runDiscoveries or 0
 end
 
 local function classUnlockedReal(classId, u, s)
@@ -381,8 +406,11 @@ function UnlockSystem.onRunStarted(classId, deckIds)
     pendingRun = { cards = {}, classes = {} }
     for _, entry in ipairs(deckIds or {}) do
         local id = type(entry) == "table" and entry.id or entry
-        UnlockSystem.markDiscovered(id)
+        if UnlockSystem.markDiscovered(id) then
+            state().freshInCollection[id] = nil
+        end
     end
+    state().runDiscoveries = 0
 end
 
 function UnlockSystem.onBossDefeated(actNumber, game)
@@ -481,6 +509,7 @@ function UnlockSystem.onRunEnded(summary)
         xpGained = xp, classId = classId, before = before, after = after,
         bundles = bundles, victory = summary.victory and true or false,
         sealUnlocked = sealUnlocked,
+        newDiscoveries = u.runDiscoveries or 0,
     }
     UnlockSystem.lastResult = result
     require("src.systems.UnlockQueue").addRunResult(result)

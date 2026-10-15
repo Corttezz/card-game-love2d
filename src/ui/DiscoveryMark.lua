@@ -164,6 +164,28 @@ function DiscoveryMark.drawOnCard(card, image, drawX, drawY, mouseUV, hover, tim
     DiscoveryMark.drawBadge(drawX, drawY, image:getWidth(), t, alpha)
 end
 
+function DiscoveryMark.drawAlert(cx, cy, size)
+    local r = size or 9
+    local x, y = math.floor(cx - r), math.floor(cy - r)
+    local d = r * 2
+    love.graphics.push("all")
+    setc(Palette.INK, 0.6)
+    love.graphics.rectangle("fill", x + 1, y + 2, d, d)
+    setc(Palette.INK, 1)
+    love.graphics.rectangle("fill", x, y + 2, d, d - 4)
+    love.graphics.rectangle("fill", x + 2, y, d - 4, d)
+    setc(Palette.BLOOD, 1)
+    love.graphics.rectangle("fill", x + 1, y + 3, d - 2, d - 6)
+    love.graphics.rectangle("fill", x + 3, y + 1, d - 6, d - 2)
+    setc(Palette.AGED_GOLD_LIGHT, 1)
+    love.graphics.rectangle("fill", x + 3, y + 1, d - 6, 1)
+    local font = PixelFont.get(8)
+    love.graphics.setFont(font)
+    setc(Palette.PARCHMENT_LIGHT, 1)
+    love.graphics.print("!", math.floor(cx - font:getWidth("!") / 2), math.floor(cy - font:getHeight() / 2) + 1)
+    love.graphics.pop()
+end
+
 DiscoveryMark.PULSE_DUR = 1.1
 function DiscoveryMark.drawCollectionPulse(key, image, x, y, s)
     local t = DiscoveryMark.reveal("collection:" .. key, true)

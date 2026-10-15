@@ -35,7 +35,7 @@ M.TOOL_RESULT_PRINTERS = {
     "tools/screenshot_end_screens.lua", "tools/screenshot_endless.lua", "tools/screenshot_endscreens.lua",
     "tools/screenshot_enemy_scene.lua", "tools/screenshot_event.lua", "tools/screenshot_event_anim.lua",
     "tools/screenshot_forge.lua", "tools/screenshot_gameplay.lua", "tools/screenshot_guide.lua",
-    "tools/screenshot_holo.lua", "tools/screenshot_bordas_cartas.lua", "tools/screenshot_brilho_coringa.lua", "tools/screenshot_intro.lua", "tools/screenshot_joker_manager.lua",
+    "tools/screenshot_holo.lua", "tools/screenshot_bordas_cartas.lua", "tools/screenshot_brilho_coringa.lua", "tools/screenshot_descobertas.lua", "tools/screenshot_intro.lua", "tools/screenshot_joker_manager.lua",
     "tools/screenshot_journal.lua", "tools/screenshot_mapscreen.lua", "tools/screenshot_menu_life.lua",
     "tools/screenshot_menu_v2.lua", "tools/screenshot_menuanim.lua", "tools/screenshot_packopen.lua",
     "tools/screenshot_pause.lua", "tools/screenshot_relic_art.lua", "tools/screenshot_resume_boss.lua",

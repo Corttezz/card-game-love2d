@@ -167,7 +167,10 @@ function CollectionScreen:show(onClose)
     self.scrollY = 0
     self.onCloseCallback = onClose
     self:_refreshDiscovery()
-    self._fresh = UnlockSystem.takeFreshInCollection()
+    self._fresh = {}
+    for id in pairs(UnlockSystem.freshSet()) do self._fresh[id] = true end
+    self._pulsed = {}
+    self._tabFresh = nil
     self:_buildInstances(0.012)
     self:_applyFilter()
 end
@@ -183,6 +186,7 @@ end
 
 function CollectionScreen:resize()
     self._mysteryCanvas = nil
+    self._lockedCanvas = nil
     self:_applyFilter()
 end
 
@@ -228,6 +232,30 @@ function CollectionScreen:update(dt)
     if newHover and newHover ~= prevHover then
         Sfx.playWithVariation("hoverCard", 0.95, 0.18)
     end
+    if newHover then self:_seeFresh(newHover) end
+end
+
+function CollectionScreen:_seeFresh(inst)
+    if inst._hidden or not (self._fresh and self._fresh[inst.id]) then return end
+    self._fresh[inst.id] = nil
+    self._tabFresh = nil
+    UnlockSystem.clearFresh(inst.id)
+end
+
+function CollectionScreen:freshInFilter(filterId)
+    if not self._buildDone or not next(self._fresh or {}) then return false end
+    if not self._tabFresh then
+        local tabs = {}
+        for _, inst in ipairs(self.cardInstances) do
+            if not inst._hidden and self._fresh[inst.id] then
+                tabs.all = true
+                if inst.class then tabs[inst.class] = true end
+                if inst.type then tabs[inst.type] = true end
+            end
+        end
+        self._tabFresh = tabs
+    end
+    return self._tabFresh[filterId] and true or false
 end
 
 function CollectionScreen:wheelmoved(x, y)
@@ -449,6 +477,10 @@ local function drawTitleAndFilters(self)
         love.graphics.rectangle("line", tabX, tabY, w, 28, 4, 4)
         love.graphics.setColor(active and Palette.INK or Palette.PARCHMENT_LIGHT)
         love.graphics.print(label, tabX + 10, tabY + 6)
+        if self:freshInFilter(f.id) then
+            require("src.ui.DiscoveryMark").drawAlert(tabX + w - 4, tabY - 2)
+            love.graphics.setFont(font)
+        end
         tabX = tabX + w + 8
     end
 
@@ -537,8 +569,39 @@ local function drawCardMini(instance, x, y, hoverScale, alpha, mouseUV, hoverStr
     instance.image = _prevImage
 end
 
-local function getMysteryCanvas(self)
-    if self._mysteryCanvas then return self._mysteryCanvas end
+local function drawFreshBadge(x, y, hs)
+    local lift = ((hs or 1) - 1) * 30
+    require("src.ui.DiscoveryMark").drawAlert(x + CARD_W - 3, y + 9 - lift, 10)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+CollectionScreen._drawFreshBadge = drawFreshBadge
+
+local function drawPadlock(cx, cy)
+    local ink, gold, dark = Palette.INK, Palette.AGED_GOLD_LIGHT, Palette.AGED_GOLD_DARK
+    local bw, bh = 22, 16
+    local bx, by = cx - bw / 2, cy - 2
+    love.graphics.setColor(ink[1], ink[2], ink[3], 0.85)
+    love.graphics.rectangle("fill", bx - 6, by - 14, bw + 12, bh + 19)
+    love.graphics.setColor(dark)
+    love.graphics.rectangle("fill", bx + 3, by - 10, 3, 10)
+    love.graphics.rectangle("fill", bx + bw - 6, by - 10, 3, 10)
+    love.graphics.rectangle("fill", bx + 5, by - 12, bw - 10, 3)
+    love.graphics.setColor(gold)
+    love.graphics.rectangle("fill", bx + 4, by - 10, 1, 9)
+    love.graphics.rectangle("fill", bx + 6, by - 11, bw - 12, 1)
+    love.graphics.setColor(gold)
+    love.graphics.rectangle("fill", bx, by, bw, bh)
+    love.graphics.setColor(dark)
+    love.graphics.rectangle("fill", bx, by + bh - 3, bw, 3)
+    love.graphics.rectangle("line", bx + 0.5, by + 0.5, bw - 1, bh - 1)
+    love.graphics.setColor(ink)
+    love.graphics.rectangle("fill", cx - 2, by + 4, 4, 4)
+    love.graphics.rectangle("fill", cx - 1, by + 8, 2, 4)
+end
+
+local function getMysteryCanvas(self, locked)
+    if locked and self._lockedCanvas then return self._lockedCanvas end
+    if not locked and self._mysteryCanvas then return self._mysteryCanvas end
     local W, H = CardFrame.WIDTH, CardFrame.HEIGHT
     local c = love.graphics.newCanvas(W, H)
     c:setFilter("nearest", "nearest")
@@ -559,24 +622,28 @@ local function getMysteryCanvas(self)
         love.graphics.setColor(Palette.AGED_GOLD)
         love.graphics.rectangle("line", 1.5, 1.5, W - 3, H - 3)
     end
-    love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.45)
+    love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], locked and 0.72 or 0.45)
     love.graphics.rectangle("fill", 0, 0, W, H)
-    local f = FontManager.getFont(32)
-    love.graphics.setFont(f)
-    local q = "?"
-    local qx = math.floor((W - f:getWidth(q)) / 2)
-    local qy = math.floor((H - f:getHeight()) / 2)
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.print(q, qx + 2, qy + 2)
-    love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
-    love.graphics.print(q, qx, qy)
+    if locked then
+        drawPadlock(math.floor(W / 2), math.floor(H / 2) - 6)
+    else
+        local f = FontManager.getFont(32)
+        love.graphics.setFont(f)
+        local q = "?"
+        local qx = math.floor((W - f:getWidth(q)) / 2)
+        local qy = math.floor((H - f:getHeight()) / 2)
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.print(q, qx + 2, qy + 2)
+        love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
+        love.graphics.print(q, qx, qy)
+    end
     love.graphics.pop()
-    self._mysteryCanvas = c
+    if locked then self._lockedCanvas = c else self._mysteryCanvas = c end
     return c
 end
 
 local function drawMystery(self, inst, x, y, hoverScale)
-    local img = getMysteryCanvas(self)
+    local img = getMysteryCanvas(self, inst._locked)
     local drawScale = (CARD_W / img:getWidth()) * hoverScale
     local drawW, drawH = img:getWidth() * drawScale, img:getHeight() * drawScale
     local lift = (hoverScale - 1) * 30
@@ -584,9 +651,21 @@ local function drawMystery(self, inst, x, y, hoverScale)
     local py = math.floor(y + CARD_H / 2 - lift - drawH / 2)
     love.graphics.setColor(0, 0, 0, 0.45)
     love.graphics.draw(img, px + 4, py + 7, 0, drawScale, drawScale)
-    local k = inst._locked and 0.55 or 0.9
+    local k = inst._locked and 0.8 or 0.9
     love.graphics.setColor(k, k, k, 1)
     love.graphics.draw(img, px, py, 0, drawScale, drawScale)
+    if inst._locked then
+        local key, vars = UnlockSystem.getCardHint(inst.id)
+        local f = FontManager.getFont(8)
+        love.graphics.setFont(f)
+        local tw = drawW - 20
+        local _, lines = f:getWrap(I18n.t(key, vars), tw)
+        local ty = math.floor(py + drawH * 0.62)
+        love.graphics.setColor(Palette.INK[1], Palette.INK[2], Palette.INK[3], 0.8)
+        love.graphics.rectangle("fill", px + 6, ty - 4, drawW - 12, #lines * f:getHeight() + 8)
+        Palette.set(Palette.PARCHMENT_LIGHT)
+        love.graphics.printf(I18n.t(key, vars), math.floor(px + 10), ty, tw, "center")
+    end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -923,11 +1002,13 @@ function CollectionScreen:draw()
                 if inst._hidden then
                     drawMystery(self, inst, anim.rx, anim.ry, anim.hs)
                 else
-                    if self._fresh and self._fresh[inst.id] then
+                    local fresh = self._fresh and self._fresh[inst.id]
+                    if fresh and not self._pulsed[inst.id] then
                         inst._freshPulse = true
-                        self._fresh[inst.id] = nil
+                        self._pulsed[inst.id] = true
                     end
                     drawCardMini(inst, anim.rx, anim.ry, anim.hs, 1, { 0, 0 }, 0)
+                    if fresh then drawFreshBadge(anim.rx, anim.ry, anim.hs) end
                 end
             end
         end

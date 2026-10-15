@@ -4,7 +4,6 @@ local M = {}
 
 M.ALLOWED = {
     ["messages.not_in_run"]          = "erro de fluxo (só fora de run)",
-    ["messages.card_discovered"]     = "carta inédita entregue sem vitrine (evento)",
     ["messages.card_add_failed"]     = "erro",
     ["messages.joker_benched"]       = "coringa foi pra bancada, não pro campo",
     ["messages.no_mana"]             = "ação recusada",
@@ -65,7 +64,6 @@ local function scan(path)
             local key = body:match('^%s*msg%("([%w_]+)"') and ("messages." .. body:match('^%s*msg%("([%w_]+)"'))
                 or body:match('^%s*I18n%.t%("([%w_%.]+)"')
                 or (body:match("^%s*I18n%.t%(key %.%. \"%.msg\"") and "enemy_kit.phases.*")
-                or (body:match("^%s*msg%(discovered and") and "messages.card_discovered")
                 or (body:match("^%s*text,") and "effect_desc_fallback")
             found[#found + 1] = { line = i, key = key, src = l }
         end

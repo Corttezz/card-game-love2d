@@ -79,7 +79,7 @@ function M.run()
             I18n.t("end_screen.defeat_title") ~= "GAME OVER")
 
         local sum = EndScreens.summary("gameOver", gd)
-        t:eq("resumo tem 8 celulas", #sum.cells, 8)
+        t:eq("resumo tem 9 celulas (com novas descobertas, como no Balatro)", #sum.cells, 9)
         t:truthy("subtitulo nomeia quem matou", sum.subtitle:find(I18n.t("end_screen.enemy.tower_lich"), 1, true))
         local sumV = EndScreens.summary("victory", gv)
         t:eq("vitoria: desfecho = Vitoria", sumV.cells[3].value, I18n.t("end_screen.fate_victory"))

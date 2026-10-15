@@ -138,8 +138,6 @@ function M.run(locale)
             if game.messageSystem then
                 game.messageSystem.messages = {}
                 game:addMessage(I18n.t("messages.gold_seal", { value = 3 }, "!"), "gold")
-                game:addMessage(I18n.t("messages.card_discovered",
-                    { name = I18n.cardName("warrior_iron_wave") }, "!"), "success")
                 game:addMessage(I18n.t("messages.armor_capped", { max = 30, wasted = 4 }, "!"), "warning")
                 game.messageSystem:update(0.3)
             end
