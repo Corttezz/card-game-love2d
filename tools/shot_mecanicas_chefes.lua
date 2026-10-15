@@ -152,6 +152,33 @@ function SEQ.winter_monarch(K)
     K.shot("7_degelo")
 end
 
+function SEQ.rot_colossus(K)
+    local BM = require("src.systems.BossMechanics")
+    local ER = require("src.ui.EnemyRenderer")
+    local g = K.game
+    local e = g.enemy
+    K.frame()
+    K.step(1.5)
+    K.shot("1_duas_raizes")
+    BM.setStacks(e, "roots", 4)
+    K.step(0.3)
+    K.shot("2_raizes_brotando")
+    K.step(1.5)
+    K.shot("3_quatro_raizes")
+    g:_mechanicFx({ kind = "roots_regen", n = 28 })
+    K.step(0.15)
+    K.shot("4_seiva_regenera")
+    BM.setStacks(e, "roots", 3)
+    K.step(0.2)
+    K.shot("5_raiz_cortada")
+    K.step(1.2)
+    ER.triggerAttack("strong", nil, { strike = "root" })
+    K.step(0.30)
+    K.shot("6_raiz_no_heroi")
+    K.step(0.1)
+    K.shot("7_impacto")
+end
+
 function M.run(which)
     local I18n = require("src.i18n.I18n")
     I18n.init()

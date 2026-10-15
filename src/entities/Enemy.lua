@@ -338,8 +338,11 @@ function Enemy:gainStrength(n)
 end
 
 function Enemy:tickRegen()
-    if not self:hasStatus("regen") or self.health <= 0 then return 0 end
-    return self:healSelf(self:getStatusStacks("regen"))
+    if self.health <= 0 then return 0 end
+    local n = BossMechanics.regenBonus(self)
+    if self:hasStatus("regen") then n = n + self:getStatusStacks("regen") end
+    if n <= 0 then return 0 end
+    return self:healSelf(n)
 end
 
 function Enemy:_checkPhase()

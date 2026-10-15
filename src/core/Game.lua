@@ -1253,9 +1253,13 @@ function Game:_pushEnemyTurnTail(beat)
         self:announceDeathIfPending(nil)
     end), hasDot and "DOT" or "MICRO")
 
-    if self.enemy:hasStatus("regen") then
+    if self.enemy:hasStatus("regen") or BossMechanics.regenBonus(self.enemy) > 0 then
         CombatBeats.push("enemy.regen", beat(function()
+            local rooted = BossMechanics.regenBonus(self.enemy) > 0
             local healed = self.enemy:tickRegen()
+            if rooted and healed and healed > 0 then
+                self:_mechanicFx({ kind = "roots_regen", n = healed })
+            end
             if healed and healed > 0 then
                 local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
                 if okCF then CardFeel.burstAtEnemy("heal", 0.8) end

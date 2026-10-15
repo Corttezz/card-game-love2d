@@ -329,12 +329,12 @@ function M.run()
     end
     do
         local g = battleWith("rot_colossus", "plague_cloud", 1000, 10)
-        t:truthy("Colosso nasce com Regeneração", g.enemy:hasStatus("regen"))
+        local mech = EnemyKits.KITS.rot_colossus.mechanic
+        t:eq("Colosso nasce com as raízes do kit", g.enemy:getStatusStacks("roots"), mech.start)
         g.enemy.health = 500
         runEnemyTurn(g)
-        local pct = EnemyKits.KITS.rot_colossus.passive.regenPct
-        t:eq("Colosso regenera a fração do kit no fim do turno", g.enemy.health,
-            500 + math.floor(1000 * pct))
+        t:eq("Colosso regenera a fração por raiz no fim do turno", g.enemy.health,
+            500 + mech.start * math.floor(1000 * mech.regenPct))
         t:check("Nuvem Pestilenta envenena o jogador", g.player:getDebuffStacks("poison") >= 4)
     end
     do

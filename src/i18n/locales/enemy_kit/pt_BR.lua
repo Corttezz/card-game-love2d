@@ -156,6 +156,8 @@ return {
     },
 
     status = {
+        roots = { name = "Raízes",
+            desc = "{stacks} raiz(es) presas ao chão: no fim do turno dele, cada uma cura {value}. Ganha uma raiz a cada 2 turnos (teto 4). Um único ataque que tire {max} ou mais de vida corta uma raiz; veneno e dano miúdo não cortam." },
         frost = { name = "Geada",
             desc = "{stacks} de Geada. Quando a mão nova chega com {value} ou mais, as {max} cartas mais caras vêm CONGELADAS (não podem ser jogadas neste turno). Cada ataque que você joga derrete 1 (fogo derrete 2)." },
         chains = { name = "Correntes do Abismo",
@@ -183,6 +185,8 @@ return {
     },
 
     msg = {
+        root_grow = "Raiz nova ({value})",
+        root_cut = "Raiz cortada!",
         frost_gain = "Geada +{value} ({total}/{max})",
         freeze = "{value} carta(s) congelada(s)!",
         frost_melt = "Geada -{value}",

@@ -264,3 +264,26 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
   cajado. Sons: `impact-ice` 0,90 no impacto (-26 dB) e 0,70 na Geada,
   `boss_ice_crackle` 1,0 ao congelar (-37 dB, arquivo baixo de origem),
   `shop-crystal-shatter` 0,40 no derretimento (-30 dB).
+
+### Colosso (implementado)
+
+- A regeneração fixa (`passive.regenPct 0.015`) SAIU do kit: virou
+  `rot_colossus.mechanic` = `start 2, max 4, growEvery 2, regenPct 0.0075`
+  (por raiz) `, cutPct 0.05`. Com 2 raízes cura o mesmo 1,5% de antes.
+  `Enemy:tickRegen` soma `BM.regenBonus` à pilha `regen` (que continua valendo
+  pra outros inimigos); o beat `enemy.regen` passa a existir se houver raiz.
+- Corte: vida PERDIDA num único `takeDamage` (fonte "hit": carta, orbe,
+  espinho) >= 5% da vida máxima enfileira `root_cut`. Bloqueio do Colosso
+  segura e, se segurar o bastante, não corta. Veneno/queimadura nunca.
+- Crescimento: passo de fim de turno `root_grow` conta os turnos dele e brota
+  uma raiz nos pares (beat MICRO que só estica se brotou).
+- Cena: `layout = "ground"`: 4 vagas fixas em volta dos pés (2 na frente, 2
+  atrás, espelhadas), raiz sobe do chão revelando linhas do sprite (quad por
+  altura, sem esticar) e murcha afundando escura. Na regeneração a seiva
+  acende as raízes (aditivo verde subindo). Sprites `root_0..3.png` (32x64,
+  candidatos 3/12/19/7), escala cheia.
+- Golpe: Pancada Colossal e Golpe Pútrido fazem uma raiz romper do pé da tela
+  sob o painel do herói no apex e afundar no recuo (`kind = "rise"`).
+- Sons: `boss_roots_crawl` 0,90 ao brotar (-29 dB), `colossus_crack` 0,75 no
+  corte (-26 dB), `impact-poison` 1,0 no golpe (-31 dB).
+- `test_enemies` passou a medir a cura pela regra das raízes.

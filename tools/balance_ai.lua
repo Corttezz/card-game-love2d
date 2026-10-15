@@ -495,6 +495,19 @@ function AI.mechanicBonus(game, set, S)
         breaks = math.min(breaks, BM.stacks(e, m.status))
         return breaks * 0.5 * (e.baseDamage or e.damage or 0)
     end
+    if m.kind == "roots" then
+        local T = BM.rootCutThreshold(e)
+        local have = BM.stacks(e, m.status)
+        if have <= 0 then return 0 end
+        local cuts = 0
+        for _, c in ipairs(set) do
+            if c.type == "attack" then
+                local v = AI.cardValue(game, c, nil, game.player.strength or 0)
+                if v - (e.armor or 0) >= T then cuts = cuts + 1 end
+            end
+        end
+        return math.min(cuts, have) * BM.rootRegen(e) * 4
+    end
     if m.kind == "frost" then
         local p = game.player
         local frost = p.frost or 0

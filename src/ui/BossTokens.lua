@@ -162,6 +162,13 @@ local function reconcile(spec, s, dt, still)
                     phase = instant and "idle" or "enter",
                     t = -T.stagger * added }
         added = added + 1
+        if spec.slots then
+            local used = {}
+            for _, o in ipairs(list) do used[o.slot or 0] = true end
+            for k = 1, #spec.slots do
+                if not used[k] then c.slot = k break end
+            end
+        end
         s.tokens[#s.tokens + 1] = c
         list[#list + 1] = c
     end
@@ -204,7 +211,24 @@ local function orbitPos(spec, s, c, still)
     return u * (s.iw or 0), v * (s.ih or 0), sn
 end
 
+local function groundPose(spec, s, c, still)
+    local T = BossTokens.TIMES
+    local slot = spec.slots[c.slot or 1] or spec.slots[1]
+    local x = slot.u * (s.iw or 0)
+    local y = s.groundArt or (s.ih or 0)
+    local grow = 1
+    if c.phase == "enter" then
+        if c.t < 0 then return nil end
+        grow = min(1, c.t / T.enter)
+    elseif c.phase == "leave" then
+        grow = max(0, 1 - c.t / T.leave)
+    end
+    if still then grow = (c.phase == "leave") and 0 or 1 end
+    return x, y, slot.front, 1, grow
+end
+
 function BossTokens._pose(spec, s, c, still)
+    if spec.layout == "ground" then return groundPose(spec, s, c, still) end
     local T = BossTokens.TIMES
     local ox, oy, sn = orbitPos(spec, s, c, still)
     if c.phase == "idle" then return ox, oy, sn > 0, 1, 1 end
@@ -240,8 +264,11 @@ local function advanceTokens(id, spec, s, dt, still)
             if not c.burst then
                 c.burst = true
                 local x, y = BossTokens._pose(spec, s, { phase = "idle", off = c.off,
-                    h1 = c.h1, h2 = c.h2, seed = c.seed }, still)
-                addShards(s, x, y, spec.shard or { { 1, 1, 1 } }, 12, 30)
+                    h1 = c.h1, h2 = c.h2, seed = c.seed, slot = c.slot, t = 0 }, still)
+                if x then
+                    if spec.layout == "ground" then y = y - 14 end
+                    addShards(s, x, y, spec.shard or { { 1, 1, 1 } }, 12, 30)
+                end
             end
             if c.t >= T.leave then c.phase = "gone" end
         elseif c.phase == "strike" and c.t >= c.apex then
@@ -330,7 +357,7 @@ function BossTokens.update(dt, id, dying)
     s.t = s.t + dt
     if not still then s.rot = s.rot + dt * (spec.speed or 0.5) end
     s.fade = dying and max(0, (s.fade or 1) - dt / 0.6) or min(1, (s.fade or 1) + dt / 0.4)
-    if spec.layout == "orbit" then
+    if spec.layout == "orbit" or spec.layout == "ground" then
         reconcile(spec, s, dt, still)
         advanceTokens(id, spec, s, dt, still)
     elseif spec.layout == "chains" then
@@ -338,6 +365,7 @@ function BossTokens.update(dt, id, dying)
     end
     advanceBolts(spec, s, dt)
     if s.flash then s.flash.life = s.flash.life - dt end
+    if s.sap and s.sap > 0 then s.sap = s.sap - dt end
     for i = #s.parts, 1, -1 do
         local p = s.parts[i]
         p.life = p.life - dt
@@ -454,7 +482,78 @@ local function boltPose(s, st, b)
     return x, y, k
 end
 
+local quads = {}
+local function revealQuad(img, rows)
+    local key = tostring(img) .. ":" .. rows
+    local q = quads[key]
+    if not q then
+        q = love.graphics.newQuad(0, 0, img:getWidth(), rows, img:getWidth(), img:getHeight())
+        quads[key] = q
+    end
+    return q
+end
+
+local function drawRooted(img, sx, sy, S, base, grow, flip)
+    local rows = max(1, min(base, floor(base * grow + 0.5)))
+    local q = revealQuad(img, rows)
+    local ox = floor(img:getWidth() / 2)
+    love.graphics.draw(img, q, sx, sy - rows * S, 0, S * (flip or 1), S, ox, 0)
+end
+
+local function drawGround(r, spec, s, front)
+    local S = BossTokens.tokenScale(r.scale, spec.full)
+    local still = reducedMotion()
+    local pulse = s.sap and s.sap > 0 and (s.sap / 0.9) or 0
+    for _, c in ipairs(s.tokens) do
+        local ax, ay, isFront, _, grow = BossTokens._pose(spec, s, c, still)
+        if ax and isFront == front and grow > 0 then
+            local img = BossTokens.image(spec.sprites[c.img] or spec.sprites[1])
+            if img then
+                local x, y = artToScreen(r, ax, ay)
+                local flip = ((c.slot or 1) % 2 == 0) and -1 or 1
+                local base = spec.baseRow or img:getHeight()
+                local dark = (c.phase == "leave") and 0.55 or 1
+                if isFront then
+                    love.graphics.setColor(dark, dark, dark * 0.9, s.fade or 1)
+                else
+                    love.graphics.setColor(0.70 * dark, 0.72 * dark, 0.66 * dark, s.fade or 1)
+                end
+                drawRooted(img, x, y + 2 * S, S, base, grow, flip)
+                if pulse > 0 and c.phase == "idle" then
+                    love.graphics.setBlendMode("add")
+                    local g = spec.sap
+                    love.graphics.setColor(g[1], g[2], g[3], 0.55 * pulse)
+                    drawRooted(img, x, y + 2 * S, S, base, 1 - pulse * 0.6, flip)
+                    love.graphics.setBlendMode("alpha")
+                end
+            end
+        end
+    end
+end
+
+local function drawRise(r, spec, s, b, st)
+    local img = BossTokens.image(st.sprite)
+    if not img then return end
+    local S = BossTokens.tokenScale(r.scale, true) + 2
+    local base = st.baseRow or img:getHeight()
+    local grow
+    if b.t < b.apex then
+        local k = max(0, b.t / b.apex)
+        grow = k * k
+    else
+        grow = max(0, 1 - (b.t - b.apex) / (b.back or 0.3))
+    end
+    if grow <= 0 then return end
+    local x, y = artToScreen(r, s.tgtX or 0, (s.bottomArt or ((s.tgtY or 0) + 26)) + 2)
+    love.graphics.setColor(1, 1, 1, s.fade or 1)
+    drawRooted(img, x, y, S, base, grow, 1)
+end
+
 local function drawBolts(r, spec, s)
+    for _, b in ipairs(s.bolts) do
+        local st0 = spec.strikes and spec.strikes[b.kind]
+        if st0 and st0.kind == "rise" and b.t >= 0 then drawRise(r, spec, s, b, st0) end
+    end
     for _, b in ipairs(s.bolts) do
         local st = spec.strikes and spec.strikes[b.kind]
         if st and st.kind == "bolt" and not b.hit and b.t >= 0 then
@@ -555,6 +654,8 @@ local function prepare(r, s)
     local sx, sy = require("src.ui.BossAura").playerTarget()
     local lx, ly = love.graphics.inverseTransformPoint(sx, sy)
     s.tgtX, s.tgtY = (lx - r.x) / r.scale, (ly - r.y) / r.scale
+    local _, by = love.graphics.inverseTransformPoint(sx, love.graphics.getHeight())
+    s.bottomArt = (by - r.y) / r.scale
     s.groundArt = (r.groundY - r.y) / r.scale
 end
 
@@ -567,6 +668,7 @@ function BossTokens.drawBack(id, r)
     love.graphics.push("all")
     if spec.layout == "orbit" then drawOrbit(r, spec, s, false) end
     if spec.layout == "chains" then drawChains(r, spec, s) end
+    if spec.layout == "ground" then drawGround(r, spec, s, false) end
     love.graphics.pop()
 end
 
@@ -577,6 +679,7 @@ function BossTokens.drawFront(id, r)
     if (s.fade or 1) <= 0 then return end
     love.graphics.push("all")
     if spec.layout == "orbit" then drawOrbit(r, spec, s, true) end
+    if spec.layout == "ground" then drawGround(r, spec, s, true) end
     drawBolts(r, spec, s)
     drawParts(r, s, true)
     love.graphics.pop()
@@ -679,6 +782,18 @@ function BossTokens.react(game, res)
         if spec then BossTokens.playSound(spec.sounds.gain) end
         enemyFloat(I18n.t("enemy_kit.msg.rune_gain", { value = res.total }, "+1"),
             { kind = "movename", hold = 0.45, lift = 22 })
+    elseif res.kind == "root_grow" then
+        if spec then BossTokens.playSound(spec.sounds.gain) end
+        enemyFloat(I18n.t("enemy_kit.msg.root_grow", { value = res.total }, "+1"),
+            { kind = "movename", hold = 0.45, lift = 22 })
+    elseif res.kind == "root_cut" then
+        if spec then BossTokens.playSound(spec.sounds.lose) end
+        if _G.triggerShake then _G.triggerShake(5, 0.18) end
+        enemyFloat(I18n.t("enemy_kit.msg.root_cut", nil, "-1"),
+            { kind = "movename", hold = 0.55, lift = 26 })
+    elseif res.kind == "roots_regen" then
+        local s = id and state[id]
+        if s and not reducedMotion() then s.sap = 0.9 end
     elseif res.kind == "frost_gain" then
         if spec then BossTokens.playSound(spec.sounds.gain) end
         playerFloat(I18n.t("enemy_kit.msg.frost_gain", { value = res.n, total = res.total,

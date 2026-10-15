@@ -156,6 +156,8 @@ return {
     },
 
     status = {
+        roots = { name = "Wurzeln",
+            desc = "{stacks} Wurzel(n) im Boden verankert: am Ende seines Zuges heilt jede {value}. Alle 2 Züge wächst eine nach (höchstens 4). Ein einzelner Angriff, der {max} oder mehr Leben nimmt, kappt eine Wurzel; Gift und kleine Treffer nicht." },
         frost = { name = "Raureif",
             desc = "{stacks} Raureif. Kommt deine neue Hand mit {value} oder mehr, sind deine {max} teuersten Karten GEFROREN (in diesem Zug nicht spielbar). Jeder gespielte Angriff schmilzt 1 (Feuer schmilzt 2)." },
         chains = { name = "Ketten des Abgrunds",
@@ -183,6 +185,8 @@ return {
     },
 
     msg = {
+        root_grow = "Neue Wurzel ({value})",
+        root_cut = "Wurzel gekappt!",
         frost_gain = "Raureif +{value} ({total}/{max})",
         freeze = "{value} Karte(n) gefroren!",
         frost_melt = "Raureif -{value}",

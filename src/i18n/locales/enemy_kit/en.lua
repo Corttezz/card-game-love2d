@@ -156,6 +156,8 @@ return {
     },
 
     status = {
+        roots = { name = "Roots",
+            desc = "{stacks} root(s) gripping the ground: at the end of his turn each heals {value}. He grows a root every 2 turns (max 4). A single attack that takes {max} or more health cuts a root; poison and small hits do not." },
         frost = { name = "Frost",
             desc = "{stacks} Frost. When your new hand arrives at {value} or more, your {max} most expensive cards come FROZEN (they cannot be played this turn). Each attack you play melts 1 (fire melts 2)." },
         chains = { name = "Abyssal Chains",
@@ -183,6 +185,8 @@ return {
     },
 
     msg = {
+        root_grow = "New root ({value})",
+        root_cut = "Root severed!",
         frost_gain = "Frost +{value} ({total}/{max})",
         freeze = "{value} card(s) frozen!",
         frost_melt = "Frost -{value}",

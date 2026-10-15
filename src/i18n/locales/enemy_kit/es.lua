@@ -156,6 +156,8 @@ return {
     },
 
     status = {
+        roots = { name = "Raíces",
+            desc = "{stacks} raíz(ces) aferradas al suelo: al final de su turno cada una cura {value}. Gana una raíz cada 2 turnos (máximo 4). Un solo ataque que quite {max} o más de vida corta una raíz; el veneno y los golpes pequeños no." },
         frost = { name = "Escarcha",
             desc = "{stacks} de Escarcha. Cuando la mano nueva llega con {value} o más, tus {max} cartas más caras llegan CONGELADAS (no se pueden jugar este turno). Cada ataque que juegas derrite 1 (el fuego derrite 2)." },
         chains = { name = "Cadenas del Abismo",
@@ -183,6 +185,8 @@ return {
     },
 
     msg = {
+        root_grow = "Raíz nueva ({value})",
+        root_cut = "¡Raíz cortada!",
         frost_gain = "Escarcha +{value} ({total}/{max})",
         freeze = "¡{value} carta(s) congelada(s)!",
         frost_melt = "Escarcha -{value}",

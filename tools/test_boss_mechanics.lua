@@ -396,6 +396,96 @@ local function testMonarch(t)
         "enemy_kit.msg.frost_melt", "enemy_kit.msg.card_frozen" })
 end
 
+local function testColossus(t)
+    local ID = "rot_colossus"
+    local g = battleWith(ID, 1000, 20)
+    local e = g.enemy
+    t:eq("colosso: mecânica raízes", BM.spec(e).kind, "roots")
+    t:eq("colosso: nasce com 2 raízes", BM.stacks(e, "roots"), 2)
+    t:falsy("colosso: sem a regeneração fixa antiga", e:hasStatus("regen"))
+    t:eq("colosso: 0,75% por raiz", BM.rootRegen(e), 7)
+    t:eq("colosso: corte com 5% num golpe", BM.rootCutThreshold(e), 50)
+    e.health = 600
+    t:eq("colosso: cura 2 raízes", e:tickRegen(), 14)
+    for _ = 1, 4 do BM.applyStep(e, BM.turnEndSteps(e)[1]) end
+    t:eq("colosso: +1 raiz a cada 2 turnos", BM.stacks(e, "roots"), 4)
+    for _ = 1, 4 do BM.applyStep(e, BM.turnEndSteps(e)[1]) end
+    t:eq("colosso: teto 4", BM.stacks(e, "roots"), 4)
+    e:takeDamage(49)
+    t:falsy("colosso: 49 não corta", BM.hasPending(e))
+    e:takeDamage(30)
+    e:takeDamage(30)
+    t:falsy("colosso: dano miúdo somado não corta", BM.hasPending(e))
+    e:takeDamage(50)
+    t:truthy("colosso: um golpe de 50 corta", BM.hasPending(e))
+    local res = BM.applyEvent(e, BM.popEvent(e))
+    t:eq("colosso: raiz cortada", res and res.kind, "root_cut")
+    t:eq("colosso: sobram 3", BM.stacks(e, "roots"), 3)
+    e:_applyDot(80)
+    t:falsy("colosso: veneno não corta", BM.hasPending(e))
+    e.armor = 30
+    e:takeDamage(60)
+    t:falsy("colosso: Bloqueio que segura o golpe não deixa cortar", BM.hasPending(e))
+    BM.setStacks(e, "roots", 0)
+    e.health = 600
+    t:eq("colosso: sem raízes não regenera", e:tickRegen(), 0)
+
+    local g2 = battleWith(ID, 1000, 20)
+    g2.enemy.health = 500
+    g2.player.armor = 99
+    CombatBeats.startTrace()
+    runEnemyTurn(g2, 8)
+    local trace = CombatBeats.traceString()
+    CombatBeats.stopTrace()
+    t:eq("colosso (luta): regenera 14 no fim do turno", g2.enemy.health, 514)
+    t:truthy("colosso (luta): beat de regeneração", trace:find("enemy.regen", 1, true))
+    runEnemyTurn(g2, 8)
+    t:eq("colosso (luta): 2º turno brota a 3ª raiz", BM.stacks(g2.enemy, "roots"), 3)
+    local g3 = battleWith(ID, 1000, 20)
+    t:eq("Continuar: colosso nasce com 2 raízes", BM.stacks(g3.enemy, "roots"), 2)
+
+    local savedGS = _G.gameSettings
+    _G.gameSettings = { reducedMotion = false }
+    BossTokens.reset()
+    local n = 2
+    local fake = { getStatusStacks = function(_, nm) return nm == "roots" and n or 0 end }
+    settleTokens(ID, fake, 0.1)
+    t:eq("colosso visual: 1ª leitura já no chão", BossTokens.phases(ID).idle, 2)
+    n = 3
+    settleTokens(ID, fake, 0.1)
+    t:eq("colosso visual: raiz nova brota", BossTokens.phases(ID).enter, 1)
+    settleTokens(ID, fake, 1)
+    t:eq("colosso visual: 3 raízes", BossTokens.count(ID), 3)
+    local slots = {}
+    for _, c in ipairs(BossTokens._debug(ID).tokens) do slots[c.slot] = (slots[c.slot] or 0) + 1 end
+    t:truthy("colosso visual: cada raiz no seu lugar", (slots[1] or 0) <= 1 and (slots[2] or 0) <= 1
+        and (slots[3] or 0) <= 1)
+    n = 2
+    settleTokens(ID, fake, 0.1)
+    t:eq("colosso visual: raiz cortada murcha", BossTokens.phases(ID).leave, 1)
+    settleTokens(ID, fake, 1)
+    t:eq("colosso visual: sobram 2", BossTokens.count(ID), 2)
+    local st = BossTokens._debug(ID)
+    st.iw, st.ih, st.groundArt, st.tgtX, st.tgtY = 141, 131, 125, -200, 300
+    t:truthy("colosso visual: Pancada faz raiz brotar sob o herói", BossTokens.strike(ID, "root", 0.34, 0.42))
+    _G.gameSettings = { reducedMotion = true }
+    t:falsy("colosso reducedMotion: sem raiz no golpe", BossTokens.strike(ID, "root", 0.34, 0.42))
+    _G.gameSettings = savedGS
+    BossTokens.reset()
+
+    local SP = ownIcon(t, "colosso", require("src.ui.StatusPill").ICONS.roots)
+    t:eq("colosso: pill usa status_roots", SP.ICONS.roots, "status_roots")
+    local spec = BossTokens.spec(ID)
+    for i, p in ipairs(spec.sprites) do
+        t:truthy("colosso: raiz " .. i .. " é sprite", BossTokens.image(p))
+    end
+    for _, snd in pairs(spec.sounds) do
+        t:truthy("colosso: som " .. snd.code .. " (<= 0.9)", snd.volume <= 0.9)
+    end
+    localesHave(t, "colosso", { "enemy_kit.status.roots.name", "enemy_kit.status.roots.desc",
+        "enemy_kit.msg.root_grow", "enemy_kit.msg.root_cut" })
+end
+
 function M.run()
     local t = TK.new("chefes: mecânica-assinatura, contador, visual, golpe")
     TK.bootstrap()
@@ -403,6 +493,7 @@ function M.run()
     testLich(t)
     testTyrant(t)
     testMonarch(t)
+    testColossus(t)
     return t:done()
 end
 

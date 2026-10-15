@@ -156,6 +156,8 @@ return {
     },
 
     status = {
+        roots = { name = "Racines",
+            desc = "{stacks} racine(s) agrippées au sol : à la fin de son tour, chacune soigne {value}. Il gagne une racine tous les 2 tours (max 4). Une seule attaque qui retire {max} PV ou plus tranche une racine ; le poison et les petits coups non." },
         frost = { name = "Givre",
             desc = "{stacks} de Givre. Quand votre nouvelle main arrive à {value} ou plus, vos {max} cartes les plus chères arrivent GELÉES (injouables ce tour). Chaque attaque jouée en fait fondre 1 (le feu en fait fondre 2)." },
         chains = { name = "Chaînes de l'Abîme",
@@ -183,6 +185,8 @@ return {
     },
 
     msg = {
+        root_grow = "Nouvelle racine ({value})",
+        root_cut = "Racine tranchée !",
         frost_gain = "Givre +{value} ({total}/{max})",
         freeze = "{value} carte(s) gelée(s) !",
         frost_melt = "Givre -{value}",

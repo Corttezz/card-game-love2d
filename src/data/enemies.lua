@@ -258,7 +258,9 @@ Enemies.KITS = {
     },
     rot_colossus = {
         hpMul = 1.0,
-        passive = { regenPct = 0.015 },
+        mechanic = { kind = "roots", status = "roots", start = 2, max = 4, growEvery = 2,
+                     regenPct = 0.0075, cutPct = 0.05,
+                     strikes = { colossal_slam = "root", putrid_blow = "root" } },
         opener = "plague_cloud",
         moves = {
             { id = "plague_cloud", kind = "debuff", weight = 25,

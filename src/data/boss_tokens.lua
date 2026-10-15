@@ -69,4 +69,27 @@ return {
                      volume = 0.40, pitch = 1.30 },
         },
     },
+
+    rot_colossus = {
+        status = "roots", layout = "ground", max = 4, full = true,
+        sprites = { DIR .. "rot_colossus/mechanic/root_0.png", DIR .. "rot_colossus/mechanic/root_1.png",
+                    DIR .. "rot_colossus/mechanic/root_2.png", DIR .. "rot_colossus/mechanic/root_3.png" },
+        baseRow = 62,
+        slots = { { u = 0.13, front = true }, { u = 0.80, front = true },
+                  { u = 0.02, front = false }, { u = 0.93, front = false } },
+        sap = { 0.45, 0.95, 0.35 },
+        shard = { { 0.30, 0.22, 0.14 }, { 0.45, 0.60, 0.20 }, { 0.62, 0.85, 0.30 } },
+        strikes = {
+            root = { kind = "rise", sprite = DIR .. "rot_colossus/mechanic/root_1.png", baseRow = 62,
+                     burst = { { 0.30, 0.22, 0.14 }, { 0.45, 0.60, 0.20 }, { 0.62, 0.85, 0.30 } },
+                     sound = { code = "impactPoisonRoot", path = "audio/sfx/impact-poison.mp3",
+                               volume = 1.00, pitch = 0.75 } },
+        },
+        sounds = {
+            gain = { code = "bossRootsCrawlMech", path = "audio/sfx/boss/boss_roots_crawl.mp3",
+                     volume = 0.90, pitch = 1.0 },
+            lose = { code = "colossusCrackMech", path = "audio/sfx/boss/colossus_crack.mp3",
+                     volume = 0.75, pitch = 1.1 },
+        },
+    },
 }

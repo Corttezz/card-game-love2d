@@ -57,7 +57,27 @@ function BM.onSpawn(enemy)
         BM.setStacks(enemy, m.status, m.start or 0)
     elseif m.kind == "chains" then
         BM.setStacks(enemy, m.status, #m.marks)
+    elseif m.kind == "roots" then
+        BM.setStacks(enemy, m.status, m.start or 0)
     end
+end
+
+function BM.rootRegen(enemy)
+    local m = BM.spec(enemy)
+    if not m or m.kind ~= "roots" then return 0 end
+    return max(1, floor((enemy.maxHealth or 1) * m.regenPct))
+end
+
+function BM.regenBonus(enemy)
+    local m = BM.spec(enemy)
+    if not m or m.kind ~= "roots" then return 0 end
+    return BM.stacks(enemy, m.status) * BM.rootRegen(enemy)
+end
+
+function BM.rootCutThreshold(enemy)
+    local m = BM.spec(enemy)
+    if not m or m.kind ~= "roots" then return nil end
+    return max(1, floor((enemy.maxHealth or 1) * m.cutPct))
 end
 
 function BM.hpMarks(enemy)
@@ -113,6 +133,9 @@ function BM.onDamaged(enemy, hpLost, source)
             queue(enemy, { kind = "chain_break" })
         end
     end
+    if m.kind == "roots" and source == "hit" and hpLost >= BM.rootCutThreshold(enemy) then
+        queue(enemy, { kind = "root_cut" })
+    end
     if m.kind == "runes" and source ~= "dot" then
         local s = mech(enemy)
         s.turnDmg = s.turnDmg + hpLost
@@ -156,6 +179,12 @@ function BM.applyEvent(enemy, ev)
         end
         return { kind = "rune_break", n = n, left = have - n }
     end
+    if ev.kind == "root_cut" then
+        local have = BM.stacks(enemy, m.status)
+        if have <= 0 then return nil end
+        BM.setStacks(enemy, m.status, have - 1)
+        return { kind = "root_cut", left = have - 1 }
+    end
     if ev.kind == "chain_break" then
         local have = BM.stacks(enemy, m.status)
         if have <= 0 then return nil end
@@ -182,12 +211,23 @@ function BM.turnEndSteps(enemy)
     if m.kind == "runes" then
         return { { kind = "rune_gain", n = m.gain or 1 } }
     end
+    if m.kind == "roots" then
+        return { { kind = "root_grow" } }
+    end
     return {}
 end
 
 function BM.applyStep(enemy, step)
     local m = BM.spec(enemy)
     if not m or not enemy:isAlive() then return nil end
+    if step.kind == "root_grow" then
+        local s = mech(enemy)
+        s.turns = (s.turns or 0) + 1
+        local have = BM.stacks(enemy, m.status)
+        if s.turns % (m.growEvery or 2) ~= 0 or have >= m.max then return nil end
+        BM.setStacks(enemy, m.status, have + 1)
+        return { kind = "root_grow", total = have + 1 }
+    end
     if step.kind == "rune_gain" then
         local have = BM.stacks(enemy, m.status)
         local n = min(step.n, m.max - have)
@@ -307,6 +347,9 @@ function BM.pillVars(enemy, name)
     if m.kind == "runes" then
         return { value = BM.runeThreshold(enemy), max = m.max,
                  dealt = floor(mech(enemy).turnDmg) }
+    end
+    if m.kind == "roots" then
+        return { value = BM.rootRegen(enemy), max = BM.rootCutThreshold(enemy) }
     end
     if m.kind == "chains" then
         local nextMark = m.marks[(mech(enemy).marksCrossed or 0) + 1]
