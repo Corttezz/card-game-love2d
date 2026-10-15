@@ -47,7 +47,7 @@ pegá-lo. A ideia de cada carta é um TROFÉU do chefe vencido.
 64x64, side, detailed shading, sufixo canônico com UM acento de cor do chefe).
 Pranchas e escolhidas em `tools/preview_out/coringa_chefe/`
 (`<id>_prancha.png`, `escolhidas.png`). Todas como relíquia/troféu do chefe:
-caveira de corvo coroada com dois corvos; caveira do lich de coroa de gelo
+rei-carniça v2 (dono: "mais fiel e impactante"): busto de frente do PRÓPRIO rei, olhos laranja, coroa de bronze com pedras azuis, manto roxo de franja, costelas com a joia laranja, asas e corvos em volta (a v1, caveira de corvo coroada, não lembrava o sprite; prancha `joker_boss_carrion_v2_prancha.png`). A mesma ferramenta das outras 5 (`create_map_object`) foi mantida de propósito: o modo básico não aceita imagem de referência, então o idle entrou DESCRITO no prompt, peça por peça; trocar de ferramenta só nesta carta faria o estilo derivar da família; caveira do lich de coroa de gelo
 segurando o orbe; coração de obsidiana com veias de lava (a 1ª leva deu
 coração de namorados: reprovado); escudo de gelo com caveira (o nome virou
 Égide porque o cetro saiu fino demais e o escudo LÊ "Bloqueio que fica");

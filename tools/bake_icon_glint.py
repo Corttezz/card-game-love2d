@@ -35,10 +35,12 @@ ANIM = os.environ.get("ICON_ANIM_OUT") or os.path.join(ROOT, "assets/sprites/ico
 # sequência (as três adagas uma depois da outra) separados no eixo x.
 SPECS = {
     "joker_boss_carrion": dict(frames=12, fps=8, layers=[
-        dict(mode="points", points=[(25, 40), (38, 40)], phase=0.0,
-             glow=(255, 70, 40), gain=1.0),
+        dict(mode="points", points=[(26, 19), (37, 19)], phase=0.0,
+             glow=(255, 170, 60), gain=1.8),
+        dict(mode="points", points=[(31, 46)], phase=0.5,
+             glow=(255, 200, 90), gain=1.5),
         dict(hue=(28, 55), smin=0.45, smax=1.0, vmin=0.55, vmax=1.0,
-             box=(0, 0, 64, 32), dir=(1.0, 0.25), width=4.0, gain=0.6,
+             box=(0, 0, 64, 16), dir=(1.0, 0.25), width=6.0, gain=1.0,
              stagger=1),
     ]),
     "joker_boss_winter": dict(frames=12, fps=8, layers=[

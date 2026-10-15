@@ -24,7 +24,7 @@ STYLE = (", dark fantasy grimoire illustration pixel art, inked engraving "
          "Spire and Magic the Gathering legendary card art aesthetic")
 
 ACCENT = {
-    "joker_boss_carrion": "dull violet with amber eye glow",
+    "joker_boss_carrion": "dark violet with glowing orange eyes and orange chest jewel",
     "joker_boss_lich": "pale frost blue glow",
     "joker_boss_tyrant": "molten lava orange glow",
     "joker_boss_winter": "icy pale blue",
@@ -45,6 +45,11 @@ SUBJECTS = {
         "close-up of a crowned raven king face, curved black beak, piercing "
         "amber eye, golden crown with blue jewel, ragged feather collar, "
         "menacing regal stare",
+        "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, huge dark violet-black wings spread wide behind him, two small black crows flying around his head",
+        "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, wings folded high behind the shoulders like a cloak, three black crows circling the crown",
+        "close up of the crowned raven king face filling the frame, black feathered raven head, dark slate beak, two glowing orange eyes staring straight ahead, rusty bronze crown with gold points and pale blue gems, violet collar with gold trim, a black crow perched on each shoulder",
+        "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, wings spread, a swirl of black crows and falling black feathers around him, strong backlight",
+        "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, head slightly lowered with a menacing stare, wings spread like a dark halo, one crow on his shoulder and one flying",
     ],
     "joker_boss_lich": [
         "glowing pale blue phylactery orb held in a silver claw cage on top of "

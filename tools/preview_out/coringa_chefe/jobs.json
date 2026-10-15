@@ -119,10 +119,30 @@
     "object_id": "4343ab32-0afb-41fd-a63a-8c46f640a789",
     "subject": "round tower shield of thick clear blue ice with an ancient silver crown frozen inside it, cracks of white frost, icicles on the rim"
   },
-  "picked_joker_boss_carrion": "aaf4b699-7358-4b41-9471-8a8f75560123",
+  "picked_joker_boss_carrion": "6a7ba9c8-b2ca-4bc8-9469-b2ce8df31ae8",
   "picked_joker_boss_lich": "d7f5e22c-ec35-45ff-bb5c-da14ac7b17fa",
   "picked_joker_boss_tyrant": "775c8fc0-da18-49cd-88f9-7aba183276d4",
   "picked_joker_boss_winter": "64c14d5b-928e-4df1-a166-8bc8dc56dee3",
   "picked_joker_boss_colossus": "f6423b02-5157-4af6-8299-32a134f76a37",
-  "picked_joker_boss_eclipse": "2b4df792-e4a0-41b9-ba8c-88701969f436"
+  "picked_joker_boss_eclipse": "2b4df792-e4a0-41b9-ba8c-88701969f436",
+  "joker_boss_carrion_4": {
+    "object_id": "9cf4f150-b3e6-4435-9566-c3f02f9ac92c",
+    "subject": "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, huge dark violet-black wings spread wide behind him, two small black crows flying around his head"
+  },
+  "joker_boss_carrion_5": {
+    "object_id": "d53ed877-a3ba-45b7-801f-ddaa1a2ec886",
+    "subject": "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, wings folded high behind the shoulders like a cloak, three black crows circling the crown"
+  },
+  "joker_boss_carrion_6": {
+    "object_id": "7696bfac-707a-436e-aa50-331e72abc5a3",
+    "subject": "close up of the crowned raven king face filling the frame, black feathered raven head, dark slate beak, two glowing orange eyes staring straight ahead, rusty bronze crown with gold points and pale blue gems, violet collar with gold trim, a black crow perched on each shoulder"
+  },
+  "joker_boss_carrion_7": {
+    "object_id": "6a7ba9c8-b2ca-4bc8-9469-b2ce8df31ae8",
+    "subject": "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, wings spread, a swirl of black crows and falling black feathers around him, strong backlight"
+  },
+  "joker_boss_carrion_8": {
+    "object_id": "93173f7d-8d54-41a1-ac89-3b99dff6bf87",
+    "subject": "front facing bust of the crowned raven king, black raven head with a dark slate beak tinged orange at the base, two glowing orange eyes staring straight at the viewer, a rusty bronze crown with sharp gold tipped points and pale blue gems, dark violet mantle with gold trim and tattered fringe on the shoulders, a bone ribcage chest with a glowing orange jewel amulet in the center, head slightly lowered with a menacing stare, wings spread like a dark halo, one crow on his shoulder and one flying"
+  }
 }
