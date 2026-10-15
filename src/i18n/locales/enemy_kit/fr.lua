@@ -164,7 +164,7 @@ return {
             desc_p3 = "Dernier croissant. La NOUVELLE LUNE vient à la prochaine annonce : gardez votre grosse carte.",
             desc_p4 = "NOUVELLE LUNE : la Reine est Vulnérable pendant votre tour (+50 % de dégâts). C'est le moment de frapper fort." },
         roots = { name = "Racines",
-            desc = "{stacks} racine(s) agrippées au sol : à la fin de son tour, chacune soigne {value}. Il gagne une racine tous les 2 tours (max 4). Une seule attaque qui retire {max} PV ou plus tranche une racine ; le poison et les petits coups non." },
+            desc = "{stacks} racine(s) agrippées au sol : à la fin de son tour, chacune soigne {value}. Il gagne une racine tous les 2 tours (max 3). Une seule attaque qui retire {max} PV ou plus tranche une racine ; le poison et les petits coups non." },
         frost = { name = "Givre",
             desc = "{stacks} de Givre. Quand votre nouvelle main arrive à {value} ou plus, vos {max} cartes les plus chères arrivent GELÉES (injouables ce tour). Chaque attaque jouée en fait fondre 1 (le feu en fait fondre 2)." },
         chains = { name = "Chaînes de l'Abîme",

@@ -164,7 +164,7 @@ return {
             desc_p3 = "Luna Menguante. Con el próximo anuncio llega la LUNA NUEVA: guarda tu carta grande.",
             desc_p4 = "LUNA NUEVA: la Reina está Vulnerable durante tu turno (+50% de daño). Hora de explotar." },
         roots = { name = "Raíces",
-            desc = "{stacks} raíz(ces) aferradas al suelo: al final de su turno cada una cura {value}. Gana una raíz cada 2 turnos (máximo 4). Un solo ataque que quite {max} o más de vida corta una raíz; el veneno y los golpes pequeños no." },
+            desc = "{stacks} raíz(ces) aferradas al suelo: al final de su turno cada una cura {value}. Gana una raíz cada 2 turnos (máximo 3). Un solo ataque que quite {max} o más de vida corta una raíz; el veneno y los golpes pequeños no." },
         frost = { name = "Escarcha",
             desc = "{stacks} de Escarcha. Cuando la mano nueva llega con {value} o más, tus {max} cartas más caras llegan CONGELADAS (no se pueden jugar este turno). Cada ataque que juegas derrite 1 (el fuego derrite 2)." },
         chains = { name = "Cadenas del Abismo",

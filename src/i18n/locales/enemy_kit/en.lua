@@ -164,7 +164,7 @@ return {
             desc_p3 = "Waning Crescent. The NEW MOON comes with the next announcement: hold your big card.",
             desc_p4 = "NEW MOON: the Queen is Vulnerable during your turn (+50% damage). Time to burst." },
         roots = { name = "Roots",
-            desc = "{stacks} root(s) gripping the ground: at the end of his turn each heals {value}. He grows a root every 2 turns (max 4). A single attack that takes {max} or more health cuts a root; poison and small hits do not." },
+            desc = "{stacks} root(s) gripping the ground: at the end of his turn each heals {value}. He grows a root every 2 turns (max 3). A single attack that takes {max} or more health cuts a root; poison and small hits do not." },
         frost = { name = "Frost",
             desc = "{stacks} Frost. When your new hand arrives at {value} or more, your {max} most expensive cards come FROZEN (they cannot be played this turn). Each attack you play melts 1 (fire melts 2)." },
         chains = { name = "Abyssal Chains",

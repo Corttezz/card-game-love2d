@@ -630,3 +630,11 @@ rola a loja atrás de coringa. Outra frente (coringa-chefe) vai somar um
 coringa próprio por chefe, o que devolve parte do poder. Relatórios em
 `reports/balance/cr*_*` da worktree card-game-coringararo (cr3/cr4 = a
 compensação descartada).
+
+## Mecânica própria dos chefes 2-6 (15/Out/2026)
+
+Com as mecânicas de [[boss_mechanics]] (runas, correntes, geada, raízes, lua),
+mesma bateria da base (30 runs/classe, seeds 720000, average + expert_full):
+expert_full base 37/30/40 (G/M/L, média 36%) → **27/40/47 (média 38%)**;
+average 3/0/3 sem mudança. Números finais e mortes por chefe na seção
+"Balanceamento" de memory/boss_mechanics.md.

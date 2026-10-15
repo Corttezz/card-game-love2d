@@ -129,10 +129,10 @@ Enemies.KITS = {
     },
     tower_lich = {
         opener = "essence_drain",
-        mechanic = { kind = "runes", status = "runes", start = 1, gain = 1, max = 4,
-                     breakPct = 0.15, move = "rune_cataclysm" },
+        mechanic = { kind = "runes", status = "runes", start = 0, gain = 1, max = 4,
+                     breakPct = 0.12, move = "rune_cataclysm" },
         moves = {
-            { id = "rune_cataclysm", kind = "multi", weight = 0, mult = 0.5, hits = 1,
+            { id = "rune_cataclysm", kind = "multi", weight = 0, mult = 0.45, hits = 1,
               runes = true },
             { id = "frost_shield",  kind = "defend", weight = 0, armor = 1.8,
               debuff = { name = F, duration = 2 }, every = 3 },
@@ -192,7 +192,7 @@ Enemies.KITS = {
     abyss_tyrant = {
         opener = "abyssal_claws",
         mechanic = { kind = "chains", status = "chains", marks = { 0.75, 0.5, 0.25 },
-                     strengthPct = 0.12, stagger = 0.5,
+                     strengthPct = 0.08, stagger = 0.5,
                      strikes = { hellfire = "fireball", cinder_spray = "ember" } },
         moves = {
             { id = "gather_flames", kind = "charge", weight = 0, armor = 1.0,
@@ -258,8 +258,8 @@ Enemies.KITS = {
     },
     rot_colossus = {
         hpMul = 1.0,
-        mechanic = { kind = "roots", status = "roots", start = 2, max = 4, growEvery = 2,
-                     regenPct = 0.0075, cutPct = 0.05,
+        mechanic = { kind = "roots", status = "roots", start = 2, max = 3, growEvery = 2,
+                     regenPct = 0.0065, cutPct = 0.04,
                      strikes = { colossal_slam = "root", putrid_blow = "root" } },
         opener = "plague_cloud",
         moves = {

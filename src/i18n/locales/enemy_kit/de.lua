@@ -164,7 +164,7 @@ return {
             desc_p3 = "Abnehmende Sichel. Mit der nächsten Ankündigung kommt der NEUMOND: halte deine große Karte zurück.",
             desc_p4 = "NEUMOND: die Königin ist in deinem Zug verwundbar (+50% Schaden). Zeit zuzuschlagen." },
         roots = { name = "Wurzeln",
-            desc = "{stacks} Wurzel(n) im Boden verankert: am Ende seines Zuges heilt jede {value}. Alle 2 Züge wächst eine nach (höchstens 4). Ein einzelner Angriff, der {max} oder mehr Leben nimmt, kappt eine Wurzel; Gift und kleine Treffer nicht." },
+            desc = "{stacks} Wurzel(n) im Boden verankert: am Ende seines Zuges heilt jede {value}. Alle 2 Züge wächst eine nach (höchstens 3). Ein einzelner Angriff, der {max} oder mehr Leben nimmt, kappt eine Wurzel; Gift und kleine Treffer nicht." },
         frost = { name = "Raureif",
             desc = "{stacks} Raureif. Kommt deine neue Hand mit {value} oder mehr, sind deine {max} teuersten Karten GEFROREN (in diesem Zug nicht spielbar). Jeder gespielte Angriff schmilzt 1 (Feuer schmilzt 2)." },
         chains = { name = "Ketten des Abgrunds",

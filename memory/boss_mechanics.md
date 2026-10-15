@@ -45,10 +45,10 @@ do beat (nada alonga o turno).
 
 ## Ato 2: tower_lich, Runas do Ritual
 
-- **Regra.** O lich nasce com 1 runa (`runes`) e acende +1 no fim de cada
+- **Regra.** O lich nasce sem runa (`runes`) e acende +1 no fim de cada
   turno dele (teto 4). Com 4 runas o próximo anúncio é o **Cataclismo
-  Rúnico**: 1 golpe por runa (0,5 × dano), cada golpe consome uma runa.
-- **Contra-jogo.** A cada **15% da vida máxima** de dano que passa (vida
+  Rúnico**: 1 golpe por runa (0,45 × dano), cada golpe consome uma runa.
+- **Contra-jogo.** A cada **12% da vida máxima** de dano que passa (vida
   perdida, depois do Bloqueio) num MESMO turno do jogador, uma runa racha e
   quebra. Quebrar runa com o Cataclismo já anunciado tira um golpe dele (o
   número só cai). O Escudo de Gelo (a cada 3) segura o dano e protege as runas:
@@ -69,7 +69,7 @@ do beat (nada alonga o turno).
 - **Regra.** Três correntes (`chains`) prendem o Tirano. Cada uma se rompe ao
   cruzar **75%, 50% e 25%** da vida (marcas na barra). Ao romper: o Tirano
   **cambaleia** (o golpe JÁ anunciado perde metade, uma vez por turno) e fica
-  mais forte (+12% do dano base como Força, do próximo anúncio em diante).
+  mais forte (+8% do dano base como Força, mínimo 1, do próximo anúncio em diante).
 - **Contra-jogo.** Guardar o dano pra cruzar a marca no turno em que ele
   anunciou o Fogo Infernal (a carga de Reunir Chamas dá um turno inteiro de
   aviso) corta o maior golpe da luta pela metade. Cruzar marca à toa só o
@@ -103,10 +103,10 @@ do beat (nada alonga o turno).
 
 ## Ato 5: rot_colossus, Raízes
 
-- **Regra.** O Colosso nasce com **2 raízes** (`roots`, teto 4) e ganha +1 a
-  cada 2 turnos dele. No fim de cada turno ele regenera **0,75% da vida máxima
-  por raiz** (2 raízes = o 1,5% de antes, 4 raízes = 3%).
-- **Contra-jogo.** Um único ATAQUE que tire **5% da vida máxima** (depois do
+- **Regra.** O Colosso nasce com **2 raízes** (`roots`, teto 3) e ganha +1 a
+  cada 2 turnos dele. No fim de cada turno ele regenera **0,65% da vida máxima
+  por raiz** (2 raízes = 1,3%, 3 raízes = 1,95%).
+- **Contra-jogo.** Um único ATAQUE que tire **4% da vida máxima** (depois do
   Bloqueio) corta uma raiz. Dano miúdo e veneno não cortam: perdem pra
   regeneração; carta grande, Força e combo cortam.
 - **Status/ícone.** `roots` → `status_roots`.
@@ -206,8 +206,8 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
 
 ### Lich (implementado)
 
-- Números em `enemies.lua` `tower_lich.mechanic` (`start 1, gain 1, max 4,
-  breakPct 0.15`) e o golpe `rune_cataclysm` (multi, 0,5×, `runes = true`).
+- Números em `enemies.lua` `tower_lich.mechanic` (`start 0, gain 1, max 4,
+  breakPct 0.12`) e o golpe `rune_cataclysm` (multi, 0,45×, `runes = true`).
 - Quebra conta vida PERDIDA (depois do Bloqueio) por golpe/pulso/espinho,
   nunca veneno/queimadura; zera no upkeep do jogador.
 - Runas: 4 sprites (`tower_lich/mechanic/rune_0..3.png`, 32x32, candidatos
@@ -218,7 +218,7 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
 
 ### Tirano (implementado)
 
-- `abyss_tyrant.mechanic` = `marks {0.75, 0.5, 0.25}`, `strengthPct 0.12`,
+- `abyss_tyrant.mechanic` = `marks {0.75, 0.5, 0.25}`, `strengthPct 0.08`,
   `stagger 0.5`. A detecção da marca é na hora do dano (golpe OU queimadura),
   a ruptura (pilha -1, Força, metade do golpe anunciado) acontece no beat
   `boss.chain_break`. O "uma vez por turno" zera no upkeep do jogador.
@@ -268,8 +268,8 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
 ### Colosso (implementado)
 
 - A regeneração fixa (`passive.regenPct 0.015`) SAIU do kit: virou
-  `rot_colossus.mechanic` = `start 2, max 4, growEvery 2, regenPct 0.0075`
-  (por raiz) `, cutPct 0.05`. Com 2 raízes cura o mesmo 1,5% de antes.
+  `rot_colossus.mechanic` = `start 2, max 3, growEvery 2, regenPct 0.0065`
+  (por raiz) `, cutPct 0.04` (números do mc2, ver Balanceamento).
   `Enemy:tickRegen` soma `BM.regenBonus` à pilha `regen` (que continua valendo
   pra outros inimigos); o beat `enemy.regen` passa a existir se houver raiz.
 - Corte: vida PERDIDA num único `takeDamage` (fonte "hit": carta, orbe,
@@ -311,3 +311,34 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
 - Golpe: Lâminas Lunares, Chuva de Estrelas e Coroa Negra lançam a lâmina
   crescente (sprite `crescent.png`) girando em degraus de 15°; impacto
   `impact-arcane` 0,32 (-27 dB).
+
+## Balanceamento (15/Out/2026)
+
+Bateria `python tools/balance.py --runs 30 --classes <c> --pilots average,expert_full
+--seeds 720000 --procs 4`, uma classe por vez. Base = main antes das mecânicas
+(`d075d734`, já com a regra dos coringas raros), mesmas seeds.
+
+| expert_full | guerreiro | mago | ladino | média |
+|---|---|---|---|---|
+| base (d075d734) | 37% | 30% | 40% | 36% |
+| mc (números do roteiro) | 40% | 23% | 43% | 35% |
+| **mc2 (adotado)** | 27% | 40% | 47% | 38% |
+
+average: 3/0/3% nas três medições (morre no A1/A2, chefes do A3+ quase não
+aparecem). IC de 30 runs ±17pp: a queda do guerreiro no mc2 vem de semente
+(o diff do mc2 só ENFRAQUECE chefes), decisão do lead.
+
+Ajuste mc → mc2 (porque no mc o mago passou a morrer no lich 0→4 e no colosso
+2→6, com 38 de vida perdida por luta contra 11):
+- lich: nasce com 0 runas (era 1), quebra a cada 12% (era 15%), Cataclismo
+  0,45× por golpe (era 0,5×);
+- tirano: +8% do dano base por corrente (era 12%);
+- colosso: teto 3 raízes (era 4), 0,65%/raiz (era 0,75%), corte com 4% (era 5%).
+
+Mortes por chefe, expert_full, base → mc2 (G / M / L): lich 1→0 / 0→4 / 1→2;
+tirano 2→4 / 2→0 / 1→2; monarca 3→3 / 2→0 / 1→0; colosso 6→6 / 2→2 / 3→4;
+rainha 1→3 / 0→1 / 2→1. Vida perdida por luta de chefe sobe no LICH (G 11→13,
+M 8→11, L 7→15): é o chefe que mais pune quem não explode o turno, e fica
+monitorado; monarca e tirano ficaram mais leves pra quem lê a regra.
+Relatórios: `reports/balance/mc2_<classe>/` (worktree mecchefes) e
+`reports/balance/mcbase_<classe>/` (worktree mecchefes-base).
