@@ -142,6 +142,9 @@ local function expectedFor(inst, seeded, withStats)
         else
             ex.status[name] = { stacks = stacks, duration = duration }
         end
+        if name == "poison" and require("src.entities.Enemy").POISON_DECAY then
+            ex.status[name].duration = ex.status[name].stacks
+        end
         if name == "vulnerable" then vuln = true end
     end
     local orbs = {}
@@ -414,7 +417,10 @@ local function jokerExpected(cd, base)
         elseif t == "heal_multiplier" then healMult = healMult * v
         elseif t == "on_attack_heal" then ex.atkHeal = ex.atkHeal + v
         elseif t == "on_attack_debuff" then
-            ex.atkStatus[e.debuffName or "poison"] = { stacks = e.stacks or 1, duration = e.duration or 2 }
+            local dn = e.debuffName or "poison"
+            local dur = e.duration or 2
+            if dn == "poison" and require("src.entities.Enemy").POISON_DECAY then dur = e.stacks or 1 end
+            ex.atkStatus[dn] = { stacks = e.stacks or 1, duration = dur }
         elseif t == "on_defend_damage" then ex.defThorn = ex.defThorn + v; ex.reflect = ex.reflect + v
         elseif t == "regen_per_turn" then ex.turnHp = ex.turnHp + v
         elseif t == "damage_per_turn" then ex.turnHp = ex.turnHp - v

@@ -584,3 +584,21 @@ LIGADA por padrão como UX, sem efeito de dificuldade e sem rebalanceamento.**
 Pra medir a variante sem ela: `--env BALANCE_SHOP_SALE=0`. Toda bateria a
 partir de 13/Out já inclui a oferta do dia; as baselines `head-sustain-fog-*`
 e anteriores foram medidas SEM ela (diferença dentro do ruído, acima).
+
+
+## Classes equilibradas (14/Out/2026)
+Motivo: com a curva por ato o bot experiente vencia guerreiro 20%, mago 60%, ladino 63%. Estudo do Slay the Spire em `sts_balance_study.md`. Bateria `python tools/balance.py --runs 30 --classes ... --pilots average,expert_full`, seeds 720000+, selo 0, relatórios em `reports/balance/bal_*` da worktree card-game-balclasses-dev.
+
+| Bateria | Guerreiro | Mago | Ladino | DoT no dano |
+|---|---|---|---|---|
+| base | 20% | 60% | 63% | 19% |
+| c1 veneno decai | 20% | 57% | 70% | 16% |
+| c12 + Ímpeto 2 ataques | 30% | 53% | 70% | |
+| c123 + multigolpe barato | 30% | 57% | 70% | 15% |
+| c1234 + guerreiro 70 de vida | 53% | | | |
+| r1 decai + Toxinas cresce 1 | | | 70% | |
+| r2 decai + Toxinas fixa (+1 sobre o tier) | | | 50% | |
+| r3 Toxinas cresce 1, sem decair | | | 63% | |
+| **final (c1234 sem multigolpe + r2)** | **53%** | **53%** | **50%** | |
+
+Final: expert_full 52% [42 a 62], average 1% (era 2%), IC de cada classe cerca de ±17 pp. A causa do ladino era a Toxinas crescendo na luta: mesmo com o veneno decaindo, o reforço que crescia turno a turno mantinha o dano acumulado subindo rápido demais. O decaimento sozinho quase não mexeu no DoT. O multigolpe barato não mudou o guerreiro e foi descartado. Valores adotados: `Enemy.POISON_DECAY = true`, `Game.TOXIN_GROWTH = 0`, `Game.ROGUE_POISON_OFFSET = 1`, `Game.IMPETUS_ATTACKS = 2`, `Config.Game.CLASS_MAX_HEALTH = { warrior = 70 }`.

@@ -51,6 +51,7 @@ Config.Game = {
     },
 
     PLAYER_MAX_HEALTH = 60,
+    CLASS_MAX_HEALTH = { warrior = 70 },
     PLAYER_MAX_ARMOR = 30,
     PLAYER_MAX_ARMOR_PER_ACT = 10,
     PLAYER_MAX_MANA = 3,

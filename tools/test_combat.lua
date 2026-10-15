@@ -115,8 +115,24 @@ function M.run()
         playIds(gr, { "rogue_strike", "rogue_strike" })
         local G = require("src.core.Game")
         t:eq("Toxinas: bonus +TOXIN_GROWTH na batalha", gr._toxinBonus, G.TOXIN_GROWTH)
-        t:eq("Toxinas: 1o ataque aplica tier+bonus de Veneno",
-            gr.enemy:getStatusStacks("poison"), gr:classPassiveTier() + G.TOXIN_GROWTH)
+        t:eq("Toxinas: 1o ataque aplica tier+offset+bonus de Veneno",
+            gr.enemy:getStatusStacks("poison"), gr:toxinStacks())
+        t:eq("Toxinas: sem crescimento na luta", G.TOXIN_GROWTH, 0)
+        t:eq("Toxinas: 2 de Veneno no ato 1", gr:toxinStacks(), 2)
+
+        t:eq("Impeto pede 2 ataques", G.IMPETUS_ATTACKS, 2)
+        local gw = TK.newRunGame("warrior"); TK.pump(gw, 0.5)
+        gw.enemy.health, gw.enemy.maxHealth = 999, 999
+        local s0 = gw.player.strength or 0
+        playIds(gw, { "warrior_strike" })
+        t:eq("Impeto: 1 ataque nao da Forca", gw.player.strength or 0, s0)
+        local gw2 = TK.newRunGame("warrior"); TK.pump(gw2, 0.5)
+        gw2.enemy.health, gw2.enemy.maxHealth = 999, 999
+        local s1 = gw2.player.strength or 0
+        playIds(gw2, { "warrior_strike", "warrior_strike" })
+        t:eq("Impeto: 2 ataques no turno = +1 Forca", gw2.player.strength or 0, s1 + 1)
+        t:eq("vida do guerreiro = 70", gw2.player.maxHealth, 70)
+        t:eq("vida do ladino = 60", gr.player.maxHealth, 60)
 
         local go = TK.newRunGame("mage"); TK.pump(go, 0.5)
         go.enemy.health, go.enemy.maxHealth, go.enemy.armor = 999, 999, 0

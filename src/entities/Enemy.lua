@@ -418,19 +418,28 @@ function Enemy:performAttack()
     return 0
 end
 
+Enemy.POISON_DECAY = true
+
+local function decays(name)
+    return name == "poison" and Enemy.POISON_DECAY
+end
+
 function Enemy:addStatusEffect(effect)
     for _, e in ipairs(self.statusEffects) do
         if e.name == effect.name then
             e.duration = (e.duration or 0) + (effect.duration or 1)
             e.stacks = (e.stacks or 1) + (effect.stacks or 1)
+            if decays(e.name) then e.duration = e.stacks end
             return
         end
     end
-    table.insert(self.statusEffects, {
+    local e = {
         name = effect.name,
         duration = effect.duration or 1,
         stacks = effect.stacks or 1,
-    })
+    }
+    if decays(e.name) then e.duration = e.stacks end
+    table.insert(self.statusEffects, e)
 end
 
 function Enemy:hasStatus(name)
@@ -471,7 +480,12 @@ function Enemy:onTurnEnd()
 
     for i = #self.statusEffects, 1, -1 do
         local e = self.statusEffects[i]
-        e.duration = e.duration - 1
+        if decays(e.name) then
+            e.stacks = (e.stacks or 1) - 1
+            e.duration = e.stacks
+        else
+            e.duration = e.duration - 1
+        end
         if e.duration <= 0 then
             table.remove(self.statusEffects, i)
         end

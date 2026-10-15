@@ -5,9 +5,14 @@ Player.__index = Player
 
 local DEFAULT_ORB_SLOTS = 3
 
-function Player:new()
+function Player.maxHealthFor(classId)
+    local byClass = Config.Game.CLASS_MAX_HEALTH
+    return (classId and byClass and byClass[classId]) or Config.Game.PLAYER_MAX_HEALTH
+end
+
+function Player:new(classId)
     local instance = setmetatable({}, Player)
-    instance.maxHealth = Config.Game.PLAYER_MAX_HEALTH
+    instance.maxHealth = Player.maxHealthFor(classId)
     instance.health = instance.maxHealth
     instance.armor = 0
     instance.mana = Config.Game.PLAYER_MAX_MANA

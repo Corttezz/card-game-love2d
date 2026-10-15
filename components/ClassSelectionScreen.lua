@@ -718,7 +718,7 @@ function ClassSelectionScreen:_drawSummaryPage(p, r, y, a)
     y = y + paragraph(short, r.x, y, r.w, body, 3) + lh
 
     local items = {
-        { icon = "heart", n = Config.Game.PLAYER_MAX_HEALTH },
+        { icon = "heart", n = (Config.Game.CLASS_MAX_HEALTH or {})[p.classId] or Config.Game.PLAYER_MAX_HEALTH },
         { icon = "crystal", n = Config.Game.PLAYER_MAX_MANA },
         { icon = "scroll", n = #self.cardRegistry:getStarterDeckForClass(p.classId) },
     }

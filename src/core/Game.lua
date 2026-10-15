@@ -92,7 +92,7 @@ function Game:startGame()
     self.gameState = "playing"
     self.currentPhase = 1
     self.score = 0
-    self.player = Player:new()
+    self.player = Player:new(self.isRunMode and self.selectedClass or nil)
     self.enemy = Enemy:new(Config.Game.ENEMY_BASE_HEALTH, Config.Game.ENEMY_BASE_DAMAGE)
     local EnemyRendererModule = require("src.ui.EnemyRenderer")
     self.enemy.spriteId = EnemyRendererModule.resolveSpriteId(1, "battle")
@@ -478,12 +478,17 @@ function Game:applyClassBattleStartPassive()
     end
 end
 
-Game.TOXIN_GROWTH = 2
+Game.TOXIN_GROWTH = 0
 
 Game.MAGE_FOCUS_OFFSET = -1
-Game.ROGUE_POISON_OFFSET = 0
+Game.ROGUE_POISON_OFFSET = 1
 
-Game.IMPETUS_ATTACKS = 3
+Game.IMPETUS_ATTACKS = 2
+
+function Game:toxinStacks(bonus)
+    return math.max(1, self:classPassiveTier() + Game.ROGUE_POISON_OFFSET
+        + (bonus or self._toxinBonus or 0))
+end
 
 function Game:applyClassTurnPassives(turnContext)
     local cls = self.selectedClass
@@ -494,7 +499,7 @@ function Game:applyClassTurnPassives(turnContext)
     end
     self._attacksThisTurn = attacks
     if cls == "rogue" then
-        if attacks >= 2 and not self._toxinGrowFiredThisTurn then
+        if Game.TOXIN_GROWTH > 0 and attacks >= 2 and not self._toxinGrowFiredThisTurn then
             self._toxinGrowFiredThisTurn = true
             self._toxinBonus = (self._toxinBonus or 0) + Game.TOXIN_GROWTH
             self:addMessage(msg("passive_toxins_grow",
@@ -667,8 +672,7 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             and self.enemy:isAlive() then
             self._toxinAppliedThisTurn = true
             CombatBeats.step(sink, "passive.toxins", function()
-                local stacks = math.max(1, self:classPassiveTier() + Game.ROGUE_POISON_OFFSET
-                    + (self._toxinBonus or 0))
+                local stacks = self:toxinStacks()
                 self.enemy:addStatusEffect({ name = "poison", stacks = stacks, duration = 2 })
                 local okCF, CF = pcall(require, "src.systems.CardFeel")
                 if okCF then CF.burstAtEnemy("poison", 0.8) end

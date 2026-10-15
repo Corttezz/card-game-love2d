@@ -443,6 +443,26 @@ function M.setup(policy)
         if rp then
             require("src.core.Game").ROGUE_POISON_OFFSET = rp
         end
+        local pd = os.getenv("BALANCE_POISON_DECAY")
+        if pd and pd ~= "" then
+            require("src.entities.Enemy").POISON_DECAY = pd ~= "0"
+        end
+        local tg = tonumber(os.getenv("BALANCE_TOXIN_GROWTH") or "")
+        if tg then
+            require("src.core.Game").TOXIN_GROWTH = tg
+        end
+        local ia = tonumber(os.getenv("BALANCE_IMPETUS_ATTACKS") or "")
+        if ia then
+            require("src.core.Game").IMPETUS_ATTACKS = ia
+        end
+        local chp = os.getenv("BALANCE_CLASS_HP")
+        if chp and chp ~= "" then
+            local CG = require("src.core.Config").Game
+            CG.CLASS_MAX_HEALTH = {}
+            for cls, hp in chp:gmatch("(%a+):(%d+)") do
+                CG.CLASS_MAX_HEALTH[cls] = tonumber(hp)
+            end
+        end
         local php = tonumber(os.getenv("BALANCE_PLAYER_HP") or "")
         if php then
             require("src.core.Config").Game.PLAYER_MAX_HEALTH = php
@@ -565,7 +585,11 @@ function M.run(runsArg, classArg, seedArg, policyArg)
             enemyPowerAct = os.getenv("BALANCE_ENEMY_POWER_ACT"), bossHpId = os.getenv("BALANCE_BOSS_HP_ID"),
             comboJoker = os.getenv("BALANCE_COMBO_JOKER"), mageFocus = os.getenv("BALANCE_MAGE_FOCUS"),
             roguePoison = os.getenv("BALANCE_ROGUE_POISON"), hand = os.getenv("BALANCE_HAND"),
-            mana = os.getenv("BALANCE_MANA"), shopSale = os.getenv("BALANCE_SHOP_SALE") },
+            mana = os.getenv("BALANCE_MANA"), shopSale = os.getenv("BALANCE_SHOP_SALE"),
+            poisonDecay = os.getenv("BALANCE_POISON_DECAY"),
+            impetusAttacks = os.getenv("BALANCE_IMPETUS_ATTACKS"),
+            toxinGrowth = os.getenv("BALANCE_TOXIN_GROWTH"),
+            classHp = os.getenv("BALANCE_CLASS_HP") },
         totalActs = require("src.core.Config").TotalActs }
     local agg = M.aggregate(records)
     local text = M.report(records, agg, meta)

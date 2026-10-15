@@ -292,8 +292,7 @@ function DamagePreview.simulate(game, cards)
                 entry.vuln = E.vuln
                 if game.selectedClass == "rogue" and not toxinsUsed and E.health > 0 then
                     toxinsUsed = true
-                    R.poison = R.poison + (game.classPassiveTier and game:classPassiveTier() or 1)
-                        + toxinBonus
+                    R.poison = R.poison + (game.toxinStacks and game:toxinStacks(toxinBonus) or 1)
                 end
                 triggers(card, "attack")
                 additionalEffects(card)

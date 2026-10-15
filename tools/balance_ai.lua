@@ -1,6 +1,7 @@
 local TagSystem   = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
 local EffectSystem = require("src.systems.EffectSystem")
+local Enemy = require("src.entities.Enemy")
 
 local AI = {}
 
@@ -296,7 +297,7 @@ function AI.simulate(game, set, bctx, opts)
     end
     local function addPoison(st, dur)
         S.poison = S.poison + st
-        S.poisonDur = S.poisonDur + dur
+        S.poisonDur = Enemy.POISON_DECAY and S.poison or (S.poisonDur + dur)
     end
     local function evoke(o)
         local v = (o.value or 1) + S.focus
@@ -320,12 +321,13 @@ function AI.simulate(game, set, bctx, opts)
         for _, c in ipairs(set) do if (c.attack or 0) > 0 then atks = atks + 1 end end
         if atks >= require("src.core.Game").IMPETUS_ATTACKS then S.str = S.str + 1; S.strGain = S.strGain + 1 end
     end
-    local toxin = math.max(1, (game.classPassiveTier and game:classPassiveTier() or 1)
-        + (require("src.core.Game").ROGUE_POISON_OFFSET or 0)) + (game._toxinBonus or 0)
+    local toxin = game.toxinStacks and game:toxinStacks() or 1
     if game.selectedClass == "rogue" and not game._toxinGrowFiredThisTurn then
         local atks = game._attacksThisTurn or 0
         for _, c in ipairs(set) do if (c.attack or 0) > 0 then atks = atks + 1 end end
-        if atks >= 2 then toxin = toxin + require("src.core.Game").TOXIN_GROWTH end
+        if atks >= 2 and game.toxinStacks then
+            toxin = game:toxinStacks((game._toxinBonus or 0) + require("src.core.Game").TOXIN_GROWTH)
+        end
     end
 
     local onAtkHeal, onAtkDebuffs = 0, {}
@@ -469,7 +471,10 @@ function AI.simulate(game, set, bctx, opts)
         if S.eHp > 0 then
             local dot = (S.poisonDur > 0 and S.poison or 0) + (S.burnDur > 0 and S.burn or 0)
             S.eHp = S.eHp - dot
-            if S.poisonDur > 0 then S.poisonDur = S.poisonDur - 1 end
+            if Enemy.POISON_DECAY then
+                if S.poison > 0 then S.poison = S.poison - 1 end
+                S.poisonDur = S.poison
+            elseif S.poisonDur > 0 then S.poisonDur = S.poisonDur - 1 end
             if S.burnDur > 0 then S.burnDur = S.burnDur - 1 end
         end
         S.killedAfterHit = S.eHp <= 0
@@ -517,7 +522,11 @@ function AI.score(game, set, S, bctx)
         local t = 0
         while hpLeft > 0 and t < 40 do
             local tick = d
-            if pdur > 0 then tick = tick + pst * 0.9; pdur = pdur - 1 end
+            if pdur > 0 then
+                tick = tick + pst * 0.9
+                pdur = pdur - 1
+                if Enemy.POISON_DECAY then pst = pst - 1; pdur = pst end
+            end
             if bdur > 0 then tick = tick + bst * 0.9; bdur = bdur - 1 end
             if hpLeft <= tick then
                 t = t + hpLeft / tick
