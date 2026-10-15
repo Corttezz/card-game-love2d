@@ -191,3 +191,53 @@ shot_enemy_sheet [id]`.
   procedural).
 
 [[enemy_pose_and_scene_anchor]] · [[enemy_pipeline]] · [[lighting_engine]]
+
+## Rei-carniça: corvos = contagem, ícone próprio, mergulho, som mais baixo (14/Out/2026)
+
+> "O grito está muito alto... o ícone de corvos summonados é de outra carta...
+> coloca o número de corvos voando ao redor dele... ataques temáticos" (dono)
+
+- **Corvos ao redor = status `swarm`.** `boss_auras.carrion_king.orbit` tem
+  `countBy = "swarm"`, `max = 10` (teto VISUAL; o pill mostra o número exato).
+  `EnemyRenderer.draw` chama `BossAura.setCountFrom(auraId, enemy)` todo quadro;
+  `BossAura.update` reconcilia o bando (`syncFlock`): corvo novo ENTRA com
+  rasante (vem de fora da tela grande, mergulha abaixo do palco e sobe pra
+  órbita, 0,95 s, um a cada 0,24 s), corvo a mais SAI voando pro alto (0,8 s).
+  Espaçamento uniforme na órbita, suavizado quando o número muda. Primeira
+  leitura (Continuar no meio da luta) e reducedMotion = já em órbita, sem
+  rasante. **Contagem 0 = nenhum corvo**: corvo de ambiente mentiria sobre a
+  revoada; o ambiente fica nas penas e brasas. Corvo maior (`px = 3`) e mais
+  claro que antes, senão não dava pra contar na parede escura.
+- **Ataque temático.** O intent carrega `swarm` (Enemy:rollIntent) e o Game
+  passa `{ swarm = it.swarm }` ao `ER.triggerAttack`. Na Revoada, CADA golpe
+  manda um corvo da órbita (rodízio) mergulhar até o painel do herói
+  (`BossAura.playerTarget`, convertido por `inverseTransformPoint`), crescendo
+  até 2,2× ao chegar na câmera, no MESMO apex do golpe (ATK_WINDUP+ATK_LUNGE),
+  estoura 9 penas e volta na janela do recuo: o beat não alonga. O rei só faz
+  o gesto de comando (`kind = "command"`, avanço de 8 px). Grito de corvo
+  baixo (`diveSound`, 0,22, pitch 0,82, no máximo 1 a cada 1,4 s). Bicada
+  Real (golpe dele): o avanço de sempre + `hitFeathers = 7` penas no painel.
+  Sem corvo na órbita o golpe cai no avanço normal. reducedMotion: nenhum
+  mergulho (só o número). Banquete de Carniça (cura) ficou como estava.
+- **Ícone próprio** `assets/sprites/icons/status_crows.png` (PixelLab
+  `create_image_pro`, referência de estilo `status_poison`, spec em
+  `tools/pixellab_endless_icons.py`, candidato 7). Os 16 candidatos saíram
+  corvo preto em preto (contraste 6 na métrica de `memory/ui_rendering.md`):
+  remapeado pra violeta claro com contorno quase preto (contraste 39, faixa do
+  violeta). Antes o pill usava `claw` (arte de carta). Ainda reaproveitam arte
+  de carta, à espera de decisão: `focus` → `rune`, `eclipse` → `moon`
+  (StatusPill.ICONS); TopBar usa `star`/`scroll`, Menu `star`; o EnemyRenderer
+  cai em `shield_round` só se `armor_shield` faltar.
+- **Som** (média do arquivo + ganho = nível efetivo):
+  `boss_crows_caw` passa-baixa 4,5 kHz ×2 e -3 dB na fonte (média -15,2 →
+  -19,3; energia acima de 4 kHz -24,7 → -32,3) e ganho 0,60 → 0,48: -19,6 →
+  -25,7 dB. `boss_crows_flee` mesmo passa-baixa e -2 dB (-21,1 → -23,9), ganho
+  0,60 → 0,45: -25,5 → -30,8. `boss_reveal_sting` (o grito do cartão, metal +
+  corvos) ganho 0,85 → 0,50: -15,4 → -20,0. Rugido da invocação
+  (`enemyBuffRoar`, só o rei invoca) ganho 0,55 → `Game.SUMMON_ROAR_VOLUME`
+  0,33: -4,4 dB. Ninguém ouviu ainda.
+- Trava: `test_boss_visuals` (0/3/6/teto, entrada, saída, mergulho, reduced,
+  ícone ≠ arte de carta por nome e bytes, volumes). Prova:
+  `CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=x lovec . test_one shot_rei_carnica`
+  → `rei_carnica_*.png` no save dir (0, rasante, 3, 6, teto, mergulho a/b/c,
+  bicada).

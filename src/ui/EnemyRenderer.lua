@@ -237,10 +237,12 @@ function EnemyRenderer.resetRun()
     currentAnimName = nil
 end
 
-function EnemyRenderer.triggerAttack(kind, onApex)
-    attackFx = { t = 0, kind = kind or "attack", onApex = onApex,
-                 apexFired = false }
-    if currentEnemyId and currentAnimName ~= "death" then
+function EnemyRenderer.triggerAttack(kind, onApex, opts)
+    local dove = (opts and opts.swarm and auraId
+        and BossAura.dive(auraId, ATK_WINDUP + ATK_LUNGE, ATK_RECOIL)) or false
+    attackFx = { t = 0, kind = dove and "command" or kind or "attack", onApex = onApex,
+                 apexFired = false, dove = dove }
+    if not dove and currentEnemyId and currentAnimName ~= "death" then
         local clip = nil
         if kind == "strong" and SpriteAnimation.exists(currentEnemyId, "attack_strong", "south") then
             clip = "attack_strong"
@@ -398,6 +400,7 @@ function EnemyRenderer.update(dt)
         if not attackFx.apexFired and attackFx.t >= ATK_WINDUP + ATK_LUNGE then
             attackFx.apexFired = true
             slashTime = SLASH_DUR
+            if not attackFx.dove and auraId then BossAura.hitFeathers(auraId) end
             if attackFx.onApex then attackFx.onApex() end
         end
         if attackFx.t >= ATK_TOTAL then attackFx = nil end
@@ -707,6 +710,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local driftX = EnemyRenderer.poseOffsetX(id, ih * scale,
         love.timer.getTime(), poseSink)
     auraId = (game.enemy.isBoss and BossAura.has(id)) and id or nil
+    if auraId then BossAura.setCountFrom(auraId, game.enemy) end
 
     local footPad = curM.pad
     local frameIdx = hasAnim and currentAnim.currentFrame or 1
@@ -750,8 +754,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local atkDX, atkDY = 0, 0
     if attackFx then
         local strong = attackFx.kind == "strong"
-        local lunge = strong and 70 or 46
-        local drop = strong and 34 or 24
+        local command = attackFx.kind == "command"
+        local lunge = command and 8 or (strong and 70 or 46)
+        local drop = command and 3 or (strong and 34 or 24)
         local p = attackFx.t
         if p < ATK_WINDUP then
             local k = p / ATK_WINDUP

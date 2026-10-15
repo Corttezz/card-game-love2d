@@ -53,7 +53,7 @@ StatusPill.ICONS = {
     frail           = "status_frail",
     poison_self     = "status_poison",
     burn_self       = "status_burn",
-    swarm           = "claw",
+    swarm           = "status_crows",
     eclipse         = "moon",
 }
 

@@ -137,12 +137,188 @@ function BossAura._updateSwarm(w, s, dt)
     end
 end
 
+BossAura.FLOCK = { enter = 0.95, leave = 0.8, stagger = 0.24, maxK = 2.2 }
+
+local HIT_FEATHER = { kind = "feather", px = 3, sway = 6,
+                      color = { 0.16, 0.12, 0.26 }, color2 = { 0.62, 0.54, 0.95 } }
+
+local function flockSpec(spec)
+    local o = spec and spec.orbit
+    if o and o.countBy then return o end
+    return nil
+end
+
+local function hash01(i, k)
+    return (math.sin(i * k) * 43758.5453) % 1
+end
+
+function BossAura.playerTarget()
+    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
+    return math.max(100, W * 0.12), H - math.max(110, H * 0.17)
+end
+
+function BossAura.setCount(id, n)
+    local spec = AURAS[id]
+    if not flockSpec(spec) then return end
+    getState(id).want = math.max(0, math.floor(n or 0))
+end
+
+function BossAura.setCountFrom(id, enemy)
+    local o = flockSpec(AURAS[id])
+    if not o or not enemy or not enemy.getStatusStacks then return end
+    getState(id).want = math.max(0, math.floor(enemy:getStatusStacks(o.countBy) or 0))
+end
+
+function BossAura.flockCount(id)
+    local s = state[id]
+    if not s or not s.flock then return 0 end
+    local n = 0
+    for _, c in ipairs(s.flock) do
+        if c.phase ~= "leave" then n = n + 1 end
+    end
+    return n
+end
+
+function BossAura.flockPhases(id)
+    local out = {}
+    local s = state[id]
+    for _, c in ipairs((s and s.flock) or {}) do
+        out[c.phase] = (out[c.phase] or 0) + 1
+    end
+    return out
+end
+
+local function syncFlock(o, s, dt, still)
+    s.flock = s.flock or {}
+    local fl = s.flock
+    local F = BossAura.FLOCK
+    local want = math.min(o.max or 10, s.want or 0)
+    local instant = still or not s.flockInit
+    s.flockInit = true
+    local alive = {}
+    for _, c in ipairs(fl) do
+        if c.phase ~= "leave" then alive[#alive + 1] = c end
+    end
+    local added = 0
+    while #alive < want do
+        s.serial = (s.serial or 0) + 1
+        local c = { seed = s.serial, h1 = hash01(s.serial, 12.9898),
+                    h2 = hash01(s.serial, 78.233),
+                    side = (s.serial % 2 == 0) and -1 or 1,
+                    phase = instant and "orbit" or "enter",
+                    t = -F.stagger * added, off = nil }
+        added = added + 1
+        fl[#fl + 1] = c
+        alive[#alive + 1] = c
+    end
+    while #alive > want do
+        local c = table.remove(alive)
+        if still then
+            c.phase, c.t = "gone", 0
+        else
+            c.phase, c.t = "leave", 0
+        end
+    end
+    local n = #alive
+    for j, c in ipairs(alive) do
+        local goal = (j - 1) / math.max(1, n) * 6.283
+        if not c.off then
+            c.off = goal
+        else
+            local d = (goal - c.off + math.pi) % 6.283 - math.pi
+            c.off = c.off + d * math.min(1, dt * 2.2)
+        end
+    end
+    if not still then s.rot = (s.rot or 0) + dt * o.speed end
+    for i = #fl, 1, -1 do
+        local c = fl[i]
+        c.t = c.t + dt
+        if c.phase == "enter" and c.t >= F.enter then
+            c.phase, c.t = "orbit", 0
+        elseif c.phase == "dive" then
+            if not c.hit and c.t >= c.apex then
+                c.hit = true
+                local tx, ty = s.tgtX, s.tgtY
+                if tx and #s.front < 90 then
+                    for k = 1, 9 do
+                        local a = -math.pi * (0.1 + 0.8 * love.math.random())
+                        local sp = 14 + love.math.random() * 22
+                        local life = 0.7 + love.math.random() * 0.5
+                        s.front[#s.front + 1] = {
+                            em = HIT_FEATHER, u = tx / s.iw, v = ty / s.ih,
+                            ax = (k - 5) * 1.2, ay = 0,
+                            vx = math.cos(a) * sp, vy = math.sin(a) * sp * 0.6 + 6,
+                            life = life, max = life, ph = love.math.random() * 6.283,
+                            sf = 1.5 + love.math.random() * 1.5, st = 0,
+                        }
+                    end
+                end
+            end
+            if c.t >= c.apex + c.back then c.phase, c.t, c.hit = "orbit", 0, nil end
+        elseif (c.phase == "leave" and c.t >= F.leave) or c.phase == "gone" then
+            table.remove(fl, i)
+        end
+    end
+end
+
+function BossAura.dive(id, apex, back)
+    if reducedMotion() then return false end
+    local s = state[id]
+    if not s or not s.flock then return false end
+    local pool = {}
+    for _, c in ipairs(s.flock) do
+        if c.phase == "orbit" then pool[#pool + 1] = c end
+    end
+    if #pool == 0 then return false end
+    s.diveIdx = ((s.diveIdx or 0) % #pool) + 1
+    local c = pool[s.diveIdx]
+    c.phase, c.t, c.apex, c.back, c.hit = "dive", 0, apex or 0.34, back or 0.42, nil
+    local spec = AURAS[id]
+    local snd = spec.orbit.diveSound
+    if snd and (s.t - (s.lastCaw or -99)) > (snd.gap or 1.2) then
+        s.lastCaw = s.t
+        local a = _G.audioSystem
+        if a and a.loadSound and a.sources and not a.sources[snd.code]
+            and love.filesystem.getInfo(snd.path) then
+            a:loadSound(snd.code, snd.path, { volume = snd.volume })
+        end
+        if a and a.sources and a.sources[snd.code] then
+            a:play(snd.code, { volume = snd.volume,
+                pitch = snd.pitch + (love.math.random() * 2 - 1) * 0.08 })
+        end
+    end
+    return true
+end
+
+function BossAura.hitFeathers(id)
+    local spec = AURAS[id]
+    local s = state[id]
+    if not spec or not spec.hitFeathers or not s or not s.tgtX or reducedMotion() then
+        return
+    end
+    for k = 1, spec.hitFeathers do
+        if #s.front >= 90 then break end
+        local a = -math.pi * love.math.random()
+        local sp = 10 + love.math.random() * 18
+        local life = 0.6 + love.math.random() * 0.5
+        s.front[#s.front + 1] = {
+            em = HIT_FEATHER, u = s.tgtX / s.iw, v = s.tgtY / s.ih,
+            ax = (k - spec.hitFeathers / 2) * 1.5, ay = 0,
+            vx = math.cos(a) * sp, vy = math.sin(a) * sp * 0.6 + 6,
+            life = life, max = life, ph = love.math.random() * 6.283,
+            sf = 1.5 + love.math.random() * 1.5, st = 0,
+        }
+    end
+end
+
 function BossAura.update(dt, id, dying)
     if not id then return end
     local spec = AURAS[id]
     if not spec then return end
     local s = getState(id)
     s.t = s.t + dt
+    local flock = flockSpec(spec)
+    if flock then syncFlock(flock, s, dt, reducedMotion()) end
     if dying then
         s.fade = math.max(0, s.fade - dt / 0.6)
     else
@@ -454,10 +630,82 @@ local function drawSwarm(r, spec, s, front)
     setK(0, 0, 1)
 end
 
+local function crowOrbitPos(o, s, c, still)
+    local ang = (c.off or 0) + (s.rot or 0)
+    local rk = 0.8 + 0.4 * c.h1
+    local sn = math.sin(ang)
+    local u = o.cu + o.ru * rk * math.cos(ang)
+    local v = o.cv + o.rv * rk * sn
+    if not still then v = v + 0.025 * math.sin(s.t * (0.6 + c.h2) + c.seed * 2.1) end
+    return u * (s.iw or 0), v * (s.ih or 0), sn
+end
+
+function BossAura._crowPose(o, s, c, still)
+    local F = BossAura.FLOCK
+    local ox, oy, sn = crowOrbitPos(o, s, c, still)
+    if c.phase == "orbit" then return ox, oy, 1, sn > 0, 1 end
+    local iw, ih = s.iw or 0, s.ih or 0
+    if c.phase == "enter" then
+        if c.t < 0 then return nil end
+        local k = math.min(1, c.t / F.enter)
+        local e = 1 - (1 - k) * (1 - k)
+        local sx, sy = (0.5 + c.side * 1.15) * iw, -0.35 * ih
+        local mx, my = (0.5 + c.side * 0.35) * iw, 0.95 * ih
+        local a1x, a1y = sx + (mx - sx) * e, sy + (my - sy) * e
+        local a2x, a2y = mx + (ox - mx) * e, my + (oy - my) * e
+        return a1x + (a2x - a1x) * e, a1y + (a2y - a1y) * e,
+            1 + (F.maxK - 1) * (1 - e) * (1 - e), true, math.min(1, k * 4)
+    elseif c.phase == "leave" then
+        local k = math.min(1, c.t / F.leave)
+        local e = k * k
+        local ex, ey = (0.5 - c.side * 1.2) * iw, -0.4 * ih
+        return ox + (ex - ox) * e, oy + (ey - oy) * e, 1 + 0.6 * e, sn > 0, 1 - e * 0.6
+    elseif c.phase == "dive" then
+        local tx, ty = s.tgtX or ox, s.tgtY or oy
+        if c.t < c.apex then
+            local k = c.t / c.apex
+            local kk = k * k
+            local lift = math.sin(k * math.pi) * 0.10 * ih
+            return ox + (tx - ox) * kk, oy + (ty - oy) * kk - lift,
+                1 + (F.maxK - 1) * kk, true, 1
+        end
+        local k = math.min(1, (c.t - c.apex) / c.back)
+        local e = 1 - (1 - k) * (1 - k)
+        return tx + (ox - tx) * e, ty + (oy - ty) * e - math.sin(k * math.pi) * 0.18 * ih,
+            F.maxK + (1 - F.maxK) * e, true, 1
+    end
+    return nil
+end
+
+local function drawFlock(r, o, s, front)
+    if not s.flock then return end
+    local still = reducedMotion()
+    local t = still and 0 or s.t
+    for _, c in ipairs(s.flock) do
+        local ax, ay, k, isFront, al = BossAura._crowPose(o, s, c, still)
+        if ax and isFront == front then
+            setK(ax, ay, (o.px or 1) * k)
+            local fr = CROW[CROW_SEQ[(floor(t * ((c.phase == "orbit") and 7 or 12)
+                + c.seed * 1.7) % 4) + 1]]
+            local a = s.fade * (al or 1) * (isFront and 1 or 0.75)
+            for _, d in ipairs(fr) do
+                local cc = d[3] and o.color2 or o.color
+                love.graphics.setColor(cc[1], cc[2], cc[3], a)
+                artRect(r, ax + d[1], ay + d[2], 1, 1)
+            end
+        end
+    end
+    setK(0, 0, 1)
+end
+
 local function orbitBodies(r, spec, s, front)
     drawSwarm(r, spec, s, front)
     setK(0, 0, 1)
-    if spec.orbit then orbitOne(r, spec.orbit, s, front) end
+    if spec.orbit and spec.orbit.countBy then
+        drawFlock(r, spec.orbit, s, front)
+    elseif spec.orbit then
+        orbitOne(r, spec.orbit, s, front)
+    end
     if spec.orbits then
         for _, o in ipairs(spec.orbits) do orbitOne(r, o, s, front) end
     end
@@ -649,6 +897,11 @@ function BossAura.drawBack(id, r)
     s.groundArt = (r.groundY - r.y) / r.scale
     s.ih = r.ih
     s.iw = r.iw
+    if flockSpec(spec) or spec.hitFeathers then
+        local sx, sy = BossAura.playerTarget()
+        local lx, ly = love.graphics.inverseTransformPoint(sx, sy)
+        s.tgtX, s.tgtY = (lx - r.x) / r.scale, (ly - r.y) / r.scale
+    end
     love.graphics.push("all")
     drawFloor(r, spec, s)
     drawCorona(r, spec, s)

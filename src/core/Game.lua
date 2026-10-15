@@ -29,6 +29,8 @@ Game.__index = Game
 
 Game.DEATH_HOLD = 1.1
 
+Game.SUMMON_ROAR_VOLUME = 0.33
+
 function Game:new()
     local instance = setmetatable({}, Game)
     instance.deck = {}
@@ -1077,7 +1079,7 @@ function Game:enemyTurn()
                     ER.triggerAttack(animKind, function()
                         applyHit(damage, it.pierce)
                         landed = true
-                    end)
+                    end, { swarm = it.swarm })
                 else
                     applyHit(damage, it.pierce)
                     landed = true
@@ -1140,7 +1142,7 @@ function Game:enemyTurn()
     if (it.summon or 0) > 0 then
         CombatBeats.push("enemy.summon", beat(function()
             self.enemy:addStatusEffect({ name = "swarm", stacks = it.summon, duration = 999 })
-            Sfx.playWithVariation("enemyBuffRoar", 1.2, 0.08)
+            Sfx.playWithVariation("enemyBuffRoar", 1.2, 0.08, Game.SUMMON_ROAR_VOLUME)
             self:addMessage(I18n.t("enemy_kit.msg.summoned", { value = it.summon },
                 "A revoada cresce: +{value}"), "warning")
             if ER and ER.triggerBuff then ER.triggerBuff() end

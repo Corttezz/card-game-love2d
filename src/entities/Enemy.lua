@@ -174,6 +174,7 @@ function Enemy:rollIntent(player)
         strength = strength or 0,
         heal = m.heal and math.max(1, math.floor(self.maxHealth * m.heal)) or 0,
         summon = m.summon or 0,
+        swarm = m.swarm or nil,
         charge = m.next and true or nil,
         debuffs = debuffList(m),
         vuln = (player and player.hasDebuff and player:hasDebuff("vulnerable")) or nil,

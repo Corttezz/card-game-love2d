@@ -43,6 +43,10 @@ SPECS = {
     "curse_dizimo": ("status_strength",
         "a small leather coin purse tied with a black cord with a red skull "
         "stamp, a few gold coins spilling, tithe tax"),
+    "status_crows": ("status_poison",
+        "a black raven with wings spread wide in flight seen from the front, "
+        "glossy blue-violet sheen on the feathers, one glowing ember-orange "
+        "eye, two smaller ravens flying behind it, a murder of crows"),
     "curse_fome": ("status_weak",
         "an empty cracked wooden bowl with a broken spoon and grey smoke "
         "rising, famine hunger"),

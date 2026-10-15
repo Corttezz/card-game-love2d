@@ -106,6 +106,79 @@ function M.run()
     local _, fade = BossAura._debugCount("tower_lich")
     t:eq("morte esvai a aura", fade, 0)
 
+    local KING = "carrion_king"
+    local o = AURAS[KING].orbit
+    t:eq("rei-carniça: corvos contados pelo status swarm", o.countBy, "swarm")
+    local function fakeEnemy(n)
+        return { getStatusStacks = function(_, name) return name == "swarm" and n or 0 end }
+    end
+    local function settle(n, secs)
+        BossAura.setCountFrom(KING, fakeEnemy(n))
+        for _ = 1, math.floor((secs or 3) * 30) do BossAura.update(1 / 30, KING, false) end
+    end
+    BossAura.reset()
+    settle(0, 1)
+    t:eq("0 corvos invocados = 0 voando", BossAura.flockCount(KING), 0)
+    settle(3)
+    t:eq("3 corvos invocados = 3 voando", BossAura.flockCount(KING), 3)
+    t:eq("...os 3 já em órbita depois do rasante", BossAura.flockPhases(KING).orbit, 3)
+    BossAura.setCountFrom(KING, fakeEnemy(5))
+    BossAura.update(1 / 30, KING, false)
+    t:eq("novos corvos entram com rasante", BossAura.flockPhases(KING).enter, 2)
+    settle(6)
+    t:eq("6 corvos invocados = 6 voando", BossAura.flockCount(KING), 6)
+    settle(o.max + 7)
+    t:eq("teto visual de " .. o.max, BossAura.flockCount(KING), o.max)
+    settle(2, 0.1)
+    t:eq("contagem cai = sobram 2", BossAura.flockCount(KING), 2)
+    t:truthy("...os outros saem voando", (BossAura.flockPhases(KING).leave or 0) > 0)
+    settle(2, 2)
+    t:falsy("...e somem", BossAura.flockPhases(KING).leave)
+    t:truthy("ataque da revoada: um corvo mergulha", BossAura.dive(KING, 0.34, 0.42))
+    t:eq("...em mergulho", BossAura.flockPhases(KING).dive, 1)
+    for _ = 1, 30 do BossAura.update(1 / 30, KING, false) end
+    t:falsy("...e volta pra órbita no fim do beat", BossAura.flockPhases(KING).dive)
+    t:eq("...sem mudar a contagem", BossAura.flockCount(KING), 2)
+    BossAura.reset()
+    settle(0, 0.1)
+    t:falsy("sem corvo invocado o rei não manda ninguém", BossAura.dive(KING, 0.34, 0.42))
+
+    _G.gameSettings = { reducedMotion = true }
+    BossAura.reset()
+    settle(0, 0.1)
+    BossAura.setCountFrom(KING, fakeEnemy(4))
+    BossAura.update(1 / 30, KING, false)
+    t:eq("reducedMotion: 4 corvos aparecem já em órbita", BossAura.flockPhases(KING).orbit, 4)
+    t:falsy("reducedMotion: nenhum mergulho", BossAura.dive(KING, 0.34, 0.42))
+
+    local StatusPill = require("src.ui.StatusPill")
+    local iconName = StatusPill.ICONS.swarm
+    t:eq("pill da revoada tem ícone próprio", iconName, "status_crows")
+    local iconPath = "assets/sprites/icons/" .. tostring(iconName) .. ".png"
+    t:truthy("ícone dos corvos existe", love.filesystem.getInfo(iconPath))
+    local cardIcons = {}
+    for _, art in pairs(require("src.data.card_art")) do
+        if type(art) == "table" and art.icon then cardIcons[art.icon] = true end
+    end
+    t:falsy("ícone dos corvos não é ícone de carta", cardIcons[iconName])
+    local bytes = love.filesystem.read(iconPath)
+    local same = nil
+    for name in pairs(cardIcons) do
+        local p = "assets/sprites/icons/" .. name .. ".png"
+        if love.filesystem.getInfo(p) and love.filesystem.read(p) == bytes then same = name end
+    end
+    t:falsy("ícone dos corvos não copia bytes de carta", same)
+    local okImg, img = pcall(love.graphics.newImage, iconPath)
+    t:truthy("ícone dos corvos carrega 64x64", okImg and img:getWidth() == 64)
+
+    local SOUNDS = require("src.ui.BossCinematic").SOUNDS
+    t:truthy("grito de corvo mais baixo (<= 0.48)", SOUNDS.bossCrowsCaw[2] <= 0.48)
+    t:truthy("corvos fugindo mais baixo (<= 0.45)", SOUNDS.bossCrowsFlee[2] <= 0.45)
+    t:truthy("sting do cartão mais baixo (<= 0.50)", SOUNDS.bossRevealSting[2] <= 0.50)
+    t:truthy("mergulho com grito baixo (<= 0.25)", o.diveSound.volume <= 0.25)
+    t:truthy("rugido da invocação mais baixo",
+        require("src.core.Game").SUMMON_ROAR_VOLUME < 0.55)
+
     _G.gameSettings = { reducedMotion = true }
     BossAura.reset()
     for _ = 1, 60 do BossAura.update(1 / 30, "abyss_tyrant", false) end
