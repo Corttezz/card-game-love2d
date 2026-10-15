@@ -127,7 +127,7 @@ function M.run(startAct)
         Shake.push()
         GameplayScene.draw()
         Shake.pop()
-        local label = string.format("ATO %d/%d  %s   |  1-6 / <- -> troca  I entrada  K morte  ENTER pula  H dano  J volta  ESC sai",
+        local label = string.format("ATO %d/%d  %s   |  1-6 / <- -> troca  I entrada  K morte  C/X corvo  G golpe  ENTER pula  H dano  J volta  ESC sai",
             act, total, tostring(_G.game and _G.game.enemy and _G.game.enemy.spriteId))
         local font = FontManager.getFont(10)
         love.graphics.setFont(font)
@@ -157,6 +157,30 @@ function M.run(startAct)
         end
     end
 
+    local function swarmCount()
+        local e = _G.game and _G.game.enemy
+        if not e then return 0 end
+        for _, st in ipairs(e.statusEffects or {}) do
+            if st.name == "swarm" then return st.stacks or 0 end
+        end
+        return 0
+    end
+    local function setSwarm(n)
+        local e = _G.game and _G.game.enemy
+        if not e then return end
+        n = math.max(0, math.min(12, n))
+        for i = #(e.statusEffects or {}), 1, -1 do
+            if e.statusEffects[i].name == "swarm" then table.remove(e.statusEffects, i) end
+        end
+        if n > 0 then e:addStatusEffect({ name = "swarm", stacks = n, duration = 999 }) end
+    end
+    local baseMount = mount
+    mount = function(a)
+        baseMount(a)
+        if _G.game and _G.game.enemy and _G.game.enemy.spriteId == "carrion_king" then setSwarm(3) end
+    end
+    mount(act)
+
     love.keypressed = function(key)
         local n = tonumber(key)
         if key == "escape" then
@@ -183,6 +207,16 @@ function M.run(startAct)
             require("src.ui.BossCinematic").skip()
         elseif key == "j" then
             mount(act)
+        elseif key == "c" then
+            setSwarm(swarmCount() + 1)
+        elseif key == "x" then
+            setSwarm(swarmCount() - 1)
+        elseif key == "g" then
+            if swarmCount() > 0 then
+                EnemyRenderer.triggerAttack("multi", nil, { swarm = true })
+            else
+                EnemyRenderer.triggerAttack("attack", nil, {})
+            end
         end
     end
     love.mousepressed = function() end
