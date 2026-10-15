@@ -18,10 +18,11 @@ local POSES = {
 local T = 1.3
 local INSET = 3
 
-local function warp(px, py, w, h, mx, my)
+local function warp(px, py, w, h, mx, my, hover)
+    hover = hover or 1
     local cx, cy = px / w - 0.5, py / h - 0.5
-    local press = -(cx * mx + cy * my) * 0.12
-    local wobble = math.sin(T * 2 + cx * 4) * 0.005 + math.cos(T * 1.7 + cy * 4) * 0.005
+    local press = -(cx * mx + cy * my) * 0.12 * hover
+    local wobble = (math.sin(T * 2 + cx * 4) * 0.005 + math.cos(T * 1.7 + cy * 4) * 0.005) * hover
     local k = press + wobble
     return px + cx * w * k, py + cy * h * k
 end
@@ -67,6 +68,61 @@ local function cardAlphaCount(data)
     return n
 end
 
+local function outline(w, h, mx, my, hover)
+    local pts = {}
+    local function add(px, py)
+        local qx, qy = warp(px, py, w, h, mx, my, hover)
+        pts[#pts + 1] = { qx, qy }
+    end
+    for c = 0, 8 do add(w * c / 8, 0) end
+    for r = 1, 12 do add(w, h * r / 12) end
+    for c = 7, 0, -1 do add(w * c / 8, h) end
+    for r = 11, 1, -1 do add(0, h * r / 12) end
+    return pts
+end
+
+local function segDist(px, py, ax, ay, bx, by)
+    local dx, dy = bx - ax, by - ay
+    local l2 = dx * dx + dy * dy
+    local k = l2 > 0 and math.max(0, math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) or 0
+    local ex, ey = ax + dx * k - px, ay + dy * k - py
+    return math.sqrt(ex * ex + ey * ey)
+end
+
+local function outsideBy(pts, px, py)
+    local inside, best = false, math.huge
+    local n = #pts
+    for i = 1, n do
+        local a, b = pts[i], pts[(i % n) + 1]
+        if ((a[2] > py) ~= (b[2] > py)) and
+            (px < (b[1] - a[1]) * (py - a[2]) / (b[2] - a[2]) + a[1]) then
+            inside = not inside
+        end
+        best = math.min(best, segDist(px, py, a[1], a[2], b[1], b[2]))
+    end
+    return inside and 0 or best
+end
+
+local function lightOutside(data, rect, w, h, mx, my, hover)
+    local pts = outline(w, h, mx, my, hover)
+    local n, sample = 0, nil
+    local x0, y0 = math.floor(rect.x) - 14, math.floor(rect.y) - 14
+    for y = y0, y0 + h + 28 do
+        for x = x0, x0 + w + 28 do
+            if x >= 0 and y >= 0 and x < data:getWidth() and y < data:getHeight() then
+                local r, g, b, a = data:getPixel(x, y)
+                if a > 0.02 and math.max(r, g, b) > 0.12 then
+                    if outsideBy(pts, x + 0.5 - rect.x, y + 0.5 - rect.y) > 1.5 then
+                        n = n + 1
+                        sample = sample or string.format("(%d,%d)", x - math.floor(rect.x), y - math.floor(rect.y))
+                    end
+                end
+            end
+        end
+    end
+    return n, sample
+end
+
 function M.run()
     local t = TK.new("hover de rara/lendaria nao come a borda da carta")
     TK.bootstrap()
@@ -82,8 +138,11 @@ function M.run()
             local probe = db:createCardInstance(db:getCard(entry.id))
             t:truthy(entry.id .. " passa pelo canvas offscreen (holo/glow/edition)",
                 entry.edition ~= nil or probe.visualEffect == "holo" or probe.visualEffect == "glow")
-            local _, restData = render(db, entry, nil)
+            local restInst, restData = render(db, entry, nil)
             local restCount = cardAlphaCount(restData)
+            local rw, rh = restInst.image:getWidth(), restInst.image:getHeight()
+            local rlit, rwhere = lightOutside(restData, restInst.lastDrawRect, rw, rh, 0, 0, 0)
+            t:eq(entry.id .. " em repouso: nada claro fora da carta " .. tostring(rwhere or ""), rlit, 0)
             for _, pose in ipairs(POSES) do
                 local inst, data = render(db, entry, pose)
                 local rect = inst.lastDrawRect
@@ -116,6 +175,8 @@ function M.run()
                 end
                 local label = string.format("%s hover (%d,%d)", entry.id, pose[1], pose[2])
                 t:eq(label .. ": borda inteira visivel " .. table.concat(missing, " "), bad, 0)
+                local lit, where = lightOutside(data, rect, w, h, pose[1], pose[2], 1)
+                t:eq(label .. ": nada claro fora da carta " .. tostring(where or ""), lit, 0)
                 local count = cardAlphaCount(data)
                 t:truthy(string.format("%s: area opaca %d >= 95%% da crua %d", label, count, restCount),
                     count >= restCount * 0.95)
