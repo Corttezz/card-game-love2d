@@ -64,6 +64,20 @@ function M.run(filter)
             files[#files + 1] = { nome = item, caminho = DIR .. "/" .. item }
         end
     end
+    local SUB = DIR .. "/boss"
+    if love.filesystem.getInfo(SUB) then
+        for _, id in ipairs(love.filesystem.getDirectoryItems(SUB)) do
+            local pasta = SUB .. "/" .. id
+            if love.filesystem.getInfo(pasta, "directory") then
+                for _, item in ipairs(love.filesystem.getDirectoryItems(pasta)) do
+                    if item:match("%.mp3$") then
+                        files[#files + 1] = { nome = "boss/" .. id .. "/" .. item,
+                                              caminho = pasta .. "/" .. item, grupo = "boss/" .. id }
+                    end
+                end
+            end
+        end
+    end
     table.sort(files, function(a, b) return a.nome < b.nome end)
 
     if love.filesystem.getInfo("audio/music.mp3") then
@@ -73,11 +87,12 @@ function M.run(filter)
 
     print("")
     print("=== EMENDA DE LOOP ===")
-    print(string.format("%-22s %6s %8s %9s %9s %7s %8s %8s",
+    print(string.format("%-28s %6s %8s %9s %9s %7s %8s %8s",
         "arquivo", "dur", "salto", "rms ini", "rms fim", "razao", "dc", "brilho"))
 
     local shown, warned = 0, 0
     local bright = {}
+    local grupos = {}
     for _, entrada in ipairs(files) do
         local f = entrada.nome
         if (not filter) or f:find(filter, 1, true) then
@@ -89,17 +104,26 @@ function M.run(filter)
                 if math.abs(r.dc) > 0.01 then flag = flag .. " DC!" end
                 if r.brightness < 0.15 then flag = flag .. " RETUMBO!" end
                 if flag ~= "" then warned = warned + 1 end
-                print(string.format("%-22s %5.2fs %8.4f %9.4f %9.4f %6.2fx %8.4f %6.2fk%s",
+                print(string.format("%-28s %5.2fs %8.4f %9.4f %9.4f %6.2fx %8.4f %6.2fk%s",
                     f, r.dur, r.jump, r.rmsHead, r.rmsTail, r.ratio, r.dc,
                     r.brightness, flag))
-                bright[#bright + 1] = { f = f, b = r.brightness }
+                if entrada.grupo then
+                    grupos[entrada.grupo] = grupos[entrada.grupo] or { soma = 0, n = 0 }
+                    grupos[entrada.grupo].soma = grupos[entrada.grupo].soma + r.brightness
+                    grupos[entrada.grupo].n = grupos[entrada.grupo].n + 1
+                else
+                    bright[#bright + 1] = { f = f, b = r.brightness }
+                end
                 shown = shown + 1
             else
-                print(string.format("%-22s  FALHOU AO DECODIFICAR: %s", f, err))
+                print(string.format("%-28s  FALHOU AO DECODIFICAR: %s", f, err))
             end
         end
     end
 
+    for g, v in pairs(grupos) do
+        bright[#bright + 1] = { f = g .. " (media)", b = v.soma / v.n }
+    end
     table.sort(bright, function(a, b) return a.b < b.b end)
     local colisoes = 0
     for k = 2, #bright do

@@ -259,7 +259,9 @@ pura; `apply` só executa):
   stopMusic) + `test_resume`. `love . boss_rooms N` segue a mesma regra
   (chama `apply` por quadro; I = silêncio até o fim da entrada).
 
-### As 6 faixas longas: BLOQUEADAS (14/Out/2026)
+### Resolvido em 15/Out/2026: trilha do chefe EM SEÇÕES (ver seção no fim)
+
+### As 6 faixas longas: BLOQUEADAS (14/Out/2026, histórico)
 
 Pedido: 2 a 3 min por chefe, com seções e camadas (nada de loop de 28 s).
 Nenhum caminho desta máquina gera isso:
@@ -279,3 +281,179 @@ monges, cordas sujas), lich (órgão, cravo dissonante, coro etéreo), tirano
 (sinos de gelo, cordas em tremolo, coro feminino frio), colosso (percussão
 orgânica, drone grave/didgeridoo, metais abafados), rainha (coro grande,
 órgão, cordas épicas, referência Radagon/Elden Beast).
+
+## Trilha do chefe EM SEÇÕES (15/Out/2026, frente trilha-chefes)
+
+Pedido do dono: *"sons muito bem trabalhados para cada seção de boss... não
+quero esses sons repetitivos e lúdicos... pode utilizar o Eleven Labs... com
+a maior qualidade, aproveitando ainda assim esse plano gratuito."*
+
+Um loop de 20 s repetido É o monótono. Saída: cada chefe vira uma trilha de
+**5 seções** no MESMO tom, BPM e banda, cada uma com papel diferente:
+
+| seção | papel |
+|---|---|
+| `a` | tema (sempre abre a luta) |
+| `b` | desenvolvimento: OUTRO instrumento carrega a melodia |
+| `c` | ponte tensa (percussão cai, cromatismo, suspense) |
+| `f1`, `f2` | fase final (toda a banda / dobra de andamento), só com o chefe a <= 50% |
+
+Arquivos: `audio/music/boss/<id>/<seção>.mp3`, 20 s, 160 kbps.
+
+### Tocador: `src/systems/MusicSections.lua`
+
+- `scan(BOSS_TRACKS)` no `MusicDirector.registerTracks` só olha o disco;
+  as fontes (stream) carregam na 1ª vez que o chefe toca.
+- Cada seção é uma faixa comum do AudioManager com código
+  `<códigoDoChefe>:<seção>` (ex. `musicBossTowerLich:b`). A troca é um
+  `playMusic` com crossfade de `XFADE = 1,5 s`, então o "nunca duas músicas"
+  é o do AudioManager (`stopOrphans` + crossfade), sem código novo nele.
+- Troca quando a fonte passa de `duração - XFADE - LEAD` (o `tell()`), ou se
+  ela já deu a volta (quadro travado). Próxima seção: sorteio (RNG próprio,
+  cosmético) SEM repetir a anterior; fase 1 = `a,b,c`, fase final = `f1,f2`.
+- `hpFraction()` lê `_G.game.enemy` (só `isBoss`; probe `hpProbe` nos
+  testes). Ao cruzar 50% a troca vai para a final na PRÓXIMA BARRA
+  (`240 / BPM`), não no meio do compasso. A final é TRAVADA por luta:
+  regeneração (colosso) não volta ao tema. Continuar já abaixo da metade
+  abre direto na final.
+- Gancho único no `MusicDirector.apply`: `MusicSections.has(wanted)` antes
+  do `resolve`; `_current` passa a ser o código da SEÇÃO que toca (o
+  `check_music` e o espelho continuam concordando com o AudioManager).
+  `MusicSections.trackOf(code)` devolve o código do chefe a partir da seção.
+- Sem a pasta do chefe: tudo como antes (faixa única `boss-<id>.mp3` ou a
+  genérica `musicBoss`). Seções têm PRECEDÊNCIA sobre a faixa única (a
+  rainha deixou de tocar o placeholder `music-boss-eclipse.mp3`).
+- Trava: `test_music` (`M.sections`): 6 chefes com >= 3 seções, final e
+  BPM; 200 trocas sem repetir em cada fase; AudioManager real com master 0:
+  abre em `a`, 7 seções encadeadas sem repetir, pico de 2 faixas no
+  crossfade e 1 assentado, espera a barra, sobe para a final, não volta ao
+  regenerar, ato novo assume sem seção por baixo, Continuar < 50% abre na
+  final. O teste empurra o `tell()` com `seek` (no headless o laço do teste
+  corre mais rápido que o áudio real).
+
+### Geração: custo medido e orçamento
+
+- `sound-generation`, `duration_seconds: 22`, `prompt_influence: 0.5`,
+  `loop: true`. **Custo: 220 créditos por geração de 22 s (10 por
+  segundo)**, medido pelo `character_count` do `/v1/user/subscription`. O
+  contador ATRASA: mostra +0 em várias chamadas e salta depois (+1540 de
+  uma vez); conte pela soma, não chamada a chamada.
+- 34 gerações: 30 seções + 4 refeitas (`carrion_king/a`, `tower_lich/a`,
+  `winter_monarch/a` e `c`, que saíram com timbre fora da família).
+  Créditos: 747 -> **8227 de 10000** usados; restam **1773** no mês
+  (reserva de 10% respeitada).
+- Erro vem como JSON gravado por cima do mp3: o script aceita só arquivo
+  com cabeçalho MP3 (`ID3` ou sync `FF Ex`) e > 20 kB.
+
+### Prompts (ASCII, <= 450 caracteres)
+
+Texto = `<cabeça> <banda> <corpo> Full mix, loud and close, no fade.`
+Exceções: o `a` do tirano, do colosso e da rainha foi `<cabeça> <corpo>
+<rodapé>` (sem a linha de banda, o corpo já a descreve); `b` e `f1` do
+monarca usaram a banda antiga (sem "double basses, timpani").
+
+- **carrion_king** (ato 1, corvos): `Dark medieval boss battle music,
+  instrumental loop, 96 BPM, C minor.` Banda: `detuned church organ, low
+  male monk choir humming, scraping low strings, bone clacks, deep frame
+  drum`. a: órgão na melodia sobre ostinato de cordas; b: rabeca áspera na
+  melodia, coro responde; c: tambor vira batida de coração, tremolo
+  cromático, cluster dissonante no órgão, estalos secos "de bico"; f1:
+  tudo fortíssimo; f2: tambores em dobro, rabeca e órgão em pergunta e
+  resposta, coro em staccato.
+- **tower_lich** (ato 2, runas): `Gothic dark fantasy boss battle music,
+  instrumental loop, 84 BPM, E harmonic minor.` Banda: `harpsichord, cold
+  violins, tubular bells, ethereal wordless choir, pizzicato basses,
+  timpani`. a: violinos na melodia sobre arpejo de cravo; b: sinos na
+  melodia, contracanto de violoncelo; c: ritual, coro em encantação sobre
+  drone de órgão, pizzicato de relógio; f1: violinos em oitavas
+  fortíssimo; f2: spiccato e cravo em uníssono, metais em colcheias.
+- **abyss_tyrant** (ato 3, correntes e fogo): `Epic infernal boss battle
+  music, instrumental loop, 120 BPM, D minor.` Banda: `taiko war drums, low
+  brass horns and trombones, tuba, anvil hits, rattling iron chains as
+  percussion, low strings`. a: metais graves na melodia; b: cordas graves
+  na melodia, trombones respondem; c: forja, tuba e cordas em linha
+  cromática, correntes e bigorna; f1: naipe de metais fortíssimo; f2:
+  tambores em dobro, metais sincopados.
+- **winter_monarch** (ato 4, geada): `Icy dark fantasy boss battle music,
+  instrumental loop, 108 BPM, B minor.` Banda: `celesta, tremolo strings,
+  glass bells, cold wordless female choir, low cellos and double basses,
+  timpani, light snare`. a: celesta na melodia; b: coro feminino na
+  melodia; c: violoncelo solo sobre contrabaixos, celesta "pingando gelo";
+  f1: cordas e coro fortíssimo, caixa rufando; f2: spiccato e celesta em
+  uníssono.
+- **rot_colossus** (ato 5, raízes): `Primal swamp boss battle music,
+  instrumental loop, 78 BPM, F minor.` Banda: `wooden log drums,
+  didgeridoo drone, muted low horns, bass clarinet, bowed double bass,
+  shaker rattles`. a: clarone na melodia sobre didgeridoo; b: trompas na
+  melodia, clarone em contracanto; c: batida manca, contrabaixo cromático,
+  chocalhos molhados e madeira rangendo; f1: trompas fortíssimo e tons
+  tribais; f2: tambores em dobro, pergunta e resposta.
+- **eclipse_queen** (ato 6, lua): `Majestic dark fantasy final boss battle
+  music, instrumental loop, 66 BPM, G minor.` Banda: `harpsichord,
+  wordless female choir, concert harp, cathedral organ, full strings,
+  timpani`. a: coro na melodia; b: violinos na melodia, coro responde; c:
+  o eclipse, voz feminina solo em lamento sobre drone de órgão, harpa em
+  notas caindo; f1: coro e cordas fortíssimo, órgão rugindo; f2: cordas e
+  cravo em uníssono, acordes enormes do coro.
+
+Cada corpo diz: quem carrega a melodia em primeiro plano, quem acompanha,
+o que a percussão faz e o papel da seção. O modelo responde ao ARRANJO
+(lição 0); os corpos em inglês seguem esse molde, 300 a 446 caracteres.
+
+### Pós-processamento (por seção)
+
+1. `highpass=f=25` + `loudnorm` em DUAS passadas (`linear=true`), alvo por
+   papel: `a`/`b` -16, `c` -17, `f1`/`f2` -15 LUFS (a final soa mais cheia
+   de propósito; as faixas de chefe antigas medem -16,0/-16,3). Medido no
+   arquivo final: a/b -16,4 a -16,9; c -17,4 a -17,9; f -15,3 a -15,9.
+   Pico real (astats) <= -1,9 dBFS. Volume 0.6 no registro, igual às outras.
+2. `alimiter=limit=0.84:latency=1` ANTES da emenda. **Armadilha nova:**
+   limitador DEPOIS do `acrossfade` (ou sem `latency=1`) atrasa o sinal e
+   o `check_loop` acusa SALTO de 0,1 a 0,27 em 17 de 30 arquivos.
+3. Emenda pelo corte de RMS igual (janelas de 400 ms) entre 2,2 s e 9,0 s,
+   desempatando pela amostra mais perto de zero no corte (só com RMS, a
+   `eclipse_queen/f1` ficou com salto 0,0503). Cortes de 2,6 a 9,0 s.
+4. `love . check_loop boss/`: 30 seções, **0 avisos** (salto, desnível, DC).
+
+### Medições (ouvir não dá: medido)
+
+Script numpy (scratchpad, não versionado): pulso por autocorrelação do
+fluxo espectral, cromagrama 60 Hz a 2 kHz (tonalidade) e perfil de 24
+bandas log de 40 Hz a 10 kHz (timbre, piso -3).
+
+- **Andamento:** nas 30 seções o BPM pedido (ou o dobro/metade) é o pulso
+  mais forte do arquivo (escore 0,94 a 1,38; 1,00 = o mais forte). As
+  seções de um chefe andam juntas.
+- **Mesma música dentro do chefe, outra entre chefes** (cromagrama: cos
+  médio entre irmãs × contra os outros chefes; timbre: distância média):
+
+| chefe | tonal dentro | tonal fora | timbre dentro | timbre fora |
+|---|---|---|---|---|
+| abyss_tyrant | 0,986 | 0,887 | 0,97 | 3,09 |
+| carrion_king | 0,919 | 0,841 | 2,63 | 3,19 |
+| eclipse_queen | 0,883 | 0,822 | 2,19 | 3,85 |
+| rot_colossus | 0,922 | 0,812 | 2,27 | 4,36 |
+| tower_lich | 0,863 | 0,835 | 2,22 | 3,13 |
+| winter_monarch | 0,852 | 0,848 | 2,60 | 3,12 |
+
+  O monarca é o mais solto na tonalidade (celesta e sinos de vidro dão
+  cromagrama ruidoso), mas o timbre o separa. As 4 refeitas existem por
+  causa desta tabela: na 1ª leva o `a` do rei, do lich e do monarca
+  ficaram até 4,5 de timbre das irmãs (mais brilhantes; prompt sem a
+  linha de banda).
+- **Contra as faixas de ato:** distância de timbre de cada chefe à faixa
+  do PRÓPRIO ato: rei/act1 4,70, lich/act2 4,19, tirano/act3 4,66,
+  monarca/act4 6,35, colosso/act5 5,12, rainha/act6 3,34; sempre maior que
+  a distância entre seções do mesmo chefe. O mais perto de algo é o tirano
+  da genérica `music-boss` (1,23: as duas são tambores de guerra e metais),
+  que agora só toca como fallback.
+- O `check_loop` (1 dimensão, brilho por cruzamento de zero) agrupa as
+  seções por chefe (média) e ainda junta 4 pares de chefes vizinhos em
+  brilho; o perfil de 24 bandas acima os separa. Brilho médio: tirano
+  0,45k, rei 0,49k, colosso 0,52k, lich 1,00k, rainha 1,03k, monarca 1,06k.
+
+### Licença
+
+Plano FREE do ElevenLabs: **sem uso comercial**. As 30 seções precisam ser
+regeradas com plano pago antes da venda (mesmos prompts, mesmo
+pós-processamento). Listado em [[known_gaps]] 0c.

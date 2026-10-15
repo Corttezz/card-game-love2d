@@ -245,8 +245,10 @@ function M.run()
         t:eq("entrada do chefe: segue o silencio", audio2.currentMusic, nil)
         hall, intro = true, false
         MD.apply("playing", bossRun, "boss")
-        local esperado = audio2.sources["musicBossCarrionKing"] and "musicBossCarrionKing" or MD.GENERIC_BOSS
-        t:eq("fim da entrada: entra a faixa do chefe", audio2.currentMusic, esperado)
+        local MSx = require("src.systems.MusicSections")
+        local esperado = (audio2.sources["musicBossCarrionKing"] or MSx.has("musicBossCarrionKing"))
+            and "musicBossCarrionKing" or MD.GENERIC_BOSS
+        t:eq("fim da entrada: entra a faixa do chefe", MSx.trackOf(audio2.currentMusic), esperado)
 
         MD.apply("mapSelection", forkRun, nil)
         for _ = 1, 30 do audio2:update(1 / 60) end
@@ -272,7 +274,171 @@ function M.run()
         t:truthy("audio indisponivel: espelho nao pode ser medido aqui", true)
     end
 
+    M.sections(t)
+
     return t:done()
+end
+
+function M.sections(t)
+    local MS = require("src.systems.MusicSections")
+    local Enemies = require("src.data.enemies")
+    MS.scan(MD.BOSS_TRACKS)
+    MS._reset()
+
+    for act = 1, Config.TotalActs do
+        local id = Enemies.ROSTER[act].boss[1]
+        local code = MD.BOSS_TRACKS[id]
+        local secs = MS.sections(code)
+        t:truthy("trilha em secoes de " .. id .. ": 3 ou mais secoes (" .. table.concat(secs, ",") .. ")", #secs >= 3)
+        local temFinal = false
+        for _, s in ipairs(secs) do
+            if MS.isFinal(s) then temFinal = true end
+            t:truthy(id .. "/" .. s .. ".mp3 existe", love.filesystem.getInfo(MS.fileFor(id, s)) ~= nil)
+        end
+        t:truthy(id .. " tem secao de fase final", temFinal)
+        t:truthy(id .. " tem BPM declarado", MS.BPM[id] ~= nil)
+        t:eq(id .. " abre pelo tema", MS.first(code, false), MS.OPENING)
+        t:truthy(id .. " abre na final se o Continuar ja vem abaixo da metade", MS.isFinal(MS.first(code, true)))
+
+        for _, final in ipairs({ false, true }) do
+            local prev = MS.first(code, final)
+            local repetiu, saiuDaFase = false, false
+            for _ = 1, 200 do
+                local nxt = MS.nextSection(code, prev, final)
+                if nxt == prev then repetiu = true end
+                if final and not MS.isFinal(nxt) then saiuDaFase = true end
+                prev = nxt
+            end
+            t:falsy(id .. ": 200 trocas sem repetir a mesma secao seguida (final=" .. tostring(final) .. ")", repetiu)
+            if final then t:falsy(id .. ": depois da metade so toca a fase final", saiuDaFase) end
+        end
+    end
+
+    local prevScan = MD.BOSS_TRACKS
+    MS.scan({ chefe_sem_arquivo = "musicBossNinguem" })
+    t:falsy("chefe sem pasta de secoes nao tem trilha em secoes", MS.has("musicBossNinguem"))
+    t:eq("e o diretor segue com a faixa unica / generica", MD.pick("playing",
+        { actNumber = 1, currentNode = { type = "boss", enemyId = "chefe_inexistente" } }, "boss", true), MD.GENERIC_BOSS)
+    MS.scan(prevScan)
+
+    local AM = require("engine.AudioManager")
+    local audio = AM:new()
+    if not audio:isAudioAvailable() then
+        t:truthy("audio indisponivel: tocador de secoes nao pode ser medido aqui", true)
+        return
+    end
+    local prevAudio = _G.audioSystem
+    _G.audioSystem = audio
+    audio:setGroupVolume("master", 0)
+    MD.registerTracks(audio)
+    audio:loadSound("menuMusic", "audio/music.mp3", {
+        volume = 0.6, group = "music", stream = true, loop = true })
+
+    local function tocando()
+        local n = 0
+        for _, e in pairs(audio.sources) do
+            if e.group == "music" and e.template and e.template:isPlaying() then n = n + 1 end
+        end
+        return n
+    end
+
+    local prevHall, prevIntro, prevHp = MD.hallProbe, MD.introProbe, MS.hpProbe
+    MD.hallProbe = function() return true end
+    MD.introProbe = function() return false end
+    local hp = 1.0
+    MS.hpProbe = function() return hp end
+    MS._reset()
+
+    local code = MD.BOSS_TRACKS.tower_lich
+    local run = { actNumber = 2, currentNode = { type = "boss", enemyId = "tower_lich" } }
+    audio:playMusic("musicAct2", { fadeDuration = 1 })
+    for _ = 1, 90 do audio:update(1 / 60) end
+
+    MD.apply("playing", run, "boss")
+    t:eq("entrada do lich: comeca pela secao a", MS.sectionOf(audio.currentMusic), "a")
+    t:eq("a secao e da trilha do lich", MS.trackOf(audio.currentMusic), code)
+    t:eq("o espelho do diretor aponta a secao que toca", MD._current, audio.currentMusic)
+
+    local function avancar(segundos)
+        local passos = math.ceil(segundos * 30)
+        local maxN = 0
+        for _ = 1, passos do
+            audio:update(1 / 30)
+            MD.apply("playing", run, "boss")
+            maxN = math.max(maxN, tocando())
+        end
+        return maxN
+    end
+
+    local function pularParaFim(margem)
+        local src = audio.sources[audio.currentMusic].template
+        src:seek(math.max(0, src:getDuration() - margem))
+    end
+
+    local ordem = { MS.sectionOf(audio.currentMusic) }
+    local picoGeral = avancar(1.5)
+    for _ = 1, 6 do
+        pularParaFim(1.0)
+        picoGeral = math.max(picoGeral, avancar(2.5))
+        ordem[#ordem + 1] = MS.sectionOf(audio.currentMusic)
+    end
+    local repetiu = false
+    for i = 2, #ordem do if ordem[i] == ordem[i - 1] then repetiu = true end end
+    t:falsy("tocador real: secoes encadeadas sem repetir (" .. table.concat(ordem, ">") .. ")", repetiu)
+    t:truthy("tocador real: troca de secao a cada fim (" .. #ordem .. " secoes)", #ordem == 7)
+    t:truthy("tocador real: no maximo 2 faixas durante o crossfade (pico " .. picoGeral .. ")", picoGeral <= 2)
+    avancar(2.5)
+    t:eq("tocador real: assentado, UMA faixa so", tocando(), 1)
+    for _, s in ipairs(ordem) do
+        t:falsy("antes da metade nao toca a final (" .. s .. ")", MS.isFinal(s))
+    end
+
+    local antes = MS.sectionOf(audio.currentMusic)
+    hp = 0.49
+    local bar = 240 / MS.BPM.tower_lich
+    local srcA = audio.sources[audio.currentMusic].template
+    srcA:seek(0.1)
+    avancar(0.1)
+    t:eq("abaixo da metade: espera a barra, nao corta no meio do compasso",
+        MS.sectionOf(audio.currentMusic), antes)
+    srcA:seek(bar + 0.05)
+    avancar(MS.XFADE + 0.3)
+    t:truthy("abaixo da metade: sobe para a final na proxima barra (" .. tostring(antes) .. " -> "
+        .. tostring(MS.sectionOf(audio.currentMusic)) .. ")", MS.isFinal(MS.sectionOf(audio.currentMusic)))
+    t:eq("e uma faixa so depois da subida", tocando(), 1)
+
+    hp = 0.9
+    local finais = {}
+    for _ = 1, 4 do
+        pularParaFim(1.0)
+        avancar(2.5)
+        finais[#finais + 1] = MS.sectionOf(audio.currentMusic)
+    end
+    local voltou = false
+    for _, s in ipairs(finais) do if not MS.isFinal(s) then voltou = true end end
+    t:falsy("regenerar acima da metade nao volta ao tema (" .. table.concat(finais, ">") .. ")", voltou)
+
+    for _ = 1, 200 do
+        MD.apply("mapSelection", { actNumber = 3, pendingNodes = { { type = "battle" } } }, nil)
+        audio:update(1 / 60)
+    end
+    t:eq("saindo do chefe, o ato novo assume", audio.currentMusic, "musicAct3")
+    t:eq("e nenhuma secao fica tocando por baixo", tocando(), 1)
+
+    MS._reset()
+    hp = 0.3
+    MD.apply("playing", run, "boss")
+    t:truthy("Continuar abaixo da metade abre direto na final", MS.isFinal(MS.sectionOf(audio.currentMusic)))
+    for _ = 1, 200 do audio:update(1 / 60) end
+    t:eq("e so ela toca", tocando(), 1)
+
+    MD.hallProbe, MD.introProbe, MS.hpProbe = prevHall, prevIntro, prevHp
+    audio:stopMusic()
+    for _, e in pairs(audio.sources) do
+        if e.group == "music" and e.template then e.template:stop() end
+    end
+    MS._reset()
+    _G.audioSystem = prevAudio
 end
 
 return M

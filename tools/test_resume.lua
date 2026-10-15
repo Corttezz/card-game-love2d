@@ -105,10 +105,11 @@ function M.run()
         MusicDirector.introProbe = function() return false end
         MusicDirector.apply("playing", runB, runB.currentNode.type)
         MusicDirector.hallProbe, MusicDirector.introProbe = prevHall, prevIntro
-        local trilha = audio.sources[MusicDirector.BOSS_TRACKS.tower_lich]
+        local trilha = (audio.sources[MusicDirector.BOSS_TRACKS.tower_lich]
+            or require("src.systems.MusicSections").has(MusicDirector.BOSS_TRACKS.tower_lich))
             and MusicDirector.BOSS_TRACKS.tower_lich or MusicDirector.GENERIC_BOSS
         t:eq("Continuar num chefe troca a música do menu pela do chefe",
-            audio.currentMusic, trilha)
+            require("src.systems.MusicSections").trackOf(audio.currentMusic), trilha)
 
         audio:stopMusic()
         _G.audioSystem = prevAudio

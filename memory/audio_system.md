@@ -24,6 +24,8 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 - `getStatus()` / `printStatus()` / `isAudioAvailable()`.
 - Compat: `loadBackgroundMusic`, `playBackgroundMusic`, `stopBackgroundMusic`.
 
+**Trilha em seções (chefes, 15/Out/2026):** `src/systems/MusicSections.lua` encadeia várias faixas de um mesmo chefe chamando `playMusic` por seção (código `<chefe>:<seção>`); o AudioManager não sabe de seções e não mudou. Ver [[music_generation]].
+
 **Regra de ouro:** use `Sfx.play("name")` (de `src/systems/Sfx.lua`). Sfx é facade único — também expõe `Sfx.playMusic`, `Sfx.stopMusic`, `Sfx.setMusicVolume/setSfxVolume/setMasterVolume`. AudioManager é no-op gracioso se áudio indisponível (WSL2 sem driver).
 
 **Persistência:** volumes / fullscreen / CRT / locale são salvos via `SaveManager.saveSettings(...)` quando alteram em `SettingsMenu`. `main.lua:love.load` chama `SaveManager.loadSettings()` ANTES de `AudioManager:new()` e passa os volumes no construtor.

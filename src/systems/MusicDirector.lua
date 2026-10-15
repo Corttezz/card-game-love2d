@@ -50,6 +50,7 @@ function MusicDirector.registerTracks(audioSystem)
     for id, code in pairs(MusicDirector.BOSS_TRACKS) do
         load(code, "audio/music/" .. MusicDirector.bossFile(id))
     end
+    require("src.systems.MusicSections").scan(MusicDirector.BOSS_TRACKS)
     return loaded
 end
 
@@ -211,6 +212,16 @@ function MusicDirector.apply(state, run, nodeType)
         if tocandoAgora() then Sfx.silenceMusic(MusicDirector.FADE_SILENCE) end
         MusicDirector._current = MusicDirector.SILENCE
         return
+    end
+
+    local Sections = require("src.systems.MusicSections")
+    if Sections.has(wanted) then
+        local tocando = Sections.drive(wanted, FADE_FAST)
+        if tocando then
+            MusicDirector._lastWanted = wanted
+            MusicDirector._current = tocando
+            return
+        end
     end
 
     local code = resolve(wanted)
