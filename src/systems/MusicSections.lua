@@ -11,14 +11,11 @@ MusicSections.XFADE = 1.5
 MusicSections.LEAD = 0.25
 MusicSections.VOLUME = 0.6
 
-MusicSections.BPM = {
-    carrion_king = 96,
-    tower_lich = 84,
-    abyss_tyrant = 120,
-    winter_monarch = 108,
-    rot_colossus = 78,
-    eclipse_queen = 66,
-}
+MusicSections.ENABLED = false
+
+MusicSections.BOSSES = {}
+
+MusicSections.BPM = {}
 
 local catalog = {}
 local byCode = {}
@@ -39,20 +36,23 @@ end
 function MusicSections.scan(bossTracks)
     catalog, byCode, st = {}, {}, {}
     local n = 0
+    if not MusicSections.ENABLED then return 0 end
     for id, trackCode in pairs(bossTracks or {}) do
-        local entry = { id = id, track = trackCode, main = {}, final = {}, path = {} }
-        local function add(list, sec)
-            local path = MusicSections.fileFor(id, sec)
-            if love.filesystem.getInfo(path) then
-                list[#list + 1] = sec
-                entry.path[sec] = path
-                byCode[MusicSections.codeFor(trackCode, sec)] = { track = trackCode, sec = sec }
-                n = n + 1
+        if MusicSections.BOSSES[id] then
+            local entry = { id = id, track = trackCode, main = {}, final = {}, path = {} }
+            local function add(list, sec)
+                local path = MusicSections.fileFor(id, sec)
+                if love.filesystem.getInfo(path) then
+                    list[#list + 1] = sec
+                    entry.path[sec] = path
+                    byCode[MusicSections.codeFor(trackCode, sec)] = { track = trackCode, sec = sec }
+                    n = n + 1
+                end
             end
+            for _, sec in ipairs(MusicSections.MAIN) do add(entry.main, sec) end
+            for _, sec in ipairs(MusicSections.FINAL) do add(entry.final, sec) end
+            if #entry.main + #entry.final > 0 then catalog[trackCode] = entry end
         end
-        for _, sec in ipairs(MusicSections.MAIN) do add(entry.main, sec) end
-        for _, sec in ipairs(MusicSections.FINAL) do add(entry.final, sec) end
-        if #entry.main + #entry.final > 0 then catalog[trackCode] = entry end
     end
     return n
 end

@@ -24,7 +24,7 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 - `getStatus()` / `printStatus()` / `isAudioAvailable()`.
 - Compat: `loadBackgroundMusic`, `playBackgroundMusic`, `stopBackgroundMusic`.
 
-**Trilha em seções (chefes, 15/Out/2026):** `src/systems/MusicSections.lua` encadeia várias faixas de um mesmo chefe chamando `playMusic` por seção (código `<chefe>:<seção>`); o AudioManager não sabe de seções e não mudou. Ver [[music_generation]].
+**Trilha em seções (chefes, 15/Out/2026): DESLIGADA.** `src/systems/MusicSections.lua` encadeia faixas de um chefe chamando `playMusic` por seção (código `<chefe>:<seção>`), mas o dono rejeitou o resultado: `ENABLED = false`, nenhum chefe em `BOSSES`, mp3 fora do repo. Ver [[music_generation]].
 
 **Regra de ouro:** use `Sfx.play("name")` (de `src/systems/Sfx.lua`). Sfx é facade único — também expõe `Sfx.playMusic`, `Sfx.stopMusic`, `Sfx.setMusicVolume/setSfxVolume/setMasterVolume`. AudioManager é no-op gracioso se áudio indisponível (WSL2 sem driver).
 

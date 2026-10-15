@@ -259,7 +259,7 @@ pura; `apply` só executa):
   stopMusic) + `test_resume`. `love . boss_rooms N` segue a mesma regra
   (chama `apply` por quadro; I = silêncio até o fim da entrada).
 
-### Resolvido em 15/Out/2026: trilha do chefe EM SEÇÕES (ver seção no fim)
+### 15/Out/2026: trilha em SEÇÕES foi feita e REJEITADA pelo dono (ver seção no fim). Hoje todo chefe toca `musicBoss` (a rainha, `music-boss-eclipse.mp3`).
 
 ### As 6 faixas longas: BLOQUEADAS (14/Out/2026, histórico)
 
@@ -283,6 +283,27 @@ orgânica, drone grave/didgeridoo, metais abafados), rainha (coro grande,
 órgão, cordas épicas, referência Radagon/Elden Beast).
 
 ## Trilha do chefe EM SEÇÕES (15/Out/2026, frente trilha-chefes)
+
+> **REJEITADA E REMOVIDA (15/Out/2026, frente trilha-chefes-v2).** O dono
+> ouviu e parou: *"A trilha 1 ficou muito estranha. Tem uma quebra ali de
+> músicas totalmente diferentes: do nada, muda para uma, muda para outra...
+> Tivemos o mesmo problema na 2, só que ainda mais sério, porque a música não
+> está com seriedade, que é uma boss fight. Ela está muito feliz. Ela não está
+> conectada ali com o bioma, com o fundo do castelo, com o próprio boss em
+> si."*
+>
+> **Lição:** gerações SEPARADAS não compartilham melodia nem motivo; mesmo
+> tom, BPM e banda no prompt (e as medições de cromagrama/timbre abaixo, que
+> "passaram") não fazem duas peças soarem como a mesma música. Métrica não
+> substitui ouvido nem CLIMA: um prompt "boss battle" ainda saiu alegre.
+> Peça longa tem que sair de UMA geração com estrutura interna.
+>
+> Estado atual: `MusicSections.ENABLED = false`, `MusicSections.BOSSES = {}`
+> (mecanismo guardado, nenhum chefe registrado; o gancho do `MusicDirector`
+> vira no-op). Os 30 mp3 saíram do repo (`git rm`) e estão em
+> `E:\dev\projects\card-game-audio-rejeitado\boss_secoes_76de8877\` só como
+> referência. `test_music` (`M.sectionsOff`) trava o estado desligado. O
+> texto abaixo é histórico.
 
 Pedido do dono: *"sons muito bem trabalhados para cada seção de boss... não
 quero esses sons repetitivos e lúdicos... pode utilizar o Eleven Labs... com
