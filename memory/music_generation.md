@@ -480,3 +480,115 @@ bandas log de 40 Hz a 10 kHz (timbre, piso -3).
 Plano FREE do ElevenLabs: **sem uso comercial**. As 30 seções precisam ser
 regeradas com plano pago antes da venda (mesmos prompts, mesmo
 pós-processamento). Listado em [[known_gaps]] 0c.
+
+## Geração LOCAL com ACE-Step 1.5 (15/Out/2026, frente trilha-chefes-v2)
+
+Depois da rejeição das seções, o dono aprovou testar um modelo local (grátis,
+uso comercial). **Nada disto está no jogo**: só amostras do `carrion_king`
+esperando o ouvido dele.
+
+### Instalação (fora do repo)
+
+- `E:\dev\tools\ace-step\repo` = clone de `github.com/ace-step/ACE-Step-1.5`,
+  commit `ca1e85fe` (29/Ago/2026), `pyproject` versão 1.5.0. **Licença MIT**
+  (código e pesos; card do HF `license: mit`, saída liberada para uso
+  comercial segundo a própria equipe). O ACE-Step v1 era Apache 2.0; o 1.5 é MIT.
+- venv do `uv sync` em `repo\.venv` (uv 0.13.1 num venv de apoio `uvboot\`),
+  Python 3.12 do sistema, torch 2.7.1+cu128 (inclui sm_75). Cache do uv em
+  `uv-cache\`, `HF_HOME=hf-home\`.
+- Pesos em `repo\checkpoints\` (~15 GB): `Ace-Step1.5` (VAE, Qwen3-Embedding,
+  DiT turbo, LM 1.7B), `acestep-5Hz-lm-0.6B`, `acestep-v15-sft`.
+- Scripts (fora do repo do jogo): `gen_boss.py` (gera por spec JSON),
+  `analyze.py` (medições), `understand.py` (o "ouvido": o LM do próprio
+  ACE-Step descreve o áudio), `make_loop.py` + `finalize.py` (loop e
+  normalização), `specs\` (prompts de cada rodada).
+
+### Armadilhas da RTX 2060 SUPER (Turing, 8 GB)
+
+1. **fp16 dá NaN**: o turbo em fp16 gerou latentes NaN em 3 de 4 peças
+   ("Float16 overflow on pre-Ampere GPU"). Correção: forçar **bf16**
+   (`ACE_FORCE_BF16=1` no `gen_boss.py` troca `gpu_config.cuda_supports_bfloat16`
+   por `True`). bf16 é emulado no Turing (matmul 4x mais lento que fp16), mas
+   cabe na memória; fp32 não cabe (DiT 2B).
+2. **O LM REESCREVE a legenda**: com `use_cot_caption=True` (padrão) o LM 0.6B
+   troca o prompt por outro. Use `use_cot_caption=False` e
+   `use_cot_metas=False` (BPM e tom fixos).
+3. **Turbo não serve**: as 4 peças turbo foram descritas como synth pads,
+   drum machine, guitarra elétrica. Só o **SFT** (50 passos, cfg 7, shift 3)
+   ficou orquestral.
+4. O modelo 2B puxa para "trailer épico heroico": prompt com "epic" e "boss
+   battle" sai com fanfarra heroica. Funcionou melhor descrever tensão,
+   cordas graves, confronto. Órgão e coro pedidos quase nunca aparecem.
+
+### Custo medido (GPU)
+
+- VRAM: pico do torch 5,8 a 6,3 GB (nvidia-smi 6,1 a 7,8 GB somando o
+  desktop). `offload_to_cpu=True` (VAE/encoder), DiT na GPU, LM 0.6B `pt`.
+- Tempo por peça de 120 s: turbo 8 passos 55 a 77 s; **SFT 50 passos 175 a
+  227 s** (com LM ~210 s); carga dos modelos ~40 s. Descrição pelo LM 0.6B
+  ~1 min por peça; o 1.7B em bf16 emulado quase encheu a VRAM e foi abortado.
+- 16 peças geradas no total, ~45 min de GPU.
+
+### O "ouvido" (understand_music)
+
+`understand.py` converte o áudio em códigos do próprio ACE-Step e pede ao
+LM 0.6B uma legenda. Não é ouvido humano, mas separou o que as medições não
+separavam: pegou synth/drum machine/guitarra nas peças turbo e "heroic" nas
+SFT alegres. Usar antes de mandar ao dono. É o mesmo modelo que gera, então
+não confirma clima com certeza.
+
+### Prompts do carrion_king
+
+Arte olhada antes: salão `castle_hall_1.png` (pedra escura, estandartes
+vermelhos, tochas, caveira de corvo sobre portal em chamas, ossos, tapete de
+sangue) e o sprite (corvo coroado, armadura roxa, costelas à mostra).
+
+- **organ_choir**: "Dark gothic orchestral boss battle music for a dark
+  fantasy video game, instrumental. The throne hall of the Carrion King, a
+  monstrous crowned raven lord, in a ruined torch-lit castle with bones on a
+  blood red carpet. Menacing, serious, tense and epic, never cheerful or
+  playful. Deep pipe organ, low male choir chanting, aggressive staccato low
+  strings ostinato, heavy timpani and war drums, low brass stabs, harsh
+  dissonant violin screeches like crows. Minor key, cinematic, relentless."
+  96 BPM, C minor. Letra só de estrutura: `[Intro - ominous pipe organ drone,
+  distant crow screeches]`, `[Instrumental - main theme, ...]`,
+  `[Instrumental - development, ...]`, `[Bridge - sparse, dissonant strings,
+  heartbeat drums]`, `[Instrumental - climax, ...]`, `[Outro - main theme
+  returns, ...]`.
+- **war_drums**: "Ominous dark fantasy boss fight music, instrumental
+  orchestral score, no electric guitars. Heavy taiko and war drums, a driving
+  low cello and double bass riff, menacing French horns and trombones, dark
+  church bells, low wordless male choir, shrieking dissonant violin glissandi
+  like a murder of crows. Threatening, grim, aggressive, epic and serious, no
+  happy melodies. Castle throne room of a raven king, bones and torches."
+  110 BPM, D minor, letra `[Instrumental]`.
+- **villain**: "Sinister dark orchestral villain theme for a gothic horror
+  game, menacing, dreadful and evil, grim and serious. Deep cathedral pipe
+  organ chords, low male choir chanting ominously in Latin, dark tremolo
+  cellos and double basses, dissonant string clusters, screeching violins
+  like crows, slow pounding timpani and war drums, growling low brass and
+  tuba. Dark ritual atmosphere in the throne hall of a crowned raven king of
+  carrion, bones, blood and torches. Minor key, heavy, ominous, relentless."
+  88 BPM, C minor, mesma letra de estrutura.
+- Descartados pelo ouvido do LM: folk horror (hurdy-gurdy, rabeca) virou
+  violino virtuoso com drum machine; "purely acoustic, no synthesizers" virou
+  "heroic"; villain sem LM virou synth lead/trip-hop.
+
+### Candidatas entregues (`audio/_amostras_chefe/`, NÃO versionado)
+
+Uma geração cada (nada colado). Loop: corte no compasso (fase da batida
+pelo fluxo espectral), crossfade de 1 compasso da continuação para o começo,
+intro quase muda pulada (B), ganho único para -16 LUFS com pico <= -1,5 dBFS,
+44,1 kHz; mp3 192k e ogg q6. `love . check_loop` com
+`CHECK_LOOP_DIR=audio/_amostras_chefe`: 0 avisos. O MusicDirector não lê essa
+pasta (só nomes fixos em `audio/music/`) e o build só leva arquivo do git.
+
+| arquivo | origem | dur | BPM | descrição do LM |
+|---|---|---|---|---|
+| `carrion_king_A_cordas_tambores` | SFT+LM (legenda reescrita pelo LM, cot ligado), war_drums, seed 5207 | 109 s | 110 | tensa, cello sombrio, cordas agressivas, "confronto" |
+| `carrion_king_B_ostinato_urgente` | SFT+LM, organ_choir, seed 4101 | 85 s | 96 | ostinato de cordas implacável, metais, urgência |
+| `carrion_king_C_sombria_lenta` | SFT+LM, villain, seed 8104 | 112 s | 88 | acordes graves ominosos, melodia melancólica (flauta) |
+
+Recomendada: A (pulso estável, a mais tensa sem cair no heroico). B perdeu a
+intro (20 s quase muda) e ficou com 85 s. C é lenta e baixa, menos de luta.
+Brutos (120 s, 48 kHz) e medições em `E:\dev\tools\ace-step\out\`.
