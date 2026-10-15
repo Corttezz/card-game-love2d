@@ -133,6 +133,8 @@ return {
     },
 
     intent = {
+        full_moon = "PLEINE LUNE : ce coup arrive déjà à +50 %.",
+        new_moon = "NOUVELLE LUNE : la Reine est Vulnérable pendant votre tour.",
         frost = "Vous inflige +{value} de Givre.",
         staggered = "Ébranlé par la chaîne brisée : ce coup ne porte qu'à moitié.",
         runes = "Un coup par rune allumée. Brisez des runes ce tour pour lui retirer des coups.",
@@ -156,6 +158,11 @@ return {
     },
 
     status = {
+        moon = { name = "Cycle Lunaire",
+            desc_p1 = "Premier croissant. La lune tourne à chaque annonce : viennent ensuite la PLEINE lune (coup +{value} %), le dernier croissant et la NOUVELLE lune (elle est Vulnérable pendant votre tour).",
+            desc_p2 = "PLEINE LUNE : le coup annoncé arrive à +{value} %. Défendez maintenant ; la Nouvelle Lune arrive dans deux tours.",
+            desc_p3 = "Dernier croissant. La NOUVELLE LUNE vient à la prochaine annonce : gardez votre grosse carte.",
+            desc_p4 = "NOUVELLE LUNE : la Reine est Vulnérable pendant votre tour (+50 % de dégâts). C'est le moment de frapper fort." },
         roots = { name = "Racines",
             desc = "{stacks} racine(s) agrippées au sol : à la fin de son tour, chacune soigne {value}. Il gagne une racine tous les 2 tours (max 4). Une seule attaque qui retire {max} PV ou plus tranche une racine ; le poison et les petits coups non." },
         frost = { name = "Givre",
@@ -185,6 +192,8 @@ return {
     },
 
     msg = {
+        moon_full = "Pleine Lune !",
+        moon_new = "Nouvelle Lune : elle est exposée !",
         root_grow = "Nouvelle racine ({value})",
         root_cut = "Racine tranchée !",
         frost_gain = "Givre +{value} ({total}/{max})",

@@ -133,6 +133,8 @@ return {
     },
 
     intent = {
+        full_moon = "LUA CHEIA: este golpe já vem +50%.",
+        new_moon = "LUA NOVA: a Rainha está Vulnerável neste seu turno.",
         frost = "Deixa +{value} de Geada em você.",
         staggered = "Cambaleou com a corrente rompida: este golpe sai pela metade.",
         runes = "Um golpe por runa acesa. Quebre runas neste turno para tirar golpes.",
@@ -156,6 +158,11 @@ return {
     },
 
     status = {
+        moon = { name = "Ciclo da Lua",
+            desc_p1 = "Lua Crescente. A lua gira a cada anúncio: depois vem a CHEIA (golpe +{value}%), a Minguante e a NOVA (ela fica Vulnerável no seu turno).",
+            desc_p2 = "LUA CHEIA: o golpe anunciado vem +{value}%. Defenda agora; a Lua Nova chega em dois turnos.",
+            desc_p3 = "Lua Minguante. No próximo anúncio vem a LUA NOVA: guarde a carta grande.",
+            desc_p4 = "LUA NOVA: a Rainha está Vulnerável neste seu turno (+50% de dano). Hora de explodir." },
         roots = { name = "Raízes",
             desc = "{stacks} raiz(es) presas ao chão: no fim do turno dele, cada uma cura {value}. Ganha uma raiz a cada 2 turnos (teto 4). Um único ataque que tire {max} ou mais de vida corta uma raiz; veneno e dano miúdo não cortam." },
         frost = { name = "Geada",
@@ -185,6 +192,8 @@ return {
     },
 
     msg = {
+        moon_full = "Lua Cheia!",
+        moon_new = "Lua Nova: ela está exposta!",
         root_grow = "Raiz nova ({value})",
         root_cut = "Raiz cortada!",
         frost_gain = "Geada +{value} ({total}/{max})",

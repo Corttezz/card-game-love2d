@@ -60,11 +60,13 @@ coringa raro depois do chefe.
 | ato | chefe | regra |
 |---|---|---|
 | 1 | carrion_king | abre e repete (a cada 4) o **Chamado da Revoada**: +2 `swarm`; a **Revoada** bate 2 + corvos vezes e deixa Fraco |
-| 2 | tower_lich | **Escudo de Gelo** a cada 3º turno (bloqueio grande + Frágil); drena (Frágil + cura) |
-| 3 | abyss_tyrant | **Reunir Chamas** (carga, a cada 4) força **Fogo Infernal** ×1,7 + Queimadura 2 no turno seguinte |
-| 4 | winter_monarch | **Lâmina do Inverno** perfura o Bloqueio; **Inverno Eterno** a cada 3 (Frágil + Fraco) |
-| 5 | rot_colossus | Regeneração passiva 1,5%/turno (`regen`, beat `enemy.regen`); **Nuvem Pestilenta** envenena o jogador |
-| 6 | eclipse_queen | abaixo de 50% vira o **ECLIPSE** (beat `enemy.phase`, kit novo, dano ×1,3, abre com Eclipse Total) |
+| 2 | tower_lich | **Runas do Ritual** (15/Out: +1/turno, 4 = Cataclismo Rúnico; 15% da vida num turno quebra runa) + **Escudo de Gelo** a cada 3º turno; drena (Frágil + cura) |
+| 3 | abyss_tyrant | **Correntes** (15/Out: rompem a 75/50/25%, cambaleia = golpe anunciado pela metade, +12% de dano) + **Reunir Chamas** (carga, a cada 4) força **Fogo Infernal** ×1,7 + Queimadura 2 |
+| 4 | winter_monarch | **Geada** no jogador (15/Out: 4+ na compra congela as 2 cartas mais caras; ataque derrete) + **Lâmina do Inverno** perfura; **Inverno Eterno** a cada 3 (Frágil + Fraco) |
+| 5 | rot_colossus | **Raízes** (15/Out: 2 a 4, 0,75%/raiz de cura no beat `enemy.regen`; golpe único de 5% corta; substitui o 1,5% fixo) + **Nuvem Pestilenta** envenena o jogador |
+| 6 | eclipse_queen | **Ciclo da Lua** (15/Out: Cheia ×1,5, Nova = Vulnerável) + abaixo de 50% vira o **ECLIPSE** (beat `enemy.phase`, kit novo, abre com Eclipse Total) |
+
+Detalhes, números e visual de cada mecânica: [[boss_mechanics]].
 
 ## Sem espólio extra no chefe (decisão do dono, Out/2026)
 

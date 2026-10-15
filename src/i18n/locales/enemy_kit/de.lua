@@ -133,6 +133,8 @@ return {
     },
 
     intent = {
+        full_moon = "VOLLMOND: dieser Schlag kommt bereits mit +50%.",
+        new_moon = "NEUMOND: die Königin ist in deinem Zug verwundbar.",
         frost = "Hinterlässt +{value} Raureif auf dir.",
         staggered = "Von der gerissenen Kette erschüttert: dieser Schlag trifft nur halb.",
         runes = "Ein Schlag pro leuchtender Rune. Zerbrich in diesem Zug Runen, um Schläge zu streichen.",
@@ -156,6 +158,11 @@ return {
     },
 
     status = {
+        moon = { name = "Mondzyklus",
+            desc_p1 = "Zunehmende Sichel. Der Mond dreht sich mit jeder Ankündigung: danach kommt der VOLLMOND (Schlag +{value}%), die abnehmende Sichel und der NEUMOND (sie ist in deinem Zug verwundbar).",
+            desc_p2 = "VOLLMOND: der angekündigte Schlag kommt mit +{value}%. Jetzt verteidigen; der Neumond kommt in zwei Zügen.",
+            desc_p3 = "Abnehmende Sichel. Mit der nächsten Ankündigung kommt der NEUMOND: halte deine große Karte zurück.",
+            desc_p4 = "NEUMOND: die Königin ist in deinem Zug verwundbar (+50% Schaden). Zeit zuzuschlagen." },
         roots = { name = "Wurzeln",
             desc = "{stacks} Wurzel(n) im Boden verankert: am Ende seines Zuges heilt jede {value}. Alle 2 Züge wächst eine nach (höchstens 4). Ein einzelner Angriff, der {max} oder mehr Leben nimmt, kappt eine Wurzel; Gift und kleine Treffer nicht." },
         frost = { name = "Raureif",
@@ -185,6 +192,8 @@ return {
     },
 
     msg = {
+        moon_full = "Vollmond!",
+        moon_new = "Neumond: sie ist ungeschützt!",
         root_grow = "Neue Wurzel ({value})",
         root_cut = "Wurzel gekappt!",
         frost_gain = "Raureif +{value} ({total}/{max})",

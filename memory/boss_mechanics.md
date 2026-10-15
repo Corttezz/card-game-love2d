@@ -287,3 +287,27 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
 - Sons: `boss_roots_crawl` 0,90 ao brotar (-29 dB), `colossus_crack` 0,75 no
   corte (-26 dB), `impact-poison` 1,0 no golpe (-31 dB).
 - `test_enemies` passou a medir a cura pela regra das raízes.
+
+### Rainha (implementado)
+
+- `eclipse_queen.mechanic` = `cycle 4, full 2, new 4, fullMul 1.5`. A fase
+  gira DENTRO de `rollIntent` (`BM.shapeIntent`): todo anúncio avança a lua,
+  inclusive o primeiro (Crescente). Cheia: `perHit ×1,5` no próprio anúncio
+  (congelado, o HUD já mostra maior). Nova: `vulnerable` duração 1 no inimigo,
+  que vale o turno inteiro do jogador e cai no `onTurnEnd` dela (a prévia de
+  dano já lê Vulnerável do inimigo, sem conta nova). A fase do eclipse (<50%)
+  segue por cima, e a marca dos 50% aparece na barra (hpMarks).
+- Aviso: `BM.afterRoll` no beat `enemy.next_intent` (estica pra STATUS só na
+  Cheia e na Nova): texto flutuante + `boss_eclipse_phase` 0,09 (arquivo
+  -5 dB, efetivo -26) na Cheia, `boss_crown_tick` 0,75 na Nova (-26).
+- Pill `moon` sem número (`stacks = 1` na cópia do HUD) e tooltip pela fase
+  (`variant` p1..p4 → `enemy_kit.status.moon.desc_p<n>`).
+- Cena: `layout = "moon"`: lua (sprite `moon.png`, candidato 12) à direita da
+  cabeça, acima da asa (no centro ela sumia atrás da barra de vida e no feixe
+  branco). As 4 fases são DERIVADAS do sprite (`BossTokens.moonImage`):
+  terminador elíptico por pixel, lado apagado escurecido e violeta, sem
+  redimensionar; troca de fase com crossfade de 0,45 s; brilho atrás ∝ parte
+  acesa. reducedMotion: sem crossfade nem balanço.
+- Golpe: Lâminas Lunares, Chuva de Estrelas e Coroa Negra lançam a lâmina
+  crescente (sprite `crescent.png`) girando em degraus de 15°; impacto
+  `impact-arcane` 0,32 (-27 dB).

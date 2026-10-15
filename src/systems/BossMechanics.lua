@@ -111,6 +111,20 @@ end
 function BM.shapeIntent(enemy, intent, move)
     local m = BM.spec(enemy)
     if not m then return end
+    if m.kind == "moon" then
+        local p = (BM.stacks(enemy, m.status) % m.cycle) + 1
+        BM.setStacks(enemy, m.status, p)
+        if p == m.full and (intent.perHit or 0) > 0 then
+            intent.perHit = max(1, floor(intent.perHit * m.fullMul))
+        end
+        intent.fullMoon = (p == m.full) or nil
+        intent.newMoon = (p == m.new) or nil
+        if p == m.new then
+            enemy:addStatusEffect({ name = "vulnerable", stacks = 1, duration = 1 })
+        end
+        local s = mech(enemy)
+        s.moonEvent = (p == m.full or p == m.new) and p or nil
+    end
     if m.kind == "frost" then
         local n = m.gains and m.gains[move.id]
         intent.frost = (n and n > 0) and n or nil
@@ -153,6 +167,15 @@ function BM.onPlayerTurnStart(game)
     local s = mech(e)
     s.turnDmg, s.broke = 0, 0
     s.staggered = false
+end
+
+function BM.afterRoll(enemy)
+    local m = BM.spec(enemy)
+    if not m or m.kind ~= "moon" or not enemy._mech then return nil end
+    local p = enemy._mech.moonEvent
+    enemy._mech.moonEvent = nil
+    if not p then return nil end
+    return { kind = "moon", phase = p, full = (p == m.full), new = (p == m.new) }
 end
 
 function BM.hasPending(enemy)
@@ -350,6 +373,10 @@ function BM.pillVars(enemy, name)
     end
     if m.kind == "roots" then
         return { value = BM.rootRegen(enemy), max = BM.rootCutThreshold(enemy) }
+    end
+    if m.kind == "moon" then
+        return { variant = "p" .. BM.stacks(enemy, m.status), stacks = 1,
+                 value = floor(m.fullMul * 100 + 0.5) - 100 }
     end
     if m.kind == "chains" then
         local nextMark = m.marks[(mech(enemy).marksCrossed or 0) + 1]

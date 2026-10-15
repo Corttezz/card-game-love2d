@@ -362,6 +362,15 @@ function BossTokens.update(dt, id, dying)
         advanceTokens(id, spec, s, dt, still)
     elseif spec.layout == "chains" then
         BossTokens._syncChains(spec, s, dt, still)
+    elseif spec.layout == "moon" then
+        local want = s.want or 0
+        if s.phase ~= want then
+            s.prevPhase = (s.init and not still) and s.phase or nil
+            s.phase = want
+            s.phaseT = 0
+        end
+        s.init = true
+        s.phaseT = (s.phaseT or 9) + dt
     end
     advanceBolts(spec, s, dt)
     if s.flash then s.flash.life = s.flash.life - dt end
@@ -500,6 +509,77 @@ local function drawRooted(img, sx, sy, S, base, grow, flip)
     love.graphics.draw(img, q, sx, sy - rows * S, 0, S * (flip or 1), S, ox, 0)
 end
 
+local moonImgs = {}
+function BossTokens.moonImage(spec, phase)
+    local key = spec.sprite .. "#" .. tostring(phase)
+    if moonImgs[key] ~= nil then return moonImgs[key] or nil end
+    if not love.filesystem.getInfo(spec.sprite) then
+        moonImgs[key] = false
+        return nil
+    end
+    local data = love.image.newImageData(spec.sprite)
+    local w, h = data:getWidth(), data:getHeight()
+    local lit = spec.lit[phase] or 1
+    local side = spec.side[phase] or 0
+    local cx, cy, rad = (w - 1) / 2, (h - 1) / 2, w / 2 - 1
+    for y = 0, h - 1 do
+        for x = 0, w - 1 do
+            local r0, g0, b0, a0 = data:getPixel(x, y)
+            if a0 > 0 then
+                local nx, ny = (x - cx) / rad, (y - cy) / rad
+                local half = math.sqrt(math.max(0, 1 - ny * ny))
+                local on
+                if lit >= 1 then
+                    on = true
+                elseif lit <= 0 then
+                    on = false
+                else
+                    local edge = half * (1 - 2 * lit)
+                    on = (side > 0 and nx > edge) or (side < 0 and nx < -edge)
+                end
+                if not on then
+                    local rim = (math.abs(nx * nx + ny * ny - 0.85) < 0.12) and 0.10 or 0
+                    data:setPixel(x, y, r0 * 0.20 + 0.04 + rim, g0 * 0.16 + 0.02, b0 * 0.26 + 0.06 + rim, a0)
+                end
+            end
+        end
+    end
+    local img = love.graphics.newImage(data)
+    img:setFilter("nearest", "nearest")
+    moonImgs[key] = img
+    return img
+end
+
+local function drawMoon(r, spec, s)
+    local phase = s.phase or 0
+    if phase <= 0 then return end
+    local S = BossTokens.tokenScale(r.scale, spec.full)
+    local still = reducedMotion()
+    local x, y = artToScreen(r, spec.u * r.iw, spec.v * r.ih)
+    if not still then y = y + floor(math.sin(s.t * 1.1) * 2 + 0.5) * S end
+    local k = still and 1 or min(1, (s.phaseT or 9) / 0.45)
+    local img = BossTokens.moonImage(spec, phase)
+    if not img then return end
+    local ox, oy = floor(img:getWidth() / 2), floor(img:getHeight() / 2)
+    local litF = spec.lit[phase] or 1
+    local g = spec.glow
+    local glow = BossTokens.glowImage()
+    local rad = img:getWidth() * S * (0.9 + 0.6 * litF)
+    love.graphics.setBlendMode("add")
+    love.graphics.setColor(g[1], g[2], g[3], (0.08 + 0.30 * litF) * (s.fade or 1))
+    love.graphics.draw(glow, x - rad, y - rad, 0, rad * 2 / glow:getWidth(), rad * 2 / glow:getHeight())
+    love.graphics.setBlendMode("alpha")
+    if s.prevPhase and k < 1 then
+        local prev = BossTokens.moonImage(spec, s.prevPhase)
+        if prev then
+            love.graphics.setColor(1, 1, 1, (1 - k) * (s.fade or 1))
+            love.graphics.draw(prev, x, y, 0, S, S, ox, oy)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, k * (s.fade or 1))
+    love.graphics.draw(img, x, y, 0, S, S, ox, oy)
+end
+
 local function drawGround(r, spec, s, front)
     local S = BossTokens.tokenScale(r.scale, spec.full)
     local still = reducedMotion()
@@ -563,6 +643,7 @@ local function drawBolts(r, spec, s)
                 local x, y = boltPose(s, st, b)
                 local px, py = boltPose(s, st, { t = b.t - 1 / 30, apex = b.apex })
                 local ang = math.atan2(y - py, x - px)
+                if st.spin then ang = ang + b.t * 18 end
                 ang = floor(ang / 0.2618 + 0.5) * 0.2618
                 local ox, oy = floor(img:getWidth() / 2), floor(img:getHeight() / 2)
                 local tc = st.trail or { 1, 1, 1 }
@@ -680,6 +761,7 @@ function BossTokens.drawFront(id, r)
     love.graphics.push("all")
     if spec.layout == "orbit" then drawOrbit(r, spec, s, true) end
     if spec.layout == "ground" then drawGround(r, spec, s, true) end
+    if spec.layout == "moon" then drawMoon(r, spec, s) end
     drawBolts(r, spec, s)
     drawParts(r, s, true)
     love.graphics.pop()
@@ -782,6 +864,10 @@ function BossTokens.react(game, res)
         if spec then BossTokens.playSound(spec.sounds.gain) end
         enemyFloat(I18n.t("enemy_kit.msg.rune_gain", { value = res.total }, "+1"),
             { kind = "movename", hold = 0.45, lift = 22 })
+    elseif res.kind == "moon" then
+        if spec then BossTokens.playSound(res.full and spec.sounds.full or spec.sounds.new) end
+        enemyFloat(I18n.t(res.full and "enemy_kit.msg.moon_full" or "enemy_kit.msg.moon_new",
+            nil, "*"), { kind = "movename", hold = 0.6, lift = 26 })
     elseif res.kind == "root_grow" then
         if spec then BossTokens.playSound(spec.sounds.gain) end
         enemyFloat(I18n.t("enemy_kit.msg.root_grow", { value = res.total }, "+1"),

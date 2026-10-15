@@ -133,6 +133,8 @@ return {
     },
 
     intent = {
+        full_moon = "LUNA LLENA: este golpe ya viene +50%.",
+        new_moon = "LUNA NUEVA: la Reina está Vulnerable durante tu turno.",
         frost = "Te deja +{value} de Escarcha.",
         staggered = "Tambaleó con la cadena rota: este golpe sale a la mitad.",
         runes = "Un golpe por runa encendida. Rompe runas este turno para quitarle golpes.",
@@ -156,6 +158,11 @@ return {
     },
 
     status = {
+        moon = { name = "Ciclo Lunar",
+            desc_p1 = "Luna Creciente. La luna gira con cada anuncio: luego viene la LLENA (golpe +{value}%), la Menguante y la NUEVA (queda Vulnerable en tu turno).",
+            desc_p2 = "LUNA LLENA: el golpe anunciado viene +{value}%. Defiende ahora; la Luna Nueva llega en dos turnos.",
+            desc_p3 = "Luna Menguante. Con el próximo anuncio llega la LUNA NUEVA: guarda tu carta grande.",
+            desc_p4 = "LUNA NUEVA: la Reina está Vulnerable durante tu turno (+50% de daño). Hora de explotar." },
         roots = { name = "Raíces",
             desc = "{stacks} raíz(ces) aferradas al suelo: al final de su turno cada una cura {value}. Gana una raíz cada 2 turnos (máximo 4). Un solo ataque que quite {max} o más de vida corta una raíz; el veneno y los golpes pequeños no." },
         frost = { name = "Escarcha",
@@ -185,6 +192,8 @@ return {
     },
 
     msg = {
+        moon_full = "¡Luna Llena!",
+        moon_new = "Luna Nueva: ¡está expuesta!",
         root_grow = "Raíz nueva ({value})",
         root_cut = "¡Raíz cortada!",
         frost_gain = "Escarcha +{value} ({total}/{max})",

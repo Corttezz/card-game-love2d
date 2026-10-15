@@ -34,6 +34,7 @@ StatusPill.COLORS = {
     chains          = { 0.55, 0.30, 0.15 },
     frost           = { 0.45, 0.70, 0.90 },
     roots           = { 0.40, 0.55, 0.25 },
+    moon            = { 0.55, 0.40, 0.75 },
     eclipse         = { 0.55, 0.30, 0.75 },
 }
 StatusPill.ICONS = {
@@ -62,6 +63,7 @@ StatusPill.ICONS = {
     chains          = "status_chains",
     frost           = "status_frost",
     roots           = "status_roots",
+    moon            = "status_moon",
     eclipse         = "moon",
 }
 

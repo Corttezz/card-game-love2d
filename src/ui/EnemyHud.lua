@@ -110,6 +110,12 @@ function EnemyHud.intentSpec(enemy, player)
     if it.frost then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.frost", { value = it.frost })
     end
+    if it.fullMoon then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.full_moon")
+    end
+    if it.newMoon then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.new_moon")
+    end
     if it.staggered then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.staggered")
     end
@@ -262,6 +268,7 @@ function EnemyHud.collectPills(enemy)
     local BossMechanics = require("src.systems.BossMechanics")
     for _, e in ipairs(enemy.statusEffects or {}) do
         local vars = BossMechanics.pillVars(enemy, e.name)
+        if vars and vars.stacks then vars.showStacks = false end
         if vars then
             local copy = {}
             for k, v in pairs(e) do copy[k] = v end

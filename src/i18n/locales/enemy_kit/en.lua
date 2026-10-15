@@ -133,6 +133,8 @@ return {
     },
 
     intent = {
+        full_moon = "FULL MOON: this strike already comes in +50%.",
+        new_moon = "NEW MOON: the Queen is Vulnerable during your turn.",
         frost = "Leaves +{value} Frost on you.",
         staggered = "Staggered by the broken chain: this strike lands at half.",
         runes = "One strike per lit rune. Break runes this turn to remove strikes.",
@@ -156,6 +158,11 @@ return {
     },
 
     status = {
+        moon = { name = "Lunar Cycle",
+            desc_p1 = "Waxing Crescent. The moon turns with every announcement: next comes the FULL moon (strike +{value}%), then Waning, then the NEW moon (she is Vulnerable on your turn).",
+            desc_p2 = "FULL MOON: the announced strike comes in +{value}%. Defend now; the New Moon arrives in two turns.",
+            desc_p3 = "Waning Crescent. The NEW MOON comes with the next announcement: hold your big card.",
+            desc_p4 = "NEW MOON: the Queen is Vulnerable during your turn (+50% damage). Time to burst." },
         roots = { name = "Roots",
             desc = "{stacks} root(s) gripping the ground: at the end of his turn each heals {value}. He grows a root every 2 turns (max 4). A single attack that takes {max} or more health cuts a root; poison and small hits do not." },
         frost = { name = "Frost",
@@ -185,6 +192,8 @@ return {
     },
 
     msg = {
+        moon_full = "Full Moon!",
+        moon_new = "New Moon: she is exposed!",
         root_grow = "New root ({value})",
         root_cut = "Root severed!",
         frost_gain = "Frost +{value} ({total}/{max})",

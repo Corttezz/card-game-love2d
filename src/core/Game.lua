@@ -1293,6 +1293,11 @@ function Game:_pushEnemyTurnTail(beat)
     CombatBeats.push("enemy.next_intent", beat(function()
         if not self.enemy:isAlive() then return end
         self.enemy:rollIntent(self.player)
+        local moon = BossMechanics.afterRoll(self.enemy)
+        if moon then
+            CombatBeats.extendCurrent("STATUS")
+            self:_mechanicFx(moon)
+        end
     end), "DECAY")
 
     CombatBeats.push("player.upkeep", beat(function()

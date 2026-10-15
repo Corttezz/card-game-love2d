@@ -275,6 +275,10 @@ Enemies.KITS = {
 
     eclipse_queen = {
         opener = "waning_light",
+        mechanic = { kind = "moon", status = "moon", cycle = 4, full = 2, new = 4,
+                     fullMul = 1.5,
+                     strikes = { lunar_blades = "crescent", star_rain = "crescent",
+                                 black_corona = "crescent" } },
         moves = {
             { id = "waning_light", kind = "attack", weight = 35, mult = 1.0,
               debuff = { name = W, duration = 1 } },

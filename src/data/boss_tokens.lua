@@ -92,4 +92,25 @@ return {
                      volume = 0.75, pitch = 1.1 },
         },
     },
+
+    eclipse_queen = {
+        status = "moon", layout = "moon", full = true,
+        sprite = DIR .. "eclipse_queen/mechanic/moon.png",
+        u = 0.90, v = 0.13,
+        lit = { 0.42, 1.00, 0.42, 0.00 }, side = { 1, 0, -1, 0 },
+        glow = { 0.95, 0.55, 0.85 },
+        strikes = {
+            crescent = { kind = "bolt", sprite = DIR .. "eclipse_queen/mechanic/crescent.png",
+                         from = { 0.50, 0.30 }, spin = true, arc = 30, trail = { 0.90, 0.45, 0.85 },
+                         burst = { { 0.95, 0.75, 1.00 }, { 0.85, 0.35, 0.75 }, { 0.40, 0.20, 0.60 } },
+                         sound = { code = "impactArcaneQueen", path = "audio/sfx/impact-arcane.mp3",
+                                   volume = 0.32, pitch = 1.15 } },
+        },
+        sounds = {
+            full = { code = "bossEclipsePhaseMech", path = "audio/sfx/boss/boss_eclipse_phase.mp3",
+                     volume = 0.09, pitch = 1.10 },
+            new = { code = "bossCrownTickMech", path = "audio/sfx/boss/boss_crown_tick.mp3",
+                    volume = 0.75, pitch = 0.80 },
+        },
+    },
 }

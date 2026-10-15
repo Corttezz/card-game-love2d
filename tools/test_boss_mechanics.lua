@@ -486,6 +486,122 @@ local function testColossus(t)
         "enemy_kit.msg.root_grow", "enemy_kit.msg.root_cut" })
 end
 
+local function testQueen(t)
+    local ID = "eclipse_queen"
+    local g = battleWith(ID, 1000, 20)
+    local e = g.enemy
+    t:eq("rainha: mecânica lua", BM.spec(e).kind, "moon")
+    t:eq("rainha: abre na Crescente", BM.stacks(e, "moon"), 1)
+    t:falsy("rainha: Crescente sem Vulnerável", e:hasStatus("vulnerable"))
+    e._forcedNext = "lunar_blades"
+    e:rollIntent(g.player)
+    local it = e:getIntent()
+    t:eq("rainha: 2º anúncio = Lua Cheia", BM.stacks(e, "moon"), 2)
+    t:truthy("rainha: intent marcado Cheia", it.fullMoon)
+    t:eq("rainha: Cheia = golpe x1,5 já no anúncio", it.perHit, math.floor(math.floor(20 * 0.4) * 1.5))
+    local ev = BM.afterRoll(e)
+    t:truthy("rainha: virada da Cheia avisa", ev and ev.full)
+    e._forcedNext = "lunar_blades"
+    e:rollIntent(g.player)
+    t:eq("rainha: Minguante", BM.stacks(e, "moon"), 3)
+    t:eq("rainha: Minguante sem bônus", e:getIntent().perHit, math.floor(20 * 0.4))
+    t:falsy("rainha: Minguante não avisa", BM.afterRoll(e))
+    e:rollIntent(g.player)
+    t:eq("rainha: Lua Nova", BM.stacks(e, "moon"), 4)
+    t:truthy("rainha: Lua Nova = Vulnerável", e:hasStatus("vulnerable"))
+    t:truthy("rainha: intent marcado Nova", e:getIntent().newMoon)
+    local hp = e.health
+    e:takeDamage(10)
+    t:eq("rainha: Vulnerável na Nova = +50%", hp - e.health, 15)
+    e:onTurnEnd()
+    t:falsy("rainha: Vulnerável some no turno dela", e:hasStatus("vulnerable"))
+    e:rollIntent(g.player)
+    t:eq("rainha: ciclo volta à Crescente", BM.stacks(e, "moon"), 1)
+
+    local g2 = battleWith(ID, 1000, 20)
+    local e2 = g2.enemy
+    e2:rollIntent(g2.player)
+    g2.player.armor = 0
+    local expected = e2:getIncomingDamage(g2.player)
+    local hp0 = g2.player.health
+    CombatBeats.startTrace()
+    runEnemyTurn(g2, 8)
+    local trace = CombatBeats.traceString()
+    CombatBeats.stopTrace()
+    t:eq("rainha (luta): golpe da Cheia sai exatamente como anunciado", hp0 - g2.player.health, expected)
+    t:eq("rainha (luta): virou Minguante no fim do turno", BM.stacks(e2, "moon"), 3)
+    t:truthy("rainha (luta): sem beat extra na Minguante", not trace:find("boss.moon", 1, true))
+    local g3 = battleWith(ID, 1000, 20)
+    t:eq("Continuar: rainha começa na Crescente", BM.stacks(g3.enemy, "moon"), 1)
+    t:truthy("rainha: marca de 50% (eclipse) na barra", #BM.hpMarks(g3.enemy) == 1
+        and BM.hpMarks(g3.enemy)[1] == 0.5)
+
+    local pills = require("src.ui.EnemyHud").collectPills(e2)
+    local moonPill = nil
+    for _, pl in ipairs(pills) do if pl.name == "moon" then moonPill = pl end end
+    t:truthy("rainha: pill da lua sem número e com a fase no texto",
+        moonPill and moonPill.variant == "p3" and moonPill.showStacks == false)
+
+    local savedGS = _G.gameSettings
+    _G.gameSettings = { reducedMotion = false }
+    BossTokens.reset()
+    local n = 1
+    local fake = { getStatusStacks = function(_, nm) return nm == "moon" and n or 0 end }
+    settleTokens(ID, fake, 0.1)
+    local st = BossTokens._debug(ID)
+    t:eq("rainha visual: lua na fase do status", st.phase, 1)
+    n = 2
+    settleTokens(ID, fake, 0.1)
+    t:eq("rainha visual: lua vira Cheia", st.phase, 2)
+    t:eq("rainha visual: com transição", st.prevPhase, 1)
+    local spec = BossTokens.spec(ID)
+    local imgs = {}
+    for p = 1, 4 do imgs[p] = BossTokens.moonImage(spec, p) end
+    t:truthy("rainha visual: 4 fases desenhadas do sprite", imgs[1] and imgs[2] and imgs[3] and imgs[4])
+    local function litCount(p)
+        local out = 0
+        local img = BossTokens.moonImage(spec, p)
+        local cv = love.graphics.newCanvas(img:getWidth(), img:getHeight())
+        love.graphics.setCanvas(cv)
+        love.graphics.clear(0, 0, 0, 0)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(img, 0, 0)
+        love.graphics.setCanvas()
+        local data = cv:newImageData()
+        for y = 0, data:getHeight() - 1 do
+            for x = 0, data:getWidth() - 1 do
+                local r0, _, _, a0 = data:getPixel(x, y)
+                if a0 > 0 and r0 > 0.5 then out = out + 1 end
+            end
+        end
+        return out
+    end
+    local full, cres, newm = litCount(2), litCount(1), litCount(4)
+    t:truthy(string.format("rainha visual: Cheia > Crescente > Nova (%d > %d > %d)", full, cres, newm),
+        full > cres and cres > newm)
+    st.iw, st.ih, st.tgtX, st.tgtY = 140, 135, -200, 300
+    t:truthy("rainha visual: Lâminas Lunares lançam crescente", BossTokens.strike(ID, "crescent", 0.34, 0.42))
+    _G.gameSettings = { reducedMotion = true }
+    BossTokens.reset()
+    n = 4
+    settleTokens(ID, fake, 0.1)
+    t:eq("rainha reducedMotion: fase sem transição", BossTokens._debug(ID).prevPhase, nil)
+    t:falsy("rainha reducedMotion: sem crescente", BossTokens.strike(ID, "crescent", 0.34, 0.42))
+    _G.gameSettings = savedGS
+    BossTokens.reset()
+
+    local SP = ownIcon(t, "rainha", require("src.ui.StatusPill").ICONS.moon)
+    t:eq("rainha: pill usa status_moon", SP.ICONS.moon, "status_moon")
+    t:truthy("rainha: crescente é sprite", BossTokens.image(spec.strikes.crescent.sprite))
+    for _, snd in pairs(spec.sounds) do
+        t:truthy("rainha: som " .. snd.code .. " baixo", snd.volume <= 0.75)
+    end
+    localesHave(t, "rainha", { "enemy_kit.intent.full_moon", "enemy_kit.intent.new_moon",
+        "enemy_kit.status.moon.name", "enemy_kit.status.moon.desc_p1", "enemy_kit.status.moon.desc_p2",
+        "enemy_kit.status.moon.desc_p3", "enemy_kit.status.moon.desc_p4",
+        "enemy_kit.msg.moon_full", "enemy_kit.msg.moon_new" })
+end
+
 function M.run()
     local t = TK.new("chefes: mecânica-assinatura, contador, visual, golpe")
     TK.bootstrap()
@@ -494,6 +610,7 @@ function M.run()
     testTyrant(t)
     testMonarch(t)
     testColossus(t)
+    testQueen(t)
     return t:done()
 end
 

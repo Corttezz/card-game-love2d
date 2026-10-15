@@ -263,3 +263,22 @@ animate_image 6 quadros + o original). `orbit.sprite` aponta a pasta;
 - Penas do impacto em `px = 2` (com 3 viravam borrão).
 - O `CROW` procedural continua só no `orbitOne` genérico (nenhuma aura usa).
 
+
+## Mecânica contada dos chefes 2-6 (15/Out/2026)
+
+Os chefes 2-6 ganharam o pacote do rei-carniça (objeto contado na cena,
+ícone de status próprio, golpe temático). Tudo em [[boss_mechanics]]; aqui só
+o que mexeu na AURA:
+- As 5 runas procedurais da aura do lich SAÍRAM: as runas agora são pedras em
+  sprite contadas pelo status `runes` (`src/ui/BossTokens.lua`, desenhado pelo
+  `EnemyRenderer` junto da `BossAura`, atrás/frente do corpo).
+- Objeto da mecânica sempre em escala INTEIRA do chefe (`BossTokens.tokenScale`,
+  `full` = escala cheia; runas, raízes, lua e bola de fogo em escala cheia,
+  elo de corrente na metade como o corvo). Na metade, a runa lia como cisco
+  a 1600x900.
+- Golpe temático (`BossTokens.strike`): token que voa e some no apex (runa),
+  projétil girado na direção do voo em degraus de 15° com rastro aditivo (bola
+  de fogo, estilhaço de gelo, crescente girando) ou surgimento do pé da tela
+  (raiz). Tudo chega no apex `ATK_WINDUP + ATK_LUNGE`; o chefe só faz o gesto.
+- Ícones `status_runes/chains/frost/roots/moon` (PixelLab, referência
+  `status_poison`); `focus → rune` e `eclipse → moon` continuam arte de carta.
