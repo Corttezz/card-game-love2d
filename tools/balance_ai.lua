@@ -495,6 +495,18 @@ function AI.mechanicBonus(game, set, S)
         breaks = math.min(breaks, BM.stacks(e, m.status))
         return breaks * 0.5 * (e.baseDamage or e.damage or 0)
     end
+    if m.kind == "chains" then
+        local st = e._mech or {}
+        local idx = (st.marksCrossed or 0) + 1
+        local mark = m.marks[idx]
+        if not mark or S.eHp <= 0 or S.eHp > e.maxHealth * mark then return 0 end
+        local bonus = -1.5 * BM.chainStrength(e)
+        if not st.staggered then
+            local th = AI.knownThreat(e, game.player)
+            bonus = bonus + 0.5 * th.perHit * th.hits
+        end
+        return bonus
+    end
     return 0
 end
 

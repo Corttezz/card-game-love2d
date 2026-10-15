@@ -215,3 +215,23 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
   1600x900). As 5 runas procedurais da aura saíram (mentiriam sobre a contagem).
 - Ícone `status_runes` (candidato 0). Sons: `boss_rune_ignite` 0,34 (acende,
   -26 dB efetivo) e 0,30 (impacto), `boss_frost_shatter` 0,36 (quebra, -26 dB).
+
+### Tirano (implementado)
+
+- `abyss_tyrant.mechanic` = `marks {0.75, 0.5, 0.25}`, `strengthPct 0.12`,
+  `stagger 0.5`. A detecção da marca é na hora do dano (golpe OU queimadura),
+  a ruptura (pilha -1, Força, metade do golpe anunciado) acontece no beat
+  `boss.chain_break`. O "uma vez por turno" zera no upkeep do jogador.
+- `BM.hpMarks(enemy)` → marcas douradas na barra de vida (`EnemyHud.drawHpBar`)
+  para as correntes que faltam E para fases de kit ainda não atingidas (a
+  Rainha ganhou a marca dos 50% de graça).
+- Intent cambaleado ganha linha própria no tooltip (`enemy_kit.intent.staggered`).
+- Cena: `layout = "chains"`: 3 correntes (`chain_link.png`, 2 elos por quadro,
+  repetidos ao longo de uma curva com barriga) do teto à gola e do chão aos
+  punhos, atrás do corpo. Ordem de ruptura: punho direito, punho esquerdo,
+  gola (as de baixo são as mais visíveis). Rompida: duas metades em brasa que
+  despencam até o chão e somem em 0,9 s, estilhaços, o tirano dá o tranco
+  (`ER.triggerHurt`) e tremor de tela 7.
+- Golpe: Fogo Infernal e Jorro de Cinzas disparam `fireball.png` do núcleo do
+  peito, girada na direção do voo em degraus de 15 graus, com rastro aditivo.
+- Sons: `tyrant_chain_snap` 0,45 (-26 dB), `impact-fire` 0,30/0,22 (-26/-29 dB).

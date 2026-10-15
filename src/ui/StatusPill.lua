@@ -31,6 +31,7 @@ StatusPill.COLORS = {
     burn_self       = { 0.90, 0.40, 0.20 },
     swarm           = { 0.40, 0.35, 0.45 },
     runes           = { 0.30, 0.55, 0.70 },
+    chains          = { 0.55, 0.30, 0.15 },
     eclipse         = { 0.55, 0.30, 0.75 },
 }
 StatusPill.ICONS = {
@@ -56,6 +57,7 @@ StatusPill.ICONS = {
     burn_self       = "status_burn",
     swarm           = "status_crows",
     runes           = "status_runes",
+    chains          = "status_chains",
     eclipse         = "moon",
 }
 

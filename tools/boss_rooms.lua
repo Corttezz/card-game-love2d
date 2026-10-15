@@ -158,7 +158,7 @@ function M.run(startAct)
     end
 
     local BM = require("src.systems.BossMechanics")
-    local GALLERY_STRIKE = { tower_lich = "rune" }
+    local GALLERY_STRIKE = { tower_lich = "rune", abyss_tyrant = "fireball" }
     local function counterName()
         local e = _G.game and _G.game.enemy
         if not e then return nil end

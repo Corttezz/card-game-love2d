@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        staggered = "Von der gerissenen Kette erschüttert: dieser Schlag trifft nur halb.",
         runes = "Ein Schlag pro leuchtender Rune. Zerbrich in diesem Zug Runen, um Schläge zu streichen.",
         hit      = "Greift an und verursacht {value} Schaden.",
         multi    = "Greift {hits}-mal an: je {value} Schaden ({total} insgesamt).",
@@ -154,6 +155,8 @@ return {
     },
 
     status = {
+        chains = { name = "Ketten des Abgrunds",
+            desc = "{stacks} Kette(n) halten den Tyrannen noch. Die nächste reißt bei {max}% Leben (goldene Marke auf der Leiste). Reißt sie, taumelt er: der angekündigte Schlag trifft nur halb (einmal pro Zug), doch danach verursacht er +{value} Schaden." },
         runes = { name = "Ritualrunen",
             desc = "{stacks} von {max} Runen leuchten. Bei {max} entfesselt der Lich den Runenkataklysmus: ein Schlag pro Rune. Je {value} Schaden, den du in einem Zug verursachst, zerbricht eine Rune (dieser Zug: {dealt})." },
         frail      = { name = "Zerbrechlich",
@@ -177,6 +180,8 @@ return {
     },
 
     msg = {
+        chain_break = "Kette gerissen! +{value} Schaden",
+        staggered = "Halber Schlag",
         rune_gain = "Rune entzündet ({value})",
         rune_break = "Rune zerbrochen!",
         pierce         = "Der Hieb durchbricht deinen Block: {value} Schaden!",

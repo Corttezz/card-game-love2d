@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        staggered = "Cambaleou com a corrente rompida: este golpe sai pela metade.",
         runes = "Um golpe por runa acesa. Quebre runas neste turno para tirar golpes.",
         hit      = "Ataca causando {value} de dano.",
         multi    = "Ataca {hits} vezes: {value} de dano cada ({total} no total).",
@@ -154,6 +155,8 @@ return {
     },
 
     status = {
+        chains = { name = "Correntes do Abismo",
+            desc = "{stacks} corrente(s) ainda prendem o Tirano. A próxima se rompe aos {max}% da vida (marca dourada na barra). Ao romper, ele cambaleia: o golpe já anunciado sai pela metade (uma vez por turno), mas ele ganha +{value} de dano dali em diante." },
         runes = { name = "Runas do Ritual",
             desc = "{stacks} de {max} runas acesas. Com {max}, o Lich solta o Cataclismo Rúnico: um golpe por runa. A cada {value} de dano que você causa num mesmo turno, uma runa quebra (neste turno: {dealt})." },
         frail      = { name = "Frágil",
@@ -177,6 +180,8 @@ return {
     },
 
     msg = {
+        chain_break = "Corrente rompida! +{value} de dano",
+        staggered = "Golpe pela metade",
         rune_gain = "Runa acesa ({value})",
         rune_break = "Runa quebrada!",
         pierce         = "Golpe atravessa o Bloqueio: {value} de dano!",

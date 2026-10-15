@@ -186,11 +186,101 @@ local function testLich(t)
         "enemy_kit.msg.rune_gain", "enemy_kit.msg.rune_break" })
 end
 
+local function testTyrant(t)
+    local ID = "abyss_tyrant"
+    local g = battleWith(ID, 400, 20)
+    local e = g.enemy
+    t:eq("tirano: mecânica correntes", BM.spec(e).kind, "chains")
+    t:eq("tirano: 3 correntes", BM.stacks(e, "chains"), 3)
+    local marks = BM.hpMarks(e)
+    t:eq("tirano: 3 marcas na barra", #marks, 3)
+    t:eq("tirano: 1ª marca em 75%", marks[1], 0.75)
+    e:forceIntent("hellfire", g.player)
+    local before = e:getIntent().perHit
+    t:eq("tirano: Fogo Infernal 1,7x", before, 34)
+    e:takeDamage(99)
+    t:falsy("tirano: acima de 75% nada rompe", BM.hasPending(e))
+    e:takeDamage(2)
+    t:truthy("tirano: cruzar 75% rompe", BM.hasPending(e))
+    local res = BM.applyEvent(e, BM.popEvent(e))
+    t:eq("tirano: corrente rompida", res and res.kind, "chain_break")
+    t:eq("tirano: sobram 2", BM.stacks(e, "chains"), 2)
+    t:eq("tirano: golpe anunciado pela metade", e:getIntent().perHit, 17)
+    t:truthy("tirano: intent marcado como cambaleio", e:getIntent().staggered)
+    t:eq("tirano: +12% do dano base como Força", res.strength, 2)
+    t:eq("tirano: Força entra no dano", e.damage, 22)
+    t:eq("tirano: marcas restantes", #BM.hpMarks(e), 2)
+    e:takeDamage(100)
+    BM.applyEvent(e, BM.popEvent(e))
+    t:eq("tirano: 2ª corrente no mesmo turno", BM.stacks(e, "chains"), 1)
+    t:eq("tirano: cambaleia só uma vez por turno", e:getIntent().perHit, 17)
+    BM.onPlayerTurnStart(g)
+    e:_applyDot(120)
+    t:truthy("tirano: queimadura também rompe", BM.hasPending(e))
+    BM.applyEvent(e, BM.popEvent(e))
+    t:eq("tirano: sem correntes", BM.stacks(e, "chains"), 0)
+    t:eq("tirano: sem marcas", #BM.hpMarks(e), 0)
+
+    local g2 = battleWith(ID, 400, 20)
+    local e2 = g2.enemy
+    e2:forceIntent("abyssal_claws", g2.player)
+    local per = e2:getIntent().perHit
+    e2:takeDamage(101)
+    g2:settleEnemyDamage(nil)
+    TK.pump(g2, 1.0)
+    t:eq("tirano (luta): beat aplica a ruptura", BM.stacks(e2, "chains"), 2)
+    local hp0 = g2.player.health
+    g2.player.armor = 0
+    runEnemyTurn(g2, 8)
+    t:eq("tirano (luta): golpe sai pela metade", hp0 - g2.player.health, math.floor(per / 2))
+    local g3 = battleWith(ID, 400, 20)
+    t:eq("Continuar: tirano nasce com 3 correntes", BM.stacks(g3.enemy, "chains"), 3)
+
+    local savedGS = _G.gameSettings
+    _G.gameSettings = { reducedMotion = false }
+    BossTokens.reset()
+    local n = 3
+    local fake = { getStatusStacks = function(_, nm) return nm == "chains" and n or 0 end }
+    settleTokens(ID, fake, 0.1)
+    local st = BossTokens._debug(ID)
+    st.iw, st.ih, st.groundArt, st.tgtX, st.tgtY = 123, 126, 126, -200, 300
+    t:eq("tirano visual: 3 correntes inteiras", BossTokens.chainState(ID).intact, 3)
+    n = 2
+    settleTokens(ID, fake, 0.1)
+    t:eq("tirano visual: uma estala", BossTokens.chainState(ID).breaking, 1)
+    t:eq("tirano visual: sobram 2", BossTokens.chainState(ID).intact, 2)
+    settleTokens(ID, fake, 1.2)
+    t:eq("tirano visual: a rompida cai e some", BossTokens.chainState(ID).breaking, 0)
+    t:truthy("tirano visual: Fogo Infernal lança bola de fogo", BossTokens.strike(ID, "fireball", 0.34, 0.42))
+    t:eq("tirano visual: projétil no ar", #st.bolts, 1)
+    for _ = 1, 30 do BossTokens.update(1 / 30, ID, false) end
+    t:eq("tirano visual: projétil some depois do recuo", #st.bolts, 0)
+    _G.gameSettings = { reducedMotion = true }
+    BossTokens.reset()
+    n = 1
+    settleTokens(ID, fake, 0.1)
+    t:eq("tirano reducedMotion: correntes no lugar", BossTokens.chainState(ID).intact, 1)
+    t:falsy("tirano reducedMotion: sem projétil", BossTokens.strike(ID, "fireball", 0.34, 0.42))
+    _G.gameSettings = savedGS
+    BossTokens.reset()
+
+    local SP = ownIcon(t, "tirano", require("src.ui.StatusPill").ICONS.chains)
+    t:eq("tirano: pill usa status_chains", SP.ICONS.chains, "status_chains")
+    local spec = BossTokens.spec(ID)
+    t:truthy("tirano: elo da corrente é sprite", BossTokens.image(spec.link))
+    t:truthy("tirano: bola de fogo é sprite", BossTokens.image(spec.strikes.fireball.sprite))
+    t:truthy("tirano: estalo baixo (<= 0.45)", spec.sounds.lose.volume <= 0.45)
+    t:truthy("tirano: impacto baixo (<= 0.30)", spec.strikes.fireball.sound.volume <= 0.30)
+    localesHave(t, "tirano", { "enemy_kit.intent.staggered", "enemy_kit.status.chains.name",
+        "enemy_kit.status.chains.desc", "enemy_kit.msg.chain_break", "enemy_kit.msg.staggered" })
+end
+
 function M.run()
     local t = TK.new("chefes: mecânica-assinatura, contador, visual, golpe")
     TK.bootstrap()
     TK.seedRng(9090)
     testLich(t)
+    testTyrant(t)
     return t:done()
 end
 

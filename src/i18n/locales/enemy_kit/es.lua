@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        staggered = "Tambaleó con la cadena rota: este golpe sale a la mitad.",
         runes = "Un golpe por runa encendida. Rompe runas este turno para quitarle golpes.",
         hit      = "Ataca causando {value} de daño.",
         multi    = "Ataca {hits} veces: {value} de daño cada una ({total} en total).",
@@ -154,6 +155,8 @@ return {
     },
 
     status = {
+        chains = { name = "Cadenas del Abismo",
+            desc = "{stacks} cadena(s) aún sujetan al Tirano. La próxima se rompe al {max}% de vida (marca dorada en la barra). Al romperse, se tambalea: el golpe ya anunciado sale a la mitad (una vez por turno), pero gana +{value} de daño desde entonces." },
         runes = { name = "Runas del Ritual",
             desc = "{stacks} de {max} runas encendidas. Con {max}, el Liche desata el Cataclismo Rúnico: un golpe por runa. Cada {value} de daño que causas en un mismo turno rompe una runa (este turno: {dealt})." },
         frail      = { name = "Frágil",
@@ -177,6 +180,8 @@ return {
     },
 
     msg = {
+        chain_break = "¡Cadena rota! +{value} de daño",
+        staggered = "Golpe a la mitad",
         rune_gain = "Runa encendida ({value})",
         rune_break = "¡Runa rota!",
         pierce         = "¡El golpe atraviesa tu Bloqueo: {value} de daño!",

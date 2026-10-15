@@ -191,6 +191,9 @@ Enemies.KITS = {
     },
     abyss_tyrant = {
         opener = "abyssal_claws",
+        mechanic = { kind = "chains", status = "chains", marks = { 0.75, 0.5, 0.25 },
+                     strengthPct = 0.12, stagger = 0.5,
+                     strikes = { hellfire = "fireball", cinder_spray = "ember" } },
         moves = {
             { id = "gather_flames", kind = "charge", weight = 0, armor = 1.0,
               next = "hellfire", every = 4 },

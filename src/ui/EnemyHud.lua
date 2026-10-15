@@ -107,6 +107,9 @@ function EnemyHud.intentSpec(enemy, player)
     if it.charge then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.charge")
     end
+    if it.staggered then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.staggered")
+    end
     if it.runes then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.runes", { hits = hits })
         if hits <= 0 then text = "0" end
@@ -202,6 +205,14 @@ function EnemyHud.drawHpBar(enemy, cx, groundY, spriteWidth, barYOverride)
     setColor(Palette.INK, 0.9)
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", x, y, barW, barH, 2, 2)
+
+    for _, f in ipairs(require("src.systems.BossMechanics").hpMarks(enemy)) do
+        local mx = math.floor(x + barW * f)
+        setColor(Palette.INK, 1)
+        love.graphics.rectangle("fill", mx - 2, y - 4, 4, barH + 8)
+        setColor(Palette.AGED_GOLD, 1)
+        love.graphics.rectangle("fill", mx - 1, y - 3, 2, barH + 6)
+    end
 
     local font = FontManager.getResponsiveFont(0.02, 13)
     love.graphics.setFont(font)

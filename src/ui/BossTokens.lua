@@ -259,6 +259,55 @@ local function advanceTokens(id, spec, s, dt, still)
     end
 end
 
+local function chainEnds(spec, s, ch)
+    local iw, ih = s.iw or 0, s.ih or 0
+    local function pt(p)
+        local y = (p[2] == "ground") and (s.groundArt or ih) or p[2] * ih
+        return p[1] * iw, y
+    end
+    local ax, ay = pt(ch.from)
+    local bx, by = pt(ch.to)
+    return ax, ay, bx, by
+end
+
+function BossTokens._syncChains(spec, s, dt, still)
+    s.chains = s.chains or {}
+    local want = min(#spec.chains, s.want or 0)
+    local instant = still or not s.init
+    s.init = true
+    for i = 1, #spec.chains do
+        local c = s.chains[i]
+        if not c then
+            c = { broken = i > want, t = 9 }
+            s.chains[i] = c
+        end
+        c.t = c.t + dt
+        if i <= want and c.broken then
+            c.broken, c.t = false, instant and 9 or 0
+        elseif i > want and not c.broken then
+            c.broken, c.t = true, instant and 9 or 0
+            if not instant and s.iw then
+                local ax, ay, bx, by = chainEnds(spec, s, spec.chains[i])
+                addShards(s, (ax + bx) / 2, (ay + by) / 2 + (spec.chains[i].sag or 0),
+                    spec.shard or { { 1, 1, 1 } }, 18, 38)
+            end
+        end
+    end
+end
+
+function BossTokens.chainState(id)
+    local s = state[id]
+    local out = { intact = 0, breaking = 0 }
+    for _, c in ipairs((s and s.chains) or {}) do
+        if not c.broken then
+            out.intact = out.intact + 1
+        elseif c.t < 0.9 then
+            out.breaking = out.breaking + 1
+        end
+    end
+    return out
+end
+
 local function advanceBolts(spec, s, dt)
     for i = #s.bolts, 1, -1 do
         local b = s.bolts[i]
@@ -284,6 +333,8 @@ function BossTokens.update(dt, id, dying)
     if spec.layout == "orbit" then
         reconcile(spec, s, dt, still)
         advanceTokens(id, spec, s, dt, still)
+    elseif spec.layout == "chains" then
+        BossTokens._syncChains(spec, s, dt, still)
     end
     advanceBolts(spec, s, dt)
     if s.flash then s.flash.life = s.flash.life - dt end
@@ -393,6 +444,112 @@ local function drawOrbit(r, spec, s, front)
     end
 end
 
+local function boltPose(s, st, b)
+    local fx, fy = st.from[1] * (s.iw or 0), st.from[2] * (s.ih or 0)
+    local tx, ty = s.tgtX or fx, s.tgtY or fy
+    local k = max(0, min(1, b.t / b.apex))
+    local kk = k ^ 1.3
+    local x = fx + (tx - fx) * kk
+    local y = fy + (ty - fy) * kk - math.sin(k * math.pi) * (st.arc or 24)
+    return x, y, k
+end
+
+local function drawBolts(r, spec, s)
+    for _, b in ipairs(s.bolts) do
+        local st = spec.strikes and spec.strikes[b.kind]
+        if st and st.kind == "bolt" and not b.hit and b.t >= 0 then
+            local img = BossTokens.image(st.sprite)
+            if img then
+                local S = BossTokens.tokenScale(r.scale, st.full)
+                local x, y = boltPose(s, st, b)
+                local px, py = boltPose(s, st, { t = b.t - 1 / 30, apex = b.apex })
+                local ang = math.atan2(y - py, x - px)
+                ang = floor(ang / 0.2618 + 0.5) * 0.2618
+                local ox, oy = floor(img:getWidth() / 2), floor(img:getHeight() / 2)
+                local tc = st.trail or { 1, 1, 1 }
+                love.graphics.setBlendMode("add")
+                for g = 3, 1, -1 do
+                    local gx, gy = boltPose(s, st, { t = b.t - g * 0.03, apex = b.apex })
+                    local sx2, sy2 = artToScreen(r, gx, gy)
+                    love.graphics.setColor(tc[1], tc[2], tc[3], 0.35 / g * (s.fade or 1))
+                    love.graphics.draw(img, sx2, sy2, ang, S, S, ox, oy)
+                end
+                love.graphics.setBlendMode("alpha")
+                local sx, sy = artToScreen(r, x, y)
+                love.graphics.setColor(1, 1, 1, s.fade or 1)
+                love.graphics.draw(img, sx, sy, ang, S, S, ox, oy)
+            end
+        end
+    end
+end
+
+local function linkCurve(r, ax, ay, mx, my, bx, by)
+    local pts = {}
+    local N = 28
+    for i = 0, N do
+        local u = i / N
+        local x = (1 - u) * (1 - u) * ax + 2 * u * (1 - u) * mx + u * u * bx
+        local y = (1 - u) * (1 - u) * ay + 2 * u * (1 - u) * my + u * u * by
+        pts[#pts + 1] = { r.x + x * r.scale, r.y + y * r.scale }
+    end
+    return pts
+end
+
+local function drawLinks(img, pts, S, rows)
+    local period = (rows[2] - rows[1]) * S
+    local ox = floor(img:getWidth() / 2)
+    local acc = 0
+    for i = 2, #pts do
+        local p0, p1 = pts[i - 1], pts[i]
+        local dx, dy = p1[1] - p0[1], p1[2] - p0[2]
+        local len = math.sqrt(dx * dx + dy * dy)
+        local ang = math.atan2(dy, dx) - math.pi / 2
+        local d = 0
+        while acc + (len - d) >= period do
+            d = d + (period - acc)
+            acc = 0
+            local k = d / max(len, 1e-6)
+            love.graphics.draw(img, floor(p0[1] + dx * k), floor(p0[2] + dy * k), ang, S, S,
+                ox, rows[1])
+        end
+        acc = acc + (len - d)
+    end
+end
+
+local function drawChain(r, spec, s, ch, c)
+    local img = BossTokens.image(spec.link)
+    if not img then return end
+    local ax, ay, bx, by = chainEnds(spec, s, ch)
+    local still = reducedMotion()
+    local sway = still and 0 or math.sin(s.t * 1.3 + ax * 0.1) * 1.5
+    local mx, my = (ax + bx) / 2 + sway, (ay + by) / 2 + (ch.sag or 0)
+    local S = BossTokens.tokenScale(r.scale, spec.full)
+    local rows = spec.linkRows or { 0, img:getHeight() }
+    local alpha = s.fade or 1
+    if not c.broken then
+        love.graphics.setColor(0.86, 0.80, 0.78, alpha)
+        drawLinks(img, linkCurve(r, ax, ay, mx, my, bx, by), S, rows)
+        return
+    end
+    if c.t >= 0.9 or still then return end
+    local k = c.t / 0.9
+    alpha = alpha * (1 - k * k)
+    local drop = 0.5 * 220 * c.t * c.t
+    local floorY = s.groundArt or (s.ih or 0)
+    local m1x, m1y = mx, min(floorY, my + drop)
+    local m2x, m2y = (mx + bx) / 2, min(floorY, (my + by) / 2 + drop * 1.4)
+    love.graphics.setColor(1.00, 0.62, 0.30, alpha)
+    drawLinks(img, linkCurve(r, ax, ay, (ax + m1x) / 2, max(ay, m1y) + 2, m1x, m1y), S, rows)
+    drawLinks(img, linkCurve(r, bx, by, bx, (by + m2y) / 2 + 4, m2x, m2y), S, rows)
+end
+
+local function drawChains(r, spec, s)
+    if not s.chains then return end
+    for i, ch in ipairs(spec.chains) do
+        if s.chains[i] then drawChain(r, spec, s, ch, s.chains[i]) end
+    end
+end
+
 local function prepare(r, s)
     s.iw, s.ih = r.iw, r.ih
     local sx, sy = require("src.ui.BossAura").playerTarget()
@@ -409,6 +566,7 @@ function BossTokens.drawBack(id, r)
     if (s.fade or 1) <= 0 then return end
     love.graphics.push("all")
     if spec.layout == "orbit" then drawOrbit(r, spec, s, false) end
+    if spec.layout == "chains" then drawChains(r, spec, s) end
     love.graphics.pop()
 end
 
@@ -419,6 +577,7 @@ function BossTokens.drawFront(id, r)
     if (s.fade or 1) <= 0 then return end
     love.graphics.push("all")
     if spec.layout == "orbit" then drawOrbit(r, spec, s, true) end
+    drawBolts(r, spec, s)
     drawParts(r, s, true)
     love.graphics.pop()
 end
@@ -441,6 +600,23 @@ function BossTokens.react(game, res)
         if spec then BossTokens.playSound(spec.sounds.gain) end
         enemyFloat(I18n.t("enemy_kit.msg.rune_gain", { value = res.total }, "+1"),
             { kind = "movename", hold = 0.45, lift = 22 })
+    elseif res.kind == "chain_break" then
+        if spec then BossTokens.playSound(spec.sounds.lose) end
+        if _G.triggerShake then _G.triggerShake(7, 0.22) end
+        local okER, ER = pcall(require, "src.ui.EnemyRenderer")
+        if okER and ER.triggerHurt then ER.triggerHurt() end
+        enemyFloat(I18n.t("enemy_kit.msg.chain_break", { value = res.strength }, "+" .. res.strength),
+            { kind = "movename", hold = 0.6, lift = 26 })
+        if res.halved then
+            local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+            if okER and okFT and ER.getLastPos then
+                local ex, ey = ER.getLastPos()
+                if ex and ey then
+                    FloatingText.spawn(I18n.t("enemy_kit.msg.staggered", nil, "1/2"), ex, ey - 64,
+                        { kind = "movename", hold = 0.6, lift = 18 })
+                end
+            end
+        end
     elseif res.kind == "rune_break" then
         if spec then BossTokens.playSound(spec.sounds.lose) end
         if _G.triggerShake then _G.triggerShake(4, 0.16) end

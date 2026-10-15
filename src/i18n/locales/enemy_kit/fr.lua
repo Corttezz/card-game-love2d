@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        staggered = "Ébranlé par la chaîne brisée : ce coup ne porte qu'à moitié.",
         runes = "Un coup par rune allumée. Brisez des runes ce tour pour lui retirer des coups.",
         hit      = "Attaque et inflige {value} dégâts.",
         multi    = "Attaque {hits} fois : {value} dégâts chacune ({total} au total).",
@@ -154,6 +155,8 @@ return {
     },
 
     status = {
+        chains = { name = "Chaînes de l'Abîme",
+            desc = "{stacks} chaîne(s) retiennent encore le Tyran. La suivante cède à {max}% de vie (marque dorée sur la barre). Quand elle cède, il chancelle : le coup déjà annoncé ne porte qu'à moitié (une fois par tour), mais il gagne +{value} dégâts ensuite." },
         runes = { name = "Runes du Rituel",
             desc = "{stacks} runes allumées sur {max}. À {max}, la Liche déchaîne le Cataclysme Runique : un coup par rune. Chaque tranche de {value} dégâts infligés en un même tour brise une rune (ce tour : {dealt})." },
         frail      = { name = "Fragile",
@@ -177,6 +180,8 @@ return {
     },
 
     msg = {
+        chain_break = "Chaîne brisée ! +{value} dégâts",
+        staggered = "Coup à moitié",
         rune_gain = "Rune allumée ({value})",
         rune_break = "Rune brisée !",
         pierce         = "Le coup transperce votre Blocage : {value} dégâts !",

@@ -100,6 +100,32 @@ function SEQ.tower_lich(K)
     K.shot("7_depois")
 end
 
+function SEQ.abyss_tyrant(K)
+    local BM = require("src.systems.BossMechanics")
+    local ER = require("src.ui.EnemyRenderer")
+    local g = K.game
+    local e = g.enemy
+    K.frame()
+    K.step(1.5)
+    K.shot("1_tres_correntes")
+    e:takeDamage(math.floor(e.maxHealth * 0.26))
+    g:settleEnemyDamage(nil)
+    K.step(0.10)
+    K.shot("2_corrente_estalando")
+    K.step(0.35)
+    K.shot("3_corrente_caindo")
+    K.step(1.5)
+    K.shot("4_duas_correntes")
+    ER.triggerAttack("strong", nil, { strike = "fireball" })
+    K.step(0.22)
+    K.shot("5_fogo_infernal_voo")
+    K.step(0.13)
+    K.shot("6_fogo_infernal_impacto")
+    BM.setStacks(e, "chains", 0)
+    K.step(1.5)
+    K.shot("7_sem_correntes")
+end
+
 function M.run(which)
     local I18n = require("src.i18n.I18n")
     I18n.init()

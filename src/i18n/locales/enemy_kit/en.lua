@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        staggered = "Staggered by the broken chain: this strike lands at half.",
         runes = "One strike per lit rune. Break runes this turn to remove strikes.",
         hit      = "Attacks for {value} damage.",
         multi    = "Attacks {hits} times: {value} damage each ({total} total).",
@@ -154,6 +155,8 @@ return {
     },
 
     status = {
+        chains = { name = "Abyssal Chains",
+            desc = "{stacks} chain(s) still bind the Tyrant. The next one snaps at {max}% health (gold mark on the bar). When it snaps he staggers: the strike already announced lands at half (once per turn), but he gains +{value} damage from then on." },
         runes = { name = "Ritual Runes",
             desc = "{stacks} of {max} runes lit. At {max}, the Lich unleashes the Runic Cataclysm: one strike per rune. Every {value} damage you deal in a single turn breaks a rune (this turn: {dealt})." },
         frail      = { name = "Frail",
@@ -177,6 +180,8 @@ return {
     },
 
     msg = {
+        chain_break = "Chain snapped! +{value} damage",
+        staggered = "Half strike",
         rune_gain = "Rune lit ({value})",
         rune_break = "Rune shattered!",
         pierce         = "The blow pierces your Block: {value} damage!",
