@@ -18,8 +18,8 @@ end
 function SteamBridge.init()
     if tried then return active end
     tried = true
-    if _G.HEADLESS_TOOL and not backend then
-        warnOnce("ferramenta headless")
+    if (_G.HEADLESS_TOOL or _G.CHEAT_MODE) and not backend then
+        warnOnce(_G.CHEAT_MODE and "modo cheat" or "ferramenta headless")
         return false
     end
     if not backend then

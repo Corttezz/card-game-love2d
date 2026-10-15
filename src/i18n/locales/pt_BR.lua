@@ -1406,6 +1406,8 @@ return {
 
     scribe_dice = require("src.i18n.locales.scribe_dice.pt_BR"),
 
+    cheat = require("src.i18n.locales.cheat.pt_BR"),
+
     seals = require("src.i18n.locales.run_modifiers.pt_BR").seals,
     seal_ui = require("src.i18n.locales.run_modifiers.pt_BR").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.pt_BR").endless_curses,

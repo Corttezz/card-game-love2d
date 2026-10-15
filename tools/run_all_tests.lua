@@ -125,6 +125,7 @@ local SUITES = {
     { group = "valid", name = "test_locale_accents" },
     { group = "valid", name = "test_locale_dashes" },
     { group = "valid", name = "test_no_comments_no_prints" },
+    { group = "unit",  name = "test_cheat_mode" },
 }
 
 local GUARDED = {

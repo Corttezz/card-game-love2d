@@ -228,7 +228,8 @@ function Release.errorhandler(msg)
     end
 
     local okArgs, gameArgs = pcall(function() return love.arg.parseGameArguments(arg) end)
-    local toolRun = _G.HEADLESS_TOOL or (okArgs and type(gameArgs) == "table" and gameArgs[1] ~= nil)
+    local toolRun = _G.HEADLESS_TOOL or (okArgs and type(gameArgs) == "table" and gameArgs[1] ~= nil
+        and gameArgs[1] ~= "cheat")
     if Release.DEV and toolRun then
         print(trace)
         return function() return 1 end

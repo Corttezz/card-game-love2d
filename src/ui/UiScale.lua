@@ -223,7 +223,7 @@ UiScale.SCREENS = {
     "components.SettingsMenu", "components.EndlessCurseScreen",
 }
 UiScale.MODULES = { "src.scenes.EndScreens", "src.ui.ConfirmDialog", "src.ui.AchievementToast",
-    "src.scenes.GameplayScene" }
+    "src.scenes.GameplayScene", "components.CheatPanel" }
 
 function UiScale.adoptDefaults()
     for _, mod in ipairs(UiScale.SCREENS) do

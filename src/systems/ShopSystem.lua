@@ -196,6 +196,10 @@ function ShopSystem:generateOffers()
     local jokerSlot = nil
     if self.mode == "rewards" then
         local chance = ShopSystem.rewardJokerChance(self.context.nodeType)
+        if ShopSystem.forceNextRewardJoker then
+            ShopSystem.forceNextRewardJoker = false
+            chance = 1
+        end
         if chance > 0 and Rng.get():random("shop") < chance then jokerSlot = nCards end
         if sustainSlot and jokerSlot == 1 then jokerSlot = nil end
     end

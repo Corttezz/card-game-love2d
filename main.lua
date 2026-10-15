@@ -351,9 +351,26 @@ _G.__resumeRunStage = function()
     return true
 end
 
+_G.__cheatApi = {
+    game = function() return game end,
+    state = function() return currentState end,
+    showMapSelection = function() showMapSelection() end,
+    showRoundEval = function() showRoundEval() end,
+    onNodeChosen = function(node, index) onNodeChosen(node, index) end,
+    startGame = function(classId, seal) startGame(classId, seal or 0) end,
+    returnToMenu = function() returnToMenu() end,
+    screens = function()
+        return {
+            reward = cardRewardScreen, roundEval = roundEvalScreen, map = mapScreen,
+            rest = restScreen, event = eventScreen, packOpen = packOpenScreen,
+        }
+    end,
+}
+
 function love.load(loveArgs)
     require("src.ui.UiScale").adoptDefaults()
     loveArgs = require("src.core.Release").filterArgs(loveArgs)
+    loveArgs = require("src.systems.CheatMode").claimArgs(loveArgs)
     local toolArg = loveArgs and loveArgs[1]
     if toolArg then
         _G.HEADLESS_TOOL = true
@@ -1507,6 +1524,7 @@ function love.update(dt)
         IF.push("pause"); pauseMenu:update(dt); IF.pop()
     end
     IF.push("confirm"); require("src.ui.ConfirmDialog").update(dt); IF.pop()
+    require("src.systems.CheatMode").update(dt)
 end
 
 function love.draw()
@@ -1640,6 +1658,7 @@ function love.draw()
     IF.push("tutorialTip"); require("src.systems.Tutorial").draw(); IF.pop()
 
     require("src.ui.AchievementToast").draw()
+    require("src.systems.CheatMode").draw()
 
     require("src.ui.NavCursor").draw()
     require("src.ui.CursorManager").draw()
@@ -1687,6 +1706,7 @@ function love.resize(w, h)
 end
 
 function love.keypressed(key)
+    if require("src.systems.CheatMode").keypressed(key) then return end
     if currentState == "boot" then
         BootScene.keypressed(key)
         return
@@ -1853,6 +1873,7 @@ function love.mousereleased(x, y, button)
     if not require("src.ui.NavCursor").synthesizing then
         x, y = CRTShader.screenToContent(x, y)
     end
+    if require("src.systems.CheatMode").mousereleased(x, y, button) then return end
 
     do
         local captor = require("src.ui.InputFocus").captor()
@@ -1892,6 +1913,7 @@ function love.mousepressed(x, y, button)
     if not require("src.ui.NavCursor").synthesizing then
         x, y = CRTShader.screenToContent(x, y)
     end
+    if require("src.systems.CheatMode").mousepressed(x, y, button) then return end
     if currentState == "boot" then
         BootScene.mousepressed(x, y, button)
         return
