@@ -72,6 +72,16 @@ pelo contact sheet a 3x.
   coringa-raro: todo coringa da recompensa é revelado por último). A etiqueta
   de cima vira "CORINGA DO CHEFE" (`reward.boss_joker_badge`) e o selo "ACHADO
   RARO" de baixo não aparece para ele (o troféu já foi a revelação).
+- **Nada desenha FORA da carta** (15/Out/2026, dono: "as bordas quadriculares
+  fora da carta que ficam aparecendo, meio que deixando a carta em
+  evidência"). Saíram dois contornos: o halo retangular pulsante de TODA
+  lendária (`legendaryHalo` em `CardAnimationLayer`, valia em qualquer tela) e
+  o brilho em degraus que a `RareReveal` deixava em volta do coringa depois da
+  revelação (`drawGlow`). A revelação continua (carga, explosão, raios
+  atrás, faíscas) e o selo de texto acima também. A moldura tarot azul do
+  coringa NÃO é do chefe: é a de todo coringa, e o dono não pediu para mudá-la.
+  Trava: `test_card_hover_edges` (faixa acima da lendária em repouso vazia).
+  Antes/depois: `tools/preview_out/bordas_cartas/recompensa_*.png`.
 - Composição com a vaga de coringa raro (`REWARD_JOKER_CHANCE`, chefe 70%,
   sempre a ÚLTIMA vaga): `_applyBossJoker` roda depois e troca a última vaga,
   então a recompensa do chefe nunca tem dois coringas.

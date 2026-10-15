@@ -8,24 +8,6 @@ local enabled = true
 function CardAnimationLayer.setEnabled(v) enabled = v end
 function CardAnimationLayer.isEnabled() return enabled end
 
-local CANVAS_W, CANVAS_H = 96, 144
-
-local function drawPulsingBorder(x, y, w, h, color, alpha, thickness)
-    thickness = thickness or 2
-    love.graphics.setColor(color[1], color[2], color[3], alpha)
-    for i = 0, thickness - 1 do
-        love.graphics.rectangle("line", x - i, y - i, w + i * 2, h + i * 2)
-    end
-end
-
-local function legendaryHalo(x, y, sx, sy, t)
-    local alpha = 0.25 + math.sin(t * 2.0) * 0.15
-    local w = CANVAS_W * sx
-    local h = CANVAS_H * sy
-    drawPulsingBorder(x, y, w, h, Palette.AGED_GOLD_LIGHT, alpha, 2)
-    drawPulsingBorder(x - 2, y - 2, w + 4, h + 4, Palette.AGED_GOLD, alpha * 0.4, 1)
-end
-
 local function embers(x, y, sx, sy, t)
     local aX = x + 4 * sx
     local aY = y + 17 * sy
@@ -266,12 +248,6 @@ function CardAnimationLayer.draw(card, art, x, y, scaleX, scaleY, t)
 
     local r, g, b, a = love.graphics.getColor()
     love.graphics.setBlendMode("alpha")
-
-    local rarity = card.rarity or "common"
-
-    if rarity == "legendary" then
-        legendaryHalo(x, y, scaleX, scaleY, t)
-    end
 
     local bg = art and art.bgPattern
     if bg == "fire" or bg == "rage" then

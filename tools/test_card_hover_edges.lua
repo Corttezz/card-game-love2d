@@ -122,8 +122,23 @@ function M.run()
             end
         end
     end)
+    local ok2, err2 = pcall(function()
+        for _, id in ipairs({ "joker_001", "joker_boss_carrion" }) do
+            local inst, data = render(db, { id = id }, nil)
+            local rect = inst.lastDrawRect
+            local lit = 0
+            for y = math.floor(rect.y) - 4, math.floor(rect.y) - 1 do
+                for x = math.floor(rect.x) + 4, math.floor(rect.x + rect.w) - 5 do
+                    local _, _, _, a = data:getPixel(x, y)
+                    if a > 0.02 then lit = lit + 1 end
+                end
+            end
+            t:eq(id .. " em repouso: nada desenhado fora da carta (sem halo lendario)", lit, 0)
+        end
+    end)
     love.timer.getTime = realGetTime
     t:truthy("sem erro: " .. tostring(err), ok)
+    t:truthy("sem erro no halo: " .. tostring(err2), ok2)
     return t:done()
 end
 

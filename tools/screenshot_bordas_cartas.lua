@@ -15,7 +15,58 @@ local POSES = {
     { label = "hover lateral dir", rx = 0.95, ry = 0.5 },
 }
 
+function M.reward(tag)
+    local TK = require("tools.testkit")
+    TK.bootstrap()
+    require("src.ui.PixelCanvas").enableNearest()
+    require("src.ui.DissolveShader").load()
+    require("src.ui.HoloShader").load()
+    local EventManager = require("engine.EventManager")
+    local CardParticles = require("src.systems.CardParticles")
+    local CardRewardScreen = require("components.CardRewardScreen")
+    local Game = require("src.core.Game")
+    local w, h = love.graphics.getDimensions()
+    local cv = love.graphics.newCanvas(w, h)
+    _G.gameSettings = _G.gameSettings or {}
+    _G.gameSettings.reducedMotion = os.getenv("BORDAS_REDUCED") == "1"
+    TK.seedRng(4040)
+    local game = Game:new()
+    game:startNewRun("warrior")
+    game:startGame()
+    _G.game = game
+    game.runManager.currentRun.currentNode = { type = "boss", enemyId = "carrion_king" }
+    local screen = CardRewardScreen:new(game.shopSystem)
+    screen.lastScreenWidth, screen.lastScreenHeight = w, h
+    screen:show(game, function() end, function() end, "rewards")
+    local marks = { 2.2, 6.0 }
+    local t, dt, mi = 0, 1 / 60, 1
+    while mi <= #marks do
+        EventManager.update(dt)
+        CardParticles.update(dt)
+        screen:update(dt)
+        love.graphics.setCanvas(cv)
+        love.graphics.origin()
+        love.graphics.clear(0.16, 0.12, 0.08, 1)
+        love.graphics.setColor(1, 1, 1, 1)
+        screen:draw()
+        CardParticles.draw()
+        love.graphics.setCanvas()
+        t = t + dt
+        if t >= marks[mi] then
+            local name = ("bordas_cartas_recompensa_%s_t%.1f.png"):format(tag, marks[mi])
+            cv:newImageData():encode("png", name)
+            print("[bordas_cartas] " .. love.filesystem.getSaveDirectory() .. "/" .. name)
+            mi = mi + 1
+        end
+    end
+    screen:hide()
+    return true
+end
+
 function M.run()
+    if os.getenv("BORDAS_MODE") == "reward" then
+        return M.reward(os.getenv("BORDAS_TAG") or "atual")
+    end
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
     local I18n = require("src.i18n.I18n")

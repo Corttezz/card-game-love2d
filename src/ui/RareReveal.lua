@@ -192,16 +192,6 @@ local function drawRays(len, alpha, rot, count)
     end
 end
 
-local function drawGlow(w, h, alpha)
-    if alpha <= 0.003 then return end
-    local P = RareReveal.PIX
-    for i = 4, 1, -1 do
-        local g = i * P * 2
-        setc(GOLD, alpha * (0.2 / i))
-        love.graphics.rectangle("fill", -w / 2 - g, -h / 2 - g, w + g * 2, h + g * 2)
-    end
-end
-
 local function regionHalf(w, h)
     return math.max(w, h) * 0.95 + 90
 end
@@ -212,7 +202,6 @@ function RareReveal.drawBack(st, cx, cy, w, h)
     local P = RareReveal.PIX
     pixelLayer(cx, cy, regionHalf(w, h), function()
         if st.reduced then
-            drawGlow(w, h, 0.6)
             drawRays(h * 0.78, 0.12, 0, 12)
         elseif st.t < RareReveal.CHARGE then
             local k = st.t / RareReveal.CHARGE
@@ -236,7 +225,6 @@ function RareReveal.drawBack(st, cx, cy, w, h)
             local settle = math.min(1, a / RareReveal.SETTLE)
             local rayA = 0.32 - 0.20 * settle + 0.03 * math.sin(now * 2.2)
             drawRays(h * (0.6 + 0.2 * math.min(1, a * 3)), rayA, now * 0.22, 12)
-            drawGlow(w, h, 0.75 - 0.3 * settle + 0.08 * math.sin(now * 2.6))
         end
     end)
     love.graphics.setColor(1, 1, 1, 1)

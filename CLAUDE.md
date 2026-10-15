@@ -566,7 +566,8 @@ CRTShader                            -- pós-processamento full-screen
 - `common`: outline ink + borda tipo simples
 - `uncommon`: + cantos decorativos verde-musgo
 - `rare`: + borda interna `BLOOD` + halo rarity seal + HoloShader v2 (kind 0): glint prata-azulado SÓ no aro, 0 em repouso → ~0.25 no hover
-- `legendary`: + borda interna dourada + cantos `AGED_GOLD` com highlight + halo dourado + HoloShader v2 (kind 1): aro ouro + faixa prismática em degraus, 0.08 em repouso → ~0.5 no hover. **Regra (Out/2026):** o holo é REFLEXO aditivo no aro/realces — a ilustração em repouso é pixel-idêntica à crua (`test_holo_shader` trava); a v1 (arco-íris sobre a carta inteira, sempre animado) lavava a arte e foi descartada.
+- **Nada desenha FORA da carta** (15/Out/2026, dono: "bordas quadriculares fora da carta"): o halo retangular da lendária e o brilho em degraus da `RareReveal` saíram; trava `test_card_hover_edges`, que também prova que o hover de rara/lendária não corta a borda (canvas do warp com margem, `Card.warpPad`; ver `memory/ui_rendering.md`).
+- `legendary`: + borda interna dourada + cantos `AGED_GOLD` com highlight + halo dourado no selo + HoloShader v2 (kind 1): aro ouro + faixa prismática em degraus, 0.08 em repouso → ~0.5 no hover. **Regra (Out/2026):** o holo é REFLEXO aditivo no aro/realces — a ilustração em repouso é pixel-idêntica à crua (`test_holo_shader` trava); a v1 (arco-íris sobre a carta inteira, sempre animado) lavava a arte e foi descartada.
 
 **Hierarquia por tipo:**
 - `attack` → accent `BLOOD` + footer "ATTACK"
