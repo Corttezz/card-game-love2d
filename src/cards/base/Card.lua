@@ -728,6 +728,10 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         self:_drawSealIndicator(drawX, drawY)
     end
 
+    if self.frozen or self._thawAt then
+        require("src.ui.BossTokens").drawFrozenCard(self, drawX, drawY)
+    end
+
     if self.isNewDiscovery then
         require("src.ui.DiscoveryMark").drawOnCard(self, self.image, drawX, drawY,
             mouseUV, hoverAmt, timeNow)

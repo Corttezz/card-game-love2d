@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        frost = "Deixa +{value} de Geada em você.",
         staggered = "Cambaleou com a corrente rompida: este golpe sai pela metade.",
         runes = "Um golpe por runa acesa. Quebre runas neste turno para tirar golpes.",
         hit      = "Ataca causando {value} de dano.",
@@ -155,6 +156,8 @@ return {
     },
 
     status = {
+        frost = { name = "Geada",
+            desc = "{stacks} de Geada. Quando a mão nova chega com {value} ou mais, as {max} cartas mais caras vêm CONGELADAS (não podem ser jogadas neste turno). Cada ataque que você joga derrete 1 (fogo derrete 2)." },
         chains = { name = "Correntes do Abismo",
             desc = "{stacks} corrente(s) ainda prendem o Tirano. A próxima se rompe aos {max}% da vida (marca dourada na barra). Ao romper, ele cambaleia: o golpe já anunciado sai pela metade (uma vez por turno), mas ele ganha +{value} de dano dali em diante." },
         runes = { name = "Runas do Ritual",
@@ -180,6 +183,10 @@ return {
     },
 
     msg = {
+        frost_gain = "Geada +{value} ({total}/{max})",
+        freeze = "{value} carta(s) congelada(s)!",
+        frost_melt = "Geada -{value}",
+        card_frozen = "Carta congelada: derrete no fim do turno.",
         chain_break = "Corrente rompida! +{value} de dano",
         staggered = "Golpe pela metade",
         rune_gain = "Runa acesa ({value})",

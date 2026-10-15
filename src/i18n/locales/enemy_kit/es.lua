@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        frost = "Te deja +{value} de Escarcha.",
         staggered = "Tambaleó con la cadena rota: este golpe sale a la mitad.",
         runes = "Un golpe por runa encendida. Rompe runas este turno para quitarle golpes.",
         hit      = "Ataca causando {value} de daño.",
@@ -155,6 +156,8 @@ return {
     },
 
     status = {
+        frost = { name = "Escarcha",
+            desc = "{stacks} de Escarcha. Cuando la mano nueva llega con {value} o más, tus {max} cartas más caras llegan CONGELADAS (no se pueden jugar este turno). Cada ataque que juegas derrite 1 (el fuego derrite 2)." },
         chains = { name = "Cadenas del Abismo",
             desc = "{stacks} cadena(s) aún sujetan al Tirano. La próxima se rompe al {max}% de vida (marca dorada en la barra). Al romperse, se tambalea: el golpe ya anunciado sale a la mitad (una vez por turno), pero gana +{value} de daño desde entonces." },
         runes = { name = "Runas del Ritual",
@@ -180,6 +183,10 @@ return {
     },
 
     msg = {
+        frost_gain = "Escarcha +{value} ({total}/{max})",
+        freeze = "¡{value} carta(s) congelada(s)!",
+        frost_melt = "Escarcha -{value}",
+        card_frozen = "Carta congelada: se derrite al final del turno.",
         chain_break = "¡Cadena rota! +{value} de daño",
         staggered = "Golpe a la mitad",
         rune_gain = "Runa encendida ({value})",

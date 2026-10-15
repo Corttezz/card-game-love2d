@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        frost = "Vous inflige +{value} de Givre.",
         staggered = "Ébranlé par la chaîne brisée : ce coup ne porte qu'à moitié.",
         runes = "Un coup par rune allumée. Brisez des runes ce tour pour lui retirer des coups.",
         hit      = "Attaque et inflige {value} dégâts.",
@@ -155,6 +156,8 @@ return {
     },
 
     status = {
+        frost = { name = "Givre",
+            desc = "{stacks} de Givre. Quand votre nouvelle main arrive à {value} ou plus, vos {max} cartes les plus chères arrivent GELÉES (injouables ce tour). Chaque attaque jouée en fait fondre 1 (le feu en fait fondre 2)." },
         chains = { name = "Chaînes de l'Abîme",
             desc = "{stacks} chaîne(s) retiennent encore le Tyran. La suivante cède à {max}% de vie (marque dorée sur la barre). Quand elle cède, il chancelle : le coup déjà annoncé ne porte qu'à moitié (une fois par tour), mais il gagne +{value} dégâts ensuite." },
         runes = { name = "Runes du Rituel",
@@ -180,6 +183,10 @@ return {
     },
 
     msg = {
+        frost_gain = "Givre +{value} ({total}/{max})",
+        freeze = "{value} carte(s) gelée(s) !",
+        frost_melt = "Givre -{value}",
+        card_frozen = "Carte gelée : elle dégèle à la fin du tour.",
         chain_break = "Chaîne brisée ! +{value} dégâts",
         staggered = "Coup à moitié",
         rune_gain = "Rune allumée ({value})",

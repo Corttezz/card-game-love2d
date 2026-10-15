@@ -133,6 +133,7 @@ return {
     },
 
     intent = {
+        frost = "Leaves +{value} Frost on you.",
         staggered = "Staggered by the broken chain: this strike lands at half.",
         runes = "One strike per lit rune. Break runes this turn to remove strikes.",
         hit      = "Attacks for {value} damage.",
@@ -155,6 +156,8 @@ return {
     },
 
     status = {
+        frost = { name = "Frost",
+            desc = "{stacks} Frost. When your new hand arrives at {value} or more, your {max} most expensive cards come FROZEN (they cannot be played this turn). Each attack you play melts 1 (fire melts 2)." },
         chains = { name = "Abyssal Chains",
             desc = "{stacks} chain(s) still bind the Tyrant. The next one snaps at {max}% health (gold mark on the bar). When it snaps he staggers: the strike already announced lands at half (once per turn), but he gains +{value} damage from then on." },
         runes = { name = "Ritual Runes",
@@ -180,6 +183,10 @@ return {
     },
 
     msg = {
+        frost_gain = "Frost +{value} ({total}/{max})",
+        freeze = "{value} card(s) frozen!",
+        frost_melt = "Frost -{value}",
+        card_frozen = "Frozen card: it thaws at the end of the turn.",
         chain_break = "Chain snapped! +{value} damage",
         staggered = "Half strike",
         rune_gain = "Rune lit ({value})",

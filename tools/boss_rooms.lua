@@ -158,7 +158,7 @@ function M.run(startAct)
     end
 
     local BM = require("src.systems.BossMechanics")
-    local GALLERY_STRIKE = { tower_lich = "rune", abyss_tyrant = "fireball" }
+    local GALLERY_STRIKE = { tower_lich = "rune", abyss_tyrant = "fireball", winter_monarch = "shard" }
     local function counterName()
         local e = _G.game and _G.game.enemy
         if not e then return nil end
@@ -168,12 +168,18 @@ function M.run(startAct)
     end
     local function swarmCount()
         local e = _G.game and _G.game.enemy
+        if e and BM.frostSpec(_G.game) then return _G.game.player.frost or 0 end
         local nm = counterName()
         if not e or not nm then return 0 end
         return BM.stacks(e, nm)
     end
     local function setSwarm(n)
         local e = _G.game and _G.game.enemy
+        if e and BM.frostSpec(_G.game) then
+            _G.game.player.frost = math.max(0, n)
+            _G.game:_mechanicFx(BM.onPlayerDraw(_G.game))
+            return
+        end
         local nm = counterName()
         if not e or not nm then return end
         BM.setStacks(e, nm, math.max(0, math.min(12, n)))

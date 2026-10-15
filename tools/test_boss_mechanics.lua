@@ -275,12 +275,134 @@ local function testTyrant(t)
         "enemy_kit.status.chains.desc", "enemy_kit.msg.chain_break", "enemy_kit.msg.staggered" })
 end
 
+local function testMonarch(t)
+    local ID = "winter_monarch"
+    local g = battleWith(ID, 400, 20)
+    local e = g.enemy
+    t:eq("monarca: mecânica geada", BM.spec(e).kind, "frost")
+    e:forceIntent("royal_blizzard", g.player)
+    t:eq("monarca: Nevasca Real anuncia +2 Geada", e:getIntent().frost, 2)
+    e:forceIntent("winter_blade", g.player)
+    t:eq("monarca: Lâmina do Inverno +1", e:getIntent().frost, 1)
+    e.intentVisibility = "type_only"
+    t:eq("monarca: névoa esconde o número mas não a Geada", e:getKnownIntent(g.player).frost, 1)
+    e.intentVisibility = "full"
+
+    g.player.frost = 0
+    e:forceIntent("royal_blizzard", g.player)
+    g.player.armor = 99
+    runEnemyTurn(g, 8)
+    t:eq("monarca (luta): Geada no jogador", g.player.frost, 2)
+    local frozen = 0
+    for _, c in ipairs(g.hand) do if c.frozen then frozen = frozen + 1 end end
+    t:eq("monarca (luta): abaixo de 4 nada congela", frozen, 0)
+
+    g:endTurn()
+    TK.pump(g, 1)
+    g.player.frost = 3
+    e:forceIntent("royal_blizzard", g.player)
+    g.player.armor = 99
+    runEnemyTurn(g, 8)
+    frozen = 0
+    local maxCostFrozen, maxCostFree = -1, -1
+    for _, c in ipairs(g.hand) do
+        if c.frozen then
+            frozen = frozen + 1
+            maxCostFrozen = math.max(maxCostFrozen, c.cost or 0)
+        else
+            maxCostFree = math.max(maxCostFree, c.cost or 0)
+        end
+    end
+    t:eq("monarca (luta): 5 de Geada congela 2 cartas na compra", frozen, math.min(2, #g.hand))
+    t:truthy("monarca (luta): congela as mais caras", maxCostFrozen >= maxCostFree)
+    t:eq("monarca (luta): Geada perde 4", g.player.frost, 1)
+    local fc = nil
+    for _, c in ipairs(g.hand) do if c.frozen then fc = c break end end
+    if fc then
+        t:falsy("monarca: carta congelada não pode ser jogada", g:canPlayCard(fc))
+        local mana = g.player.mana
+        g:selectCard(fc)
+        t:falsy("monarca: selecionar congelada não seleciona", g:isCardSelected(fc))
+        t:eq("monarca: e não gasta mana", g.player.mana, mana)
+        local AI = require("tools.balance_ai")
+        local bctx = AI.newBattle(g)
+        local set = AI.bestSet(g, bctx)
+        local uses = false
+        for _, c in ipairs(set) do if c.frozen then uses = true end end
+        t:falsy("monarca: piloto nunca escolhe carta congelada", uses)
+    end
+    g:endTurn()
+    local still = 0
+    for _, c in ipairs(g.hand) do if c.frozen then still = still + 1 end end
+    t:eq("monarca: gelo derrete no fim do turno", still, 0)
+
+    g.player.frost = 3
+    local res = BM.onPlayerAttack(g, { type = "attack", tags = {} })
+    t:eq("monarca: ataque derrete 1", g.player.frost, 2)
+    BM.onPlayerAttack(g, { type = "attack", tags = { "fire" } })
+    t:eq("monarca: fogo derrete 2", g.player.frost, 0)
+    t:eq("monarca: evento de derretimento", res and res.kind, "frost_melt")
+    g.player.frost = 3
+    g:applyClassBattleStartPassive()
+    t:eq("Continuar/luta nova: Geada zera", g.player.frost, 0)
+    local g2 = battleWith("tower_lich", 400, 20)
+    g2.player.frost = 9
+    t:falsy("monarca: fora do Monarca a Geada não congela", BM.onPlayerDraw(g2))
+
+    local picks = BM.freezePicks({ { cost = 1 }, { cost = 3 }, { cost = 2 }, { cost = 3 } }, 2)
+    t:truthy("monarca: empate de custo congela a mais à esquerda",
+        picks[1].cost == 3 and picks[2].cost == 3)
+
+    local savedGS = _G.gameSettings
+    _G.gameSettings = { reducedMotion = false }
+    local BT = BossTokens
+    BT.reset()
+    local fakeGame = { enemy = e, player = { frost = 4 } }
+    BT.drawScreen(fakeGame)
+    t:truthy("monarca visual: gelo nas bordas cresce com a Geada", BT.screenLevel() > 0)
+    _G.gameSettings = { reducedMotion = true }
+    BT.drawScreen(fakeGame)
+    t:eq("monarca reducedMotion: gelo já no tamanho (informação fica)", BT.screenLevel(), 1)
+    fakeGame.player.frost = 0
+    BT.drawScreen(fakeGame)
+    t:eq("monarca visual: sem Geada, sem gelo", BT.screenLevel(), 0)
+    _G.gameSettings = { reducedMotion = false }
+    local fake = { getStatusStacks = function() return 0 end }
+    settleTokens(ID, fake, 0.1)
+    local st = BT._debug(ID)
+    st.iw, st.ih, st.tgtX, st.tgtY = 122, 129, -200, 300
+    t:truthy("monarca visual: Nevasca dispara estilhaço", BT.strike(ID, "shard", 0.34, 0.42))
+    _G.gameSettings = { reducedMotion = true }
+    t:falsy("monarca reducedMotion: sem estilhaço", BT.strike(ID, "shard", 0.34, 0.42))
+    _G.gameSettings = savedGS
+    BT.reset()
+
+    local SP = ownIcon(t, "monarca", require("src.ui.StatusPill").ICONS.frost)
+    t:eq("monarca: pill usa status_frost", SP.ICONS.frost, "status_frost")
+    local spec = BT.spec(ID)
+    t:truthy("monarca: canto de gelo é sprite", BT.image(spec.corner))
+    t:truthy("monarca: bloco de gelo da carta é sprite", BT.image(spec.iceBlock))
+    t:truthy("monarca: estilhaço é sprite", BT.image(spec.strikes.shard.sprite))
+    for _, snd in pairs(spec.sounds) do
+        t:truthy("monarca: som " .. snd.code .. " sem estourar (<= 1)", snd.volume <= 1)
+    end
+    local pills = require("src.ui.PlayerBuffPills").collect({ frost = 3, debuffs = {}, buffs = {} },
+        { enemy = e })
+    local has = false
+    for _, pl in ipairs(pills) do if pl.name == "frost" and pl.stacks == 3 and pl.value == 4 then has = true end end
+    t:truthy("monarca: pill de Geada no jogador com o limiar", has)
+    localesHave(t, "monarca", { "enemy_kit.intent.frost", "enemy_kit.status.frost.name",
+        "enemy_kit.status.frost.desc", "enemy_kit.msg.frost_gain", "enemy_kit.msg.freeze",
+        "enemy_kit.msg.frost_melt", "enemy_kit.msg.card_frozen" })
+end
+
 function M.run()
     local t = TK.new("chefes: mecânica-assinatura, contador, visual, golpe")
     TK.bootstrap()
     TK.seedRng(9090)
     testLich(t)
     testTyrant(t)
+    testMonarch(t)
     return t:done()
 end
 

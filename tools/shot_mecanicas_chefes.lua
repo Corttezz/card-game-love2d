@@ -126,6 +126,32 @@ function SEQ.abyss_tyrant(K)
     K.shot("7_sem_correntes")
 end
 
+function SEQ.winter_monarch(K)
+    local BM = require("src.systems.BossMechanics")
+    local ER = require("src.ui.EnemyRenderer")
+    local g = K.game
+    K.frame()
+    K.step(1.5)
+    K.shot("1_sem_geada")
+    g.player.frost = 2
+    K.step(1.5)
+    K.shot("2_geada_2")
+    g.player.frost = 4
+    g:_mechanicFx(BM.onPlayerDraw(g))
+    K.step(0.15)
+    K.shot("3_mao_congelada")
+    K.step(1.5)
+    K.shot("4_congeladas")
+    ER.triggerAttack("multi", nil, { strike = "shard" })
+    K.step(0.24)
+    K.shot("5_estilhaco_voo")
+    K.step(0.11)
+    K.shot("6_estilhaco_impacto")
+    BM.thaw(g)
+    K.step(0.2)
+    K.shot("7_degelo")
+end
+
 function M.run(which)
     local I18n = require("src.i18n.I18n")
     I18n.init()

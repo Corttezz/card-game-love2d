@@ -48,4 +48,25 @@ return {
                      volume = 0.45, pitch = 1.0 },
         },
     },
+
+    winter_monarch = {
+        status = "frost", layout = "screen",
+        corner = DIR .. "winter_monarch/mechanic/frost_corner.png",
+        iceBlock = DIR .. "winter_monarch/mechanic/ice_block.png",
+        strikes = {
+            shard = { kind = "bolt", sprite = DIR .. "winter_monarch/mechanic/ice_shard.png",
+                      from = { 0.156, 0.178 }, full = true, arc = 14, trail = { 0.70, 0.90, 1.00 },
+                      burst = { { 0.90, 0.97, 1.00 }, { 0.55, 0.78, 1.00 }, { 0.30, 0.45, 0.70 } },
+                      sound = { code = "impactIceMonarch", path = "audio/sfx/impact-ice.mp3",
+                                volume = 0.90, pitch = 1.05 } },
+        },
+        sounds = {
+            gain = { code = "impactIceMonarch", path = "audio/sfx/impact-ice.mp3",
+                     volume = 0.70, pitch = 0.80 },
+            freeze = { code = "bossIceCrackle", path = "audio/sfx/boss/boss_ice_crackle.mp3",
+                       volume = 1.00, pitch = 1.0 },
+            melt = { code = "shopCrystalMelt", path = "audio/sfx/shop-crystal-shatter.mp3",
+                     volume = 0.40, pitch = 1.30 },
+        },
+    },
 }

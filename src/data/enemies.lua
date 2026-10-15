@@ -228,6 +228,10 @@ Enemies.KITS = {
     },
     winter_monarch = {
         opener = "winter_blade",
+        mechanic = { kind = "frost", threshold = 4, freeze = 2, attackMelt = 1, fireMelt = 2,
+                     gains = { winter_blade = 1, royal_blizzard = 2, eternal_winter = 2,
+                               frozen_crown = 1 },
+                     strikes = { winter_blade = "shard", royal_blizzard = "shard" } },
         moves = {
             { id = "eternal_winter", kind = "debuff", weight = 0, armor = 1.2,
               debuff = { { name = F, duration = 2 }, { name = W, duration = 2 } },

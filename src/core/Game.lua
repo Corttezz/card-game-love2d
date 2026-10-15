@@ -428,6 +428,7 @@ function Game:isCardSelected(card)
 end
 
 function Game:canPlayCard(card)
+    if card.frozen then return false end
     return self.player.mana >= card.cost
 end
 
@@ -446,6 +447,10 @@ function Game:selectCard(card)
                 break
             end
         end
+    elseif card.frozen then
+        local I18n = require("src.i18n.I18n")
+        self:addMessage(I18n.t("enemy_kit.msg.card_frozen", nil, "*"), "error")
+        if card.juice_up then card:juice_up(0.1, 0.08) end
     else
         if self.player:spendMana(card.cost) then
             table.insert(self.selectedCards, card)
@@ -467,6 +472,7 @@ function Game:classPassiveTier()
 end
 
 function Game:applyClassBattleStartPassive()
+    if self.player then self.player.frost = 0 end
     self._toxinAppliedThisTurn = false
     self._toxinBonus = 0
     self._jokerThornFiredThisTurn = {}
@@ -670,6 +676,14 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
 
         self.enemy:takeDamage(damage)
         AchievementSystem.onCardDamage(self, card, damage)
+        do
+            local melt = BossMechanics.onPlayerAttack(self, card)
+            if melt then
+                CombatBeats.step(sink, "player.frost_melt", function()
+                    self:_mechanicFx(melt)
+                end, "MICRO")
+            end
+        end
 
         if self.selectedClass == "rogue" and not self._toxinAppliedThisTurn
             and self.enemy:isAlive() then
@@ -796,6 +810,7 @@ function Game:endTurn()
 end
 
 function Game:discardHandEndOfTurn()
+    BossMechanics.thaw(self)
     local kept = {}
     for _, card in ipairs(self.hand) do
         if card.retain then
@@ -1128,6 +1143,13 @@ function Game:enemyTurn()
         end
     end
 
+    for _, step in ipairs(BossMechanics.intentSteps(self.enemy, it)) do
+        CombatBeats.push("boss." .. step.kind, beat(function()
+            if not self.player:isAlive() then return end
+            self:_mechanicFx(BossMechanics.applyIntentStep(self, step))
+        end), "STATUS")
+    end
+
     for _, d in ipairs(it.debuffs or {}) do
         CombatBeats.push("enemy.debuff." .. d.name, beat(function()
             if not self.player:isAlive() then return end
@@ -1313,6 +1335,11 @@ function Game:_pushEnemyTurnTail(beat)
     CombatBeats.push("player.draw", beat(function()
         if not self.enemy:isAlive() or not self.player:isAlive() then return end
         self:drawForTurn()
+        local frozen = BossMechanics.onPlayerDraw(self)
+        if frozen then
+            CombatBeats.extendCurrent("STATUS")
+            self:_mechanicFx(frozen)
+        end
     end), "HANDOFF")
 
     do
@@ -1670,6 +1697,7 @@ function Game:resumeRun()
     end
     self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
     RunModifiers.decorateEnemy(run, self.enemy)
+    if self.player then self.player.frost = 0 end
     self.battleTurn = 0
     self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
     if not inBattle then

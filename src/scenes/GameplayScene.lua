@@ -560,6 +560,9 @@ function GameplayScene.draw()
         end
     end
 
+    if not traveling and not entering then
+        require("src.ui.BossTokens").drawScreen(game)
+    end
     if not cineHide then gameUI:draw(game) end
 
     TurnBanner.draw()

@@ -495,6 +495,21 @@ function AI.mechanicBonus(game, set, S)
         breaks = math.min(breaks, BM.stacks(e, m.status))
         return breaks * 0.5 * (e.baseDamage or e.damage or 0)
     end
+    if m.kind == "frost" then
+        local p = game.player
+        local frost = p.frost or 0
+        local melt = 0
+        for _, c in ipairs(set) do
+            if c.type == "attack" then melt = melt + BM.meltFor(c, m) end
+        end
+        local it = e.getKnownIntent and e:getKnownIntent(p) or {}
+        local after = math.max(0, frost - melt) + (it.frost or 0)
+        local before = frost + (it.frost or 0)
+        local loss = 0.6 * (e.baseDamage or e.damage or 0)
+        local b = 0
+        if before >= m.threshold and after < m.threshold then b = loss end
+        return b + 0.1 * math.min(melt, frost) * loss
+    end
     if m.kind == "chains" then
         local st = e._mech or {}
         local idx = (st.marksCrossed or 0) + 1
@@ -596,7 +611,7 @@ end
 local function playable(game)
     local out = {}
     for _, c in ipairs(game.hand or {}) do
-        if c.type ~= "joker" then out[#out + 1] = c end
+        if c.type ~= "joker" and not c.frozen then out[#out + 1] = c end
     end
     return out
 end

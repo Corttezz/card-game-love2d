@@ -18,6 +18,7 @@ M.ALLOWED = {
     ["messages.intent_revealed"]     = "a névoa sobre o intent se abriu (carta de Revelar)",
     ["enemy_kit.msg.pierce"]         = "golpe ignorou o bloqueio",
     ["enemy_kit.msg.summoned"]       = "revoada cresceu",
+    ["enemy_kit.msg.card_frozen"]    = "ação recusada",
     ["enemy_kit.phases.*"]           = "chefe mudou de fase",
     ["messages.new_record"]          = "recorde da run",
     ["messages.act_transition_heal"] = "cura entre atos",

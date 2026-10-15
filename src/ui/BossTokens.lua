@@ -582,6 +582,85 @@ function BossTokens.drawFront(id, r)
     love.graphics.pop()
 end
 
+local screen = { level = 0, flash = 0 }
+
+function BossTokens.screenLevel()
+    return screen.level
+end
+
+function BossTokens.drawScreen(game)
+    local e = game and game.enemy
+    local spec = e and e.spriteId and SPECS[e.spriteId]
+    local p = game and game.player
+    local dt = love.timer.getDelta()
+    local m = require("src.systems.BossMechanics").frostSpec(game)
+    local want = 0
+    if spec and spec.layout == "screen" and m and p then
+        want = (p.frost or 0) / m.threshold
+    end
+    if reducedMotion() then
+        screen.level = want
+    else
+        screen.level = screen.level + (want - screen.level) * min(1, dt * 3)
+    end
+    screen.flash = max(0, screen.flash - dt)
+    if screen.level < 0.02 and screen.flash <= 0 then return end
+    local img = spec and BossTokens.image(spec.corner)
+    if not img then return end
+    local W, H = love.graphics.getDimensions()
+    local S = max(3, floor(H / 200))
+    local l = min(1.2, screen.level)
+    local k = max(1, floor(S * min(1, 0.45 + 0.55 * l) + 0.5))
+    local a = min(1, 0.30 + 0.8 * l)
+    local w, h = img:getWidth() * k, img:getHeight() * k
+    love.graphics.push("all")
+    love.graphics.setColor(1, 1, 1, a)
+    love.graphics.draw(img, 0, H - h, 0, k, k)
+    love.graphics.draw(img, W, H - h, 0, -k, k)
+    if l >= 0.74 then
+        local k2 = max(1, k - 1)
+        love.graphics.setColor(1, 1, 1, a * min(1, (l - 0.74) * 4))
+        love.graphics.draw(img, 0, H * 0.42, 0, k2, -k2)
+        love.graphics.draw(img, W, H * 0.42, 0, -k2, -k2)
+    end
+    if screen.flash > 0 then
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(0.7, 0.9, 1.0, screen.flash * 1.2)
+        love.graphics.draw(img, 0, H - h, 0, k, k)
+        love.graphics.draw(img, W, H - h, 0, -k, k)
+        love.graphics.setBlendMode("alpha")
+    end
+    love.graphics.pop()
+end
+
+function BossTokens.drawFrozenCard(card, x, y)
+    local spec = SPECS.winter_monarch
+    local img = BossTokens.image(spec.iceBlock)
+    if not img then return end
+    local a = 0.62
+    if not card.frozen then
+        local now = love.timer.getTime()
+        local k = (now - (card._thawAt or now)) / 0.45
+        if k >= 1 then
+            card._thawAt = nil
+            return
+        end
+        a = a * (1 - k)
+    end
+    local sx = card.image and card.image:getWidth() / img:getWidth() or 1
+    local sy = card.image and card.image:getHeight() / img:getHeight() or 1
+    love.graphics.setColor(1, 1, 1, a)
+    love.graphics.draw(img, x, y, 0, sx, sy)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function playerFloat(text, opts)
+    local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
+    if okFT and love.graphics then
+        FloatingText.spawn(text, 120, love.graphics.getHeight() - 150, opts)
+    end
+end
+
 local function enemyFloat(text, opts)
     local okER, ER = pcall(require, "src.ui.EnemyRenderer")
     local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
@@ -600,6 +679,26 @@ function BossTokens.react(game, res)
         if spec then BossTokens.playSound(spec.sounds.gain) end
         enemyFloat(I18n.t("enemy_kit.msg.rune_gain", { value = res.total }, "+1"),
             { kind = "movename", hold = 0.45, lift = 22 })
+    elseif res.kind == "frost_gain" then
+        if spec then BossTokens.playSound(spec.sounds.gain) end
+        playerFloat(I18n.t("enemy_kit.msg.frost_gain", { value = res.n, total = res.total,
+            max = res.threshold }, "+" .. res.n), { kind = "movename", hold = 0.5, lift = 22 })
+    elseif res.kind == "freeze" then
+        screen.flash = 0.6
+        local snd = SPECS.winter_monarch.sounds.freeze
+        BossTokens.playSound(snd)
+        if _G.triggerShake then _G.triggerShake(4, 0.18) end
+        for _, c in ipairs(res.cards or {}) do
+            if c.juice_up then c:juice_up(0.25, 0.1) end
+        end
+        if res.n > 0 then
+            playerFloat(I18n.t("enemy_kit.msg.freeze", { value = res.n }, "*"),
+                { kind = "movename", hold = 0.7, lift = 26 })
+        end
+    elseif res.kind == "frost_melt" then
+        BossTokens.playSound(SPECS.winter_monarch.sounds.melt, 0.08)
+        playerFloat(I18n.t("enemy_kit.msg.frost_melt", { value = res.n }, "-" .. res.n),
+            { kind = "movename", hold = 0.35, lift = 18 })
     elseif res.kind == "chain_break" then
         if spec then BossTokens.playSound(spec.sounds.lose) end
         if _G.triggerShake then _G.triggerShake(7, 0.22) end

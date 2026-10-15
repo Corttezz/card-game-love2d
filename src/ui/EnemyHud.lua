@@ -107,6 +107,9 @@ function EnemyHud.intentSpec(enemy, player)
     if it.charge then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.charge")
     end
+    if it.frost then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.frost", { value = it.frost })
+    end
     if it.staggered then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.staggered")
     end
@@ -143,6 +146,9 @@ function EnemyHud.intentSpec(enemy, player)
                 local nm = I18n.t("enemy_kit.status." .. d.name .. "_self.name", nil,
                     I18n.t("enemy_kit.status." .. d.name .. ".name", nil, d.name))
                 lines[#lines + 1] = I18n.t("enemy_kit.intent.veil_debuff", { name = nm })
+            end
+            if it.frost then
+                lines[#lines + 1] = I18n.t("enemy_kit.intent.frost", { value = it.frost })
             end
         end
         if enemy.intentVeilCause == "veil" then

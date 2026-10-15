@@ -235,3 +235,32 @@ Ver seção "Implementação" abaixo, preenchida chefe a chefe.
 - Golpe: Fogo Infernal e Jorro de Cinzas disparam `fireball.png` do núcleo do
   peito, girada na direção do voo em degraus de 15 graus, com rastro aditivo.
 - Sons: `tyrant_chain_snap` 0,45 (-26 dB), `impact-fire` 0,30/0,22 (-26/-29 dB).
+
+### Monarca (implementado)
+
+- A Geada mora no JOGADOR (`player.frost`, inteiro), zera em
+  `applyClassBattleStartPassive` e no spawn do Continuar. Pill `frost` no
+  `PlayerBuffPills` (com o limiar no tooltip).
+- `winter_monarch.mechanic` = `threshold 4, freeze 2, attackMelt 1, fireMelt 2`
+  + `gains` por golpe. `shapeIntent` grava `intent.frost` (congelado no
+  anúncio; a névoa `type_only` NÃO esconde, é tipo, como o debuff).
+  `BM.intentSteps` vira o beat `boss.frost_gain` (STATUS, depois do golpe).
+- Congelar acontece no beat `player.draw`: `BM.onPlayerDraw` marca
+  `card.frozen` nas 2 de maior custo (empate: a mais à esquerda) e tira 4.
+  `Game:canPlayCard` recusa congelada, `selectCard` avisa (`card_frozen`) e não
+  gasta mana; `discardHandEndOfTurn` derrete (`BM.thaw`, `_thawAt` pro fade).
+  Ataque jogado derrete (`BM.onPlayerAttack`, tag `fire` derrete 2) num beat
+  MICRO `player.frost_melt`.
+- Pilotos: `balance_ai.playable` e as escolhas do `autoplay` (pick, naive,
+  motor, bestDamageSet) pulam carta congelada; `AI.mechanicBonus` premia a
+  leva que derrete o bastante pra fugir do congelamento.
+- Cena: `layout = "screen"`: `BossTokens.drawScreen(game)` (chamado pela
+  `GameplayScene` antes do HUD) cresce cristais de gelo dos cantos de baixo
+  (sprite `frost_corner`, escala inteira pelo nível Geada/limiar; a 3/4 surgem
+  mais dois cantos acima); no congelamento os cantos piscam. Carta congelada:
+  `ice_block.png` por cima da carta (`Card:draw`, alfa 0,62: a arte ainda lê),
+  some em 0,45 s no degelo. reducedMotion: nível sem transição.
+- Golpe: Lâmina do Inverno e Nevasca Real disparam `ice_shard.png` do orbe do
+  cajado. Sons: `impact-ice` 0,90 no impacto (-26 dB) e 0,70 na Geada,
+  `boss_ice_crackle` 1,0 ao congelar (-37 dB, arquivo baixo de origem),
+  `shop-crystal-shatter` 0,40 no derretimento (-30 dB).

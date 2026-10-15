@@ -91,6 +91,10 @@ end
 function BM.shapeIntent(enemy, intent, move)
     local m = BM.spec(enemy)
     if not m then return end
+    if m.kind == "frost" then
+        local n = m.gains and m.gains[move.id]
+        intent.frost = (n and n > 0) and n or nil
+    end
     if m.kind == "runes" and move.runes then
         intent.runes = true
         intent.hits = (intent.perHit or 0) > 0 and BM.stacks(enemy, m.status) or 0
@@ -194,6 +198,85 @@ function BM.applyStep(enemy, step)
     return nil
 end
 
+function BM.frostSpec(game)
+    local m = game and BM.spec(game.enemy)
+    if m and m.kind == "frost" then return m end
+    return nil
+end
+
+function BM.intentSteps(enemy, intent)
+    local m = BM.spec(enemy)
+    if m and m.kind == "frost" and intent and (intent.frost or 0) > 0 then
+        return { { kind = "frost_gain", n = intent.frost } }
+    end
+    return {}
+end
+
+function BM.applyIntentStep(game, step)
+    local p = game and game.player
+    local m = BM.frostSpec(game)
+    if not p or not m or not game.enemy:isAlive() then return nil end
+    if step.kind == "frost_gain" then
+        p.frost = (p.frost or 0) + step.n
+        return { kind = "frost_gain", n = step.n, total = p.frost, threshold = m.threshold }
+    end
+    return nil
+end
+
+function BM.freezePicks(hand, n)
+    local idx = {}
+    for i, c in ipairs(hand or {}) do
+        if c.type ~= "joker" and not c.frozen then idx[#idx + 1] = i end
+    end
+    table.sort(idx, function(a, b)
+        local ca, cb = hand[a].cost or 0, hand[b].cost or 0
+        if ca ~= cb then return ca > cb end
+        return a < b
+    end)
+    local out = {}
+    for k = 1, min(n, #idx) do out[k] = hand[idx[k]] end
+    return out
+end
+
+function BM.onPlayerDraw(game)
+    local m = BM.frostSpec(game)
+    local p = game and game.player
+    if not m or not p or (p.frost or 0) < m.threshold then return nil end
+    local picks = BM.freezePicks(game.hand, m.freeze)
+    for _, c in ipairs(picks) do
+        c.frozen = true
+        c._thawAt = nil
+    end
+    p.frost = p.frost - m.threshold
+    return { kind = "freeze", n = #picks, cards = picks, total = p.frost }
+end
+
+function BM.meltFor(card, m)
+    for _, tag in ipairs(card.tags or {}) do
+        if tag == "fire" then return m.fireMelt or 2 end
+    end
+    return m.attackMelt or 1
+end
+
+function BM.onPlayerAttack(game, card)
+    local m = BM.frostSpec(game)
+    local p = game and game.player
+    if not m or not p or (p.frost or 0) <= 0 then return nil end
+    local n = min(p.frost, BM.meltFor(card, m))
+    p.frost = p.frost - n
+    return { kind = "frost_melt", n = n, total = p.frost }
+end
+
+function BM.thaw(game)
+    local now = love and love.timer and love.timer.getTime() or 0
+    for _, c in ipairs((game and game.hand) or {}) do
+        if c.frozen then
+            c.frozen = nil
+            c._thawAt = now
+        end
+    end
+end
+
 function BM.onHitLanded(enemy, intent)
     local m = BM.spec(enemy)
     if not m or not intent then return end
@@ -208,6 +291,14 @@ function BM.strikeFor(enemy, intent)
     if m.kind == "runes" and intent.runes then return "rune" end
     local s = m.strikes
     return s and s[intent.id] or nil
+end
+
+function BM.playerPillVars(game, name)
+    local m = BM.frostSpec(game)
+    if name == "frost" and m then
+        return { value = m.threshold, max = m.freeze }
+    end
+    return nil
 end
 
 function BM.pillVars(enemy, name)

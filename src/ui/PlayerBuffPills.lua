@@ -25,7 +25,7 @@ local HAS_PERMANENT_DESC = {
 local ORDER = {
     "strength", "dexterity", "focus",
     "thorn", "lifesteal", "regen", "bleed", "retain_armor",
-    "weak_self", "frail", "vulnerable_self", "poison_self", "burn_self",
+    "weak_self", "frail", "vulnerable_self", "poison_self", "burn_self", "frost",
 }
 
 local DEBUFF_PILL = {
@@ -87,6 +87,16 @@ function PlayerBuffPills.collect(player, game)
             if pill ~= "poison_self" and pill ~= "burn_self" then
                 e.showStacks = false
             end
+        end
+    end
+
+    if (player.frost or 0) > 0 then
+        local e = entry("frost")
+        e.stacks = player.frost
+        e.duration = 1
+        local vars = require("src.systems.BossMechanics").playerPillVars(game, "frost")
+        if vars then
+            e.value, e.max = vars.value, vars.max
         end
     end
 

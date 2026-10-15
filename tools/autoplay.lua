@@ -448,7 +448,7 @@ end
 local function chooseMotorCard(game)
     local pool = #(game.deck or {}) + #(game.discard or {})
     for _, c in ipairs(game.hand) do
-        if c.type == "effect" and (c.cost or 0) <= game.player.mana then
+        if c.type == "effect" and not c.frozen and (c.cost or 0) <= game.player.mana then
             if hasEffect(c, "draw_cards") and pool >= 1
                 and ((c.cost or 0) == 0 or game.player.mana - (c.cost or 0) >= 1) then
                 return c
@@ -468,7 +468,7 @@ end
 local function bestDamageSet(game, budget, isPicked, perMana)
     local pool = {}
     for _, c in ipairs(game.hand) do
-        if not isPicked(c) and c.type ~= "joker" then
+        if not isPicked(c) and c.type ~= "joker" and not c.frozen then
             local isDmg = (c.attack or 0) > 0
             if not isDmg then
                 for _, e in ipairs(c.effects or {}) do
@@ -525,6 +525,7 @@ local function chooseBatch(game, turnState)
         return false
     end
     local function pick(card, why)
+        if card.frozen then return end
         table.insert(picks, card)
         manaLeft = manaLeft - (card.cost or 0)
         reasons[why] = true
@@ -897,7 +898,8 @@ local function playBattle(game, label)
                 for pass = 1, 2 do
                     for _, c in ipairs(game.hand) do
                         local isAtk = c.type == "attack"
-                        if c.type ~= "joker" and ((pass == 1 and isAtk) or (pass == 2 and not isAtk))
+                        if c.type ~= "joker" and not c.frozen
+                            and ((pass == 1 and isAtk) or (pass == 2 and not isAtk))
                             and (c.cost or 0) <= m then
                             picks[#picks + 1] = c; m = m - (c.cost or 0)
                         end

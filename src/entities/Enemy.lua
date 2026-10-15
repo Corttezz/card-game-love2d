@@ -237,7 +237,7 @@ function Enemy:getKnownIntent(player)
         return { kind = "unknown", id = "unknown", visibility = "hidden", hidden = true }
     end
     local known = { id = it.id, kind = it.kind, visibility = "type_only", hidden = true,
-        pierce = it.pierce, charge = it.charge }
+        pierce = it.pierce, charge = it.charge, frost = it.frost }
     if it.debuffs then
         known.debuffs = {}
         for i, d in ipairs(it.debuffs) do known.debuffs[i] = { name = d.name } end
