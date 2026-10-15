@@ -81,6 +81,24 @@ Partículas sutis que sobem. 4 presets (default/subtle/atmospheric/intense) troc
 
 **How to apply:** Nunca hard-code cores (use Theme.Colors) ou coordenadas (use Config.Utils). Ao criar novo widget, herde de HudPanel se for painel de info, ou siga Button.lua como referência para widget interativo.
 
+## Hover de rara/lendária comia a borda (Out/2026)
+
+Carta com `visualEffect` holo/glow ou `edition` desenha o mesh do warp 3D
+(`shaders/card_perspective.glsl`) num canvas offscreen e só depois passa o
+HoloShader. O canvas tinha o tamanho EXATO da carta, e o warp empurra o lado
+oposto ao mouse para fora em até ~6,5% (`0.12 × hover + wobble`): hover no
+título cortava rodapé e cantos de baixo, hover num canto cortava o canto
+oposto. Cartas comuns não sofriam porque desenham o mesh direto na tela.
+Correção: `Card:_getOffscreenCanvas` devolve `(canvas, pad)` com margem
+`Card.warpPad(w,h)` (8% do maior lado + 1) e o canvas é desenhado em
+`drawX - pad`. O HoloShader recebe `pad` e prende a detecção de aro
+(`innerUV`) ao retângulo da carta, preservando o brilho de antes (sem isso o
+aro externo inteiro acenderia em dourado). Trava: `test_card_hover_edges`
+(5 cartas × 8 ângulos: pontos da borda deformada continuam opacos e a área
+opaca não cai). Captura: `love . test_one screenshot_bordas_cartas`
+(`BORDAS_TAG=<nome>`). Regra: canvas intermediário de algo que deforma
+vértices precisa de margem do tamanho da deformação máxima.
+
 ## Armadilhas de render descobertas no UI Overhaul (Jul/2026)
 
 - **Fonte pixel: glifo "6" em tamanho 10 rasteriza como "G"** (não-integer

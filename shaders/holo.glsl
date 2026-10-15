@@ -3,6 +3,7 @@ extern number strength;
 extern number kind;
 extern number anim;
 extern vec2 cardSize;
+extern vec4 innerUV;
 
 float bayer2(vec2 p) {
     float i = mod(p.x, 2.0) + mod(p.y, 2.0) * 2.0;
@@ -14,10 +15,10 @@ float bayer2(vec2 p) {
 
 float nearEdge(Image tex, vec2 uv, vec2 ts, float d) {
     float a = 1.0;
-    a = min(a, Texel(tex, uv + vec2( d, 0.0) * ts).a);
-    a = min(a, Texel(tex, uv + vec2(-d, 0.0) * ts).a);
-    a = min(a, Texel(tex, uv + vec2(0.0,  d) * ts).a);
-    a = min(a, Texel(tex, uv + vec2(0.0, -d) * ts).a);
+    a = min(a, Texel(tex, clamp(uv + vec2( d, 0.0) * ts, innerUV.xy, innerUV.zw)).a);
+    a = min(a, Texel(tex, clamp(uv + vec2(-d, 0.0) * ts, innerUV.xy, innerUV.zw)).a);
+    a = min(a, Texel(tex, clamp(uv + vec2(0.0,  d) * ts, innerUV.xy, innerUV.zw)).a);
+    a = min(a, Texel(tex, clamp(uv + vec2(0.0, -d) * ts, innerUV.xy, innerUV.zw)).a);
     return (a < 0.5) ? 1.0 : 0.0;
 }
 

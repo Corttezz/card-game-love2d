@@ -505,15 +505,22 @@ function Card:setRenderPos(rx, ry)
     self.targetY = ry
 end
 
+Card.WARP_PAD_FRAC = 0.08
+
+function Card.warpPad(w, h)
+    return math.ceil(math.max(w, h) * Card.WARP_PAD_FRAC) + 1
+end
+
 function Card:_getOffscreenCanvas()
     local w = self.image:getWidth()
     local h = self.image:getHeight()
     if not self._offCanvas or self._offCanvasW ~= w or self._offCanvasH ~= h then
-        self._offCanvas = love.graphics.newCanvas(w, h)
+        local pad = Card.warpPad(w, h)
+        self._offCanvas = love.graphics.newCanvas(w + pad * 2, h + pad * 2)
         self._offCanvas:setFilter("nearest", "nearest")
-        self._offCanvasW, self._offCanvasH = w, h
+        self._offCanvasW, self._offCanvasH, self._offPad = w, h, pad
     end
-    return self._offCanvas
+    return self._offCanvas, self._offPad
 end
 
 function Card:getWidth()
@@ -652,7 +659,7 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     elseif self.edition then
         local editionShader, editionStrength = self:_getEditionShader()
         local holoGate = self:_holoGate(hoverAmt)
-        local offCanvas = self:_getOffscreenCanvas()
+        local offCanvas, pad = self:_getOffscreenCanvas()
         local prevCanvas = love.graphics.getCanvas()
         love.graphics.setCanvas(offCanvas)
         love.graphics.push("all")
@@ -663,20 +670,20 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
             mesh:setTexture(self.image)
             love.graphics.setShader(shader)
             CardMesh.setUniforms(shader, mouseUV, hoverAmt, timeNow, self.image)
-            love.graphics.draw(mesh, 0, 0)
+            love.graphics.draw(mesh, pad, pad)
             love.graphics.setShader()
         else
-            love.graphics.draw(self.image, 0, 0)
+            love.graphics.draw(self.image, pad, pad)
         end
         love.graphics.pop()
         love.graphics.setCanvas(prevCanvas)
         if editionShader == HoloShader then
-            HoloShader.draw(offCanvas, drawX, drawY, HoloShader.strengthFor("holo", holoGate),
-                0, 1, 1, 0, 0, { kind = 1, anim = holoGate })
+            HoloShader.draw(offCanvas, drawX - pad, drawY - pad, HoloShader.strengthFor("holo", holoGate),
+                0, 1, 1, 0, 0, { kind = 1, anim = holoGate, pad = pad })
         elseif editionShader and editionShader.draw then
-            editionShader.draw(offCanvas, drawX, drawY, editionStrength, 0, 1, 1)
+            editionShader.draw(offCanvas, drawX - pad, drawY - pad, editionStrength, 0, 1, 1)
         else
-            love.graphics.draw(offCanvas, drawX, drawY)
+            love.graphics.draw(offCanvas, drawX - pad, drawY - pad)
         end
     elseif shader and fx ~= "holo" and fx ~= "glow" then
         local mesh = CardMesh.getMesh(self.image:getWidth(), self.image:getHeight())
@@ -690,7 +697,7 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     elseif (fx == "holo" or fx == "glow") then
         local holoGate = self:_holoGate(hoverAmt)
         local strength = HoloShader.strengthFor(fx, holoGate)
-        local offCanvas = self:_getOffscreenCanvas()
+        local offCanvas, pad = self:_getOffscreenCanvas()
         local prevCanvas = love.graphics.getCanvas()
         love.graphics.setCanvas(offCanvas)
         love.graphics.push("all")
@@ -701,15 +708,15 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
             mesh:setTexture(self.image)
             love.graphics.setShader(shader)
             CardMesh.setUniforms(shader, mouseUV, hoverAmt, timeNow, self.image)
-            love.graphics.draw(mesh, 0, 0)
+            love.graphics.draw(mesh, pad, pad)
             love.graphics.setShader()
         else
-            love.graphics.draw(self.image, 0, 0)
+            love.graphics.draw(self.image, pad, pad)
         end
         love.graphics.pop()
         love.graphics.setCanvas(prevCanvas)
-        HoloShader.draw(offCanvas, drawX, drawY, strength, 0, 1, 1, 0, 0,
-            { kind = (fx == "holo") and 1 or 0, anim = holoGate })
+        HoloShader.draw(offCanvas, drawX - pad, drawY - pad, strength, 0, 1, 1, 0, 0,
+            { kind = (fx == "holo") and 1 or 0, anim = holoGate, pad = pad })
     else
         if self.saleDim then love.graphics.setColor(0.55, 0.52, 0.48, 1) end
         love.graphics.draw(self.image, drawX, drawY)

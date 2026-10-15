@@ -32,7 +32,11 @@ function HoloShader.draw(image, x, y, strength, rotation, sx, sy, ox, oy, opts)
     shader:send("strength", strength)
     shader:send("kind", opts and opts.kind or 1)
     shader:send("anim", math.max(0, math.min(1, anim)))
-    shader:send("cardSize", { image:getWidth(), image:getHeight() })
+    local iw, ih = image:getWidth(), image:getHeight()
+    shader:send("cardSize", { iw, ih })
+    local pad = opts and opts.pad or 0
+    local hx, hy = (pad + 0.5) / iw, (pad + 0.5) / ih
+    shader:send("innerUV", { hx, hy, 1 - hx, 1 - hy })
     love.graphics.draw(image, x, y, rotation or 0, sx or 1, sy or 1, ox or 0, oy or 0)
     love.graphics.setShader()
 end
