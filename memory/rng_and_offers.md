@@ -207,5 +207,6 @@ aparecerem, uma animaçãozinha diferente, bem feita, para ver que foi raro".
   nada se move nem se esconde, ficam brilho parado, raios fixos, selo e som.
 - Captura: `CARDGAME_HEADLESS=1 lovec . test_one screenshot_rare_joker` →
   `tools/preview_out/coringa_raro/`.
-- Custo no balanceamento e compensação: ver `memory/balance_curves.md`
-  (seção "Coringa raro").
+- Custo no balanceamento (expert_full 53/53/50 → 37/40/30), aceito pelo dono
+  sem compensação no inimigo: o coringa passa a vir da loja e da economia.
+  Ver `memory/balance_curves.md` (seção "Coringa raro").
