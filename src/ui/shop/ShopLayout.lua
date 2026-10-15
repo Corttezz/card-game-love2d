@@ -54,7 +54,7 @@ ShopLayout.PLAQUE = {
 ShopLayout.SHADOW = {
     lean = 0.75, depth = 0.4,
     solid = 0.45, top = 0.4,
-    alpha = 0.85, liftFade = 0.35, liftRef = 12,
+    alpha = 0.85, liftFade = 0.35, liftRef = 12, liftShrink = 0.4, liftThin = 0.5,
 }
 function ShopLayout.shadowDir()
     local S = ShopLayout.SHADOW

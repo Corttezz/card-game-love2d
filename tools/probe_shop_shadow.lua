@@ -53,6 +53,85 @@ function M.render(o, what)
     return set, n, (n > 0) and { x0 = x0, y0 = y0, x1 = x1, y1 = y1 } or nil
 end
 
+function M.renderObject(o)
+    local A = ShopLayout.ART
+    local c = love.graphics.newCanvas(A.w, A.h)
+    love.graphics.push("all")
+    love.graphics.setCanvas(c)
+    love.graphics.origin()
+    love.graphics.setScissor()
+    love.graphics.setShader()
+    love.graphics.clear(0, 0, 0, 0)
+    love.graphics.setBlendMode("alpha")
+    local q = {}
+    for k, v in pairs(o) do q[k] = v end
+    q.outline, q.color, q.alpha = 0, { 1, 1, 1 }, 1
+    local src = o.prof and o.prof.src
+    if src then
+        local cv = love.graphics.newCanvas(src.w, src.h)
+        cv:setFilter("nearest", "nearest")
+        love.graphics.setCanvas(cv)
+        love.graphics.clear(0, 0, 0, 0)
+        love.graphics.draw(o.img, love.graphics.newQuad(src.x, src.y, src.w, src.h, o.img:getWidth(), o.img:getHeight()), 0, 0)
+        love.graphics.setCanvas(c)
+        q.img = cv
+    end
+    ShopPerspective.drawUpright(q)
+    love.graphics.pop()
+    local d = c:newImageData()
+    c:release()
+    local set, low, minX, maxX = {}, {}, math.huge, -math.huge
+    for y = 0, A.h - 1 do
+        for x = 0, A.w - 1 do
+            local _, _, _, a = d:getPixel(x, y)
+            if a > 0.5 then
+                set[y * 4096 + x] = true
+                if not low[x] or y > low[x] then low[x] = y end
+                if x < minX then minX = x end
+                if x > maxX then maxX = x end
+            end
+        end
+    end
+    return set, low, minX, maxX
+end
+
+function M.groundAudit(o)
+    local objSet, low, minX, maxX = M.renderObject(o)
+    local shSet = M.render(o, "both")
+    local prof = o.prof
+    local s = o.s
+    local cx = (prof.x0 + prof.x1 + 1) / 2
+    local fx = math.floor(o.fx)
+    local mask = ShopLayout.ART.tableMask
+    local checked, gaps, gapCols = 0, 0, {}
+    for x = minX, maxX do
+        local lx = x + 0.5 - fx
+        local c = math.floor(cx + lx / (o.flip and -s or s))
+        local y = low[x]
+        if y and prof.contact and prof.contact[c] and ShopLayout.pointInPoly(x + 0.5, y + 1.5, mask) then
+            checked = checked + 1
+            if not shSet[(y + 1) * 4096 + x] then
+                gaps = gaps + 1
+                gapCols[#gapCols + 1] = x
+            end
+        end
+    end
+    local objMaxY = -math.huge
+    for _, y in pairs(low) do if y > objMaxY then objMaxY = y end end
+    local below, right, left = 0, 0, 0
+    for key in pairs(shSet) do
+        if not objSet[key] then
+            local y = math.floor(key / 4096)
+            local x = key - y * 4096
+            if y - objMaxY > below then below = y - objMaxY end
+            if x > maxX and x - maxX > right then right = x - maxX end
+            if x < minX and minX - x > left then left = minX - x end
+        end
+    end
+    return { checked = checked, gaps = gaps, gapCols = gapCols, below = below, right = right, left = left,
+             objW = maxX - minX + 1 }
+end
+
 function M.reference(o, alphaAt)
     local ref = ShopPerspective.castShadowRef(o, alphaAt)
     local set, n = {}, 0
@@ -77,13 +156,14 @@ function M.iou(a, b)
     return inter / union
 end
 
-function M.openShop()
+function M.openShop(w, h)
     local TK = require("tools.testkit")
     TK.bootstrap()
     require("src.i18n.I18n").init()
+    w, h = w or 1280, h or 720
     local rw, rh = love.graphics.getWidth, love.graphics.getHeight
-    love.graphics.getWidth = function() return 1280 end
-    love.graphics.getHeight = function() return 720 end
+    love.graphics.getWidth = function() return w end
+    love.graphics.getHeight = function() return h end
     local realMouse = love.mouse.getPosition
     love.mouse.getPosition = function() return 5, 5 end
     local EM = require("engine.EventManager")
@@ -117,7 +197,7 @@ function M.objects(scene)
             local o = relic:uprightParams(L, false, 0)
             local _, path = ShopPerspective.spriteFor("relic", relic.offer, false, 0)
             if o and path and love.filesystem.getInfo(path) then
-                out[#out + 1] = { name = id, o = o, alphaAt = M.alphaReader(path), item = relic }
+                out[#out + 1] = { name = id, o = o, alphaAt = M.alphaReader(path), item = relic, path = path }
             else
                 print(("[probe] %s: sem sprite/perfil (%s)"):format(id, tostring(path)))
             end
@@ -127,7 +207,7 @@ function M.objects(scene)
     if pack then
         local o = pack:uprightParams(L, false, 0)
         local _, path = ShopPerspective.spriteFor("pack", pack.offer, false, 0)
-        if o and path then out[#out + 1] = { name = "pack:" .. tostring(pack.offer.id), o = o, alphaAt = M.alphaReader(path), item = pack } end
+        if o and path then out[#out + 1] = { name = "pack:" .. tostring(pack.offer.id), o = o, alphaAt = M.alphaReader(path), item = pack, path = path } end
     end
     local bo = scene:_bellParams()
     if bo then out[#out + 1] = { name = "bell", o = bo, alphaAt = M.alphaReader("assets/sprites/shop/objects/bell.png") } end
@@ -150,6 +230,9 @@ function M.run()
             ob.name, n, rn, M.iou(set, rset), W, H, math.floor(o.fx), math.floor(o.fy),
             box and ("%d..%d x %d..%d"):format(box.x0, box.x1, box.y0, box.y1) or "-",
             rbox and ("%d..%d x %d..%d"):format(rbox.x0, rbox.x1, rbox.y0, rbox.y1) or "-"))
+        local au = M.groundAudit(o)
+        print(("[probe] %-22s pegada: %d colunas, vaos %d [%s]  abaixo %d  direita %d  esquerda %d"):format(
+            ob.name, au.checked, au.gaps, table.concat(au.gapCols, ","), au.below, au.right, au.left))
     end
     for _, ob in ipairs(objs) do
         if ob.name == "health_upgrade" then

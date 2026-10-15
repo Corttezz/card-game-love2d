@@ -207,8 +207,72 @@ function ShopPerspective.profile(path, img, rect)
     end
     local p = { x0 = x0, y0 = y0, x1 = x1, y1 = y1, w = w, h = h, bottom = bottom, left = left, right = right,
                 src = rect and { x = rect.x, y = rect.y, w = rect.w, h = rect.h } or nil }
+    ShopPerspective.applyFootprint(p, path)
     if key then PROFILES[key] = p end
     return p
+end
+
+ShopPerspective.GROUND_N = 128
+ShopPerspective.FLAT_NONE = 100000
+
+local footprintData
+function ShopPerspective.footprintFor(path)
+    if footprintData == nil then
+        local ok, d = pcall(require, "src.data.shop_footprints")
+        footprintData = ok and d or false
+        if not ok then warnOnce("footprints", "src.data.shop_footprints falhou: " .. tostring(d)) end
+    end
+    return footprintData and path and footprintData[path] or nil
+end
+
+function ShopPerspective.applyFootprint(p, path)
+    local fp = ShopPerspective.footprintFor(path)
+    if path and not fp then warnOnce("fp:" .. path, "objeto da loja sem pegada medida: " .. path) end
+    local contact = {}
+    for x = p.x0, p.x1 do
+        if p.bottom[x] then
+            local inSpan = not fp
+            if fp then
+                for _, sp in ipairs(fp.spans or {}) do
+                    if x >= sp[1] and x <= sp[2] then inSpan = true break end
+                end
+            end
+            if inSpan then contact[x] = true end
+        end
+    end
+    local ground = {}
+    local gmin = p.y1
+    for x = 0, ShopPerspective.GROUND_N - 1 do
+        local g = p.y1
+        if contact[x] then
+            g = p.bottom[x]
+        elseif x >= p.x0 and x <= p.x1 then
+            local l, r
+            for i = x - 1, p.x0, -1 do if contact[i] then l = i break end end
+            for i = x + 1, p.x1 do if contact[i] then r = i break end end
+            if l and r then
+                g = p.bottom[l] + (p.bottom[r] - p.bottom[l]) * (x - l) / (r - l)
+            elseif l or r then
+                g = p.bottom[l or r]
+            end
+        end
+        ground[x + 1] = g
+        if x >= p.x0 and x <= p.x1 and g < gmin then gmin = g end
+    end
+    if p.w > ShopPerspective.GROUND_N then
+        warnOnce("gw:" .. tostring(path), "sprite mais largo que GROUND_N: " .. tostring(path))
+    end
+    p.contact = contact
+    p.ground = ground
+    p.gmin = gmin
+    p.flatH = fp and fp.height or nil
+    return p
+end
+
+function ShopPerspective.groundAt(prof, c)
+    local g = prof.ground and prof.ground[c + 1]
+    if g then return g end
+    return prof.y1
 end
 
 local canvas, canvasW, canvasH
@@ -362,47 +426,67 @@ local function castShadowShader()
     if castTried then return castShader end
     castTried = true
     local ok, sh = pcall(love.graphics.newShader, [[
-        extern Image sprite;    // o sprite do objeto (filtro nearest)
-        extern vec2 texSize;    // tamanho do PNG
-        extern vec4 texRect;    // recorte usado (x, y, w, h): quadro de uma folha
-        extern vec2 foot;       // pé (fx, fy) em px de arte, inteiros
-        extern float lift;      // px de arte acima da mesa (objeto flutuando)
-        extern float poseK;     // cisalhamento da pose (base do sprite em pé)
-        extern float scale;     // px de arte por px do sprite
-        extern float flip;      // 1 ou -1 (espelho)
-        extern vec2 base;       // (cx, bottom) do perfil, em px do sprite
-        extern vec2 dir;        // deslocamento por px de altura (ShopLayout.shadowDir)
-        extern vec2 band;       // interceptos da faixa do tampo (tableBack, tableEdge)
-        extern float run;       // ShopLayout.RUN (8)
-        extern vec3 dens;       // (altura com sombra cheia, altura total, densidade da ponta)
+        extern Image sprite;
+        extern vec2 texSize;
+        extern vec4 texRect;
+        extern vec2 foot;
+        extern float hcap;
+        extern float densMul;
+        extern float poseK;
+        extern float scale;
+        extern float flip;
+        extern vec2 base;
+        extern vec2 dir;
+        extern vec2 band;
+        extern float run;
+        extern vec3 dens;
+        extern float ground[128];
+        extern float flatH;
 
         float m2(float x, float y) { return 2.0 * x + 3.0 * y - 4.0 * x * y; }
-        // Bayer 4x4 = 4*M2(x%2, y%2) + M2((x/2)%2, (y/2)%2): a mesma matriz do dithered()
         float bayer(float px, float py) {
             return 4.0 * m2(mod(px, 2.0), mod(py, 2.0))
                  + m2(mod(floor(px / 2.0), 2.0), mod(floor(py / 2.0), 2.0));
+        }
+        bool solidAt(float c, float sy) {
+            if (c < 0.0 || sy < 0.0 || c >= texRect.z || sy >= texRect.w) return false;
+            vec2 t = (texRect.xy + vec2(c + 0.5, floor(sy) + 0.5)) / texSize;
+            return Texel(sprite, t).a > 0.5;
         }
         vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
             float px = floor(sc.x);
             float py = floor(sc.y);
             float xc = px + 0.5;
             float yc = py + 0.5;
-            // faixa do tampo (ShopLayout.ART.tableMask: y0a - x/run < y < y0b - x/run)
             if (yc <= band.x - xc / run || yc >= band.y - xc / run) discard;
-            // inversa da projeção: (X, Y) -> altura H sobre a mesa e lx na base
             float den = dir.y - poseK * dir.x;
-            float H = (yc - foot.y - poseK * (xc - foot.x)) / den;
-            float h = H - lift;
-            if (h < 0.0) discard;
-            float lx = xc - foot.x - dir.x * H;
-            float sx = base.x + lx / (flip * scale);
-            float sy = base.y - h / scale;
-            if (sx < 0.0 || sy < 0.0 || sx >= texRect.z || sy >= texRect.w) discard;
-            vec2 t = (texRect.xy + vec2(floor(sx) + 0.5, floor(sy) + 0.5)) / texSize;
-            if (Texel(sprite, t).a <= 0.5) discard;
+            float C = yc - foot.y - poseK * (xc - foot.x);
+            float hit = -1.0;
+            for (int i = 0; i < 128; i++) {
+                float c = float(i);
+                if (c >= texRect.z) break;
+                float g = ground[i] + 1.0;
+                float H = (C - (g - base.y) * scale) / den;
+                if (H >= 0.0 && H <= flatH && H <= hcap) {
+                    float lx = xc - foot.x - dir.x * H;
+                    float sx = base.x + lx / (flip * scale);
+                    if (floor(sx) == c && solidAt(c, g - H / scale)) { hit = H; break; }
+                }
+            }
+            if (hit < 0.0 && flatH < 10000.0 && flatH <= hcap) {
+                float H = flatH;
+                float lx = xc - foot.x - dir.x * H;
+                float c = floor(base.x + lx / (flip * scale));
+                if (c >= 0.0 && c < texRect.z) {
+                    float sy = base.y + (yc - flatH - dir.y * H - foot.y - poseK * lx) / scale;
+                    float g = ground[int(c)] + 1.0;
+                    if ((g - sy) * scale > flatH && solidAt(c, sy)) hit = H;
+                }
+            }
+            if (hit < 0.0) discard;
             float d = 1.0;
-            if (H > dens.x) d = mix(1.0, dens.z, clamp((H - dens.x) / max(1.0, dens.y - dens.x), 0.0, 1.0));
-            if (bayer(px, py) >= d * 16.0) discard;
+            if (hit > dens.x) d = mix(1.0, dens.z, clamp((hit - dens.x) / max(1.0, dens.y - dens.x), 0.0, 1.0));
+            if (bayer(px, py) >= d * densMul * 16.0) discard;
             return color;
         }
     ]])
@@ -411,19 +495,35 @@ local function castShadowShader()
 end
 ShopPerspective.castShadowShader = castShadowShader
 
+local function ensureGround(prof)
+    if not prof.ground then ShopPerspective.applyFootprint(prof, nil) end
+    return prof
+end
+
+function ShopPerspective.flatHeight(o)
+    local prof = ensureGround(o.prof)
+    local H0 = (prof.y1 - prof.y0 + 1) * o.s
+    if prof.flatH then return math.min(H0, prof.flatH * o.s), true end
+    return H0, false
+end
+
 function ShopPerspective.castShadowBox(o)
     local prof = o.prof
     if not prof then return nil end
+    ensureGround(prof)
     local ShopLayout = require("src.ui.shop.ShopLayout")
     local ax, ay = ShopLayout.shadowDir()
     local s = o.s
     local w = (prof.x1 - prof.x0 + 1) * s
-    local H = (prof.y1 - prof.y0 + 1) * s + (o.lift or 0)
+    local Heff, flat = ShopPerspective.flatHeight(o)
+    local H = Heff
     local fx, fy = floor(o.fx), floor(o.fy)
     local skew = math.abs(o.k or 0) * w / 2
+    local bottom = prof.y1 + 1
+    local top = flat and (bottom - prof.y0) * s or (bottom - (prof.gmin + 1)) * s
     local x0 = fx - w / 2 + math.min(0, ax * H) - 1
     local x1 = fx + w / 2 + math.max(0, ax * H) + 1
-    local y0 = fy - skew + math.min(0, ay * H) - 1
+    local y0 = fy - skew - top + math.min(0, ay * H) - 1
     local y1 = fy + skew + math.max(0, ay * H) + 2
     return { x = floor(x0), y = floor(y0), w = math.ceil(x1) - floor(x0), h = math.ceil(y1) - floor(y0) }
 end
@@ -434,7 +534,7 @@ local U = { texSize = { 0, 0 }, texRect = { 0, 0, 0, 0 }, foot = { 0, 0 }, base 
 function ShopPerspective.castParams(o)
     local ShopLayout = require("src.ui.shop.ShopLayout")
     local SH = ShopLayout.SHADOW
-    local img, prof = o.img, o.prof
+    local img, prof = o.img, ensureGround(o.prof)
     local s = o.s
     local src = prof.src
     local H = (prof.y1 - prof.y0 + 1) * s
@@ -443,7 +543,9 @@ function ShopPerspective.castParams(o)
     U.texRect[1], U.texRect[2] = src and src.x or 0, src and src.y or 0
     U.texRect[3], U.texRect[4] = src and src.w or img:getWidth(), src and src.h or img:getHeight()
     U.foot[1], U.foot[2] = floor(o.fx), floor(o.fy)
-    U.lift = lift
+    local t = clamp(lift / SH.liftRef, 0, 1)
+    U.hcap = H * (1 - SH.liftShrink * t)
+    U.densMul = 1 - SH.liftThin * t
     U.poseK = o.k or 0
     U.scale = s
     U.flip = o.flip and -1 or 1
@@ -451,11 +553,14 @@ function ShopPerspective.castParams(o)
     U.dir[1], U.dir[2] = ShopLayout.shadowDir()
     U.band[1], U.band[2] = ShopLayout.LINES.tableBack, ShopLayout.LINES.tableEdge
     U.run = ShopLayout.RUN
-    U.dens[1], U.dens[2], U.dens[3] = SH.solid * H, H + lift, SH.top
-    U.alpha = SH.alpha * (1 - SH.liftFade * clamp(lift / SH.liftRef, 0, 1))
+    U.dens[1], U.dens[2], U.dens[3] = SH.solid * H, H, SH.top
+    U.alpha = SH.alpha * (1 - SH.liftFade * t)
+    U.ground = prof.ground
+    U.flatH = prof.flatH and prof.flatH * s or ShopPerspective.FLAT_NONE
     return U
 end
 
+local unpack = unpack or table.unpack
 function ShopPerspective.drawCastShadow(o, alpha)
     local img, prof = o.img, o.prof
     if not (img and prof) then return end
@@ -467,7 +572,8 @@ function ShopPerspective.drawCastShadow(o, alpha)
     sh:send("texSize", u.texSize)
     sh:send("texRect", u.texRect)
     sh:send("foot", u.foot)
-    sh:send("lift", u.lift)
+    sh:send("hcap", u.hcap)
+    sh:send("densMul", u.densMul)
     sh:send("poseK", u.poseK)
     sh:send("scale", u.scale)
     sh:send("flip", u.flip)
@@ -476,6 +582,8 @@ function ShopPerspective.drawCastShadow(o, alpha)
     sh:send("band", u.band)
     sh:send("run", u.run)
     sh:send("dens", u.dens)
+    sh:send("ground", unpack(u.ground, 1, ShopPerspective.GROUND_N))
+    sh:send("flatH", u.flatH)
     local ink = ShopPerspective.SHADOW_INK
     love.graphics.push("all")
     love.graphics.setShader(sh)
@@ -484,36 +592,65 @@ function ShopPerspective.drawCastShadow(o, alpha)
     love.graphics.pop()
 end
 
+function ShopPerspective.castHitRef(u, xc, yc, alphaAt)
+    local den = u.dir[2] - u.poseK * u.dir[1]
+    local C = yc - u.foot[2] - u.poseK * (xc - u.foot[1])
+    local function solid(c, sy)
+        if c < 0 or sy < 0 or c >= u.texRect[3] or sy >= u.texRect[4] then return false end
+        return alphaAt(c, floor(sy)) > 0.5
+    end
+    for i = 0, ShopPerspective.GROUND_N - 1 do
+        if i >= u.texRect[3] then break end
+        local g = u.ground[i + 1] + 1
+        local H = (C - (g - u.base[2]) * u.scale) / den
+        if H >= 0 and H <= u.flatH and H <= u.hcap then
+            local lx = xc - u.foot[1] - u.dir[1] * H
+            local sx = u.base[1] + lx / (u.flip * u.scale)
+            if floor(sx) == i and solid(i, g - H / u.scale) then return H end
+        end
+    end
+    if u.flatH < 10000 and u.flatH <= u.hcap then
+        local H = u.flatH
+        local lx = xc - u.foot[1] - u.dir[1] * H
+        local c = floor(u.base[1] + lx / (u.flip * u.scale))
+        if c >= 0 and c < u.texRect[3] then
+            local sy = u.base[2] + (yc - u.flatH - u.dir[2] * H - u.foot[2] - u.poseK * lx) / u.scale
+            local g = u.ground[c + 1] + 1
+            if (g - sy) * u.scale > u.flatH and solid(c, sy) then return H end
+        end
+    end
+    return nil
+end
+
 function ShopPerspective.castShadowRef(o, alphaAt)
     local ShopLayout = require("src.ui.shop.ShopLayout")
     local inPoly = ShopLayout.pointInPoly
     local u = ShopPerspective.castParams(o)
     local box = ShopPerspective.castShadowBox(o)
     local out = {}
-    local den = u.dir[2] - u.poseK * u.dir[1]
     for py = box.y, box.y + box.h - 1 do
         for px = box.x, box.x + box.w - 1 do
             local xc, yc = px + 0.5, py + 0.5
             if inPoly(xc, yc, ShopLayout.ART.tableMask) then
-                local H = (yc - u.foot[2] - u.poseK * (xc - u.foot[1])) / den
-                local h = H - u.lift
-                if h >= 0 then
-                    local lx = xc - u.foot[1] - u.dir[1] * H
-                    local sx = u.base[1] + lx / (u.flip * u.scale)
-                    local sy = u.base[2] - h / u.scale
-                    if sx >= 0 and sy >= 0 and sx < u.texRect[3] and sy < u.texRect[4]
-                        and alphaAt(floor(sx), floor(sy)) > 0.5 then
-                        local d = 1
-                        if H > u.dens[1] then
-                            d = 1 + (u.dens[3] - 1) * clamp((H - u.dens[1]) / math.max(1, u.dens[2] - u.dens[1]), 0, 1)
-                        end
-                        if dithered(px, py, d) then out[#out + 1] = px; out[#out + 1] = py end
+                local H = ShopPerspective.castHitRef(u, xc, yc, alphaAt)
+                if H then
+                    local d = 1
+                    if H > u.dens[1] then
+                        d = 1 + (u.dens[3] - 1) * clamp((H - u.dens[1]) / math.max(1, u.dens[2] - u.dens[1]), 0, 1)
                     end
+                    if dithered(px, py, d * u.densMul) then out[#out + 1] = px; out[#out + 1] = py end
                 end
             end
         end
     end
     return out
+end
+
+ShopPerspective.CONTACT_ROWS = 2
+ShopPerspective.CONTACT_DENSITY = { 1, 0.5 }
+
+function ShopPerspective.lowestRow(fy, k, lx, b, bottom, s)
+    return math.ceil(fy + k * lx + (b + 1 - bottom) * s - 0.5) - 1
 end
 
 local pts = {}
@@ -529,17 +666,20 @@ function ShopPerspective.drawContactShadow(o, mask, alpha)
     local fx, fy = floor(o.fx), floor(o.fy)
     local objW = (prof.x1 - prof.x0 + 1) * s
     local halfW = objW / 2
-    local G = math.max(3, floor(objW * 0.22))
     local n = 0
     for dx = floor(fx - halfW) - 1, math.ceil(fx + halfW) + 1 do
         local lx = dx + 0.5 - fx
-        local b = prof.bottom[floor(cx + lx / (o.flip and -s or s))]
-        if b ~= nil then
-            local yG = floor(fy + k * lx)
-            local yB = floor(fy + k * lx + (b + 1 - bottom) * s)
-            if yG - yB <= G and (not mask or inPoly(dx + 0.5, yB + 1.5, mask)) then
-                pts[n + 1], pts[n + 2] = dx + 0.5, yB + 1.5
-                n = n + 2
+        local c = floor(cx + lx / (o.flip and -s or s))
+        local b = prof.bottom[c]
+        if b ~= nil and (not prof.contact or prof.contact[c]) then
+            local yB = ShopPerspective.lowestRow(fy, k, lx, b, bottom, s)
+            for row = 1, ShopPerspective.CONTACT_ROWS do
+                local y = yB + row
+                if dithered(dx, y, ShopPerspective.CONTACT_DENSITY[row])
+                    and (not mask or inPoly(dx + 0.5, y + 0.5, mask)) then
+                    pts[n + 1], pts[n + 2] = dx + 0.5, y + 0.5
+                    n = n + 2
+                end
             end
         end
     end
@@ -559,7 +699,8 @@ end
 function ShopPerspective.contactPoints(o)
     local prof = o.prof
     if not prof then return {} end
-    local s, k = o.s, o.k
+    ensureGround(prof)
+    local s, k = o.s, o.k or 0
     local cx = (prof.x0 + prof.x1 + 1) / 2
     local bottom = prof.y1 + 1
     local fx, fy = floor(o.fx), floor(o.fy)
@@ -567,9 +708,9 @@ function ShopPerspective.contactPoints(o)
     local out = {}
     for dx = floor(fx - halfW), math.ceil(fx + halfW) do
         local lx = dx + 0.5 - fx
-        local sx = cx + lx / (o.flip and -s or s)
-        local b = prof.bottom[floor(sx)]
-        if b and (bottom - (b + 1)) * s <= math.max(2, 3 * s) then
+        local c = floor(cx + lx / (o.flip and -s or s))
+        local b = prof.bottom[c]
+        if b and prof.contact[c] then
             out[#out + 1] = { dx + 0.5, fy + k * lx - (bottom - (b + 1)) * s }
         end
     end

@@ -596,3 +596,86 @@ chamados por `drawObjectShadow`):
   pé". Mudou a projeção, a pose (`uprightParams`) ou as retas (`LINES`)?
   O shader e `castShadowRef` mudam JUNTOS (o teste compara os dois) e a
   captura `table` é olhada antes de commitar.
+
+## Sombras nascendo da PEGADA (v5 r5, 15/Out/2026)
+
+Dono, com captura da bancada: as sombras "melhoraram bastante", mas ficam
+"por fora" de cada item, "dá a impressão de que o item está vazio"; tem que
+parecer apoiado no chão, ajustando cada sombra por item.
+
+**Causa medida** (não era gosto): a projeção da r4 tratava o sprite como um
+cartaz em pé numa reta só: altura 0 = a linha mais baixa do PNG (`prof.y1`)
+inclinada pela pose. Quase todo objeto é visto de 3/4 e o contorno de baixo
+é um V ou uma curva (bancada de coringa: 49 nas pontas a 61 no meio; livro
+aberto: 32 a 58; pacotes v5: 58 a 68 descendo pra esquerda). Toda coluna cujo
+contorno ficava acima da reta não tinha sombra entre a base e essa reta:
+o vão de mesa clara que fazia o objeto flutuar. Além disso a linha de contato
+caía 1 linha abaixo da última linha DESENHADA (fórmula `floor(fy + ...)` contra
+o rasterizador, que põe a última linha em `ceil(... - 0.5) - 1`), outro vão de 1 px.
+E o livro (deitado) projetava a página inteira como se fosse altura: sombra
+enorme e solta abaixo dele.
+
+**O que é agora** (`ShopPerspective`, mesmo shader + `castHitRef` em Lua):
+
+- **Pegada por sprite** em `src/data/shop_footprints.lua` (coordenadas do
+  PNG): `spans` = colunas cujo contorno de baixo TOCA a mesa; `height` só pra
+  objeto deitado. `applyFootprint` (no `profile`) monta `prof.ground[c]`:
+  contorno nas colunas de contato, interpolado entre contatos nos vãos
+  (anel da tesoura, entre os pés do escudo e das espadas) e plano a partir do
+  contato mais próximo nas pontas que sobram no ar (chifre e martelo da
+  bigorna, ponta da lâmina). Sprite sem pegada: todas as colunas contam e o
+  `Debug.warn` avisa uma vez.
+- **Projeção por coluna**: o pixel de altura `h` acima do chão DA SUA coluna
+  cai em `(lean*h, dy*h)` a partir desse chão. O shader recebe `ground[128]`
+  e varre as colunas (uma solução por coluna; imagem de arte, custo baixo).
+  Assim a sombra começa exatamente no contorno de cada coluna.
+- **Objeto deitado** (`height`, hoje só o livro = 7): pixel até `height`
+  acima do chão é lateral; acima disso é tampo, cuja sombra é o tampo
+  transladado `height*(lean, 1+dy)`. Sombra rente, colada nas bordas da
+  frente e da direita.
+- **Contato** (`drawContactShadow`): só nas colunas de contato, sob a ÚLTIMA
+  LINHA DESENHADA (`ShopPerspective.lowestRow`), 2 linhas: cheia + dither 50%
+  (`CONTACT_ROWS`/`CONTACT_DENSITY`). É ela que assenta a borda que corre na
+  direção da luz (frente esquerda da bancada de coringa), onde a projeção
+  desliza paralela à borda.
+- **Flutuando** (pacote, poção, cristal no hover): a sombra NÃO se desloca
+  mais pela altura: fica debaixo do objeto, encolhe (`liftShrink` 0,4 corta a
+  ponta) e clareia (`liftThin` 0,5 no dither, `liftFade` no alpha). Sem contato.
+
+Pegada medida (colunas do PNG, contorno de baixo):
+
+| sprite | contato | contorno | nota |
+|---|---|---|---|
+| tesoura (`vouchers/remove_card`) | 15..41, 46..49 | 51..58 | 42..45 = anel no ar; 10..14 e 50..55 pergaminho/lâmina no ar |
+| bancada de coringa (`vouchers/joker_slot`) | 3..60 | V 47..61 | espelhada na mesa |
+| poção (`shop/v4/health_upgrade`) | 11..52 | 46..61 | flutua no hover |
+| cristal (`shop/v5/mana_upgrade`) | 14..49 | V 53..62 | flutua no hover |
+| prensa (`shop/v5/duplicate_card`) | 7..56 | 50..61 | papel saindo à esquerda apoiado |
+| bigorna (`vouchers/forge_card`) | 12..50 | 52..60 | chifre 3..11 e martelo 51..61 no ar |
+| livro aberto (`vouchers/card_draw_upgrade`) | 2..62, height 7 | 32..58 | deitado |
+| baú de moedas (`vouchers/interest_cap`) | 3..59 | 49..59 | moedas na mesa |
+| espadas (`vouchers/damage_upgrade`) | 5..11, 51..58 | 58..60 | só os pomos tocam |
+| escudo (`vouchers/defense_upgrade`) | 12..18, 24..38, 45..51 | 54..61 | três pés do suporte |
+| sino (`shop/objects/bell`) | 11..50 | elipse 44..52 | |
+| copo (`shop/dice_cup`, quadro 0) | 8..23 | 28..30 | paredes 5..7/24..26 no ar |
+| pacotes v5 | 14..49 / 15..47 / 16..47 / 14..49 / 16..48 | 57..68 diagonal | standard/arcana/buffoon/celestial/spectral |
+
+Travas (`test_shop_shadows`, 374 asserts): shader == `castShadowRef`; toda
+coluna de contato tem pixel; cada objeto da cena tem pegada no data file;
+**sombra colada na pegada**: em toda coluna de contato a linha logo abaixo
+do último pixel DESENHADO do objeto (render real do sprite) é sombra
+(vãos = 0); a sombra visível não desce mais que `ceil(dy*H)+3` abaixo da
+base, nem passa `ceil(lean*H)+2` à direita, nem sai à esquerda da silhueta;
+nenhum pixel visível acima do chão da própria coluna fora da silhueta; livro
+com altura < 12; poção levantada: sombra debaixo dela, menor, mais rala, sem
+contato. O bloco "colada na pegada" roda na cena real em 1600x900,
+1920x1080, 1280x720 e 1024x768. Sonda: `love . test_one probe_shop_shadow`
+(imprime vãos/abaixo/direita por objeto). Captura nova
+`SHOP_STATES=objshadows` = as 10 relíquias e os 5 pacotes na vaga do meio.
+Antes/depois em `tools/preview_out/sombras_loja/` (bancada inteira, recorte
+3x por objeto, pacote e poção flutuando).
+
+**Não regredir**: objeto novo na loja = medir a pegada no PNG (contorno de
+baixo por coluna, ver o que toca a mesa) e pôr em `shop_footprints.lua` NO
+MESMO COMMIT; mexeu no rasterizador da pose (`applyUpright`)? `lowestRow`
+muda junto.

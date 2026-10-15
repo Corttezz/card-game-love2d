@@ -304,6 +304,35 @@ function M.run(arg)
                     end
                     board:encode("png", name)
                     print("[shop_diag] " .. name)
+                elseif state == "objshadows" then
+                    local P = require("tools.probe_shop_shadow")
+                    local relic = itemWhere(function(i) return i.kind == "relic" and i.index == 2 end)
+                    local pack = itemWhere(function(i) return i.kind == "pack" end)
+                    local jobs = {}
+                    for _, id in ipairs(P.RELICS) do jobs[#jobs + 1] = { relic, id } end
+                    for _, id in ipairs({ "pack_standard", "pack_arcana", "pack_buffoon", "pack_celestial", "pack_spectral" }) do
+                        jobs[#jobs + 1] = { pack, id }
+                    end
+                    local cw, ch = math.ceil(250 * k), math.ceil(190 * k)
+                    local cols = 5
+                    local rows = math.ceil(#jobs / cols)
+                    local board = love.image.newImageData(cw * cols + (cols - 1) * 4, ch * rows + (rows - 1) * 4)
+                    for i, job in ipairs(jobs) do
+                        local it, id = job[1], job[2]
+                        if it then
+                            local orig = it.offer.id
+                            it.offer.id = id
+                            sim(0.1)
+                            local r = it.rect
+                            local X = math.max(0, math.min(w - cw, math.floor((r.x - 40) * k)))
+                            local Y = math.max(0, math.min(h - ch, math.floor((r.y - 20) * k)))
+                            local col, row = (i - 1) % cols, math.floor((i - 1) / cols)
+                            board:paste(render(), col * (cw + 4), row * (ch + 4), X, Y, cw, ch)
+                            it.offer.id = orig
+                        end
+                    end
+                    board:encode("png", name)
+                    print("[shop_diag] " .. name)
                 elseif state == "plates" then
                     local ShopLayout = require("src.ui.shop.ShopLayout")
                     local old = ShopLayout.PLATE_COMMON
