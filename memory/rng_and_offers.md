@@ -43,6 +43,19 @@ Plano de origem: `docs/plan/sts-improvements-v1.md` (Steps 1-7). Inspiração do
   linha no painel de hover. **As escolhas anteriores importam — e o jogador VÊ isso.**
 - `ShopSystem` delega pro MESMO `pickRewardCard` (stream "shop", filtro de classe via
   `setContext{classId, deckIds, runManager}` injetado por `CardRewardScreen:show`).
+- Relíquias da loja (17/Out/2026): tesoura FIXA (`fixture = true` no
+  `ShopServices.CATALOG`); bancada de coringa SORTEADA em
+  `ShopSystem.chanceServiceHit` (um `random("shop")` por vitrine contra
+  `Config.Offers.JOKER_SLOT_SERVICE_CHANCE`, só se o serviço está disponível,
+  isto é, abaixo do teto de 2/run). Pity: `run.jokerSlotMisses` conta lojas
+  seguidas sem bancada; com `JOKER_SLOT_SERVICE_PITY` (2) o sorteio é ignorado
+  e ela entra. O reroll passa `generateOffers({ reroll = true })`: re-sorteia a
+  vitrine inteira (a bancada pode entrar ou sair) sem tocar no contador. O
+  Continuar reabre a vitrine salva em `run.shopState` sem novo sorteio, e o
+  contador viaja no save por ser campo da run. Serviço com `chanceKey` nunca
+  entra no sorteio ponderado das rotativas (`generateUpgradeOffer`). Medido em
+  `test_shop_services`: 55% das lojas (teoria 4/7 com chance 0,5 e pity 2),
+  nunca 3 ausências seguidas, tesoura em 100%, rotativas nunca repetidas.
 - Pools ordenadas (`table.sort`) — `pairs()` não tem ordem estável e mataria a seed.
 
 ## Forja infinita (Step 3) — REGRA POR CENÁRIO (v2, playtest Jul/2026)

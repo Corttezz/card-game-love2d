@@ -7,7 +7,9 @@ local ShopServices = {}
 ShopServices.CATALOG = {
     { id = "remove_card",    effect = "remove_card",    picker = "remove",    weight = 0,   fixture = true },
     { id = "duplicate_card", effect = "duplicate_card", picker = "duplicate", weight = 0.8 },
-    { id = "joker_slot",     effect = "add_joker_slot", weight = 0,   fixture = true },
+    { id = "joker_slot",     effect = "add_joker_slot", weight = 0,
+      chanceKey = "JOKER_SLOT_SERVICE_CHANCE", pityKey = "JOKER_SLOT_SERVICE_PITY",
+      missKey = "jokerSlotMisses" },
     { id = "card_draw_upgrade", effect = "increase_draw", weight = 0.8 },
     { id = "interest_cap",   effect = "raise_interest_cap", weight = 0.7,
       valueKey = "INTEREST_CAP_PER_BUY" },

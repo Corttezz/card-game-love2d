@@ -493,6 +493,12 @@ function M.setup(policy)
                     CO.REWARD_JOKER_CHANCE[node] = tonumber(v)
                 end
             end
+            local jsc = os.getenv("BALANCE_JOKER_SLOT_CHANCE")
+            if jsc and jsc ~= "" then
+                local chance, pity = jsc:match("^([%d%.]+):?(%d*)$")
+                if tonumber(chance) then CO.JOKER_SLOT_SERVICE_CHANCE = tonumber(chance) end
+                if tonumber(pity) then CO.JOKER_SLOT_SERVICE_PITY = tonumber(pity) end
+            end
             local su = os.getenv("BALANCE_SUSTAIN")
             if su and su ~= "" and su ~= "0" then
                 local bonus = tonumber(su:match(":([%d%.]+)")) or 1.0

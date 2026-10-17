@@ -72,6 +72,9 @@ function M.run()
     local prevReduced = _G.gameSettings and _G.gameSettings.reducedMotion
     _G.gameSettings = _G.gameSettings or {}
     _G.gameSettings.reducedMotion = false
+    local Offers = require("src.core.Config").Offers
+    local prevJokerSlotChance = Offers.JOKER_SLOT_SERVICE_CHANCE
+    Offers.JOKER_SLOT_SERVICE_CHANCE = 1
 
     local okRun, err = pcall(function()
         TK.seedRng(4242)
@@ -533,6 +536,7 @@ function M.run()
     end)
 
     _G.gameSettings.reducedMotion = prevReduced or false
+    Offers.JOKER_SLOT_SERVICE_CHANCE = prevJokerSlotChance
     restoreFakes()
     FontManager.clearCache()
     t:truthy("suite rodou sem erro (" .. tostring(err) .. ")", okRun)

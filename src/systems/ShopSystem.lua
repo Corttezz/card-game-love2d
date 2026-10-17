@@ -174,7 +174,21 @@ function ShopSystem:closeShop()
     self.currentOffers = {}
 end
 
-function ShopSystem:generateOffers()
+function ShopSystem.chanceServiceHit(svc, run, reroll)
+    local Offers = require("src.core.Config").Offers or {}
+    local chance = tonumber(Offers[svc.chanceKey]) or 0
+    if chance <= 0 then return false end
+    local pity = tonumber(svc.pityKey and Offers[svc.pityKey]) or 0
+    local misses = (run and svc.missKey and tonumber(run[svc.missKey])) or 0
+    local hit = Rng.get():random("shop") < chance or (pity > 0 and misses >= pity)
+    if run and svc.missKey and not reroll then
+        run[svc.missKey] = hit and 0 or (misses + 1)
+    end
+    return hit
+end
+
+function ShopSystem:generateOffers(opts)
+    opts = opts or {}
     self.currentOffers = {}
     self._offeredCardIds = {}
     local cfg = self:getModeConfig()
@@ -219,9 +233,14 @@ function ShopSystem:generateOffers()
     self._offeredUpgradeIds = {}
     local upgradesLeft = cfg.upgrades
     if upgradesLeft > 0 then
+        local runManager = self.context.runManager
         for _, svc in ipairs(ShopServices.CATALOG) do
             if upgradesLeft <= 0 then break end
-            if svc.fixture then
+            local wanted = svc.fixture
+            if not wanted and svc.chanceKey and ShopServices.isAvailable(svc.id, runManager) then
+                wanted = ShopSystem.chanceServiceHit(svc, run, opts.reroll)
+            end
+            if wanted then
                 local offer = self:buildServiceOffer(svc.id)
                 if offer then
                     table.insert(self.currentOffers, offer)
@@ -408,7 +427,7 @@ function ShopSystem:generateUpgradeOffer()
     end
 
     for _, svc in ipairs(ShopServices.CATALOG) do
-        if not svc.fixture then
+        if not svc.fixture and not svc.chanceKey then
             candidate(self:buildServiceOffer(svc.id),
                 ShopServices.weight(svc.id, runManager))
         end
@@ -448,7 +467,7 @@ function ShopSystem:refreshOffers()
     self.refreshCount = self.refreshCount + 1
     local raw = REROLL_BASE + 2 * self.refreshCount
     self.refreshCost = math.min(raw, REROLL_MAX)
-    self:generateOffers()
+    self:generateOffers({ reroll = true })
 end
 
 function ShopSystem:purchaseItem(offerIndex, economySystem)

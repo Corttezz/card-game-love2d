@@ -210,6 +210,9 @@ Config.Offers = {
         interest_cap        = { base = 25, mult = 1.65, max = 150, maxPerRun = 0 },
     },
 
+    JOKER_SLOT_SERVICE_CHANCE = 0.5,
+    JOKER_SLOT_SERVICE_PITY   = 2,
+
     INTEREST_CAP_PER_BUY = 2,
     INTEREST_CAP_MAX = 25,
 }

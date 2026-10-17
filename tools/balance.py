@@ -72,6 +72,7 @@ def main():
     ap.add_argument("--hand", default="", help="mao inicial = compra por turno")
     ap.add_argument("--mana", default="", help="mana maxima do jogador")
     ap.add_argument("--joker-odds", default="", help='"battle:0.04,elite:0.4,mini_boss:0.4,boss:0.7" (Config.Offers.REWARD_JOKER_CHANCE)')
+    ap.add_argument("--joker-slot-chance", default="", help='"0.5" ou "0.5:2" (Config.Offers.JOKER_SLOT_SERVICE_CHANCE[:PITY])')
     ap.add_argument("--clock", default="instant", choices=["instant", "frames"])
     ap.add_argument("--dir", default=ROOT, help="arvore do jogo (snapshot/worktree)")
     ap.add_argument("--label", default="")
@@ -109,7 +110,8 @@ def main():
     for flag, var in (("enemy_power_act", "BALANCE_ENEMY_POWER_ACT"), ("boss_hp_id", "BALANCE_BOSS_HP_ID"),
                       ("combo_joker", "BALANCE_COMBO_JOKER"), ("mage_focus", "BALANCE_MAGE_FOCUS"),
                       ("rogue_poison", "BALANCE_ROGUE_POISON"), ("hand", "BALANCE_HAND"),
-                      ("mana", "BALANCE_MANA"), ("joker_odds", "BALANCE_JOKER_ODDS")):
+                      ("mana", "BALANCE_MANA"), ("joker_odds", "BALANCE_JOKER_ODDS"),
+                      ("joker_slot_chance", "BALANCE_JOKER_SLOT_CHANCE")):
         if getattr(args, flag):
             env[var] = getattr(args, flag)
     for kv in args.env:

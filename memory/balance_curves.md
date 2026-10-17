@@ -90,7 +90,7 @@ Cartas com efeito secundário forte recebem -1 a -3 no valor base.
 | carta lendária | $30 | **$21** |
 | pacote (5 tipos) | $4 | igual |
 | reroll | 5, 7, 9… teto 30 | **4, 6, 8…** teto 30 |
-| bancada de coringa (2/run) | $30, $60, ~23% das lojas | **$20, $35, FIXA em toda loja** até o teto |
+| bancada de coringa (2/run) | $30, $60, ~23% das lojas | **$20, $35, FIXA em toda loja** até o teto (17/Out/2026: voltou a ser SORTEADA, 50%/loja + pity, seção "Bancada de coringa por sorteio") |
 | grimório +1 compra (2/run) | $25, $55 | **$22, $44** |
 | cristal +1 mana | $25 | igual |
 | elixir +10 vida | $5 | igual |
@@ -124,7 +124,9 @@ ele entesoura, a bateria não mede se os preços do fim de jogo estão certos.
 A frequência da bancada quase não mexeu com o peso 1.3 (22→24%), então ela
 ganhou VAGA PRÓPRIA (Out/2026): a loja tem 3 relíquias — tesoura e bancada
 fixas + 1 sorteada — e 1 pacote (era 2+2; 3+2 encolhia todas as cartas e
-cortava os nomes). Fixa indisponível devolve a vaga ao sorteio.
+cortava os nomes). Fixa indisponível devolve a vaga ao sorteio. Em 17/Out/2026
+a bancada deixou de ser fixa (o dono estranhou as duas sempre fixas): ver
+"Bancada de coringa por sorteio" no fim deste arquivo.
 Travas: `test_economy` (alcance dos preços),
 `test_economy_acts` (renda por ato + bônus de risco), `smoke_shop` (reroll).
 
@@ -638,3 +640,27 @@ mesma bateria da base (30 runs/classe, seeds 720000, average + expert_full):
 expert_full base 37/30/40 (G/M/L, média 36%) → **27/40/47 (média 38%)**;
 average 3/0/3 sem mudança. Números finais e mortes por chefe na seção
 "Balanceamento" de memory/boss_mechanics.md.
+
+## Bancada de coringa por sorteio (17/Out/2026)
+
+A bancada de coringa da loja deixou de ser fixa: entra por sorteio no stream
+"shop" (`Config.Offers.JOKER_SLOT_SERVICE_CHANCE = 0.5`, pity 2 em
+`JOKER_SLOT_SERVICE_PITY`); a tesoura continua fixa. Quando a bancada não sai,
+a vaga vira uma segunda relíquia rotativa. Bateria `python tools/balance.py
+--runs 30 --classes all --pilots expert_full --seeds 720000 --procs 4`, mesmo
+HEAD (main 98517625 + a mudança), selo 0. O controle usa
+`--joker-slot-chance 1` (bancada em toda loja, o comportamento antigo):
+
+| bancada | guerreiro | mago | ladino | média |
+|---|---|---|---|---|
+| fixa (controle, chance 1) | 37% | 47% | 40% | 41% [32 a 51] |
+| **sorteio 50% + pity 2 (adotado)** | **50%** | **53%** | **63%** | **56% [45 a 65]** |
+
+A referência antiga 27/40/47 (seção "Mecânica própria dos chefes 2-6") já
+estava defasada: o controle no HEAD deu 41% de média. Contra o controle o
+sorteio não tira nada do piloto experiente; a diferença de +14 pontos fica no
+limite do IC e vem provavelmente da segunda relíquia rotativa (compra, mana,
+prensa), que o piloto converte melhor do que a 3ª vaga de coringa. A regra
+"se cair mais de 8 pontos, subir para 0,65" não disparou: a chance fica em
+0,5. Relatórios em `reports/balance/joker_slot_chance` e
+`reports/balance/joker_slot_control` da worktree agent-aa28a148b0b6b979b.

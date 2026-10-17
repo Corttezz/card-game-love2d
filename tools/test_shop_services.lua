@@ -81,16 +81,97 @@ function M.run()
     local game = TK.newRunGame("warrior")
     for _ = 1, 4 do game.runManager:addCardToDeck("warrior_strike") end
 
-    local semTesoura, semBancada, repetida = 0, 0, 0
-    for _ = 1, 12 do
-        local shop = openShop(game, "shop")
-        local ids = upgradeIds(shop:getCurrentOffers())
-        if not ids.remove_card then semTesoura = semTesoura + 1 end
-        if not ids.joker_slot then semBancada = semBancada + 1 end
-        for _, n in pairs(ids) do if n > 1 then repetida = repetida + 1 end end
+    local Offers = Config.Offers
+    local run = game.runManager.currentRun
+    local SEEDS, LOJAS = 200, 6
+    local semTesoura, comBancadaN, repetida, tresSeguidas, vagasErradas = 0, 0, 0, 0, 0
+    local semRotativaDupla = true
+    for s = 1, SEEDS do
+        TK.seedRng(500000 + s)
+        run.jokerSlotMisses = nil
+        local ausencias = 0
+        for _ = 1, LOJAS do
+            local shop = openShop(game, "shop")
+            local ids = upgradeIds(shop:getCurrentOffers())
+            local nUpg = 0
+            for _, n in pairs(ids) do
+                nUpg = nUpg + n
+                if n > 1 then repetida = repetida + 1 end
+            end
+            if nUpg ~= 3 then vagasErradas = vagasErradas + 1 end
+            if not ids.remove_card then semTesoura = semTesoura + 1 end
+            if ids.joker_slot then
+                comBancadaN = comBancadaN + 1
+                ausencias = 0
+            else
+                ausencias = ausencias + 1
+                if ausencias >= 3 then tresSeguidas = tresSeguidas + 1 end
+                local rot = {}
+                for id in pairs(ids) do if id ~= "remove_card" then rot[#rot + 1] = id end end
+                if #rot ~= 2 or rot[1] == rot[2] then semRotativaDupla = false end
+            end
+        end
     end
-    t:eq("tesoura aparece em TODA vitrine de loja", semTesoura, 0)
-    t:eq("bancada de coringa aparece em TODA vitrine de loja", semBancada, 0)
+    local freq = comBancadaN / (SEEDS * LOJAS)
+    print(("  [info] bancada de coringa em %.1f%% das %d lojas (chance %.2f, pity %d)")
+        :format(freq * 100, SEEDS * LOJAS, Offers.JOKER_SLOT_SERVICE_CHANCE,
+            Offers.JOKER_SLOT_SERVICE_PITY))
+    t:eq("tesoura aparece em TODA vitrine de loja (200 seeds x 6 lojas)", semTesoura, 0)
+    t:truthy("bancada de coringa entre 40% e 65% das lojas", freq >= 0.40 and freq <= 0.65)
+    t:eq("pity: nunca 3 lojas seguidas sem bancada", tresSeguidas, 0)
+    t:eq("toda loja abre exatamente 3 reliquias", vagasErradas, 0)
+    t:truthy("sem bancada, a vaga vira 2a rotativa diferente da 1a", semRotativaDupla)
+    run.jokerSlotMisses = nil
+
+    TK.seedRng(777)
+    run.jokerSlotMisses = Offers.JOKER_SLOT_SERVICE_PITY
+    local lojaPity = openShop(game, "shop")
+    t:truthy("pity cheio: a bancada aparece", upgradeIds(lojaPity:getCurrentOffers()).joker_slot)
+    t:eq("bancada vista zera o contador do pity", run.jokerSlotMisses, 0)
+
+    local chanceSalva, pitySalvo = Offers.JOKER_SLOT_SERVICE_CHANCE, Offers.JOKER_SLOT_SERVICE_PITY
+    Offers.JOKER_SLOT_SERVICE_CHANCE = 0
+    run.jokerSlotMisses = 0
+    local nunca = 0
+    for _ = 1, 10 do
+        if upgradeIds(openShop(game, "shop"):getCurrentOffers()).joker_slot then nunca = nunca + 1 end
+    end
+    t:eq("chance 0: bancada nunca aparece (e o pity nao forca)", nunca, 0)
+    Offers.JOKER_SLOT_SERVICE_CHANCE = 1
+    local sempre = 0
+    for _ = 1, 10 do
+        if upgradeIds(openShop(game, "shop"):getCurrentOffers()).joker_slot then sempre = sempre + 1 end
+    end
+    t:eq("chance 1: bancada em toda loja", sempre, 10)
+    Offers.JOKER_SLOT_SERVICE_CHANCE = chanceSalva
+    Offers.JOKER_SLOT_SERVICE_PITY = pitySalvo
+
+    TK.seedRng(4242)
+    run.jokerSlotMisses = 1
+    local lojaReroll = openShop(game, "shop")
+    local contadorPosLoja = run.jokerSlotMisses
+    for _ = 1, 5 do lojaReroll:refreshOffers() end
+    t:eq("reroll re-sorteia a vitrine sem mexer no contador do pity",
+        run.jokerSlotMisses, contadorPosLoja)
+    run.jokerSlotMisses = nil
+
+    TK.seedRng(9090)
+    local lojaSave = openShop(game, "shop")
+    local st = lojaSave:exportState()
+    local lojaLoad = ShopSystem:new()
+    lojaLoad:setContext({ runManager = game.runManager })
+    lojaLoad:importState(st)
+    local a, b = lojaSave:getCurrentOffers(), lojaLoad:getCurrentOffers()
+    local identica = #a == #b and #a > 0
+    for i = 1, #a do
+        local x, y = a[i], b[i] or {}
+        if x.type ~= y.type or x.id ~= y.id or x.cost ~= y.cost or x.effect ~= y.effect
+            or x.isService ~= y.isService or x.saleDiscount ~= y.saleDiscount then
+            identica = false
+        end
+    end
+    t:truthy("vitrine salva e recarregada e identica (sem re-sortear)", identica)
+    run.jokerSlotMisses = nil
 
     for _ = 1, Config.Offers.SERVICES.joker_slot.maxPerRun do
         game.runManager:registerService("joker_slot")
@@ -151,8 +232,11 @@ function M.run()
         pesoComBancada >= pesoLivre)
     t:eq("sem coringa parado, o peso e o do catalogo",
         pesoLivre, ShopServices.get("joker_slot").weight)
-    t:truthy("bancada de coringa e fixa na prateleira",
-        ShopServices.get("joker_slot").fixture == true)
+    t:truthy("bancada de coringa NAO e fixa: entra por sorteio no stream shop",
+        ShopServices.get("joker_slot").fixture ~= true
+            and ShopServices.get("joker_slot").chanceKey == "JOKER_SLOT_SERVICE_CHANCE")
+    t:truthy("tesoura continua fixa em toda loja",
+        ShopServices.get("remove_card").fixture == true)
 
     local gj = TK.newRunGame("warrior")
     local rmj = gj.runManager
