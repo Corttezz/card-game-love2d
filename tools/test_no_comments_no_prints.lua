@@ -44,7 +44,7 @@ M.TOOL_RESULT_PRINTERS = {
     "tools/screenshot_turnbanner.lua", "tools/screenshot_tutorial.lua", "tools/screenshot_ui.lua",
     "tools/screenshot_uiscale.lua", "tools/screenshot_uiscale_battle.lua", "tools/screenshot_unlock_showcase.lua",
     "tools/screenshot_unlocks.lua", "tools/screenshot_upgrades.lua", "tools/screenshot_weather.lua",
-    "tools/screenshot_worldroad.lua", "tools/sfx_envelope.lua", "tools/sheet.lua", "tools/sheet_card_art.lua",
+    "tools/screenshot_worldroad.lua", "tools/screenshot_integracao_terreno.lua", "tools/sfx_envelope.lua", "tools/sheet.lua", "tools/sheet_card_art.lua",
     "tools/shot_boss_aura.lua", "tools/shot_boss_cinematic.lua", "tools/shot_enemy_sheet.lua",
     "tools/study_enemy_stage.lua", "tools/validate_cards.lua",
 }
