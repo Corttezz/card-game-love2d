@@ -702,6 +702,30 @@ function BossAura.crowScale(artScale)
     return math.max(1, floor((artScale or 1) * 0.5 + 0.5))
 end
 
+function BossAura.crowSpriteDir(id)
+    local a = AURAS[id]
+    local o = a and a.orbit
+    return (o and o.kind == "crow" and o.sprite) or nil
+end
+
+function BossAura.crowFrameIndex(frames, t, h1, phase)
+    local n = #frames
+    local fps = (phase == "orbit") and 10 or 15
+    return (floor(t * fps + (h1 or 0) * n) % n) + 1
+end
+
+function BossAura.drawCrowSprite(frames, fi, x, y, face, rot, S, alpha, isFront)
+    local img = frames[fi]
+    if not img then return end
+    if isFront then
+        love.graphics.setColor(1, 1, 1, alpha)
+    else
+        love.graphics.setColor(0.70, 0.68, 0.80, alpha * 0.9)
+    end
+    love.graphics.draw(img, floor(x), floor(y), rot or 0, (face or 1) * S, S,
+        floor(img:getWidth() / 2), floor(img:getHeight() / 2))
+end
+
 local function wrapPi(a)
     return (a + math.pi) % 6.283185 - math.pi
 end
@@ -739,19 +763,10 @@ local function drawFlock(r, o, s, front)
             if mode == "glide" then
                 fi = math.min(n, 3)
             else
-                local fps = (c.phase == "orbit") and 10 or 15
-                fi = (floor(t * fps + c.h1 * n) % n) + 1
+                fi = BossAura.crowFrameIndex(frames, t, c.h1, c.phase)
             end
-            local img = frames[fi]
-            local S = base * (big or 1)
-            local a = s.fade * (al or 1)
-            if isFront then
-                love.graphics.setColor(1, 1, 1, a)
-            else
-                love.graphics.setColor(0.70, 0.68, 0.80, a * 0.9)
-            end
-            love.graphics.draw(img, x, y, rot, face * S, S,
-                floor(img:getWidth() / 2), floor(img:getHeight() / 2))
+            BossAura.drawCrowSprite(frames, fi, x, y, face, rot, base * (big or 1),
+                s.fade * (al or 1), isFront)
         end
     end
 end

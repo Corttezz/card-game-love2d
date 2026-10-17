@@ -353,7 +353,7 @@ function BossCinematic._debug()
              slowmo = slowmo, desat = desat, landed = landed,
              mist = mist, hit = hit, edge = edge, loops = loops, fx = fx,
              eclipse = eclipse, crown = crownCard, hallEyes = hallEyes,
-             bond = T3.bond, free = T3.free,
+             bond = T3.bond, free = T3.free, crowList = crows,
              feathers = #feathers, dust = #dust, crows = #crows, wind = #wind }
 end
 
@@ -369,8 +369,6 @@ end
 
 function BossCinematic.setStage(st) stage = st end
 
-local CROW_BODY     = { 0.09, 0.07, 0.13 }
-local CROW_SHEEN    = { 0.36, 0.31, 0.56 }
 local WIND_COLOR    = { 0.78, 0.74, 0.90 }
 local EYE_CORE      = { 1.00, 0.78, 0.32 }
 local EYE_HALO      = { 1.00, 0.46, 0.10 }
@@ -409,14 +407,17 @@ local function spawnDust(x, groundY, n, spread)
 end
 
 local function spawnCrows(x, y, n, speed)
+    local sw = (stage and stage.bbox and stage.bbox.width or 120) * 0.9
+    local sh = (stage and stage.bbox and stage.bbox.height or 200) * 0.4
     for i = 1, n do
         local a = -math.pi * (0.15 + 0.7 * ((i - 0.5) / n)) + (love.math.random() - 0.5) * 0.3
         local sp = speed * (0.75 + love.math.random() * 0.5)
         crows[#crows + 1] = {
-            x = x + (love.math.random() - 0.5) * 40, y = y + (love.math.random() - 0.5) * 30,
+            x = x + (love.math.random() - 0.5) * sw, y = y + (love.math.random() - 0.5) * sh,
             vx = math.cos(a) * sp, vy = math.sin(a) * sp,
-            flap = love.math.random() * 3, life = 2.4, max = 2.4,
-            dir = (math.cos(a) >= 0) and 1 or -1,
+            h1 = love.math.random(), life = 2.4, max = 2.4,
+            face = (math.cos(a) >= 0) and 1 or -1,
+            sprite = require("src.ui.BossAura").crowSpriteDir(seq and seq.bossId),
         }
     end
 end
@@ -455,7 +456,6 @@ local function updateFx(dt)
     for i = #crows, 1, -1 do
         local c = crows[i]
         c.life = c.life - dt
-        c.flap = c.flap + dt * 14
         c.vy = c.vy - 60 * dt
         c.x = c.x + c.vx * dt
         c.y = c.y + c.vy * dt
@@ -2906,26 +2906,22 @@ local function drawDust()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local CROW_FRAMES = {
-    { "#.....#", ".#...#.", "..###..", "...#..." },
-    { ".......", "###.###", "...#...", "...#..." },
-    { ".......", "...#...", ".##.##.", "#.....#" },
-}
+function BossCinematic.crowDraw(c)
+    local BossAura = require("src.ui.BossAura")
+    local frames = c.sprite and BossAura.crowFrames(c.sprite)
+    if not frames then return nil end
+    local still = reducedMotion()
+    local age = c.max - c.life
+    local fi = still and 1 or BossAura.crowFrameIndex(frames, age, c.h1, "flee")
+    return frames, fi, BossAura.crowScale(px()), clamp01(c.life / c.max * 1.4)
+end
+
 local function drawCrows()
-    local P = px()
+    local BossAura = require("src.ui.BossAura")
     for _, c in ipairs(crows) do
-        local fr = CROW_FRAMES[1 + (math.floor(c.flap) % 3)]
-        local a = clamp01(c.life / c.max * 1.4)
-        for row, line in ipairs(fr) do
-            for col = 1, #line do
-                if line:sub(col, col) == "#" then
-                    local sheen = (row == 2) and (col == 2 or col == 6)
-                    local col2 = sheen and CROW_SHEEN or CROW_BODY
-                    love.graphics.setColor(col2[1], col2[2], col2[3], a)
-                    love.graphics.rectangle("fill",
-                        math.floor(c.x + (col - 4) * P), math.floor(c.y + (row - 2) * P), P, P)
-                end
-            end
+        local frames, fi, S, a = BossCinematic.crowDraw(c)
+        if frames then
+            BossAura.drawCrowSprite(frames, fi, c.x, c.y, c.face, 0, S, a, true)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)

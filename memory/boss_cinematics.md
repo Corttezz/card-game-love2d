@@ -58,6 +58,35 @@ corvos, dessaturação breve, o corpo fica no salão e SÓ DEPOIS cash out.
   passagem. Revisão do lead: com o sprite escurecido junto do salão o voo não
   lia.
 
+## Corvos da cinemática = o SPRITE do combate (17/Out/2026)
+
+O pouso (`land.crows`) e a rajada da morte (`burst.crows`) do rei-carniça
+soltavam corvos PROCEDURAIS (máscara ASCII 7x4 em blocos `px()`, locais
+`CROW_FRAMES/CROW_BODY/CROW_SHEEN`), enquanto a luta já usava o sprite de
+`assets/sprites/characters/enemies/carrion_king/crow/` (ver
+[[boss_visuals]] "Rodada 2: corvo SPRITE"). Agora é UMA fonte:
+- `BossAura.crowSpriteDir(id)` (a pasta declarada em `orbit.sprite` de
+  `src/data/boss_auras.lua`; nil para chefe sem revoada), `BossAura.crowFrameIndex`
+  (10 fps em órbita, 15 fora) e `BossAura.drawCrowSprite(frames, fi, x, y,
+  face, rot, S, alpha, isFront)`, que o `drawFlock` do combate também chama.
+- Na cinemática cada corvo nasce com `sprite`, `h1` (fase de asa própria) e
+  `face` (lado do voo); `BossCinematic.crowDraw(c)` devolve quadros/índice/
+  escala/alpha e `drawCrows` só desenha. Escala = `BossAura.crowScale(px())`
+  (a MESMA escala de pixel do corvo em órbita, inteira). O degrau `FLOCK.big`
+  NÃO entra: ele significa "perto da câmera" no combate; aqui o corvo sai do
+  corpo, na profundidade do chefe. Na 1ª captura, com o ×2 e o espalhamento de
+  ±20 px (feito para corvos de 14 px), os 7 corvos viravam um borrão preto
+  sobre a cabeça do rei; o espalhamento agora é 0,9 × largura e 0,4 × altura
+  do bbox. Física de voo (sobe, some em y < −60) e o rastro do rasante não
+  mudaram. `reducedMotion`: quadro 1 parado. Entrada genérica e demais chefes
+  têm `crows = 0` (sem sprite, `crowDraw` devolve nil e nada desenha).
+- Trava: `test_boss_cinematic` (fonte sem `CROW_FRAMES`/máscara ASCII; os
+  dois módulos desenham por `drawCrowSprite`; sprite da cinemática == o da
+  aura; corvo do pouso e da morte com os quadros do combate, escala inteira e
+  constante; reduzido no quadro 1; `drawFront` com corvos não quebra; genérica
+  sem corvo). Capturas: `tools/preview_out/corvos_cinematica/`
+  (`boss_cine_{intro,death}_carrion_king_sheet.png`, `corvos_{entrada,morte}_1to1.png`).
+
 ## Rodada 3 (dono, ao vivo): "efeito de túnel", nebuloso com cor, efeito de tela
 
 - **"Checkered/boxy" nos rasantes** era o RASTRO em retângulos aditivos e os

@@ -576,6 +576,104 @@ function M.run()
         BT.reset()
     end
 
+    do
+        local BossAura = require("src.ui.BossAura")
+        local src = love.filesystem.read("src/ui/BossCinematic.lua") or ""
+        t:falsy("corvo procedural saiu da cinematica (CROW_FRAMES)", src:find("CROW_FRAMES", 1, true))
+        t:falsy("corvo procedural saiu da cinematica (CROW_BODY/SHEEN)",
+            src:find("CROW_BODY", 1, true) or src:find("CROW_SHEEN", 1, true))
+        t:falsy("corvo procedural saiu da cinematica (mascara ascii)", src:find('"#.....#"', 1, true))
+        t:truthy("cinematica desenha o corvo pelo BossAura.drawCrowSprite",
+            src:find("BossAura.drawCrowSprite", 1, true) ~= nil)
+        t:truthy("cinematica pede o quadro ao BossAura.crowFrameIndex",
+            src:find("BossAura.crowFrameIndex", 1, true) ~= nil)
+        local auraSrc = love.filesystem.read("src/ui/BossAura.lua") or ""
+        t:truthy("o combate desenha pelo MESMO drawCrowSprite",
+            select(2, auraSrc:gsub("BossAura%.drawCrowSprite", "")) >= 2)
+        local dir = BossAura.crowSpriteDir("carrion_king")
+        t:eq("corvo da cinematica = sprite da aura do combate", dir,
+            require("src.data.boss_auras").carrion_king.orbit.sprite)
+        t:falsy("chefe sem revoada nao tem sprite de corvo", BossAura.crowSpriteDir("tower_lich"))
+        local frames = BossAura.crowFrames(dir)
+        t:truthy("sprite do corvo carrega (7 quadros)", frames ~= nil and #frames == 7)
+        local canvas = love.graphics.newCanvas(64, 64)
+        local function drawOk()
+            return pcall(function()
+                love.graphics.setCanvas(canvas)
+                BC.drawFront()
+                love.graphics.setCanvas()
+            end)
+        end
+        for _, reduced in ipairs({ false, true }) do
+            _G.gameSettings.reducedMotion = reduced
+            local tag = reduced and "reduced: " or ""
+            BC.reset()
+            local gc = fakeBoss("carrion_king")
+            BC.startIntro(gc)
+            BC.setStage(stage)
+            local first, later, el2 = nil, nil, 0
+            local base = BossAura.crowScale(3)
+            while BC.isActive() and el2 < 20 do
+                BC.update(DT, gc, { inHall = true })
+                el2 = el2 + DT
+                local d = BC._debug()
+                if d.crows > 0 then
+                    local c = d.crowList[1]
+                    local fr, fi, S, a = BC.crowDraw(c)
+                    if not first then
+                        first = { fr = fr, fi = fi, S = S, a = a, sprite = c.sprite, face = c.face }
+                        t:truthy(tag .. "entrada: drawFront com corvos nao quebra", (drawOk()))
+                    elseif (c.max - c.life) > 0.5 then
+                        later = later or { fr = fr, fi = fi, S = S }
+                    end
+                end
+            end
+            t:truthy(tag .. "entrada: o pouso solta corvos", first ~= nil)
+            if first then
+                t:eq(tag .. "entrada: corvo aponta o sprite do combate", first.sprite, dir)
+                t:eq(tag .. "entrada: quadros = os do combate", first.fr, frames)
+                t:eq(tag .. "entrada: nasce na escala do corvo de combate (crowScale do chefe)", first.S, base)
+                t:eq(tag .. "entrada: escala inteira", first.S % 1, 0)
+                t:truthy(tag .. "entrada: vira para o lado do voo", first.face == 1 or first.face == -1)
+                t:truthy(tag .. "entrada: quadro valido", first.fi >= 1 and first.fi <= 7)
+                if reduced then
+                    t:eq(tag .. "corvo parado no quadro 1", first.fi, 1)
+                end
+            end
+            t:truthy(tag .. "entrada: corvo ainda voa depois de 0,5 s", later ~= nil)
+            if later then
+                t:eq(tag .. "entrada: escala nunca muda (sem degrau FLOCK.big)", later.S, base)
+                if reduced then t:eq(tag .. "corvo segue no quadro 1", later.fi, 1) end
+            end
+            BC.reset()
+            BC.setStage(stage)
+            local gd2 = fakeBoss("carrion_king")
+            gd2._deathHandled = true
+            BC.update(DT, gd2, { inHall = true })
+            local d2 = BC._debug()
+            t:truthy(tag .. "morte: a rajada solta corvos", d2.crows > 0)
+            if d2.crows > 0 then
+                t:eq(tag .. "morte: corvo com o sprite do combate", d2.crowList[1].sprite, dir)
+                t:truthy(tag .. "morte: drawFront com corvos nao quebra", (drawOk()))
+            end
+            runUntilDone(gd2, 20)
+            BC.reset()
+        end
+        _G.gameSettings.reducedMotion = false
+        BC.reset()
+        BC.startIntro(fakeBoss("__nobody__"))
+        BC.setStage(stage)
+        local sawCrow = false
+        local el3 = 0
+        while BC.isActive() and el3 < 10 do
+            BC.update(DT, fakeBoss("__nobody__"), { inHall = true })
+            el3 = el3 + DT
+            if BC._debug().crows > 0 then sawCrow = true end
+        end
+        t:falsy("entrada generica: sem corvo", sawCrow)
+        BC.reset()
+    end
+
     for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
         local ok, tbl = pcall(require, "src.i18n.locales.boss_cinematics." .. loc)
         t:truthy("locale " .. loc .. " carrega", ok and type(tbl) == "table")
