@@ -10,6 +10,7 @@ local WeatherEngine = require("engine.WeatherEngine")
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 local GrassField = require("engine.GrassField")
+local Scene = { Grade = require("engine.SceneGrade") }
 
 local PropCut = {
     data = require("src.data.world_props"),
@@ -1297,14 +1298,9 @@ local LMG = { NO_CRITTERS = {}, ORIG_H = {
 } }
 WorldRoad.LANDMARK_ORIG_H = LMG.ORIG_H
 function LMG.refH(key, ih) return LMG.ORIG_H[key] or ih end
-function LMG.setTint(br, a)
-    local lt = envColor("fog")
-    local k = 0.16
-    love.graphics.setColor(
-        br * ((1 - k) + k * math.min(1.6, lt[1] * 1.9)),
-        br * ((1 - k) + k * math.min(1.6, lt[2] * 1.9)),
-        br * ((1 - k) + k * math.min(1.6, lt[3] * 1.9)), a)
-end
+LMG.c = {}
+LMG.fc = {}
+LMG.tint4 = { 1, 1, 1, 1 }
 
 local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha)
     local sm = lmCfg(LANDMARK_SMOKE, key)
@@ -1462,19 +1458,9 @@ end
 
 local function submitLandmarkOccluder(img, px, py, iw, ih, s, rel)
     local oxT, oyT = love.graphics.transformPoint(px - iw * s / 2, py - ih * s)
-    local ar, ag2, ab2 = 1, 1, 1
-    if LightEngine.ambientColor then
-        ar, ag2, ab2 = LightEngine.ambientColor()
-    end
-    local mx2 = math.max(ar, ag2, ab2, 0.001)
-    local tint = 0.35
     LightEngine.submitOccluder({
         z = rel,
-        flatColor = {
-            1 - tint * (1 - ar / mx2),
-            1 - tint * (1 - ag2 / mx2),
-            1 - tint * (1 - ab2 / mx2),
-        },
+        flatColor = Scene.Grade.flatColor("landmark", {}),
         img = img, x = oxT, y = oyT, sx = s, sy = s,
         bx = oxT, by = oyT, w = iw * s, h = ih * s,
     })
@@ -1986,7 +1972,8 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
     if img then
         local iw, ih = img:getWidth(), img:getHeight()
         local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
-        love.graphics.setColor(1, 1, 1, alpha)
+        local c = Scene.Grade.color("mountain", 0, LMG.c)
+        love.graphics.setColor(c[1], c[2], c[3], alpha)
         drawStripTiles(img, x, sx, yTop, tileW, off)
         drawStripMirrorBelow(img, x, sx, yTop, tileW, off, g.bottomY)
         return true
@@ -2033,8 +2020,8 @@ local function drawMountainsFrontOf(g, x, w, camZ, bid, alpha)
     if not img then return false end
     local iw, ih = img:getWidth(), img:getHeight()
     local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
-    if _G.WR_TINT then love.graphics.setColor(1, 0, 0, alpha)
-    else love.graphics.setColor(1, 1, 1, alpha) end
+    local c = Scene.Grade.color("mountain", 0, LMG.c)
+    love.graphics.setColor(c[1], c[2], c[3], alpha)
     drawStripTiles(img, x, sx, yTop, tileW, off)
     return true
 end
@@ -2094,7 +2081,8 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
             iw * s * 0.28, 4 + 7 * progress)
     end
 
-    love.graphics.setColor(1, 1, 1, alpha)
+    local cc = Scene.Grade.color("castle", 0.6 + 0.4 * progress, LMG.c)
+    love.graphics.setColor(cc[1], cc[2], cc[3], alpha)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
 
@@ -2221,7 +2209,8 @@ local function drawPropsBehind(g, x, w, camZ)
                 local px2 = pxX - (lumAnc.offX or 0) * s * lumFlip
                 local sink = (1 - em) * ih * s
                 local baseY = crest + sink
-                love.graphics.setColor(0.7, 0.7, 0.7, fadeA)
+                local cb = Scene.Grade.color(Scene.Grade.familyOf(p.kind, true), 0, LMG.c)
+                love.graphics.setColor(cb[1] * 0.7, cb[2] * 0.7, cb[3] * 0.7, fadeA)
                 love.graphics.draw(img, math.floor(px2), math.floor(baseY),
                     0, s * lumFlip, s, iw / 2, ih)
                 local flameTopY = baseY - ih * s * (1 - (lumAnc.ay or 0.3))
@@ -2258,13 +2247,15 @@ local function drawPropsBehind(g, x, w, camZ)
                             local cs = s * (0.5 + 0.13 * ci)
                             local ccrest = g.crestYAt(pxX + off) or crest
                             local _, cihv = PropCut.get(cimg, p.kind)
-                            love.graphics.setColor(0.6, 0.6, 0.6, fadeA)
+                            local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), 0, LMG.c)
+                            love.graphics.setColor(cc[1] * 0.6, cc[2] * 0.6, cc[3] * 0.6, fadeA)
                             PropCut.draw(cimg, p.kind, math.floor(pxX + off),
                                 math.floor(ccrest + (1 - em) * cihv * cs), 0, cs, cs)
                         end
                     end
                 end
-                love.graphics.setColor(0.66, 0.66, 0.66, fadeA)
+                local cb = Scene.Grade.color(Scene.Grade.familyOf(p.kind), 0, LMG.c)
+                love.graphics.setColor(cb[1] * 0.66, cb[2] * 0.66, cb[3] * 0.66, fadeA)
                 PropCut.draw(img, p.kind, math.floor(pxX),
                     math.floor(crest + sink), 0, s, s)
             end
@@ -2390,7 +2381,8 @@ local function drawDomeTexOf(g, x, w, bid, alpha, slot)
         ds.count = qm.n
         qm:upload(0, qm.n)
     end
-    love.graphics.setColor(1, 1, 1, alpha)
+    local c = Scene.Grade.color("ground", 0.5, LMG.c)
+    love.graphics.setColor(c[1], c[2], c[3], alpha)
     ds.qm:draw(0, ds.count, tex.img)
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -2398,8 +2390,10 @@ end
 local function drawDome(g, x, y, w)
     local grassA = envColor("grassA")
     local grassB = envColor("grassB")
+    local gc = Scene.Grade.color("ground", 0.5, LMG.c)
+    local gr, gg, gb = gc[1], gc[2], gc[3]
 
-    love.graphics.setColor(grassB[1] * 0.78, grassB[2] * 0.78, grassB[3] * 0.78, 1)
+    love.graphics.setColor(grassB[1] * 0.78 * gr, grassB[2] * 0.78 * gg, grassB[3] * 0.78 * gb, 1)
     love.graphics.circle("fill", g.cx, g.crestApexY + g.R, g.R, 256)
 
     local bl = WorldRoad._blend
@@ -2413,7 +2407,7 @@ local function drawDome(g, x, y, w)
 
     do
         local phiEdge = math.asin(math.min(1, (w / 2) / g.R))
-        love.graphics.setColor(grassA[1], grassA[2], grassA[3], 1)
+        love.graphics.setColor(grassA[1] * gr, grassA[2] * gg, grassA[3] * gb, 1)
         love.graphics.setLineWidth(3)
         love.graphics.arc("line", "open", g.cx, g.crestApexY + g.R, g.R - 1,
             -math.pi / 2 - phiEdge, -math.pi / 2 + phiEdge, 256)
@@ -2423,7 +2417,7 @@ local function drawDome(g, x, y, w)
     local bandH = (g.bottomY - g.crestApexY) * 0.22
     local phiMax = math.acos(math.max(-1, 1 - bandH / g.R))
     phiMax = math.min(phiMax, math.asin(math.min(1, w * 0.26 / g.R)))
-    love.graphics.setColor(grassA[1] * 1.16, grassA[2] * 1.16, grassA[3] * 1.10, 0.85)
+    love.graphics.setColor(grassA[1] * 1.16 * gr, grassA[2] * 1.16 * gg, grassA[3] * 1.10 * gb, 0.85)
     love.graphics.setLineWidth(4)
     love.graphics.arc("line", "open", g.cx, g.crestApexY + g.R, g.R - 2,
         -math.pi / 2 - phiMax, -math.pi / 2 + phiMax)
@@ -2433,9 +2427,10 @@ end
 local function drawTerrainDetail(g, x, w, camZ)
     local gA = envColor("grassA")
     local gB = envColor("grassB")
-    local dark  = { gB[1] * 0.70, gB[2] * 0.70, gB[3] * 0.70 }
-    local light = { math.min(1, gA[1] * 1.45), math.min(1, gA[2] * 1.40),
-                    math.min(1, gA[3] * 1.25) }
+    local gc = Scene.Grade.color("ground", 0.5, LMG.c)
+    local dark  = { gB[1] * 0.70 * gc[1], gB[2] * 0.70 * gc[2], gB[3] * 0.70 * gc[3] }
+    local light = { math.min(1, gA[1] * 1.45) * gc[1], math.min(1, gA[2] * 1.40) * gc[2],
+                    math.min(1, gA[3] * 1.25) * gc[3] }
 
     local CELL_R = 3.1
     for ci = math.floor(camZ / CELL_R),
@@ -2542,6 +2537,7 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
         local lum = (gA[1] + gA[2] + gA[3]) / 3
         local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
         _grassFork = { cs = {}, ws = {} }
+        local gc = Scene.Grade.color("grass", 0.5, LMG.c)
         _grassCtx = {
             x = x, w = w,
             time = WorldRoad._time,
@@ -2569,11 +2565,11 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
                 return cs, (f.n > 1 and 0.78 or 1), ws
             end,
             colors = {
-                mid   = { gA[1] * 0.98, gA[2] * 0.98, gA[3] * 0.98 },
-                light = { math.min(1, gA[1] * lk),
-                          math.min(1, gA[2] * lk * 0.97),
-                          math.min(1, gA[3] * lk * 0.88) },
-                accent = acc,
+                mid   = { gA[1] * 0.98 * gc[1], gA[2] * 0.98 * gc[2], gA[3] * 0.98 * gc[3] },
+                light = { math.min(1, gA[1] * lk) * gc[1],
+                          math.min(1, gA[2] * lk * 0.97) * gc[2],
+                          math.min(1, gA[3] * lk * 0.88) * gc[3] },
+                accent = { acc[1] * gc[1], acc[2] * gc[2], acc[3] * gc[3] },
             },
             biomeId = b.id,
             forkActive = WorldRoad._fork ~= nil,
@@ -2813,7 +2809,8 @@ local function drawRoad(g, x, w, camZ)
         qm:upload(0, qm.n)
         local prevShader = love.graphics.getShader()
         love.graphics.setShader(QuadMesh.untexturedShader())
-        love.graphics.setColor(1, 1, 1, 1)
+        local rc = Scene.Grade.color("road", 0.5, LMG.c)
+        love.graphics.setColor(rc[1], rc[2], rc[3], 1)
         qm:draw(0, qm.n, tileUsed)
         love.graphics.setShader(prevShader)
     end
@@ -2915,7 +2912,8 @@ local function drawLandmarkFront(g, x, w, camZ)
             shY, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
         love.graphics.setColor(1, 1, 1, 1)
     end
-    LMG.setTint(1, 1)
+    local lc = Scene.Grade.color("landmark", t, LMG.c)
+    love.graphics.setColor(lc[1], lc[2], lc[3], 1)
     love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
     love.graphics.setColor(1, 1, 1, 1)
     drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1)
@@ -3040,7 +3038,9 @@ local function drawProps(g, x, w, camZ)
                         shY, iw * s * 0.30, math.max(2, 4 * g.persp(tM)))
                 end
                 local br = hovered and 1.10 or 1
-                LMG.setTint(br, aMul)
+                local lc = Scene.Grade.color("landmark", tM, LMG.c)
+                love.graphics.setColor(math.min(1, lc[1] * br), math.min(1, lc[2] * br),
+                    math.min(1, lc[3] * br), aMul)
                 love.graphics.draw(img, math.floor(px - iw * s / 2),
                     math.floor(py - ih * s), 0, s, s)
                 drawLandmarkSmoke(key, px, py, iw, ih, s, aMul)
@@ -3152,7 +3152,8 @@ local function drawProps(g, x, w, camZ)
                                 shadowOpts(0.8 * fadeA, nil,
                                     PropCut.cutOf(cimg, p.kind),
                                     WorldRoad.SHADOW_PROFILE[p.kind]))
-                            love.graphics.setColor(0.88, 0.88, 0.88, fadeA)
+                            local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), t, LMG.c)
+                            love.graphics.setColor(cc[1] * 0.88, cc[2] * 0.88, cc[3] * 0.88, fadeA)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
                                 math.floor(cy2), 0, cs, cs)
                         end
@@ -3171,7 +3172,8 @@ local function drawProps(g, x, w, camZ)
                             local fs = g.scaleAt((KIND_SIZE.fence or 1) * (p.big or 1), ft, ih)
                             ShadowEngine.queue(img, fx, fy - 1, fs,
                                 shadowOpts(0.85 * fadeA))
-                            love.graphics.setColor(0.94, 0.94, 0.94, fadeA)
+                            local fc = Scene.Grade.color("prop", ft, LMG.c)
+                            love.graphics.setColor(fc[1] * 0.94, fc[2] * 0.94, fc[3] * 0.94, fadeA)
                             love.graphics.draw(img, math.floor(fx), math.floor(fy),
                                 0, fs, fs, iw / 2, ih)
                         end
@@ -3218,13 +3220,8 @@ local function drawProps(g, x, w, camZ)
                 end
                 rot = rot + pokeRot(p)
 
-                local lt = envColor("fog")
-                local mixK = 0.16
-                love.graphics.setColor(
-                    aFade * ((1 - mixK) + mixK * math.min(1.6, lt[1] * 1.9)),
-                    aFade * ((1 - mixK) + mixK * math.min(1.6, lt[2] * 1.9)),
-                    aFade * ((1 - mixK) + mixK * math.min(1.6, lt[3] * 1.9)),
-                    fadeA)
+                local pc = Scene.Grade.color(Scene.Grade.familyOf(p.kind, lumDef ~= nil), t, LMG.c)
+                love.graphics.setColor(pc[1], pc[2], pc[3], fadeA)
                 PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip, s, gustKx * lumFlip)
 
@@ -3257,11 +3254,10 @@ local function drawProps(g, x, w, camZ)
                         or p.kind == "deadtree" or p.kind == "bush") then
                     local oxT, oyT = love.graphics.transformPoint(
                         pxX, sy + sink2)
-                    local ambT = LightEngine.ambientLuma
-                        and LightEngine.ambientLuma() or 1
-                    local liftT = math.min(1.8, math.max(1, 0.72 / math.max(0.2, ambT)))
                     local oc = occluderSlot()
-                    oc.z, oc.lift = rel, liftT
+                    oc.fc = oc.fc or {}
+                    oc.z = rel
+                    oc.flatColor = Scene.Grade.flatColor("tree", oc.fc)
                     oc.img, oc.x, oc.y, oc.rot = img, oxT, oyT, rot
                     oc.sx, oc.sy, oc.ox, oc.oy = s, s, iw / 2, ihv
                     oc.bx, oc.by = oxT - iw * s / 2, oyT - ihv * s
@@ -3395,23 +3391,18 @@ local function drawEncounterFront(g, x, w, camZ)
             { alphaK = 0.9, footPad = e.footPad,
               baseK = e.shadowBaseK, riseK = e.shadowRiseK })
     end
-    love.graphics.setColor(1, 1, 1, 1)
+    local ec = Scene.Grade.color("enemy", t, LMG.c)
+    local t4 = LMG.tint4
+    t4[1], t4[2], t4[3], t4[4] = ec[1], ec[2], ec[3], 1
+    love.graphics.setColor(ec[1], ec[2], ec[3], 1)
     if e.anim then
-        e.anim:draw(dx0, dy0, s)
+        e.anim:draw(dx0, dy0, s, t4)
     else
         love.graphics.draw(e.img, dx0, dy0, 0, s, s)
     end
 
     local oxT, oyT = love.graphics.transformPoint(dx0, dy0)
-    local ar, ag, ab = 1, 1, 1
-    if LightEngine.ambientColor then ar, ag, ab = LightEngine.ambientColor() end
-    local mx = math.max(ar, ag, ab, 0.001)
-    local tint = 0.28
-    local flatColor = {
-        1 - tint * (1 - ar / mx),
-        1 - tint * (1 - ag / mx),
-        1 - tint * (1 - ab / mx),
-    }
+    local flatColor = Scene.Grade.flatColor("enemy", LMG.fc)
     if e.anim then
         LightEngine.submitOccluder({
             z = rel + 6, flatColor = flatColor, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
@@ -3439,18 +3430,19 @@ local function drawEncounterFront(g, x, w, camZ)
     end
 end
 
-local _profT, _profKB
+WorldRoad._profState = {}
 local function _profMark(name)
     local P = WorldRoad._prof
     if not P then return end
     love.graphics.flushBatch()
+    local ps = WorldRoad._profState
     local now = love.timer.getTime()
     local kb = collectgarbage("count")
-    if name ~= "start" and _profT then
-        P[name] = (P[name] or 0) + (now - _profT) * 1000
-        P["kb " .. name] = (P["kb " .. name] or 0) + (kb - _profKB)
+    if name ~= "start" and ps.t then
+        P[name] = (P[name] or 0) + (now - ps.t) * 1000
+        P["kb " .. name] = (P["kb " .. name] or 0) + (kb - ps.kb)
     end
-    _profT, _profKB = now, kb
+    ps.t, ps.kb = now, kb
 end
 
 WorldRoad._drawFrame = 0
@@ -3467,7 +3459,18 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     local hs = WorldRoad._hitScene
     for i = #hs, 1, -1 do hs[i] = nil end
 
-    LightEngine.beginFrame(WeatherEngine.modulateAmbient(currentLightAmbient()))
+    local amb = WeatherEngine.modulateAmbient(currentLightAmbient())
+    local bk = 1
+    if WorldRoad._blend then
+        local k = math.min(1, WorldRoad._blend.t / WorldRoad._blend.duration)
+        bk = k * k * (3 - 2 * k)
+    end
+    LightEngine.beginFrame(amb)
+    Scene.Grade.begin(rawBiome().id, WorldRoad._timeOfDay,
+        WorldRoad._blend and WorldRoad._prevBiomeIndex
+            and rawBiome(WorldRoad._prevBiomeIndex).id or nil,
+        bk, amb)
+    Scene.Grade.setDepth(g.tOf(WorldRoad.BATTLE_REL) or 1)
 
     do
         local cel = rawBiome().celestial
@@ -3477,7 +3480,8 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     end
 
     local gb0 = envColor("grassB")
-    love.graphics.setColor(gb0[1] * 0.78, gb0[2] * 0.78, gb0[3] * 0.78, 1)
+    local g0 = Scene.Grade.color("ground", 0.5, LMG.c)
+    love.graphics.setColor(gb0[1] * 0.78 * g0[1], gb0[2] * 0.78 * g0[2], gb0[3] * 0.78 * g0[3], 1)
     love.graphics.rectangle("fill", x, y, w, h)
 
     love.graphics.push()
@@ -3561,6 +3565,8 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     do
         local b = rawBiome()
         local acc = b.accent or { 0.8, 0.7, 0.4 }
+        local crc = Scene.Grade.color("critter", 0.7, LMG.c)
+        local ar, ag, ab = acc[1] * crc[1], acc[2] * crc[2], acc[3] * crc[3]
         local glow = LightEngine.ambientLuma() < 0.75
         local skipGlow = glow and WeatherEngine.hasFireflies(b.id)
         for _, cr in ipairs(skipGlow and LMG.NO_CRITTERS or WorldRoad._critters) do
@@ -3571,9 +3577,9 @@ function WorldRoad.draw(x, y, w, h, actNumber)
             if glow then
                 local depth = 0.45 + 0.55 * cr.yr
                 local blink = 0.5 + 0.5 * math.sin(WorldRoad._time * 2.2 + cr.phase * 3)
-                love.graphics.setColor(acc[1], acc[2], acc[3], 0.16 * blink * a)
+                love.graphics.setColor(ar, ag, ab, 0.16 * blink * a)
                 love.graphics.circle("fill", cxr, cyy, 4 * depth + 1)
-                love.graphics.setColor(acc[1] * 1.2, acc[2] * 1.2, acc[3] * 1.1, 0.9 * blink * a)
+                love.graphics.setColor(ar * 1.2, ag * 1.2, ab * 1.1, 0.9 * blink * a)
                 love.graphics.rectangle("fill", math.floor(cxr), math.floor(cyy), 2, 2)
                 local fx2, fy2 = love.graphics.transformPoint(cxr, cyy)
                 LightEngine.submitMicro(fx2, fy2,
@@ -3581,7 +3587,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
                     Config.Lighting.FIREFLY.intensity * blink * a)
             else
                 local flap = math.sin(WorldRoad._time * 11 + cr.phase) > 0
-                love.graphics.setColor(acc[1], acc[2], acc[3], 0.9 * a)
+                love.graphics.setColor(ar, ag, ab, 0.9 * a)
                 love.graphics.rectangle("fill", math.floor(cxr), math.floor(cyy), 2, 2)
                 if flap then
                     love.graphics.rectangle("fill", math.floor(cxr - 2), math.floor(cyy - 1), 2, 1)

@@ -2,6 +2,7 @@ local Debug = require("src.core.Debug")
 
 local SpriteAnimation = require("src.ui.SpriteAnimation")
 local LightEngine = require("engine.LightEngine")
+local SceneGrade = require("engine.SceneGrade")
 local EnemyEmissives = require("src.data.enemy_emissives")
 local EnemyPoses = require("src.data.enemy_poses")
 local BossAura = require("src.ui.BossAura")
@@ -30,6 +31,7 @@ local function submitEmissives(spriteId, sx, sy, iw, ih, scale, z, boost)
 end
 
 local EnemyRenderer = {}
+EnemyRenderer._gradeC = {}
 
 local staticCache = {}
 local axisCache = {}
@@ -930,6 +932,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         tintG = pulse * (1 - 0.45 * k * throb)
         tintB = pulse * (1 - 0.45 * k * throb)
     end
+    local gradeC = SceneGrade.color("enemy", SceneGrade.depth(), EnemyRenderer._gradeC)
+    tintR, tintG, tintB = tintR * gradeC[1], tintG * gradeC[2], tintB * gradeC[3]
     love.graphics.setColor(tintR, tintG, tintB, 1)
 
     if hasAnim then
@@ -1073,15 +1077,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             staticRef = sprites and (sprites.south or sprites.east
                 or sprites.west or sprites.north)
         end
-        local ar, ag, ab = 1, 1, 1
-        if LightEngine.ambientColor then ar, ag, ab = LightEngine.ambientColor() end
-        local mx = math.max(ar, ag, ab, 0.001)
-        local tint = 0.28
-        local flatColor = {
-            1 - tint * (1 - ar / mx),
-            1 - tint * (1 - ag / mx),
-            1 - tint * (1 - ab / mx),
-        }
+        local flatColor = SceneGrade.flatColor("enemy", {})
         if animRef or staticRef then
             LightEngine.submitOccluder({
                 z = (((package.loaded["src.ui.WorldRoad"] or {}).BATTLE_REL)

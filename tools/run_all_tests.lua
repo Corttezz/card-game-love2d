@@ -35,6 +35,7 @@ local SUITES = {
     { group = "unit",  name = "test_world_shadows" },
     { group = "unit",  name = "test_weather" },
     { group = "unit",  name = "test_world_props" },
+    { group = "unit",  name = "test_scene_grade" },
     { group = "unit",  name = "test_boss_visuals" },
     { group = "unit",  name = "test_boss_mechanics" },
     { group = "unit",  name = "test_boss_cinematic" },

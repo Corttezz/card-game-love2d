@@ -1,0 +1,129 @@
+local LightEngine = require("engine.LightEngine")
+local DATA = require("src.data.scene_integration")
+
+local SceneGrade = {}
+
+SceneGrade.FAMILIES = {
+    "ground", "road", "grass", "prop", "tree", "rock", "landmark",
+    "castle", "mountain", "enemy", "luminaire", "critter",
+}
+
+SceneGrade.KIND_FAMILY = {
+    tree = "tree", pine = "tree", deadtree = "tree", bush = "tree",
+    rock = "rock", ruin = "rock",
+    stump = "prop", fence = "prop", sign = "prop", flowers = "prop", tuft = "prop",
+}
+
+local NO_GRADE = { mountain = true }
+local CONTRAST_REACH = 0.25
+
+local S = {
+    bid = "fields", stamp = -1,
+    tr = 1, tg = 1, tb = 1,
+    shr = 0, shg = 0, shb = 0,
+    satNear = 1, satFar = 1, contrastFar = 1,
+    fr = 1, fg = 1, fb = 1, fogNear = 0, fogFar = 0, fogCurve = 1,
+    ar = 1, ag = 1, ab = 1,
+    depth = 1,
+}
+
+local function clamp01(v) return math.max(0, math.min(1, v)) end
+local function lerp(a, b, k) return a + (b - a) * k end
+
+local function gradeOf(bid)
+    local e = DATA[bid] or DATA.fields
+    return e.grade
+end
+
+local function resolve(g, tod, into)
+    into.tr = lerp(g.day[1], g.dusk[1], tod)
+    into.tg = lerp(g.day[2], g.dusk[2], tod)
+    into.tb = lerp(g.day[3], g.dusk[3], tod)
+    into.shr, into.shg, into.shb = g.shadowTint[1], g.shadowTint[2], g.shadowTint[3]
+    into.satNear, into.satFar = g.satNear, g.satFar
+    into.contrastFar = g.contrastFar
+    into.fr = math.min(1.6, g.fog[1] * 1.9)
+    into.fg = math.min(1.6, g.fog[2] * 1.9)
+    into.fb = math.min(1.6, g.fog[3] * 1.9)
+    into.fogNear, into.fogFar, into.fogCurve = g.fogNear, g.fogFar, g.fogCurve
+    return into
+end
+
+local prevLine = {}
+local FIELDS = { "tr", "tg", "tb", "shr", "shg", "shb", "satNear", "satFar",
+                 "contrastFar", "fr", "fg", "fb", "fogNear", "fogFar", "fogCurve" }
+
+function SceneGrade.begin(bid, tod, fromBid, blendK, amb)
+    tod = clamp01(tod or 1)
+    S.bid = DATA[bid] and bid or "fields"
+    resolve(gradeOf(S.bid), tod, S)
+    if fromBid and DATA[fromBid] and blendK and blendK < 1 then
+        resolve(gradeOf(fromBid), tod, prevLine)
+        local k = clamp01(blendK)
+        for i = 1, #FIELDS do
+            local f = FIELDS[i]
+            S[f] = lerp(prevLine[f], S[f], k)
+        end
+    end
+    if amb then
+        S.ar, S.ag, S.ab = amb[1] or 1, amb[2] or 1, amb[3] or 1
+    else
+        S.ar, S.ag, S.ab = LightEngine.ambientColor()
+    end
+    S.stamp = love.timer.getTime()
+end
+
+function SceneGrade.isActive()
+    return (love.timer.getTime() - S.stamp) < 0.1
+end
+
+function SceneGrade.biome() return S.bid end
+
+function SceneGrade.familyOf(kind, isLuminaire)
+    if isLuminaire then return "luminaire" end
+    return SceneGrade.KIND_FAMILY[kind] or "prop"
+end
+
+function SceneGrade.fogAlpha(t)
+    t = clamp01(t or 1)
+    return S.fogNear + (S.fogFar - S.fogNear) * ((1 - t) ^ S.fogCurve)
+end
+
+function SceneGrade.fogColor() return S.fr, S.fg, S.fb end
+function SceneGrade.shadowTint() return S.shr, S.shg, S.shb end
+
+function SceneGrade.color(family, t, out)
+    out = out or {}
+    if NO_GRADE[family] or not SceneGrade.isActive() then
+        out[1], out[2], out[3] = 1, 1, 1
+        return out
+    end
+    t = clamp01(t or 1)
+    local r, g, b = S.tr, S.tg, S.tb
+    local fa = SceneGrade.fogAlpha(t)
+    r, g, b = lerp(r, S.fr, fa), lerp(g, S.fg, fa), lerp(b, S.fb, fa)
+    local sat = lerp(S.satFar, S.satNear, t)
+    local l = 0.299 * r + 0.587 * g + 0.114 * b
+    r, g, b = lerp(l, r, sat), lerp(l, g, sat), lerp(l, b, sat)
+    local bright = lerp(S.contrastFar, 1, math.min(1, t / CONTRAST_REACH))
+    out[1] = clamp01(r * bright)
+    out[2] = clamp01(g * bright)
+    out[3] = clamp01(b * bright)
+    return out
+end
+
+function SceneGrade.flatColor(family, out)
+    out = out or {}
+    out[1], out[2], out[3] = S.ar, S.ag, S.ab
+    return out
+end
+
+function SceneGrade.cfg(section)
+    local e = DATA[S.bid] or DATA.fields
+    return e[section]
+end
+
+function SceneGrade.setDepth(t) S.depth = clamp01(t or 1) end
+function SceneGrade.depth() return S.depth end
+
+return SceneGrade
