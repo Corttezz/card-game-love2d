@@ -1,0 +1,26 @@
+{
+  "joker_boss_eclipse_bust": {
+    "job": "94d2d5e4-003b-4fed-852d-f5df3d61db17",
+    "out": "coringa_rainha"
+  },
+  "joker_boss_eclipse_relic": {
+    "job": "0b82d6ec-5d62-417f-a264-932493961b8d",
+    "out": "coringa_rainha"
+  },
+  "status_focus": {
+    "job": "d46eecab-6d69-4389-86b2-787e2de4958f",
+    "out": "icones_proprios"
+  },
+  "status_eclipse": {
+    "job": "0691d751-c474-48bb-8bb1-d4bc5fb22388",
+    "out": "icones_proprios"
+  },
+  "ui_score_star": {
+    "job": "6c44de2a-3df8-4cde-bc97-5914c99d34cd",
+    "out": "icones_proprios"
+  },
+  "ui_act_scroll": {
+    "job": "ec55aebe-fa8f-42eb-af8f-1815b5cbf7fe",
+    "out": "icones_proprios"
+  }
+}

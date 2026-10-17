@@ -56,6 +56,24 @@ asas de morcego. Ícone animado (lendária = vivo) em `icons_anim/joker_boss_*`
 pelo `tools/pixellab_animate_card_icons.py` (entradas no ANIMS), aprovado
 pelo contact sheet a 3x.
 
+**Rainha v2 (17/Out/2026, lead: "ficou fraca, refazer").** A v1 era um disco
+negro com aro dourado, asas de morcego e um pingente miúdo no meio: lia como
+vazio e não lembrava a rainha. Refeita como o rei-carniça v2, mas pela
+ferramenta da FAMÍLIA dos ícones 64x64 (`create_image_pro`, regra de
+`pixellab-tool-choice-best-practices`): `tools/pixellab_arte_pendente.py`
+(`submit`/`fetch`/`pick`, base64 lido do disco), estilo = `joker_boss_carrion.png`
+já instalado e o quadro 0 do idle da rainha como `reference_images`
+("character base"). Dois prompts × 16 candidatas: BUSTO (a rainha de frente
+com o disco do eclipse e o aro dourado atrás da cabeça como halo) e RELÍQUIA
+(disco + coroa + asas, sem rosto). Pranchas em `tools/preview_out/coringa_rainha/`
+(`joker_boss_eclipse_{bust,relic}/contact.png`, `finalistas_6x.png`,
+`joker_boss_eclipse_antiga.png` = v1). Escolhida: **busto 13** (colar magenta
+e coroa de pontas do sprite, cabelo branco, asas enquadrando, halo cobre-ouro,
+sorriso cruel); as relíquias repetiam a ideia vazia da v1. Animação ASSADA
+(`tools/bake_icon_glint.py`, spec `joker_boss_eclipse`: olhos (28,28)/(35,28)
+acendem magenta + varredura no halo cobre h 5-30, rosto parado, 12 q a 8 fps),
+nunca v3 num rosto. Prova: `anim_joker_boss_eclipse.png`, `carta_halo_do_eclipse.png`.
+
 ## Oferta (`src/systems/BossJokers.lua` + `ShopSystem:_applyBossJoker`)
 
 - `BossJokers.offerFor(run)`: nó `boss` com `node.enemyId` → carta do chefe,

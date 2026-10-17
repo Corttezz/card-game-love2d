@@ -43,6 +43,13 @@ SPECS = {
              box=(0, 0, 64, 16), dir=(1.0, 0.25), width=6.0, gain=1.0,
              stagger=1),
     ]),
+    "joker_boss_eclipse": dict(frames=12, fps=8, layers=[
+        dict(mode="points", points=[(28, 28), (35, 28)], phase=0.0,
+             glow=(236, 86, 196), gain=1.6),
+        dict(hue=(5, 30), smin=0.30, smax=1.0, vmin=0.60, vmax=1.0,
+             box=(0, 0, 64, 42), dir=(1.0, 0.30), width=6.0, gain=0.7,
+             stagger=1),
+    ]),
     "joker_boss_winter": dict(frames=12, fps=8, layers=[
         dict(mode="points", points=[(27, 24), (36, 24)], phase=0.0,
              glow=(150, 220, 255), gain=0.9),
