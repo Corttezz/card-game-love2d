@@ -34,6 +34,8 @@ decide a faixa é o `MusicDirector`, que OBSERVA o estado a cada quadro
 - **Ponto de plugar a trilha do chefe:** `MusicDirector.bossTrack(run)` devolve o
   código; a tabela é `MusicDirector.BOSS_TRACKS` (id → código), arquivo
   `audio/music/boss-<id>.mp3`. Ausente → `musicBoss` com aviso.
+  Instalada (17/Out/2026): só `boss-carrion_king.mp3` (ACE-Step, candidata B
+  aprovada pelo dono); os outros cinco chefes ainda caem em `musicBoss`.
 - **Chefe em seções** (`MusicSections`, 15/Out/2026): com `audio/music/boss/<id>/`
   o chefe toca seções `a/b/c/f1/f2`, cada uma uma faixa comum do AudioManager com
   código `<faixa do chefe>:<seção>`. Enquanto toca, `currentMusic` e

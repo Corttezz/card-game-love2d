@@ -592,3 +592,22 @@ pasta (só nomes fixos em `audio/music/`) e o build só leva arquivo do git.
 Recomendada: A (pulso estável, a mais tensa sem cair no heroico). B perdeu a
 intro (20 s quase muda) e ficou com 85 s. C é lenta e baixa, menos de luta.
 Brutos (120 s, 48 kHz) e medições em `E:\dev\tools\ace-step\out\`.
+
+### Escolha do dono e instalação (17/Out/2026, frente trilha-chefes-v3)
+
+O dono ouviu as três e escolheu a **B** ("essa opção aqui está perfeita"):
+`organ_choir`, SFT 50 passos, LM ligado só para os códigos de áudio
+(`thinking=True`, `cot_caption/metas/language=False`), seed **4101**, 96 BPM,
+dó menor, 120 s brutos, loop de 85 s a partir de 20,49 s. A recomendação
+anterior (A) estava errada: o ouvido humano preferiu o ostinato de cordas
+urgente com metais. Essa é a direção de todas as trilhas de chefe.
+
+Instalada em `audio/music/boss-carrion_king.mp3` (o MusicDirector acha pelo
+nome `boss-<id>.mp3`). Loudness casada com as faixas de chefe existentes
+(`music-boss` -15,9 LUFS, `music-boss-eclipse` -16,2): `loudmatch.py` (fora do
+repo) aplica ganho +2,55 dB e limitador com teto -1,5 dBFS sobre o loop
+triplicado e devolve a cópia do meio (o loop continua sem emenda; o
+`alimiter` precisa de `latency=1`, senão desloca o loop 5 ms e o
+`check_loop` acusa DESNIVEL). Resultado: -16,2 LUFS, pico -1,6 dBTP, 192k,
+`check_loop` sem aviso.
+
