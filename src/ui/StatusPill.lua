@@ -45,7 +45,7 @@ StatusPill.ICONS = {
     strength     = "status_strength",
     fury         = "status_fury",
     dexterity    = "status_dexterity",
-    focus        = "rune",
+    focus        = "status_focus",
     thorn        = "status_thorn",
     lifesteal    = "status_lifesteal",
     regen        = "status_regen",
@@ -64,7 +64,7 @@ StatusPill.ICONS = {
     frost           = "status_frost",
     roots           = "status_roots",
     moon            = "status_moon",
-    eclipse         = "moon",
+    eclipse         = "status_eclipse",
 }
 
 local warned = {}

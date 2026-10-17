@@ -274,7 +274,7 @@ function TopBar:drawGameInfo()
             best = (okPS and ProfileStats.get().bestScore) or 0,
         })
 
-        local icon = IconLoader.get("star")
+        local icon = IconLoader.get("ui_score_star")
         if icon and icon.draw and icon.size then
             local sc = 26 / icon.size.w
             love.graphics.setColor(1, 1, 1, 1)
@@ -312,7 +312,7 @@ function TopBar:drawGameInfo()
             mods = RunModsText.long(run),
         })
 
-        local icon = IconLoader.get("scroll")
+        local icon = IconLoader.get("ui_act_scroll")
         if icon and icon.draw and icon.size then
             local sc = 26 / icon.size.w
             love.graphics.setColor(1, 1, 1, 1)

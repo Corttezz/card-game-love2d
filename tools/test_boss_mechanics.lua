@@ -707,6 +707,34 @@ local function testQueen(t)
         "enemy_kit.msg.moon_full", "enemy_kit.msg.moon_new" })
 end
 
+local function testOwnIcons(t)
+    local SP = require("src.ui.StatusPill")
+    ownIcon(t, "foco", SP.ICONS.focus)
+    ownIcon(t, "eclipse", SP.ICONS.eclipse)
+    t:eq("foco tem ícone de status próprio", SP.ICONS.focus, "status_focus")
+    t:eq("eclipse tem ícone de status próprio", SP.ICONS.eclipse, "status_eclipse")
+    local function iconsAsked(path)
+        local src = love.filesystem.read(path) or ""
+        local names = {}
+        for n in src:gmatch('IconLoader%.get%("([%w_]+)"%)') do names[#names + 1] = n end
+        return names
+    end
+    local top = iconsAsked("components/TopBar.lua")
+    local menu = iconsAsked("components/Menu.lua")
+    local function has(list, name)
+        for _, n in ipairs(list) do if n == name then return true end end
+        return false
+    end
+    t:truthy("TopBar: pontuação com a estrela própria", has(top, "ui_score_star"))
+    t:truthy("TopBar: ato com o pergaminho próprio", has(top, "ui_act_scroll"))
+    t:falsy("TopBar: não pede mais a estrela de carta", has(top, "star"))
+    t:falsy("TopBar: não pede mais o pergaminho de carta", has(top, "scroll"))
+    t:truthy("Menu: perfil com a estrela própria", has(menu, "ui_score_star"))
+    t:falsy("Menu: não pede mais a estrela de carta", has(menu, "star"))
+    for _, name in ipairs(top) do ownIcon(t, "TopBar " .. name, name) end
+    for _, name in ipairs(menu) do ownIcon(t, "Menu " .. name, name) end
+end
+
 function M.run()
     local t = TK.new("chefes: mecânica-assinatura, contador, visual, golpe")
     TK.bootstrap()
@@ -717,6 +745,7 @@ function M.run()
     testMonarch(t)
     testColossus(t)
     testQueen(t)
+    testOwnIcons(t)
     return t:done()
 end
 

@@ -281,4 +281,24 @@ o que mexeu na AURA:
   de fogo, estilhaço de gelo, crescente girando) ou surgimento do pé da tela
   (raiz). Tudo chega no apex `ATK_WINDUP + ATK_LUNGE`; o chefe só faz o gesto.
 - Ícones `status_runes/chains/frost/roots/moon` (PixelLab, referência
-  `status_poison`); `focus → rune` e `eclipse → moon` continuam arte de carta.
+  `status_poison`).
+
+## Ícones próprios no lugar de arte de carta (17/Out/2026)
+
+Quem ainda reaproveitava ícone de CARTA ganhou ícone próprio, todos por
+`create_image_pro` com estilo = `status_poison.png` (família dos ícones de
+status), `tools/pixellab_arte_pendente.py submit|fetch|pick`, 16 candidatas
+cada, pranchas em `tools/preview_out/icones_proprios/<nome>/contact.png`:
+- `focus` → `status_focus` (olho âmbar num aro dourado com raios, cand 10);
+- `eclipse` → `status_eclipse` (disco negro com coroa de fogo magenta, cand 0);
+- TopBar pontuação → `ui_score_star` (estrela de ouro com louros, cand 9; a
+  mais simples, porque o Menu a desenha a 14 px); TopBar ato →
+  `ui_act_scroll` (mapa com castelo e estrada, lacre, cand 0);
+- rodapé de perfil do Menu → `ui_score_star`.
+Ficaram em arte de carta, fora do pedido: `scroll` no atalho do Roteiro da
+Pausa, na seleção de classe e no MapManager; `star` como fallback do chip de
+classe do `HudPlayerPanel`. Trava: `test_boss_mechanics` (`testOwnIcons`:
+nome e bytes ≠ de qualquer ícone de carta, 64x64, e TopBar/Menu não pedem mais
+`star`/`scroll`). Provas: `hud_foco_eclipse.png`
+(`PREVIEW_HUD_ECLIPSE=1 lovec . preview_battle_hud`), `topbar_3x.png`,
+`menu_rodape_3x.png` (`MENU_PROFILE=1 lovec . screenshot_menu_v2`).

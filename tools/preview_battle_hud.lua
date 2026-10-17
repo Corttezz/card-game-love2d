@@ -71,6 +71,9 @@ function M.run()
         { name = "fury",       stacks = 2, duration = 9 },
         { name = "enraged",    stacks = 1, duration = 9 },
     }
+    if os.getenv("PREVIEW_HUD_ECLIPSE") == "1" then
+        table.insert(game.enemy.statusEffects, { name = "eclipse", stacks = 1, duration = 999 })
+    end
     game.enemy.armor = 9
     game.enemy.attackPattern = "aggressive"
 

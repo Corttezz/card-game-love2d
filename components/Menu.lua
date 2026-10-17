@@ -538,7 +538,7 @@ function Menu:_drawProfilePlaque()
     local tw = f:getWidth(text)
 
     local IconLoader = require("src.ui.IconLoader")
-    local icon = IconLoader.get("star")
+    local icon = IconLoader.get("ui_score_star")
     local iconSize = 14
     local totalW = tw + (icon and (iconSize + 6) or 0)
     local x = sw - 12 - totalW
