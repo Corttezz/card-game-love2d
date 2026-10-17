@@ -36,6 +36,23 @@ local function lumaAt(id, x, y)
     return 0.299 * r + 0.587 * g + 0.114 * b
 end
 
+local function maxRowTransitions(id, ground, x0, y0, x1, y1)
+    local W, H = id:getWidth(), id:getHeight()
+    x0, y0 = math.max(0, x0), math.max(0, y0)
+    x1, y1 = math.min(W - 1, x1), math.min(H - 1, y1)
+    local worst, worstY = 0, -1
+    for y = y0, y1 do
+        local n, prev = 0, nil
+        for x = x0, x1 do
+            local dark = lumaAt(id, x, y) < ground - 0.004
+            if prev ~= nil and dark ~= prev then n = n + 1 end
+            prev = dark
+        end
+        if n > worst then worst, worstY = n, y end
+    end
+    return worst, worstY
+end
+
 function M.run()
     local t = TK.new("ContactShadow: faixa de contato colada na pegada; terra queimada só na fogueira")
     local CS = require("engine.ContactShadow")
@@ -112,6 +129,11 @@ function M.run()
         local hpx = math.max(1, math.floor(cfg.height * fp.w * s * (0.55 + 0.45 * 0.8) + 0.5))
         local below = lumaAt(id, math.floor(FX + (fp.spans[1][1] + 0.5 - fp.w / 2) * s), FY + 2 * hpx + 2)
         t:truthy("faixa é curta (acabou a 2× a altura)", math.abs(below - ground) < 0.005)
+        local x0 = math.floor(FX - fp.w * s)
+        local x1 = math.floor(FX + fp.w * s)
+        local tr, ty = maxRowTransitions(id, ground, x0, FY - 4, x1, FY + 2 * hpx + 4)
+        t:truthy(("faixa de contato: sem xadrez, só franja (máx %d trocas por linha, y=%d)"):format(tr, ty),
+            tr <= 4 * #fp.spans + 2)
     end
 
     do
@@ -152,6 +174,8 @@ function M.run()
         t:truthy("scorch: cabe no raio (fora = chão)", math.abs(lumaAt(id, FX + 120, FY) - ground) < 0.005)
         t:truthy("scorch: achatado (acima de 0,5 raio em y = chão)",
             math.abs(lumaAt(id, FX, FY - 60) - ground) < 0.005)
+        local tr, ty = maxRowTransitions(id, ground, FX - 130, FY - 70, FX + 130, FY + 70)
+        t:truthy(("scorch: sem área em xadrez, só franja (máx %d trocas por linha, y=%d)"):format(tr, ty), tr <= 6)
     end
 
     do

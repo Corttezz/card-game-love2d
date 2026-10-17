@@ -13,8 +13,6 @@ local frame = { alpha = 0.55, height = 0.035, spread = 1.08, dither = true,
 local queue, qn = {}, 0
 local qm
 
-local BAYER = { { 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 } }
-
 local function hash01(n)
     local v = math.sin(n * 127.1 + 311.7) * 43758.5453
     return v - math.floor(v)
@@ -109,26 +107,21 @@ local function band(q, fp)
     local r, g, b = frame.r * 0.35, frame.g * 0.35, frame.b * 0.35
     local u = unit()
     local y0 = math.floor(q.y)
+    local h2 = math.max(1, math.floor(hpx * 0.5 + 0.5))
     for i = 1, #fp.spans do
         local sp = fp.spans[i]
         local cxs = (sp[1] + sp[2] + 1) * 0.5 - fp.w * 0.5
         local wd = math.max(1, math.floor((sp[2] - sp[1] + 1) * frame.spread * s + 0.5))
         local x0 = math.floor(q.x + fl * cxs * s - wd * 0.5)
         qm:rect(x0, y0, wd, hpx, 0, 0, 1, 1, r, g, b, a)
-        if frame.dither then
-            local yd = y0 + hpx
-            local xx = x0
-            local k = 0
-            while xx < x0 + wd do
-                local bx = math.floor(xx / u) % 4
-                local by = math.floor(yd / u) % 4
-                if BAYER[by + 1][bx + 1] < 8 then
-                    qm:rect(xx, yd, math.min(u, x0 + wd - xx), u, 0, 0, 1, 1, r, g, b, a * 0.85)
-                end
-                xx = xx + u
-                k = k + 1
-                if k > 512 then break end
-            end
+        local inset = math.floor(wd * (0.12 + 0.10 * hash01(sp[1] * 3.1 + sp[2])) + 0.5)
+        local w2 = wd - 2 * inset
+        if w2 >= 1 then
+            qm:rect(x0 + inset, y0 + hpx, w2, h2, 0, 0, 1, 1, r, g, b, a * 0.55)
+        end
+        if frame.dither and wd > 3 * u then
+            qm:rect(x0 - u, y0, u, math.max(1, hpx - u), 0, 0, 1, 1, r, g, b, a * 0.45)
+            qm:rect(x0 + wd, y0, u, math.max(1, hpx - u), 0, 0, 1, 1, r, g, b, a * 0.45)
         end
     end
 end
@@ -159,27 +152,24 @@ function ContactShadow.scorch(x, y, wPx, t, radiusK, alpha)
     local r, g, b = frame.r * 0.22, frame.g * 0.18, frame.b * 0.20
     local seed = math.floor(x * 0.37 + y * 1.91)
     local rows = math.max(1, math.floor(ry / u))
+    local a0 = alpha or 0.5
     for row = -rows, rows do
         local f = row / (rows + 0.5)
-        local half = rx * math.sqrt(math.max(0, 1 - f * f))
-        half = half * (0.86 + 0.14 * hash01(seed + row * 7.3))
+        local ff = 1 - f * f
+        local half = rx * math.sqrt(math.max(0, ff))
+        half = half * (0.88 + 0.12 * hash01(seed + row * 7.3))
         local yy = math.floor(y + row * u)
-        local edge = math.abs(f)
-        local a = (alpha or 0.5) * (1 - 0.45 * edge)
-        if edge > 0.62 then
-            local xx = math.floor(x - half)
-            local xe = math.floor(x + half)
-            while xx < xe do
-                if BAYER[(math.floor(yy / u) % 4) + 1][(math.floor(xx / u) % 4) + 1] < 8 then
-                    love.graphics.setColor(r, g, b, a)
-                    love.graphics.rectangle("fill", xx, yy, u, u)
-                end
-                xx = xx + u
-            end
-        else
-            love.graphics.setColor(r, g, b, a)
-            love.graphics.rectangle("fill", math.floor(x - half), yy,
-                math.max(1, math.floor(half * 2 + 0.5)), u)
+        local a = a0 * (ff ^ 0.6)
+        local xl = math.floor(x - half)
+        local wd = math.max(1, math.floor(half * 2 + 0.5))
+        love.graphics.setColor(r, g, b, a)
+        love.graphics.rectangle("fill", xl, yy, wd, u)
+        if half > 2 * u then
+            local nl = (hash01(seed + row * 3.7) < 0.5) and 1 or 2
+            local nr = (hash01(seed + row * 5.9) < 0.5) and 1 or 2
+            love.graphics.setColor(r, g, b, a * 0.4)
+            love.graphics.rectangle("fill", xl - nl * u, yy, nl * u, u)
+            love.graphics.rectangle("fill", xl + wd, yy, nr * u, u)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
