@@ -23,7 +23,7 @@ return {
         lowFog = { alpha = 0.18, height = 0.09, drift = 0.02 },
         trees = { tint = 0.05, scale = 0.08, flip = true, windPhase = true,
                   canopySway = 0.030, trunkSway = 0.010, bushSway = 0.040 },
-        landmarks = landmarks(1.35, 0.5),
+        landmarks = landmarks(1.7, 0.55),
     },
     highlands = {
         grade = {

@@ -10,7 +10,10 @@ local WeatherEngine = require("engine.WeatherEngine")
 local Config = require("src.core.Config")
 local EnemyEmissives = require("src.data.enemy_emissives")
 local GrassField = require("engine.GrassField")
-local Scene = { Grade = require("engine.SceneGrade") }
+local Scene = {
+    Grade = require("engine.SceneGrade"),
+    Contact = require("engine.ContactShadow"),
+}
 
 local PropCut = {
     data = require("src.data.world_props"),
@@ -269,6 +272,7 @@ local function tryLoadPng(name)
     if not ok or not img then return nil end
     img:setFilter("nearest", "nearest")
     scanContentRect(img, path, data)
+    Scene.Contact.scan(img, data)
     PropCut.px[img] = PropCut.data.sink[name]
     PropCut.sizeK[img] = PropCut.data.sizeK[name]
     return img
@@ -295,6 +299,7 @@ local function readAnimFrames(key)
             if ok and im then
                 im:setFilter("nearest", "nearest")
                 scanContentRect(im, path, data)
+                Scene.Contact.scan(im, data)
                 frames[#frames + 1] = im
             end
         end
@@ -390,6 +395,7 @@ end
 local function toImage(data)
     local img = love.graphics.newImage(data)
     img:setFilter("nearest", "nearest")
+    Scene.Contact.scan(img, data)
     return img
 end
 
@@ -2874,11 +2880,12 @@ local function drawForkMarks(g, x, w, camZ)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local shOptPool, shOptN = {}, 0
+WorldRoad._pools = { sh = {}, shN = 0, occ = {}, occN = 0 }
 local function shadowOpts(alphaK, flip, footPad, prof)
-    shOptN = shOptN + 1
-    local o = shOptPool[shOptN]
-    if not o then o = {}; shOptPool[shOptN] = o end
+    local P = WorldRoad._pools
+    P.shN = P.shN + 1
+    local o = P.sh[P.shN]
+    if not o then o = {}; P.sh[P.shN] = o end
     o.alphaK, o.flip, o.footPad = alphaK, flip, footPad
     if prof then
         o.baseK, o.riseK, o.lenK = prof.baseK, prof.riseK, prof.lenK
@@ -2912,6 +2919,11 @@ local function drawLandmarkFront(g, x, w, camZ)
             shY, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
         love.graphics.setColor(1, 1, 1, 1)
     end
+    local lmk = Scene.Grade.cfg("landmarks")[lm.key:match("landmark_(%a+)$") or ""]
+    if lmk and lmk.scorch then
+        Scene.Contact.scorch(lx, shY, iw * s, t, lmk.scorch.radius, lmk.scorch.alpha)
+    end
+    Scene.Contact.queue(img, lx, shY, s, t, 1, 1)
     local lc = Scene.Grade.color("landmark", t, LMG.c)
     love.graphics.setColor(lc[1], lc[2], lc[3], 1)
     love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
@@ -2941,11 +2953,11 @@ end
 local propZDesc = function(a, c) return a.z > c.z end
 local _farPass, _nearPass, _behind, _front = {}, {}, {}, {}
 local function clearList(t) for i = #t, 1, -1 do t[i] = nil end end
-local occPool, occN = {}, 0
 local function occluderSlot()
-    occN = occN + 1
-    local o = occPool[occN]
-    if not o then o = {}; occPool[occN] = o end
+    local P = WorldRoad._pools
+    P.occN = P.occN + 1
+    local o = P.occ[P.occN]
+    if not o then o = {}; P.occ[P.occN] = o end
     o.fn = nil
     return o
 end
@@ -2959,7 +2971,7 @@ local lumArg = {}
 
 local function drawProps(g, x, w, camZ)
     table.sort(WorldRoad._props, propZDesc)
-    shOptN, occN = 0, 0
+    WorldRoad._pools.shN, WorldRoad._pools.occN = 0, 0
 
     local farPass = _farPass
     local nearPass = _nearPass
@@ -3037,6 +3049,12 @@ local function drawProps(g, x, w, camZ)
                         px + sunShadowDir(g, x, w, px) * iw * s * 0.14,
                         shY, iw * s * 0.30, math.max(2, 4 * g.persp(tM)))
                 end
+                local lmk = Scene.Grade.cfg("landmarks")[key:match("landmark_(%a+)$") or ""]
+                if lmk and lmk.scorch then
+                    Scene.Contact.scorch(px, shY, iw * s, tM,
+                        lmk.scorch.radius, lmk.scorch.alpha * aMul)
+                end
+                Scene.Contact.queue(img, px, shY, s, tM, aMul, 1)
                 local br = hovered and 1.10 or 1
                 local lc = Scene.Grade.color("landmark", tM, LMG.c)
                 love.graphics.setColor(math.min(1, lc[1] * br), math.min(1, lc[2] * br),
@@ -3152,6 +3170,7 @@ local function drawProps(g, x, w, camZ)
                                 shadowOpts(0.8 * fadeA, nil,
                                     PropCut.cutOf(cimg, p.kind),
                                     WorldRoad.SHADOW_PROFILE[p.kind]))
+                            Scene.Contact.queue(cimg, cx2, cy2, cs, t, 0.8 * fadeA, 1)
                             local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), t, LMG.c)
                             love.graphics.setColor(cc[1] * 0.88, cc[2] * 0.88, cc[3] * 0.88, fadeA)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
@@ -3172,6 +3191,7 @@ local function drawProps(g, x, w, camZ)
                             local fs = g.scaleAt((KIND_SIZE.fence or 1) * (p.big or 1), ft, ih)
                             ShadowEngine.queue(img, fx, fy - 1, fs,
                                 shadowOpts(0.85 * fadeA))
+                            Scene.Contact.queue(img, fx, fy, fs, ft, 0.85 * fadeA, 1)
                             local fc = Scene.Grade.color("prop", ft, LMG.c)
                             love.graphics.setColor(fc[1] * 0.94, fc[2] * 0.94, fc[3] * 0.94, fadeA)
                             love.graphics.draw(img, math.floor(fx), math.floor(fy),
@@ -3190,6 +3210,9 @@ local function drawProps(g, x, w, camZ)
                     love.graphics.ellipse("fill",
                         pxX + shd * iw * s * 0.16, sy - 1,
                         iw * s * 0.24, math.max(2, 4 * g.persp(t)))
+                end
+                if p.kind ~= "tuft" and p.kind ~= "flowers" then
+                    Scene.Contact.queue(img, pxX, sy, s, t, fadeA, lumFlip)
                 end
 
                 local rot = 0
@@ -3355,6 +3378,7 @@ local function drawProps(g, x, w, camZ)
     end
     flushGrassTo(-1)
     ShadowEngine.flush()
+    Scene.Contact.flush()
 end
 
 local function drawEncounterFront(g, x, w, camZ)
@@ -3478,6 +3502,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         ShadowEngine.setFrame(sunX, w, WorldRoad._timeOfDay,
             LightEngine.ambientLuma())
     end
+    Scene.Contact.setFrame(Scene.Grade.cfg("contact"), Scene.Grade.shadowTint())
 
     local gb0 = envColor("grassB")
     local g0 = Scene.Grade.color("ground", 0.5, LMG.c)
