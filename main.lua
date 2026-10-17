@@ -1675,6 +1675,10 @@ function love.draw()
     CRTShader.endScene()
 end
 
+function love.focus(focused)
+    require("src.systems.FocusMute").onFocus(focused)
+end
+
 function love.resize(w, h)
     FontManager.clearCache()
     CardFrame.clearCache()

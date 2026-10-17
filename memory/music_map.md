@@ -90,7 +90,7 @@ decide a faixa é o `MusicDirector`, que OBSERVA o estado a cada quadro
 | Continuar: encruzilhada | `mapSelection` | ato | 1,2 s | clima |
 | Continuar: encruzilhada com a bandeira | `mapSelection` | silêncio (menu sai em 5 s) | 5 s | clima |
 | Continuar: luta do chefe | `playing` boss | faixa do chefe (sem repetir a entrada) | 1,2 s | sala do chefe |
-| janela perde o foco / minimiza | qualquer | segue tocando (decisão: sem mudo automático); o laço cai para 15/8 FPS com `dt` real, os fades seguem no tempo de relógio | | |
+| janela perde o foco / minimiza | qualquer | **mudo em 0,25 s** com "Silenciar fora da janela" LIGADO (padrão): o `focusGain` do `AudioManager` vai a 0, nada para, nada reinicia, crossfade em curso segue contando; ao voltar o foco sobe em 0,25 s. Opção DESLIGADA: segue tocando. O laço cai para 15/8 FPS com `dt` real, os fades seguem no tempo de relógio | 0,25 s | idem (clima, lugar e loops passam pelo mesmo ganho) |
 | cheat: Ctrl+B/E/M/C/L/D/V, F9/F10/F11, Ctrl+1..6, Ctrl+Shift+1..6, F2/F3, rush F12 | os mesmos estados acima | a regra do estado de destino; pulos no meio de um fade assentam na faixa certa | | |
 
 ## Defeitos achados (15/Out/2026)
@@ -150,7 +150,27 @@ fonte sem reiniciar; no menu, nenhuma fonte de música órfã, nenhum ambiente e
 nenhum loop de SFX. `MUSIC_FLOW_ONLY=boss,continue` roda só alguns cenários;
 `MUSIC_FLOW_VERBOSE=1` imprime a linha do tempo.
 
-Fora do escopo desta auditoria (decisões, não esquecimentos): mudo automático ao
-perder o foco (o jogo segue tocando; se o dono quiser, é uma opção nova em
-Configurações → Áudio, não um padrão); o trovão/coruja avulso
-toca até o fim mesmo saindo da estrada (é um evento único de poucos segundos).
+Fora do escopo desta auditoria (decisão, não esquecimento): o trovão/coruja
+avulso toca até o fim mesmo saindo da estrada (é um evento único de poucos
+segundos).
+
+## Mudo fora da janela (17/Out/2026)
+
+Opção `muteOnFocusLoss` em Configurações → Áudio ("Silenciar fora da janela",
+`settings.mute_unfocused` nos 5 locales), padrão LIGADO
+(`SaveManager.DEFAULT_SETTINGS`). Mecanismo: `AudioManager.focusGain` (0..1) é
+um fator a mais em `computeFinalVolume`, ao lado do master, e anda até
+`focusTarget` em `AudioManager.FOCUS_FADE` = 0,25 s dentro de `update(dt)`. Por
+isso TUDO passa por ele (música, SFX, clima, lugar, loops de chefe, crossfade em
+curso) e NADA é pausado, parado ou rebobinado: `groups.master` e os volumes
+salvos ficam intactos, a aba Áudio continua lendo os valores de verdade e o
+crossfade continua contando o seu `t` em silêncio. `love.focus(f)` no `main.lua`
+só delega a `src/systems/FocusMute.lua` (`onFocus` guarda o foco e `apply`
+decide: alvo 1 se focado OU opção desligada, 0 se não). Desligar a opção chama
+`FocusMute.apply` na hora e `SettingsMenu.applyRuntime` reaplica no boot. O
+estado inicial é "focado" e só os eventos mudam isso, de propósito: a janela
+escondida das ferramentas (`CARDGAME_HEADLESS`) nunca tem foco e não pode nascer
+muda. Trava: cenário `focus` do `test_music_flow` (perder o foco zera toda fonte
+em até 0,3 s com os loops ainda `isPlaying` e sem `plays` novo, recuperar volta
+ao volume das configurações na mesma fonte, opção desligada não altera nada) e
+`test_pause_menu` (linha 5 da aba Áudio, Enter alterna e persiste no save).

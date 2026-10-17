@@ -34,8 +34,9 @@ dourada, Configurações, Salvar e sair, Abandonar em vermelho) → RODAPÉ.
 Sem altura: modo `full` → `nodesc` (some descrição) → `compact` (somem os
 atalhos, o resumo vira 1 linha). Quem cede é o conteúdo, nunca as zonas.
 
-**Config — abas de altura fixa** (`MAX_ROWS = 4`, o painel não pula ao
-trocar de aba, = `tab_h` do Balatro): Áudio (Geral/Música/Efeitos), Vídeo
+**Config — abas de altura fixa** (`MAX_ROWS = 5` desde o v4, o painel não pula ao
+trocar de aba, = `tab_h` do Balatro): Áudio (Geral/Música/Efeitos/Ambiente/
+Silenciar fora da janela), Vídeo
 (Tela cheia/VSync/CRT/Iluminação), Jogo (Ritmo do combate/Tremor/Movimento
 reduzido/Idioma). Todo controle é `[<] valor [>]` (option cycle do Balatro):
 slider em segmentos dourados + %, toggle com "lâmpada" + LIGADO/DESLIGADO,
@@ -59,6 +60,15 @@ ESC desarma sem fechar; só "Sim" chama `onAbandon`.
 - `combatSpeed` (1 / 1.5 / 2 / 3, multiplicador de VELOCIDADE) →
   `CombatBeats.speed = 1 / x` (o knob é de DURAÇÃO). Aplicado no boot por
   `SettingsMenu.applyRuntime(persistedSettings)` no `love.load`.
+- `muteOnFocusLoss` (bool, padrão LIGADO; 17/Out/2026) → 5ª linha da aba Áudio,
+  "Silenciar fora da janela" (`settings.mute_unfocused`). Toggle chama
+  `FocusMute.apply(gs())`; `applyRuntime` reaplica no boot. O mudo é um ganho à
+  parte no `AudioManager` (`focusGain`, fade de 0,25 s), nunca o master: a aba
+  segue mostrando os volumes salvos enquanto a janela está sem foco. Detalhe e
+  trava em [[music_map]] ("Mudo fora da janela"). O rótulo pt tem 24 caracteres
+  e o `TextFit` o encolhe para ~9px na coluna de rótulo (224px); en/es/fr/de
+  foram escolhidos curtos ("Mute in background", "Silenciar sin foco", "Muet
+  hors fenêtre", "Stumm im Hintergrund") para caberem nos 12px das outras linhas.
 
 ## Armadilhas
 

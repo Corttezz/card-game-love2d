@@ -25,6 +25,7 @@ return {
         music           = "Música",
         sfx             = "Efeitos",
         ambient         = "Ambiente",
+        mute_unfocused = "Silenciar fora da janela",
         master          = "Geral",
         fullscreen      = "Tela cheia",
         crt_shader      = "Shader CRT",

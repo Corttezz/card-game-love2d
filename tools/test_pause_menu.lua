@@ -154,7 +154,7 @@ function M.run()
         local closed = 0
         sm:show({ onClose = function() closed = closed + 1 end })
         t:eq("4 abas", sm:tabCount(), 4)
-        t:eq("aba Audio tem 4 linhas (geral, música, efeitos, ambiente)", #sm.rows, 4)
+        t:eq("aba Audio tem 5 linhas (geral, música, efeitos, ambiente, mudo fora da janela)", #sm.rows, 5)
 
         _G.gameSettings.masterVolume = 0.5
         sm:keypressed("right")
@@ -169,6 +169,15 @@ function M.run()
         sm:mousepressed(mouse.x, mouse.y, 1); sm:mousereleased(mouse.x, mouse.y, 1)
         t:near("clique no slider da musica pula pra 80%",
             SaveManager.loadSettings().musicVolume, 0.8, 0.001)
+        t:eq("mudo fora da janela nasce LIGADO", SaveManager.DEFAULT_SETTINGS.muteOnFocusLoss, true)
+        for _ = 1, 3 do sm:keypressed("down") end
+        t:eq("quinta linha e o mudo fora da janela", sm.rows[sm.focus].def.key, "mute_unfocused")
+        t:truthy("mudo fora da janela ligado por padrao", sm.rows[sm.focus].def.get())
+        sm:keypressed("return")
+        t:eq("Enter desliga o mudo fora da janela", _G.gameSettings.muteOnFocusLoss, false)
+        t:eq("mudo fora da janela persistido (desligado)", SaveManager.loadSettings().muteOnFocusLoss, false)
+        sm:keypressed("return")
+        t:eq("Enter religa e persiste", SaveManager.loadSettings().muteOnFocusLoss, true)
 
         sm:keypressed("tab")
         t:eq("Tab vai pra aba Video", sm.tab, 2)
@@ -293,6 +302,7 @@ function M.run()
             "pause.hint", "pause.hint_confirm",
             "settings.tab_audio", "settings.tab_video", "settings.tab_game",
             "settings.vsync", "settings.combat_speed", "settings.back", "settings.hint",
+            "settings.mute_unfocused",
         }
         for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
             local chunk = love.filesystem.load("src/i18n/locales/" .. loc .. ".lua")

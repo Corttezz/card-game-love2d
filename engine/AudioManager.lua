@@ -14,9 +14,11 @@ local function detectWSL2()
     return v:find("microsoft") ~= nil or v:find("WSL2") ~= nil
 end
 
+AudioManager.FOCUS_FADE = 0.25
+
 local function computeFinalVolume(self, entry)
     local groupVol = self.groups[entry.group] or 1
-    return (entry.baseVolume or 1) * groupVol * (self.groups.master or 1)
+    return (entry.baseVolume or 1) * groupVol * (self.groups.master or 1) * (self.focusGain or 1)
 end
 
 function AudioManager:new(opts)
@@ -37,6 +39,8 @@ function AudioManager:new(opts)
 
     self.currentMusic = nil
     self.musicCrossfade = nil
+    self.focusGain = 1
+    self.focusTarget = 1
 
     self.musicVolume = self.groups.music
     self.sfxVolume   = self.groups.sfx
@@ -320,8 +324,27 @@ function AudioManager:setAmbientVolume(v) self:setGroupVolume("ambient", v) end
 
 function AudioManager:setVolume(v) self:setGroupVolume("master", v) end
 
+function AudioManager:setFocused(focused)
+    self.focusTarget = focused and 1 or 0
+end
+
+local function advanceFocusGain(self, dt)
+    local target = self.focusTarget or 1
+    local gain = self.focusGain or 1
+    if gain == target then return end
+    local step = dt / AudioManager.FOCUS_FADE
+    if gain < target then
+        gain = math.min(target, gain + step)
+    else
+        gain = math.max(target, gain - step)
+    end
+    self.focusGain = gain
+end
+
 function AudioManager:update(dt)
     if not self.audioAvailable then return end
+
+    advanceFocusGain(self, dt)
 
     if self.musicCrossfade then
         local cf = self.musicCrossfade

@@ -48,6 +48,7 @@ function SettingsMenu.applyRuntime(settings)
     end
     require("src.systems.CombatBeats").speed = 1 / x
     require("src.ui.UiScale").setUserMultiplier(settings.uiScale or 1)
+    require("src.systems.FocusMute").apply(settings)
     if not _G.HEADLESS_TOOL and settings.vsync ~= nil
         and love.window and love.window.setVSync then
         local ok, err = pcall(love.window.setVSync, settings.vsync and 1 or 0)
@@ -149,6 +150,12 @@ function SettingsMenu:_tabs()
             volRow("music", "settings.music"),
             volRow("sfx", "settings.sfx"),
             volRow("ambient", "settings.ambient"),
+            toggle("mute_unfocused", "settings.mute_unfocused",
+                function() return gs().muteOnFocusLoss ~= false end,
+                function(v)
+                    gs().muteOnFocusLoss = v
+                    require("src.systems.FocusMute").apply(gs())
+                end),
         } },
         { key = "video", label = I18n.t("settings.tab_video"), rows = {
             toggle("fullscreen", "settings.fullscreen",
@@ -437,6 +444,7 @@ function SettingsMenu:_persist()
         uiScale       = tonumber(g.uiScale) or 1,
         tipsEnabled   = g.tipsEnabled ~= false,
         previewDetails = g.previewDetails and true or false,
+        muteOnFocusLoss = g.muteOnFocusLoss ~= false,
         locale        = I18n.getLocale(),
     }
     for k, v in pairs(snapshot) do g[k] = v end

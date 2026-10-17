@@ -594,6 +594,78 @@ local function scenarioSettings()
     t:eq(scene .. ": volume restaurado", a.groups.music, mu0)
 end
 
+local function loudCount()
+    local n = 0
+    for _, x in ipairs(snapshot().all) do
+        if x.src.vol > 0.0005 then n = n + 1 end
+    end
+    return n
+end
+
+local function scenarioFocus()
+    setScene("foco")
+    ensureRun("warrior")
+    pump(3.2)
+    local a = audio()
+    local FM = require("src.systems.FocusMute")
+    local gs = _G.gameSettings
+    local saved = gs.muteOnFocusLoss
+    gs.muteOnFocusLoss = true
+    FM.apply(gs)
+    local m0, mu0 = a.groups.master, a.groups.music
+    local first = snapshot().musicList[1]
+    t:truthy(scene .. ": ha musica audivel antes de perder o foco", first ~= nil)
+    if not first then return end
+    local code, src = first.code, first.src
+    local loops, plays = {}, {}
+    for _, x in ipairs(snapshot().all) do
+        if x.src.looping then loops[#loops + 1] = x.src; plays[x.src] = x.src.plays end
+    end
+    t:truthy(scene .. ": ao menos a musica esta em loop antes do teste", #loops >= 1)
+
+    love.focus(false)
+    pump(0.3)
+    t:eq(scene .. ": perder o foco nao mexe no master salvo", a.groups.master, m0)
+    t:eq(scene .. ": perder o foco nao mexe no volume de musica salvo", a.groups.music, mu0)
+    t:eq(scene .. ": 0,3 s depois de perder o foco nenhuma fonte tem volume", loudCount(), 0)
+    t:eq(scene .. ": ganho de foco chegou a zero", a.focusGain, 0)
+    local stillPlaying, restarted = true, false
+    for _, s in ipairs(loops) do
+        if not s.playing then stillPlaying = false end
+        if s.plays ~= plays[s] then restarted = true end
+    end
+    t:truthy(scene .. ": nada foi parado (loops seguem isPlaying)", stillPlaying)
+    t:falsy(scene .. ": nada reiniciou", restarted)
+    local pos0 = src.pos
+    pump(1.0)
+    t:truthy(scene .. ": a musica segue andando em silencio (" .. code .. ")",
+        src.playing and src.vol <= 0.0005 and src.pos > pos0)
+
+    love.focus(true)
+    pump(0.3)
+    local m = snapshot().music[code]
+    t:truthy(scene .. ": 0,3 s depois de recuperar o foco a faixa volta ao volume das configuracoes",
+        m and math.abs(m.vol - finalVolume(code)) < 0.005)
+    t:eq(scene .. ": a mesma fonte, sem reiniciar", src.plays, plays[src])
+    t:eq(scene .. ": ganho de foco de volta a 1", a.focusGain, 1)
+
+    gs.muteOnFocusLoss = false
+    FM.apply(gs)
+    love.focus(false)
+    pump(0.3)
+    m = snapshot().music[code]
+    t:truthy(scene .. ": opcao desligada: perder o foco nao altera o volume",
+        m and math.abs(m.vol - finalVolume(code)) < 0.005 and a.focusGain == 1)
+    t:truthy(scene .. ": opcao desligada: nada silenciado", loudCount() > 0)
+    love.focus(true)
+    pump(0.2)
+
+    gs.muteOnFocusLoss = saved
+    FM.apply(gs)
+    t:eq(scene .. ": padrao da opcao e LIGADO",
+        require("engine.SaveManager").DEFAULT_SETTINGS.muteOnFocusLoss, true)
+end
+
 local function scenarioContinue()
     local cases = {
         { name = "batalha", setup = function()
@@ -779,7 +851,8 @@ function M.run()
         local only = os.getenv("MUSIC_FLOW_ONLY")
         local steps = {
             { "boot", scenarioBootMenu }, { "act1", scenarioRunAct1 }, { "rapid", scenarioRapid },
-            { "settings", scenarioSettings }, { "boss", scenarioBossFlow }, { "bossedge", scenarioBossEdge },
+            { "settings", scenarioSettings }, { "focus", scenarioFocus },
+            { "boss", scenarioBossFlow }, { "bossedge", scenarioBossEdge },
             { "continue", scenarioContinue }, { "end", scenarioEnd }, { "cheat", scenarioCheatKeys },
             { "menurun", scenarioMenuRunMenu },
         }

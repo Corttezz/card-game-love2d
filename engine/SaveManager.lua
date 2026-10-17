@@ -35,6 +35,7 @@ local DEFAULT_SETTINGS = {
     uiScale       = 1,
     tipsEnabled   = true,
     previewDetails = false,
+    muteOnFocusLoss = true,
 }
 
 SaveManager.PATHS = PATHS
