@@ -55,6 +55,28 @@ local function engineCases(t)
     tr:update(9.0, fire)
     tr:update(1.3, fire)
     t:eq("volta tardia nao dispara cue velho", #got, 0)
+
+    local intro = { duration = 20, cues = {
+        { t = 3.0, kind = "hit" }, { t = 6.0, kind = "hit" },
+        { t = 14.95, kind = "drop" }, { t = 16.0, kind = "hit" },
+    } }
+    got = {}
+    tr = MusicCues.new(intro, 5, 15)
+    pos = 0
+    tr:update(pos, fire)
+    local laps = 0
+    for _ = 1, 60 * 32 do
+        pos = pos + 1 / 60
+        if pos > 15 then
+            pos = 5 + (pos - 15)
+            laps = laps + 1
+        end
+        tr:update(pos, fire)
+    end
+    local seq = {}
+    for _, g in ipairs(got) do seq[#seq + 1] = tostring(g.t) end
+    t:eq("introducao + loop: intro 1x, corpo repete, nada depois do loopEnd (" .. laps .. " voltas)",
+        table.concat(seq, ","), "3,6,14.95,6,14.95,6")
 end
 
 local function fakeWorld()

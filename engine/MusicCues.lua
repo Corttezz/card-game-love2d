@@ -4,13 +4,19 @@ MusicCues.__index = MusicCues
 MusicCues.LATE_MAX = 0.15
 MusicCues.WRAP_EPS = 0.5
 
-function MusicCues.new(data)
+function MusicCues.new(data, loopStart, loopEnd)
     local self = setmetatable({}, MusicCues)
     self.cues = (data and data.cues) or {}
     self.duration = (data and data.duration) or 0
     self.i = 1
     self.last = nil
+    self:setLoop(loopStart, loopEnd)
     return self
+end
+
+function MusicCues:setLoop(loopStart, loopEnd)
+    self.loopStart = loopStart or 0
+    self.loopEnd = loopEnd or self.duration
 end
 
 local function firstAfter(cues, pos)
@@ -35,9 +41,8 @@ local function fireUpTo(self, pos, fire)
     local n = 0
     while self.i <= #cues and cues[self.i].t <= pos do
         local c = cues[self.i]
-        local late = pos - c.t
-        if late <= MusicCues.LATE_MAX and fire then
-            fire(c, late)
+        if c.t <= self.loopEnd and pos - c.t <= MusicCues.LATE_MAX and fire then
+            fire(c, pos - c.t)
             n = n + 1
         end
         self.i = self.i + 1
@@ -56,30 +61,31 @@ function MusicCues:update(pos, fire)
         self.last = pos
         return 0
     end
-    local n = 0
-    if pos < last - MusicCues.WRAP_EPS then
-        if fire then
-            local cues = self.cues
-            for k = firstAfter(cues, last), #cues do
-                local c = cues[k]
-                local late = (self.duration - c.t) + pos
-                if c.t > last and late <= MusicCues.LATE_MAX then
-                    fire(c, late)
-                    n = n + 1
-                end
-            end
-        end
-        self.i = firstAfter(self.cues, math.max(0, pos - MusicCues.LATE_MAX) - 1e-9)
+    if pos >= last then
         self.last = pos
-        n = n + fireUpTo(self, pos, fire)
-        return n
+        return fireUpTo(self, pos, fire)
     end
-    if pos < last then
+    if pos > last - MusicCues.WRAP_EPS then
         return 0
     end
-    n = n + fireUpTo(self, pos, fire)
+    local n = 0
+    local cues = self.cues
+    local ls, le = self.loopStart, self.loopEnd
+    local into = math.max(0, pos - ls)
+    if fire then
+        for k = firstAfter(cues, last), #cues do
+            local c = cues[k]
+            if c.t > le then break end
+            local late = (le - c.t) + into
+            if late <= MusicCues.LATE_MAX then
+                fire(c, late)
+                n = n + 1
+            end
+        end
+    end
+    self.i = firstAfter(cues, math.max(ls, pos - MusicCues.LATE_MAX) - 1e-9)
     self.last = pos
-    return n
+    return n + fireUpTo(self, pos, fire)
 end
 
 return MusicCues

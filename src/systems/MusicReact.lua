@@ -6,6 +6,7 @@ local REACT = require("src.data.music_reactions")
 local MusicReact = {}
 
 MusicReact.positionProbe = nil
+MusicReact.loopProbe = nil
 MusicReact.codeProbe = nil
 MusicReact.shakeFn = nil
 MusicReact.lightFn = nil
@@ -80,6 +81,16 @@ local function position(code)
     if not src or not src:isPlaying() then return nil end
     local ok, pos = pcall(src.tell, src, "seconds")
     return ok and pos or nil
+end
+
+local function loopPoints(code)
+    if MusicReact.loopProbe then return MusicReact.loopProbe(code) end
+    local a = _G.audioSystem
+    if a and a.getLoopPoints then
+        local ok, ls, le = pcall(a.getLoopPoints, a, code)
+        if ok then return ls, le end
+    end
+    return nil, nil
 end
 
 local function reactionFor(id)
@@ -214,7 +225,7 @@ function MusicReact.update(dt, ctx)
     end
     bossId, hall = ctx.bossId, ctx.hall
     if trackerKey ~= key then
-        tracker = MusicCues.new(data)
+        tracker = MusicCues.new(data, loopPoints(code))
         trackerKey = key
     end
     active = true

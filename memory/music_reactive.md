@@ -43,9 +43,9 @@ manda é **de leve**: a leitura da luta vem primeiro.
    posiciona (nunca dispara). Cue com atraso > `LATE_MAX` (0,15 s) é pulado
    em silêncio: pausa, modal, foco perdido ou quadro travado NUNCA geram
    rajada. Posição que volta mais de 0,5 s = volta do loop: dispara a cauda só
-   se ainda couber no atraso e recomeça do cue certo. Não depende de como o
-   loop é feito (loop nativo da fonte ou seek para um `loopStart`): só lê a
-   posição.
+   se ainda couber no atraso e recomeça do cue certo (nunca antes do
+   `loopStart`). Funciona com loop nativo da fonte ou com seek para um
+   `loopStart`: só lê a posição.
 3. **Reação** — `src/systems/MusicReact.lua`, chamado pelo
    `GameplayScene.update` todo quadro com `{ fighting, bossId, hall }`.
    `fighting` = salão do chefe aberto neste andar (`inBossRoom`), sem
@@ -84,10 +84,16 @@ manda é **de leve**: a leitura da luta vem primeiro.
 | faixa | duração | hit | swell | drop |
 |---|---|---|---|---|
 | carrion_king | 85 s | 43 | 4 | 3 (7,5 / 57,8 / 72,8 s) |
+| tower_lich (loop 40,1 a 103,7 s) | 110 s | 51 | 8 | 2 |
+| winter_monarch (loop 57,7 a 108,1 s) | 114 s | 80 | 2 | 0 |
+| abyss_tyrant (loop 24,8 a 75,1 s) | 81 s | 38 | 11 | 4 (o de 80 s fica depois do loopEnd e nunca toca) |
 | music_boss (genérica) | 20 s | 15 | 1 | 1 |
 | music_boss_eclipse | 28 s | 14 | 1 | 0 |
 
-Rei-Carniça: 91% dos hits no pico grave, nível grave médio no percentil 95.
+Rei-Carniça: 91% dos hits no pico grave, nível grave médio no percentil 95
+(Lich 92%, Tirano 79%, Monarca 80%). O Monarca tem grave contínuo, sem queda
+seguida de explosão: zero drop, logo o chefe nunca "respira" nessa luta; só
+hits (0,7/s, os mais densos) e swells.
 Na faixa inteira o tremor ocupa 7% do tempo; menor intervalo entre tremores
 0,88 s.
 
@@ -109,7 +115,12 @@ Na faixa inteira o tremor ocupa 7% do tempo; menor intervalo entre tremores
 - O tremor é o `ScreenShake` global: mexe a tela inteira (cartas inclusas), por
   isso o teto é baixo. Um tremor só do mundo exigiria um offset na passada do
   salão do `GameplayScene`.
-- Com `loopStart` > 0, a cauda do loop é tratada com atraso calculado a partir
-  de 0 (conservador: pode pular um cue nos últimos 0,15 s da volta).
+- Introdução + loop (faixas do Lich, Monarca e Tirano): o `AudioManager` faz
+  `seek(loopStart + atraso)` na MESMA fonte quando o `tell` passa de `loopEnd`
+  (`src/data/music_loops.lua`, `AudioManager:getLoopPoints(code)`). O tracker
+  recebe `loopStart/loopEnd` (`MusicCues.new(data, ls, le)`): cue depois do
+  `loopEnd` nunca dispara (a cauda do arquivo é cópia do começo do loop), cue
+  da introdução dispara só na primeira passada, o corpo repete a cada volta.
+  Sem pontos de loop o loop é o arquivo inteiro.
 - O decoder de mp3 da LÖVE e o ffmpeg podem divergir no atraso do encoder
   (~25 ms): imperceptível para tremor.
