@@ -483,6 +483,11 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   `LuminaireEngine.drawPool` antes do sprite de cada luminária com `light.pool` (detalhe em
   `memory/lighting_engine.md`, "Exceção implementada"). Lanterna do dusk e braseiro do frost ganharam `pool`.
 
+- **Marsh legível no fim do dia (18/Out/2026, rodada 4, `tools/preview_out/rodada4/item4/`):** o chão do ato 5
+  não era o mais escuro em média; sumia por falta de CONTRASTE (raízes e juncos quase pretos sobre oliva escuro).
+  Clarear só o ambiente não muda a leitura; clarear o FUNDO sim: `grassA/grassB` +20 % no mesmo matiz,
+  `lightNight` 0,70/0,77/0,64, `grade.dusk` 0,98/1,00/0,95. Desvio de luminância do primeiro plano +20 %.
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica

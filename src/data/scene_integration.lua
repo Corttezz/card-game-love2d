@@ -111,7 +111,7 @@ return {
     },
     marsh = {
         grade = {
-            day = { 0.96, 1.00, 0.92 }, dusk = { 0.90, 0.98, 0.90 },
+            day = { 0.98, 1.00, 0.94 }, dusk = { 0.98, 1.00, 0.95 },
             shadowTint = { 0.16, 0.24, 0.16 },
             satNear = 1.0, satFar = 0.55, contrastFar = 0.58, contrastFarDay = 0.85,
             fog = { 0.38, 0.42, 0.24 }, fogDusk = { 0.32, 0.38, 0.26 },
