@@ -13,6 +13,7 @@ local GrassField = require("engine.GrassField")
 local Scene = {
     Grade = require("engine.SceneGrade"),
     Contact = require("engine.ContactShadow"),
+    Var = require("engine.PropVariation"),
 }
 
 local PropCut = {
@@ -1306,6 +1307,7 @@ WorldRoad.LANDMARK_ORIG_H = LMG.ORIG_H
 function LMG.refH(key, ih) return LMG.ORIG_H[key] or ih end
 LMG.c = {}
 LMG.fc = {}
+LMG.pvCopy = { windPhase = 0, canopy = 0, trunk = 0 }
 LMG.tint4 = { 1, 1, 1, 1 }
 LMG.castleShOpts = { baseK = 0.12, lenK = 0.30, alphaK = 0.8 }
 LMG.LIGHT_SHOP_GLOW = { 1.00, 0.72, 0.38 }
@@ -2268,29 +2270,41 @@ local function drawPropsBehind(g, x, w, camZ)
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
                     * (PropCut.sizeK[img] or 1)
                 local s = g.scaleAt(size, 0, ih)
+                local isTree = (p.kind == "tree" or p.kind == "pine"
+                    or p.kind == "deadtree" or p.kind == "bush")
+                local vflip, vtR, vtG, vtB = 1, 1, 1, 1
+                if isTree then
+                    local pv = Scene.Var.of(p.z, p.kind, Scene.Grade.cfg("trees"))
+                    s = s * pv.scale
+                    vflip, vtR, vtG, vtB = pv.flip, pv.tintR, pv.tintG, pv.tintB
+                end
                 local _, ihv = PropCut.get(img, p.kind)
                 local sink = (1 - em) * ihv * s
-                if p.cluster then
+                if p.cluster and isTree then
                     for ci = 1, p.cluster do
                         local off = p.side
                             * (0.85 * ci + math.abs(p.jitter) * 0.45) * iw * s
                             + p.jitter * 10
                         local cimg = getSprite(p.kind, (p.variant + ci) % 3, p.bid)
                         if cimg then
-                            local cs = s * (0.5 + 0.13 * ci)
+                            local cvv = Scene.Var.of(p.z + ci * 17.3, p.kind, Scene.Grade.cfg("trees"))
+                            local cs = s * (0.5 + 0.13 * ci) * cvv.scale
                             local ccrest = g.crestYAt(pxX + off) or crest
                             local _, cihv = PropCut.get(cimg, p.kind)
                             local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), 0, LMG.c)
-                            love.graphics.setColor(cc[1] * 0.6, cc[2] * 0.6, cc[3] * 0.6, fadeA)
+                            love.graphics.setColor(math.min(1, cc[1] * 0.6 * cvv.tintR),
+                                math.min(1, cc[2] * 0.6 * cvv.tintG),
+                                math.min(1, cc[3] * 0.6 * cvv.tintB), fadeA)
                             PropCut.draw(cimg, p.kind, math.floor(pxX + off),
-                                math.floor(ccrest + (1 - em) * cihv * cs), 0, cs, cs)
+                                math.floor(ccrest + (1 - em) * cihv * cs), 0, cs * cvv.flip, cs)
                         end
                     end
                 end
                 local cb = Scene.Grade.color(Scene.Grade.familyOf(p.kind), 0, LMG.c)
-                love.graphics.setColor(cb[1] * 0.66, cb[2] * 0.66, cb[3] * 0.66, fadeA)
+                love.graphics.setColor(math.min(1, cb[1] * 0.66 * vtR), math.min(1, cb[2] * 0.66 * vtG),
+                    math.min(1, cb[3] * 0.66 * vtB), fadeA)
                 PropCut.draw(img, p.kind, math.floor(pxX),
-                    math.floor(crest + sink), 0, s, s)
+                    math.floor(crest + sink), 0, s * vflip, s)
             end
         end
         ::continue_emerge::
@@ -3232,6 +3246,19 @@ local function drawProps(g, x, w, camZ)
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
                     * (PropCut.sizeK[img] or 1)
                 local s = g.scaleAt(size, t, ih)
+                local isTree = (p.kind == "tree" or p.kind == "pine"
+                    or p.kind == "deadtree" or p.kind == "bush")
+                local reduced = (_G.gameSettings and _G.gameSettings.reducedMotion) or false
+                local vflip, vtR, vtG, vtB = 1, 1, 1, 1
+                local pv = nil
+                if isTree then
+                    pv = Scene.Var.of(p.z, p.kind, Scene.Grade.cfg("trees"))
+                    s = s * pv.scale
+                    vflip, vtR, vtG, vtB = pv.flip, pv.tintR, pv.tintG, pv.tintB
+                    local pvc = LMG.pvCopy
+                    pvc.windPhase, pvc.canopy, pvc.trunk = pv.windPhase, pv.canopy, pv.trunk
+                    pv = pvc
+                end
 
                 local lumDef = LuminaireEngine.def(p.bid, p.kind)
                 local lumAnc, lumSink, lumFlip = nil, 0, 1
@@ -3254,28 +3281,50 @@ local function drawProps(g, x, w, camZ)
                 end
 
                 local _, ihv = PropCut.get(img, p.kind)
+                local gw = 0
+                if isTree and not reduced then
+                    local wP = GrassField.PRESETS[p.bid or rawBiome().id]
+                    if wP then
+                        gw = GrassField.windAt((pxX - x) / w, p.z, WorldRoad._time, wP, 0)
+                        if gw * gw > 1.6 and p.kind ~= "deadtree" and t > 0.25
+                           and WorldRoad._rng:random() < 0.035 then
+                            local gA = envColor("grassA")
+                            WeatherEngine.emitLeaf((pxX - g.cx) / w
+                                + (WorldRoad._rng:random() - 0.5) * iw * s * 0.5 / w,
+                                p.z, t, ih * s * 0.62 / (g.persp(t) * g.h),
+                                { math.min(1, gA[1] * 1.35), math.min(1, gA[2] * 1.3),
+                                  math.min(1, gA[3] * 1.1) })
+                        end
+                    end
+                end
+                local stiff = (p.kind == "bush") and 0.030
+                    or (p.kind == "deadtree" and 0.014 or 0.022)
 
-                if p.cluster and (p.kind == "tree" or p.kind == "pine"
-                                  or p.kind == "deadtree" or p.kind == "bush") then
+                if p.cluster and isTree then
                     for ci = 1, p.cluster do
                         local off = p.side
                             * (0.85 * ci + math.abs(p.jitter) * 0.45) * iw * s
                             + p.jitter * 10
                         local cx2 = pxX + off
                         local cy2 = g.latY(cx2 - g.cx, t)
-                        local cs = s * (0.5 + 0.13 * ci)
                         local cvar = (p.variant + ci) % 3
                         local cimg = getSprite(p.kind, cvar, p.bid)
                         if cimg then
+                            local cvv = Scene.Var.of(p.z + ci * 17.3, p.kind, Scene.Grade.cfg("trees"))
+                            local cs = s * (0.5 + 0.13 * ci) * cvv.scale
+                            local cflip = cvv.flip
+                            local crot, ckx = Scene.Var.sway(cvv, WorldRoad._time, gw, stiff, reduced)
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
-                                shadowOpts(0.8 * fadeA, nil,
+                                shadowOpts(0.8 * fadeA, cflip,
                                     PropCut.cutOf(cimg, p.kind),
                                     WorldRoad.SHADOW_PROFILE[p.kind]))
-                            Scene.Contact.queue(cimg, cx2, cy2, cs, t, 0.8 * fadeA, 1)
+                            Scene.Contact.queue(cimg, cx2, cy2, cs, t, 0.8 * fadeA, cflip)
                             local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), t, LMG.c)
-                            love.graphics.setColor(cc[1] * 0.88, cc[2] * 0.88, cc[3] * 0.88, fadeA)
+                            love.graphics.setColor(math.min(1, cc[1] * 0.88 * cvv.tintR),
+                                math.min(1, cc[2] * 0.88 * cvv.tintG),
+                                math.min(1, cc[3] * 0.88 * cvv.tintB), fadeA)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
-                                math.floor(cy2), 0, cs, cs)
+                                math.floor(cy2), crot, cs * cflip, cs, ckx * cflip)
                         end
                     end
                 end
@@ -3303,7 +3352,7 @@ local function drawProps(g, x, w, camZ)
 
                 local aFade = math.min(1, 0.72 + t * 1.1)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
-                    shadowOpts(aFade * fadeA, lumFlip,
+                    shadowOpts(aFade * fadeA, lumFlip * vflip,
                         lumAnc and lumAnc.footPad or PropCut.cutOf(img, p.kind),
                         WorldRoad.SHADOW_PROFILE[p.kind])) then
                     local shd = sunShadowDir(g, x, w, pxX)
@@ -3313,41 +3362,24 @@ local function drawProps(g, x, w, camZ)
                         iw * s * 0.24, math.max(2, 4 * g.persp(t)))
                 end
                 if p.kind ~= "tuft" and p.kind ~= "flowers" then
-                    Scene.Contact.queue(img, pxX, sy, s, t, fadeA, lumFlip)
+                    Scene.Contact.queue(img, pxX, sy, s, t, fadeA, lumFlip * vflip)
                 end
 
                 local rot = 0
                 local gustKx = 0
                 local sink2 = lumSink
-                if p.kind == "tree" or p.kind == "pine"
-                   or p.kind == "deadtree" or p.kind == "bush" then
-                    rot = math.sin(WorldRoad._time * 1.15 + p.z * 0.7) * 0.018
-                    local wP = GrassField.PRESETS[p.bid or rawBiome().id]
-                    if wP and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
-                        local gw = GrassField.windAt((pxX - x) / w, p.z,
-                            WorldRoad._time, wP, 0)
-                        local stiff = (p.kind == "bush") and 0.030
-                            or (p.kind == "deadtree" and 0.014 or 0.022)
-                        gustKx = -gw * stiff
-                        if gw * gw > 1.6 and p.kind ~= "deadtree" and t > 0.25
-                           and WorldRoad._rng:random() < 0.035 then
-                            local gA = envColor("grassA")
-                            WeatherEngine.emitLeaf((pxX - g.cx) / w
-                                + (WorldRoad._rng:random() - 0.5) * iw * s * 0.5 / w,
-                                p.z, t, ih * s * 0.62 / (g.persp(t) * g.h),
-                                { math.min(1, gA[1] * 1.35), math.min(1, gA[2] * 1.3),
-                                  math.min(1, gA[3] * 1.1) })
-                        end
-                    end
+                if pv then
+                    rot, gustKx = Scene.Var.sway(pv, WorldRoad._time, gw, stiff, reduced)
                 elseif p.kind == "tuft" or p.kind == "flowers" then
                     rot = math.sin(WorldRoad._time * 2.3 + p.z * 1.4) * 0.055
                 end
                 rot = rot + pokeRot(p)
 
                 local pc = Scene.Grade.color(Scene.Grade.familyOf(p.kind, lumDef ~= nil), t, LMG.c)
-                love.graphics.setColor(pc[1], pc[2], pc[3], fadeA)
+                love.graphics.setColor(math.min(1, pc[1] * vtR), math.min(1, pc[2] * vtG),
+                    math.min(1, pc[3] * vtB), fadeA)
                 PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
-                    rot, s * lumFlip, s, gustKx * lumFlip)
+                    rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip)
                 if p.kind ~= "tuft" and p.kind ~= "flowers" and p.kind ~= "fence"
                    and fadeA >= 0.5 then
                     local oc2 = Scene.Grade.cfg("occlusion")
@@ -3367,7 +3399,7 @@ local function drawProps(g, x, w, camZ)
                     local cr = contentRect[img]
                     local bx1, by1, bx2, by2
                     if cr then
-                        local flip = lumFlip or 1
+                        local flip = (lumFlip or 1) * vflip
                         local rx0 = (cr.x0 - iw * 0.5) * s * flip
                         local rx1 = (cr.x1 + 1 - iw * 0.5) * s * flip
                         bx1 = pxX + math.min(rx0, rx1)
@@ -3396,7 +3428,7 @@ local function drawProps(g, x, w, camZ)
                     oc.z = rel
                     oc.flatColor = Scene.Grade.flatColor("tree", oc.fc)
                     oc.img, oc.x, oc.y, oc.rot = img, oxT, oyT, rot
-                    oc.sx, oc.sy, oc.ox, oc.oy = s, s, iw / 2, ihv
+                    oc.sx, oc.sy, oc.ox, oc.oy = s * vflip, s, iw / 2, ihv
                     oc.bx, oc.by = oxT - iw * s / 2, oyT - ihv * s
                     oc.w, oc.h = iw * s, ih * s
                     LightEngine.submitOccluder(oc)

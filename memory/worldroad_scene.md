@@ -69,6 +69,69 @@ emergência sem stencil. (3) Céu = cor amostrada do asset elimina emendas.
 
 ---
 
+# ⭐ Integração ao terreno (17/Out/2026)
+
+Pedido do dono: os assets são bons, mas parecem colados no terreno. Critério:
+"o objeto tem que parecer que está no chão, não colado". Spec:
+`docs/superpowers/specs/2026-10-17-integracao-landmarks-terreno-design.md`;
+plano: `docs/superpowers/plans/2026-10-17-integracao-landmarks-terreno.md`.
+Ato 1 (`fields`) calibrado; biomas 2 a 6 esperam a aprovação do dono
+(Tarefas 7 a 11 do plano). Capturas antes/depois de cada passe:
+`tools/preview_out/integracao_terreno/<passe>/` via
+`lovec . test_one screenshot_integracao_terreno <label>[:<bioma>]`.
+
+**Dados:** `src/data/scene_integration.lua`, uma linha por bioma (grade,
+contact, occlusion, lowFog, trees, landmarks). Tudo o que é calibrável mora
+aí; o código só lê.
+
+**Os seis passes (um engine cada, o WorldRoad só chama):**
+1. `engine/SceneGrade.lua`: FONTE ÚNICA de cor de sprite da cena. `begin`
+   uma vez por quadro logo depois do `LightEngine.beginFrame(amb)`;
+   `color(família, t, out)` = temperatura da luz por hora do dia + névoa +
+   dessaturação (depois da névoa) + brilho por profundidade (`contrastFar`,
+   alcança 1 em t=0,25, mesma curva do `aFade` antigo). `flatColor` = ambiente
+   puro para TODO oclusor (o `lift` das árvores e o "só matiz" dos marcos
+   saíram). **Montanhas = sem grade** (a faixa delas carrega o céu pintado;
+   gradear marronzava o céu). Castelo usa t = 0,6 + 0,4·progress. Expira em
+   0,1 s (salão do chefe não herda o grade da estrada).
+2. `engine/ContactShadow.lua`: pegada medida no PNG (colunas que tocam o chão,
+   `scan` no pré-aquecimento: `toImage`/`tryLoadPng`/`readAnimFrames`) e faixa
+   escura curta descarregada logo após o `ShadowEngine.flush()`, num lote.
+   Terra queimada da fogueira = disco cheio com alpha caindo e franja irregular.
+   **Nada de dither em área** (o primeiro scorch pontilhava linhas inteiras e
+   virou bloco quadriculado; trava `maxRowTransitions`).
+3. `GrassField.requireTufts(rel, x, w, n, scale)`: lâminas na fatia logo à
+   frente da base, no mesmo lote e vento; assinatura por fatia mantém o replay
+   da grama com a câmera parada. O landmark escolhido virou pseudo-prop dentro
+   do `drawProps` (`drawChosenLandmark`), entre fatias e no balanço;
+   `drawLandmarkFront` não existe mais. Tufos do marco nos FLANCOS da base
+   (no centro da estrada viram pontinhos na terra).
+4. `WeatherEngine`: véu de profundidade em cada `flushTo`, SEGUINDO A CURVA do
+   domo (24 segmentos; plano pintaria o céu das laterais), bandas contíguas
+   (sobrepor 1 px faz linhas), desenhado com `love.graphics.rectangle` em lote
+   (QuadMesh por fatia alocava DataView: +3 KB/quadro). `drawLowFog` na base
+   das montanhas: quad reaproveitado com viewport exato, **sem push("all") nem
+   scissor** (a versão com os dois derrubava o LÖVE com segfault na suíte longa).
+5. Landmarks × terreno pela tabela `landmarks`: brasas (`drawEmbersSpec`),
+   fumaça fina e pulso da fogueira; bandeira cisalhada pelo `GrassField.windAt`
+   + poeira rara (`WeatherEngine.emitDust`, teto 14); loja com poça rasa
+   (`LightEngine.submit{sy}`); castelo com sombra pelo sol na fila do
+   `ShadowEngine` (as duas elipses fixas saíram) e névoa própria.
+6. `engine/PropVariation.lua`: tom/escala/espelho/fase por semente do prop
+   (determinístico), vento em duas amplitudes (tronco gira pouco, copa
+   cisalha), companheiras balançam com fase própria. `of` devolve tabela
+   reutilizada: copie antes de chamar de novo (`LMG.pvCopy`).
+
+**Números (1024×768, test_perf_budget isolado):** antes 427 draw calls /
+30,5 KB; depois 469 / 31,5 KB (o véu é ~40 draw calls). Locais do arquivo
+`WorldRoad.lua`: 198 → 188 (`python tools/count_locals.py src/ui/WorldRoad.lua`).
+
+**Travas:** `test_scene_grade`, `test_contact_shadow`, `test_landmark_fx`,
+`test_prop_variation`, blocos novos em `test_world_props` e `test_weather`.
+
+**Regra:** cor de sprite da cena só pelo `SceneGrade` (nada de `setColor` com
+tom fixo nos pontos de desenho do WorldRoad/EnemyRenderer).
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica
