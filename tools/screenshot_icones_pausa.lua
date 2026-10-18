@@ -1,6 +1,7 @@
 local M = {}
 
-local SIZES = { { 1024, 768 }, { 1920, 1080 } }
+local SIZES = { { 1024, 768 }, { 1280, 720 }, { 1920, 1080 }, { 2560, 1440 } }
+local LOCALES = { "pt_BR", "en", "es", "fr", "de" }
 
 local function fakeWindow(w, h)
     local rw, rh, rd = love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions
@@ -27,7 +28,8 @@ function M.run(arg)
     game:startGame()
     _G.game = game
     local PauseMenu = require("components.PauseMenu")
-    for _, loc in ipairs({ "pt_BR", "en" }) do
+    local prefix = (type(arg) == "string" and arg ~= "") and arg or "icones_pausa"
+    for _, loc in ipairs(LOCALES) do
         I18n.setLocale(loc)
         for _, sz in ipairs(SIZES) do
             local w, h = sz[1], sz[2]
@@ -43,8 +45,12 @@ function M.run(arg)
                 love.graphics.clear(0.16, 0.12, 0.09, 1)
                 p:draw()
                 love.graphics.setCanvas()
+                local problems = p:validate()
+                if #problems > 0 then
+                    print(("[FAIL] %s %dx%d %s: %s"):format(loc, w, h, focus, table.concat(problems, "; ")))
+                end
                 canvas:newImageData():encode("png",
-                    ("icones_pausa_%s_%dx%d_%s.png"):format(focus, w, h, loc))
+                    ("%s_%s_%dx%d_%s.png"):format(prefix, focus, w, h, loc))
                 p.visible = false
             end
             restore()

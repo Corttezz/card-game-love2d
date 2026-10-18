@@ -20,8 +20,8 @@ local INFO_H       = 36
 local INFO_H_LINE  = 20
 local ROW_GAP      = 8
 local ZONE_GAP     = 14
-local SHORTCUT_H   = 66
-local SHORTCUT_ICON = 30
+local SHORTCUT_H   = 76
+local SHORTCUT_ICON_SCALE = 0.75
 local SHORTCUT_MAX_W = 120
 local DANGER_H     = 24
 local CONFIRM_BTN_H = 28
@@ -538,12 +538,11 @@ function PauseMenu:_drawShortcut(s, focused)
     love.graphics.setLineWidth(1)
     love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1, 3, 3)
 
-    local box = S(self, SHORTCUT_ICON)
     local labelH = S(self, 16)
     local cx = math.floor(x + w / 2)
-    local cy = math.floor(y + (h - labelH) / 2 + S(self, 3)) + (focused and -1 or 0)
+    local cy = math.floor(y + (h - labelH) / 2 + S(self, 2)) + (focused and -1 or 0)
     love.graphics.setColor(1, 1, 1, 1)
-    require("src.ui.IconLoader").drawFit(s.icon, cx, cy, box)
+    require("src.ui.IconLoader").drawScaled(s.icon, cx, cy, SHORTCUT_ICON_SCALE)
 
     local kf = FontManager.getFont(S(self, 8))
     local key = string.upper(s.hotkey or "")

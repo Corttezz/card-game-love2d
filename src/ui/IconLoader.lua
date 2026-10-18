@@ -77,12 +77,16 @@ function IconLoader.bounds(name)
     return b
 end
 
-function IconLoader.drawFit(name, cx, cy, box)
+function IconLoader.drawScaled(name, cx, cy, s)
     local h = IconLoader.get(name)
     local b = IconLoader.bounds(name)
-    local s = box / math.max(b.w, b.h)
     h.draw(cx - (b.x + b.w / 2) * s, cy - (b.y + b.h / 2) * s, s)
     return s
+end
+
+function IconLoader.drawFit(name, cx, cy, box)
+    local b = IconLoader.bounds(name)
+    return IconLoader.drawScaled(name, cx, cy, box / math.max(b.w, b.h))
 end
 
 function IconLoader.clearCache()
