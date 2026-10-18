@@ -32,10 +32,11 @@ local CATALOG = {
     },
 
     highlands = {
-        brazier = { size = 2.70, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
+        brazier = { size = 5.30, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.08 },
             weight = 0.9,
-            light = { color = { 0.55, 0.70, 1.00 }, radiusK = 1.60,
-                      coreK = 0.50, intensity = 0.85, flicker = "fire" },
+            light = { color = { 0.55, 0.70, 1.00 }, radiusK = 0.95,
+                      coreK = 0.50, intensity = 0.85, flicker = "fire",
+                      pool = { radiusK = 0.90, intensity = 0.85, sy = 0.35 } },
             embers = { color = { 0.65, 0.80, 1.00 }, count = 2 } },
         runestone = { size = 1.5, lane = { 0.05, 0.35 }, anchor = { 0.50, 0.45 },
             weight = 0.7,
@@ -232,6 +233,16 @@ function LuminaireEngine.submit(bid, kind, a)
         dither = true, ditherAmt = 0.28, levels = 8,
         seed = a.seed, z = a.rel,
     })
+    local P = L.pool
+    if P and a.gx and a.gy and (a.t or 1) >= LuminaireEngine.POOL_MIN_T * 0.5 then
+        LightEngine.submit({
+            x = a.gx, y = a.gy,
+            radius = math.min(P.radiusK * base * fr * distK, (a.capR or 1e9)) * dayK,
+            color = L.color, intensity = P.intensity * fi * (0.6 + 0.4 * distK) * aK * dayK,
+            dither = true, ditherAmt = 0.28, levels = 8, sy = P.sy or 0.35,
+            seed = a.seed, z = a.rel,
+        })
+    end
     LightEngine.submitMicro(a.fx, a.fy,
         math.min(L.coreK * base * 0.6 * fr * distK, (a.capR or 1e9) * 0.4) * dayK,
         L.color, 0.9 * fi * aK * dayK, a.rel)

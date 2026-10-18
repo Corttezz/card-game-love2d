@@ -23,6 +23,9 @@ return {
         highlands_pine_1 = 11,
         highlands_pine_2 = 7,
         highlands_deadtree_0 = 8,
+        highlands_pine_3 = 9,
+        highlands_pine_4 = 11,
+        highlands_pine_5 = 7,
         abyss_deadtree_1 = 11,
         abyss_deadtree_2 = 8,
         frost_pine_1 = 3,
@@ -51,11 +54,14 @@ return {
         frost_pine_1 = 0.72,
         frost_pine_2 = 0.80,
         abyss_deadtree_2 = 0.85,
+        highlands_pine_3 = 1.05,
+        highlands_pine_5 = 0.72,
         dusk_tree_2 = 0.90,
     },
 
     variants = {
         fields_tree = 6,
         dusk_tree = 7,
+        highlands_pine = 6,
     },
 }

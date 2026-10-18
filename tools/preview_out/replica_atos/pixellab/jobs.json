@@ -1,0 +1,32 @@
+{
+ "hl_brazier": {
+  "job": "5f575328-65f1-4d0b-aedf-62554723c695"
+ },
+ "hl_pine_a": {
+  "job": "f50964ce-48fd-499f-bdea-1968f5dced46"
+ },
+ "hl_pine_b": {
+  "job": "abd1bdab-8173-4a0f-ab59-0fc5df3797ac"
+ },
+ "hl_pine_c": {
+  "job": "accae0e2-da46-4106-bbb4-cc9d0e95efca"
+ },
+ "ab_brazier": {
+  "job": "7d257e5f-1166-4876-a2d8-248e2b325748"
+ },
+ "ab_dead_a": {
+  "job": "2f447694-caca-4ccf-aace-11e8bcd3c779"
+ },
+ "ab_dead_b": {
+  "job": "09c98762-98c2-4f67-a4d1-ffaacfc576ca"
+ },
+ "ab_dead_c": {
+  "job": "6d7f11f9-ace2-4de8-b91d-c9be3d99e1d8"
+ },
+ "ab_fissure": {
+  "job": "d174d238-1dfb-49f8-b7d7-223c012e34cd"
+ },
+ "ab_torch": {
+  "job": "b5838df9-f2d7-4af4-a199-4dfe0f10396b"
+ }
+}

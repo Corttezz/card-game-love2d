@@ -141,12 +141,19 @@ function M.run()
         local gc, tc = SceneGrade.color("grass", 0.45, {}), SceneGrade.color("tree", 0.45, {})
         t:truthy("tint da árvore em t=0,45 não é mais claro que o tint da grama em t=1 (névoa só no shader)",
             SceneGrade.color("tree", 0.45, {})[2] <= SceneGrade.color("grass", 1, {})[2] + 1e-6 and gc and tc)
-        SceneGrade.begin("highlands", 0, nil, 1, amb)
+        local semTd = {}
+        for k, v in pairs(DATA.highlands) do semTd[k] = v end
+        semTd.grade = {}
+        for k, v in pairs(DATA.highlands.grade) do semTd.grade[k] = v end
+        semTd.grade.treeDepth = nil
+        DATA._sem_tree_depth = semTd
+        SceneGrade.begin("_sem_tree_depth", 0, nil, 1, amb)
         t:falsy("bioma sem treeDepth: treeDepth = nil (sem shader)", SceneGrade.treeDepth(0.2, {}))
-        SceneGrade.begin("highlands", 0, "fields", 0.5, amb)
+        SceneGrade.begin("_sem_tree_depth", 0, "fields", 0.5, amb)
         local mid = SceneGrade.treeDepth(0.2, {})
         t:truthy("no blend a partir dos campos a névoa das árvores esvai, sem salto",
             mid ~= nil and mid.lift > 0 and mid.lift < td.lift)
+        DATA._sem_tree_depth = nil
     end
 
     t:eq("familyOf(tree)", SceneGrade.familyOf("tree"), "tree")

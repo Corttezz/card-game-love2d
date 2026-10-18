@@ -308,6 +308,12 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   ferro nevado com braço de volutas (PixelLab `create_image_pro`, ref. de forma `fields_lantern_0`, de
   paleta a antiga): size 5,6, `face` 1, 0,86 a 0,88× o inimigo; chama tremulando por script em
   `anim/frost_lantern_0/`. Fogueira `selfLight` 0,20.
+- **Ato 2 highlands (18/Out/2026, frente replica-23, `tools/preview_out/replica_atos/highlands/`):**
+  entrada do ato 1 replicada (treeDepth, treeNear, sombra 2,2 com árvore/copa e cor fria, contato
+  0,65, chão perto claro/longe escuro); braseiro regerado como pilar de 2,5 m (0,87x o inimigo,
+  era um cubo de 0,30x) com `light.pool` (poça no chão, genérico no LuminaireEngine) porque a chama
+  no topo deixava o círculo de luz no ar; 3 pinheiros novos (`variants` 6); chama da fogueira
+  recolorida de salmão pastel para laranja vivo (a lua a acinzentava e o fogo não lia como fogo).
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

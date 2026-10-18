@@ -72,7 +72,7 @@ function M.run()
         t:falsy(("%s: nenhum PNG além das %d variantes declaradas"):format(key, n),
             love.filesystem.getInfo(WORLD .. key .. "_" .. n .. ".png") ~= nil)
     end
-    t:eq("sem entrada em variants: 3 variantes", WorldRoad.propVariants("highlands", "pine"), 3)
+    t:eq("sem entrada em variants: 3 variantes", WorldRoad.propVariants("zz_sem_entrada", "pine"), 3)
 
     do
         local sh = WorldRoad.treeDepthShader()
