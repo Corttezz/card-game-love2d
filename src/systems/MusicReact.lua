@@ -24,6 +24,8 @@ local swell = { left = 0, rate = 0, style = nil, acc = 0 }
 local rain = { left = 0, total = 0, acc = 0, list = nil, power = 0, n = 0, i = 0 }
 local trickle = { next = 0 }
 local ambient = { acc = 0 }
+local shake = { time = 0, dur = 0, amp = 0 }
+MusicReact.shakeOffsetProbe = nil
 local stats = { hit = 0, swell = 0, drop = 0, shake = 0, debris = 0, light = 0, breath = 0 }
 
 local function settings() return _G.gameSettings or {} end
@@ -182,10 +184,19 @@ local function trickleTick(r)
     return spawnEntry({ e[1], count, count, "streak" }, count, areaFor(hall))
 end
 
-local function ambientTick(dt, r)
+local function ambientTick(dt, r, fill)
     if reduced() or not r.ambient then return 0 end
     local a = r.ambient
-    if CeilingDebris.floatingCount() >= (a[2] or 8) then
+    local maxN = a[2] or 10
+    local n = 0
+    if fill then
+        while CeilingDebris.floatingCount() < maxN do
+            if CeilingDebris.spawnFloat(REACT.STYLES[a[1]], areaFor(hall), true) == 0 then break end
+            n = n + 1
+        end
+        return n
+    end
+    if CeilingDebris.floatingCount() >= maxN then
         ambient.acc = 0
         return 0
     end
@@ -203,9 +214,20 @@ local function doShake(i, d)
     if MusicReact.shakeFn then
         MusicReact.shakeFn(i, d)
     else
-        require("src.systems.ScreenShake").trigger(i, d)
+        shake.amp = math.max(shake.amp, i or 1)
+        shake.dur = math.max(shake.dur, d or 0.12)
+        shake.time = shake.dur
     end
     return true
+end
+
+function MusicReact.shakeOffset()
+    if MusicReact.shakeOffsetProbe then return MusicReact.shakeOffsetProbe() end
+    if shake.time <= 0 then return 0, 0 end
+    local user = (settings().screenshake ~= nil) and settings().screenshake or 1
+    if user <= 0 then return 0, 0 end
+    local mag = shake.amp * (shake.time / math.max(0.001, shake.dur)) * user
+    return (love.math.random() - 0.5) * 2 * mag, (love.math.random() - 0.5) * 2 * mag
 end
 
 local function doLight(k, d)
@@ -279,6 +301,7 @@ function MusicReact.reset()
     tracker, trackerKey = nil, nil
     active = false
     swell.left, swell.acc = 0, 0
+    shake.time, shake.dur, shake.amp = 0, 0, 0
     rain.left, rain.total, rain.acc, rain.list, rain.n = 0, 0, 0, nil, 0
     trickle.next = 0
     ambient.acc = 0
@@ -295,6 +318,10 @@ function MusicReact.isActive() return active end
 function MusicReact.update(dt, ctx)
     clock = clock + dt
     CeilingDebris.update(dt)
+    if shake.time > 0 then
+        shake.time = math.max(0, shake.time - dt)
+        if shake.time == 0 then shake.amp, shake.dur = 0, 0 end
+    end
     local want = ctx and ctx.fighting and MusicReact.enabled()
     local code = want and currentCode() or nil
     local MD = require("src.systems.MusicDirector")
@@ -315,10 +342,13 @@ function MusicReact.update(dt, ctx)
         tracker = MusicCues.new(data, loopPoints(code))
         trackerKey = key
     end
-    if not active then trickle.next = nextTrickle() end
+    local r = reactionFor(bossId)
+    if not active then
+        trickle.next = nextTrickle()
+        stats.debris = stats.debris + ambientTick(dt, r, true)
+    end
     active = true
     tracker:update(position(code), onCue)
-    local r = reactionFor(bossId)
     stats.debris = stats.debris + rainTick(dt) + trickleTick(r) + ambientTick(dt, r)
     if swell.left > 0 then
         swell.left = swell.left - dt

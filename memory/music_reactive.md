@@ -56,8 +56,8 @@ manda é **de leve**: a leitura da luta vem primeiro.
    congelado por modal não chama o update; ao voltar o salto é pulado.
    Dados por chefe em `src/data/music_reactions.lua` (`BY_BOSS`, `DEFAULT`,
    `STYLES`, `AREA` por salão em coordenadas da ARTE 400×256, `COOLDOWN`):
-   - **hit**: `ScreenShake.trigger` de 0,8 a 1,6 px por 0,12 s (cooldown 0,45 s,
-     respeita o slider de tremor); pulso curto das chamas pintadas
+   - **hit**: tremor SÓ DO SALÃO de 0,8 a 1,6 px por 0,12 s (cooldown 0,45 s,
+     respeita o slider de tremor; ver "Tremor só no cenário"); pulso curto das chamas pintadas
      (`InteriorFX.musicPulse`, canal próprio, multiplica chamas e pulsos do
      salão); poucos detritos (cooldown 0,3 s).
    - **drop**: tremor até 3,2 px por 0,3 s (cooldown de drop 4 s), luz mais
@@ -86,53 +86,104 @@ Dono: "ficou legal, só que a tela pode ter um pouquinho mais de movimentação.
 essas coisas caindo do céu: ficou meio grande e meio não natural". Folhas
 antes/depois e respostas em `tools/preview_out/musica_reativa/polish/checklist.md`.
 
+- **A faixa de nascimento tem que ficar ABAIXO da TopBar**: `AREA.y0/y1`
+  = 34 a 62 da arte. Com 16 a 40 (1ª passada) o cover-fit em 1080p
+  (`oy = -74`) punha a faixa em y 3 a 118 da tela, atrás da barra de 80 px,
+  e a poeira passava o primeiro segundo invisível (o lead viu "meia dúzia
+  de pontinhos" no quadro de +0,3 s). Conferir em 1024x768 também (`oy = 0`,
+  34 x 3 = 102 px).
 - **Unidade = meio pixel da arte**: `u = round(tr.scale / 2)` px de tela
   (2 px em 1080p, 2 em 1024x768, 5 em 4K), posição encaixada na grade de `u`.
   Mesma ideia do clima fino do WeatherEngine (1 px de tela), não da grade da
   PNG. Tamanhos em `u`: poeira/neve/esporo/mote 1 a 2 (`size = {1, 1.9}`
   → 40% 2u), pedrinha 1 a 3 com `big = { 0.08, {4, 5} }` (raras, 8 a 10 px),
-  lasca 1 x 2 a 3, pena 3 x 1 + ponta. Nada passa de 10 px em 1080p.
+  lasca 1 x 2 a 3, pena 4 a 6 x 1 + ponta (8 a 12 px: objeto visível,
+  pedido do lead). Nada passa de 10 px em 1080p fora a pena.
 - **Física**: `vy` inicial baixo + `gravity` + `vmax` (pedrinha 230 / 330,
   lasca 170 / 260, poeira 38 / 46 = acelera e satura). Pedrinha/lasca/gelo
   têm `bounce` (restituição 0,32 / 0,26 / 0,30, só se `vy > bounceMin`, no
   máximo 2 quiques) e `puff` (3 a 4 partículas `kind = "puff"` de 1u na cor
   `puffColor`, sobem 3 a 11 px/s, freiam, somem em ~0,4 s com `(1 - t)²`).
   `rest` = segundos parado no chão antes do fade de `LAND_FADE` (pedrinha
-  1,4, pena 1,2, lasca 0,9; poeira 0).
+  2,5, pena 1,5, lasca 0,9; poeira 0).
 - **Forma**: `chunk()` desenha o quadrado de `n` u com um canto cortado por
   `var` (0 a 3), que avança a cada `TUMBLE` = 0,11 s em queda (rolar) e vira
   quadrado cheio parado; célula de brilho (cor x 1,45) no canto superior.
-  Lasca alterna vertical/horizontal pelo mesmo `var`. Pena: 3 x 1 com ponta
-  do lado do balanço, ou diagonal quando o seno cruza zero.
+  Lasca alterna vertical/horizontal pelo mesmo `var`. Pena: `L = size + 2`
+  células; horizontal com espinha escura e ponta do lado do balanço quando
+  |seno| > 0,6, senão diagonal com degrau a cada 2 células (zigue-zague
+  lento: `sway` 10 a 16, `swayHz` 1,1, `vy` 4 a 8, `vmax` 11).
 - **Filetes** (`CeilingDebris.spawnStreak(style, n, area)`): n partículas de
   1u em coluna (`streakGap` do estilo, 1,3 px de arte na poeira), mesmo x,
   mesma fase de balanço, `vy` escalonado em 0,4. Entrada de lista com 4º
   campo `"streak"` (`{ "dust", 3, 5, "streak" }`); `"cluster"` mantém o
   aglomerado antigo de 6 px.
-- **Chuva do drop** (`REACT.RAIN = { now = 0.35, spread = 0.7 }`): os filetes
-  e 35% dos contáveis saem no cue, o resto cai distribuído por 0,7 s
-  (`startRain` / `rainTick`, cicla as entradas não-streak).
+- **Chuva do drop** (`REACT.RAIN = { now = 0.35, spread = 1.0 }`): os filetes
+  e 35% dos contáveis saem no cue, o resto cai distribuído por 1,0 s
+  (`startRain` / `rainTick`, cicla as entradas não-streak). Contagens da 2ª
+  passada: poeira 28 a 44 (Rei) / 24 a 36 (Lich, Tirano), neve 28 a 40,
+  esporos/motes 20 a 28, pedrinhas 4 a 8 (Rei, Lich, Colosso) / 10 a 16
+  (Tirano), penas 2 a 4, lascas 6 a 10, 3 filetes de 5 a 8.
 - **Cadência entre hits** (`REACT.TRICKLE`, `r.trickle = { estilo, min, max }`):
-  um filete a cada 1,1 a 2,4 s enquanto ativo.
+  um filete de 5 a 8 a cada 0,6 a 1,2 s enquanto ativo; o hit solta 2 a 3
+  filetes (a 3ª entrada é `{ 0, 6, "streak" }`, cresce com o `power`).
 - **Poeira no ar** (`r.ambient = { estilo, máx, intervalo }`,
-  `CeilingDebris.spawnFloat`): até 6 a 8 flutuantes `kind = "float"` de 1u,
-  alpha 0,32 a 0,42, 1 a 3 px/s com balanço lento (`air_*` em `STYLES`;
-  `air_ember` do Tirano sobe), vida 6 a 10 s com fade nas pontas,
-  `floatingCount()` segura o teto. Só com a faixa do chefe tocando.
+  `CeilingDebris.spawnFloat(style, area, preLife)`): 12 flutuantes
+  `kind = "float"` de 1u (10 na Rainha), alpha 0,52 a 0,55, 1 a 3 px/s com
+  balanço lento (`air_*` em `STYLES`; `air_ember` do Tirano sobe), vida 6 a
+  10 s com fade nas pontas, `floatingCount()` segura o teto. Na ATIVAÇÃO o
+  salão já nasce cheio (`ambientTick(dt, r, true)` com `preLife`, fase de
+  vida aleatória para não sumirem juntos). Só com a faixa do chefe tocando.
 - Chamas no hit: `LIGHT.hit` 0,35 → 0,45, `hitDur` 0,28 → 0,32. Tremor
   intocado. `reducedMotion`: chuva, filetes, flutuantes e quiques são
   detrito, logo zero (a trava `reducedMotion: zero detrito` cobre tudo).
-- Contagens do drop subiram (poeira 8-14 → 14-22, 2 filetes, pedrinhas 2-4 no
-  Rei/Lich, 5-8 no Tirano) porque com 2 px a chuva antiga sumia na folha.
-- Custo (`abyss_tyrant:drop:perf`): 73 → 74 draw calls com 39 detritos
-  vivos, tempo de quadro no ruído (3,4 a 3,9 ms em 1080p headless); pico do
-  pool medido 49 no drop do Tirano.
+- Custo (`abyss_tyrant:drop:perf`, 2ª passada): 71 a 78 draw calls com ou
+  sem detrito (ruído), 3,3 a 4,2 ms em 1080p headless; pico do pool medido
+  116 no quique do Tirano, `CeilingDebris.MAX = 256`.
+- Critério do lead para "visível": recorte 1:1 em cue+0,3 s com ≥ 25
+  partículas a olho; medido no Rei 102 vivas (≈ 30 a olho), Lich 89, Tirano
+  87 (≈ 15 a 20 a olho, pior contraste: tan sobre lava), Colosso 127;
+  repouso 12 flutuantes (8 a 10 a olho). Pool vivo por quadro sai no print
+  do tool (`detritos vivos: repouso N (flutuantes F) | cue+0,3 s M`).
 - Ferramenta: `screenshot_musica_reativa <chefe>:<cue>:seq[:pasta]` grava
   `polish/<pasta>/<chefe>_<cue>_{seq,teto1x,chao2x}.png` (8 quadros de 0,1 s;
-  recorte 1:1 do teto; chão a 2x em 1,1 / 1,5 / 2,2 s); `:perf` mede draw
+  recorte 1:1 do teto; chão a 2x em 1,1 / 1,5 / 2,2 s; `_drop03_1x` e
+  `_repouso1x` = salão inteiro 1:1 em cue+0,3 s e 0,6 s antes); `:perf` mede draw
   calls e ms com e sem detritos. Chefe sem faixa própria cai na `musicBoss`.
   Movimento se julga em sequência: o `_seq` a 0,5x prova que nada cruza o
   chefe e nada grande sobrou; o `_teto1x` e o `_chao2x` provam o detalhe.
+
+## Tremor só no cenário (18/Out/2026)
+
+Dono (via lead): o tremor da música mexe SÓ o salão (fundo, chamas,
+detritos, chefe), nunca as cartas, os botões, o HUD do jogador nem a barra
+do inimigo. `MusicReact` deixou de chamar o `ScreenShake` global: guarda o
+próprio envelope (`shake.amp/dur/time`, decai no `update`) e expõe
+`MusicReact.shakeOffset()` (aleatório por quadro × envelope × slider
+`screenshake`). O `GameplayScene.draw` lê o offset no passe do mundo quando
+`interior`, CLAMPA pela folga do cover-fit (`(tr.dw - w) / 2`,
+`(tr.dh - h) / 2`: em 1080p a arte 400x256 encaixa exato na largura, logo o
+tremor é só vertical; sem o clamp apareceria uma coluna preta na borda) e
+faz `push / translate` em volta de fundo + InteriorFX + MusicReact.draw +
+chefe + drawFront, com `pop` antes dos overlays. O bbox do chefe sai em
+coordenadas sem deslocamento, então `EnemyHud` (barra e intent), TopBar,
+mão e botões, desenhados fora do passe, ficam parados. O scissor do
+`drawFront` não é afetado por transform (LÖVE), então o recorte sob a
+TopBar continua certo. Prova: `screenshot_musica_reativa <chefe>:drop:tremor`
+grava `polish/<pasta>/<chefe>_drop_tremor_prova.png` (antes | impacto com
+offset forçado de 4 px | diff: amarelo = mudou), onde o salão e o chefe
+mudam e a carta da mão não. `reducedMotion`: `doShake` continua sem tremor.
+Hook de teste: `MusicReact.shakeOffsetProbe`.
+
+## Drops do Monarca (18/Out/2026)
+
+A faixa do Monarca tem grave contínuo e com `DROP_RISE_DB = 7` não tinha
+nenhum drop (o chefe nunca respirava). `tools/music_cues.py` ganhou
+`--drop-db N` (só muda o limiar daquela rodada); com `--drop-db 4` saem 3
+drops (8,06 s e 33,66 s na introdução, 76,67 s no corpo do loop 57,7 a
+108,1 s: esse repete a cada volta), todos em subida de energia depois de
+uma vala visível em `cues_winter_monarch.png`. A 6 e 5 dB saía só 1. Faixa
+nova com poucos drops: tente `--drop-db` antes de mexer no detector.
 
 ## Números (17/Out/2026)
 
@@ -140,15 +191,15 @@ antes/depois e respostas em `tools/preview_out/musica_reativa/polish/checklist.m
 |---|---|---|---|---|
 | carrion_king | 85 s | 43 | 4 | 3 (7,5 / 57,8 / 72,8 s) |
 | tower_lich (loop 40,1 a 103,7 s) | 110 s | 51 | 8 | 2 |
-| winter_monarch (loop 57,7 a 108,1 s) | 114 s | 80 | 2 | 0 |
+| winter_monarch (loop 57,7 a 108,1 s) | 114 s | 79 | 2 | 3 (`--drop-db 4`, 18/Out) |
 | abyss_tyrant (loop 24,8 a 75,1 s) | 81 s | 38 | 11 | 4 (o de 80 s fica depois do loopEnd e nunca toca) |
 | music_boss (genérica) | 20 s | 15 | 1 | 1 |
 | music_boss_eclipse | 28 s | 14 | 1 | 0 |
 
 Rei-Carniça: 91% dos hits no pico grave, nível grave médio no percentil 95
-(Lich 92%, Tirano 79%, Monarca 80%). O Monarca tem grave contínuo, sem queda
-seguida de explosão: zero drop, logo o chefe nunca "respira" nessa luta; só
-hits (0,7/s, os mais densos) e swells.
+(Lich 92%, Tirano 79%, Monarca 82%). O Monarca tem grave contínuo, sem queda
+seguida de explosão: com o limiar padrão era zero drop; desde 18/Out os 3
+drops a 4 dB fazem o chefe respirar (ver "Drops do Monarca").
 Na faixa inteira o tremor ocupa 7% do tempo; menor intervalo entre tremores
 0,88 s.
 
@@ -169,9 +220,9 @@ Na faixa inteira o tremor ocupa 7% do tempo; menor intervalo entre tremores
 
 ## Limites conhecidos
 
-- O tremor é o `ScreenShake` global: mexe a tela inteira (cartas inclusas), por
-  isso o teto é baixo. Um tremor só do mundo exigiria um offset na passada do
-  salão do `GameplayScene`.
+- O tremor da música é só do salão desde 18/Out (seção acima); o teto de
+  3,2 px continua. Em 1080p ele é vertical (sem folga horizontal no
+  cover-fit).
 - Introdução + loop (faixas do Lich, Monarca e Tirano): o `AudioManager` faz
   `seek(loopStart + atraso)` na MESMA fonte quando o `tell` passa de `loopEnd`
   (`src/data/music_loops.lua`, `AudioManager:getLoopPoints(code)`). O tracker

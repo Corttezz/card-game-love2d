@@ -183,13 +183,25 @@ local function shootSeq(id, kind, label)
     local sub = "polish/" .. (label or "depois")
     local tr, target = S.tr, S.target
     local s, ox, oy = tr.scale, tr.ox, tr.oy
+    local CD = require("engine.CeilingDebris")
+    local hx, hy = math.floor(ox + 40 * s), math.floor(oy + 10 * s)
+    local hw, hh = math.floor(320 * s), math.floor(236 * s)
+    S.stepTo(target - 0.6)
+    local restCount = CD.count()
+    local restFloat = CD.floatingCount()
+    save(grid({ S.frame() }, 1, hx, hy, hw, hh, 1, 0), ("%s_%s_repouso1x.png"):format(id, kind), sub)
     local seq = {}
+    local dropCount = 0
     for i = 0, 7 do
         S.stepTo(target - 0.1 + i * 0.1)
         seq[#seq + 1] = S.frame()
+        if i == 4 then
+            dropCount = CD.count()
+            save(grid({ seq[#seq] }, 1, hx, hy, hw, hh, 1, 0), ("%s_%s_drop03_1x.png"):format(id, kind), sub)
+        end
     end
-    local hx, hy = math.floor(ox + 40 * s), math.floor(oy + 10 * s)
-    local hw, hh = math.floor(320 * s), math.floor(236 * s)
+    print(("[screenshot_musica_reativa] %s %s detritos vivos: repouso %d (flutuantes %d) | cue+0,3 s %d"):format(
+        id, kind, restCount, restFloat, dropCount))
     save(grid(seq, 4, hx, hy, hw, hh, 0.5, 6), ("%s_%s_seq.png"):format(id, kind), sub)
     local cx, cy = math.floor(ox + 140 * s), math.floor(oy + 12 * s)
     save(grid(seq, 4, cx, cy, math.floor(120 * s), math.floor(70 * s), 1, 6),
@@ -243,6 +255,60 @@ local function perf(id, kind)
     return true
 end
 
+local function shakeProof(id, kind, label)
+    local S = session(id, kind)
+    if not S then return false end
+    local MR = require("src.systems.MusicReact")
+    local sub = "polish/" .. (label or "depois")
+    local tr = S.tr
+    local s, ox, oy = tr.scale, tr.ox, tr.oy
+    S.stepTo(S.target - 0.1)
+    local before = S.frame()
+    S.stepTo(S.target + 0.03)
+    MR.shakeOffsetProbe = function() return 0, 4 end
+    local impact = S.frame()
+    MR.shakeOffsetProbe = nil
+    local rx, ry = math.floor(ox + 120 * s), math.floor(oy + 60 * s)
+    local rw, rh = math.floor(160 * s), math.floor(180 * s)
+    rh = math.min(rh, S.h - ry)
+    local diff = love.image.newImageData(rw, rh)
+    local changed = 0
+    for y = 0, rh - 1 do
+        for x = 0, rw - 1 do
+            local r1, g1, b1 = before:getPixel(rx + x, ry + y)
+            local r2, g2, b2 = impact:getPixel(rx + x, ry + y)
+            local d = math.abs(r1 - r2) + math.abs(g1 - g2) + math.abs(b1 - b2)
+            if d > 0.08 then
+                changed = changed + 1
+                diff:setPixel(x, y, 1, 0.9, 0.2, 1)
+            else
+                diff:setPixel(x, y, r1 * 0.25, g1 * 0.25, b1 * 0.25, 1)
+            end
+        end
+    end
+    local cards = { "before", "impact" }
+    local sheet = love.graphics.newCanvas(rw * 3 + 24, rh + 12)
+    love.graphics.setCanvas(sheet)
+    love.graphics.clear(0.08, 0.08, 0.08, 1)
+    love.graphics.setColor(1, 1, 1, 1)
+    for i, d in ipairs({ before, impact, diff }) do
+        local img = love.graphics.newImage(d)
+        img:setFilter("nearest", "nearest")
+        if i < 3 then
+            local q = love.graphics.newQuad(rx, ry, rw, rh, img:getWidth(), img:getHeight())
+            love.graphics.draw(img, q, 6 + (i - 1) * (rw + 6), 6)
+        else
+            love.graphics.draw(img, 6 + 2 * (rw + 6), 6)
+        end
+    end
+    love.graphics.setCanvas()
+    save(sheet:newImageData(), ("%s_%s_tremor_prova.png"):format(id, kind), sub)
+    print(("[screenshot_musica_reativa] %s tremor so no salao: %d px mudaram no recorte (%.1f%%)"):format(
+        id, changed, changed * 100 / (rw * rh)))
+    S.close()
+    return true
+end
+
 function M.run(which)
     local I18n = require("src.i18n.I18n")
     I18n.init()
@@ -261,6 +327,8 @@ function M.run(which)
         return shootSeq(id, kind, parts[4])
     elseif parts[3] == "perf" then
         return perf(id, kind)
+    elseif parts[3] == "tremor" then
+        return shakeProof(id, kind, parts[4])
     end
     return shoot(id, kind)
 end

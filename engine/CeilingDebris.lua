@@ -1,6 +1,6 @@
 local CeilingDebris = {}
 
-CeilingDebris.MAX = 160
+CeilingDebris.MAX = 256
 CeilingDebris.LAND_FADE = 0.45
 CeilingDebris.PUFF_LIFE = 0.42
 CeilingDebris.TUMBLE = 0.11
@@ -111,20 +111,21 @@ function CeilingDebris.spawnStreak(style, count, area)
     return made
 end
 
-function CeilingDebris.spawnFloat(style, area)
+function CeilingDebris.spawnFloat(style, area, preLife)
     if not style or not area then return 0 end
     local p = slot()
     if not p then return 0 end
     wake(p, style, "float")
     floating = floating + 1
+    p.size = 1
     p.x = area.x0 + rnd() * (area.x1 - area.x0)
     p.y = area.y1 + rnd() * (area.floor0 - area.y1)
     p.vx = range(style.vx, 0)
     p.vy = range(style.vy, 1)
     p.floorY = area.floor0 + rnd() * (area.floor1 - area.floor0)
-    p.size = 1
     p.swayK = range(style.sway, 0)
     p.maxLife = range(style.life, 6)
+    if preLife then p.life = rnd() * p.maxLife * 0.6 end
     return 1
 end
 
@@ -265,14 +266,22 @@ function CeilingDebris.draw(tr)
                 if shape == "feather" then
                     local sw = math.sin(time * (st.swayHz or 2) + p.phase)
                     local dir = sw >= 0 and 1 or -1
+                    local L = p.size + 2
+                    local ua = u / s
                     love.graphics.setColor(c[1], c[2], c[3], a)
-                    if math.abs(sw) > 0.45 then
-                        cell(ox, oy, s, u, px, py, 3, 1)
-                        love.graphics.setColor(c[1] * 0.7, c[2] * 0.7, c[3] * 0.7, a)
-                        cell(ox, oy, s, u, px + (dir > 0 and 2 or 0) * u / s, py + u / s, 1, 1)
+                    if p.land >= 0 or math.abs(sw) > 0.6 then
+                        cell(ox, oy, s, u, px, py, L, 1)
+                        love.graphics.setColor(c[1] * 0.65, c[2] * 0.65, c[3] * 0.65, a)
+                        cell(ox, oy, s, u, px + ua, py, L - 2, 1)
+                        love.graphics.setColor(c[1], c[2], c[3], a)
+                        cell(ox, oy, s, u, px + (dir > 0 and (L - 1) or 0) * ua, py - ua, 1, 1)
                     else
-                        cell(ox, oy, s, u, px, py, 2, 1)
-                        cell(ox, oy, s, u, px + dir * u / s, py + u / s, 1, 1)
+                        for i = 0, L - 1 do
+                            local step = math.floor(i / 2)
+                            cell(ox, oy, s, u, px + i * ua, py + (dir > 0 and step or -step) * ua, 1, 1)
+                        end
+                        love.graphics.setColor(c[1] * 0.65, c[2] * 0.65, c[3] * 0.65, a)
+                        cell(ox, oy, s, u, px + 2 * ua, py + (dir > 0 and 1 or -1) * ua, 1, 1)
                     end
                 elseif shape == "shard" then
                     local glint = 0.7 + 0.3 * math.sin(time * 9 + p.phase)

@@ -434,6 +434,23 @@ function GameplayScene.draw()
         love.graphics.scale(zk)
     end
     local topBarHeight = GameplayScene.WORLD_ONLY and 0 or uiTopBarH * uiK
+    local hallShake = false
+    if interior then
+        local mdx, mdy = require("src.systems.MusicReact").shakeOffset()
+        if mdx ~= 0 or mdy ~= 0 then
+            local htr = SceneBackground.getCoverTransform(
+                "castle_hall_" .. InteriorFX.hallFor(currentAct), width, height)
+            local sx = htr and math.max(0, (htr.dw - width) * 0.5) or 0
+            local sy = htr and math.max(0, (htr.dh - height) * 0.5) or 0
+            mdx = math.max(-sx, math.min(sx, mdx))
+            mdy = math.max(-sy, math.min(sy, mdy))
+            if mdx ~= 0 or mdy ~= 0 then
+                hallShake = true
+                love.graphics.push()
+                love.graphics.translate(math.floor(mdx + 0.5), math.floor(mdy + 0.5))
+            end
+        end
+    end
     if worldBattle then
         enemyCx, enemyCy = WorldRoad.getRoadAnchor(WorldRoad.BATTLE_REL,
             0, topBarHeight, width, height - topBarHeight)
@@ -528,6 +545,7 @@ function GameplayScene.draw()
         end
         if interiorHall then InteriorFX.drawFront(interiorHall, topBarHeight) end
     end
+    if hallShake then love.graphics.pop() end
 
     if GameplayScene.SCENE_MODE == "worldroad" and not interior then
         WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)

@@ -327,7 +327,11 @@ def main():
     ap.add_argument("ids", nargs="*")
     ap.add_argument("--no-png", action="store_true")
     ap.add_argument("--dry", action="store_true")
+    ap.add_argument("--drop-db", type=float, default=None)
     a = ap.parse_args()
+    if a.drop_db is not None:
+        global DROP_RISE_DB
+        DROP_RISE_DB = a.drop_db
     tracks = boss_tracks()
     if a.ids:
         tracks = [t for t in tracks if t[0] in a.ids]
