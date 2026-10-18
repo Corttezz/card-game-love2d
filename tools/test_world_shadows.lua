@@ -53,7 +53,7 @@ local function legacySprite(img, feetX, feetY, s, footPad, flip, lenK)
                 math.floor(feetX + SMEAR[pi][1] * d),
                 math.floor(feetY + SMEAR[pi][2] * d * 0.5), 0,
                 s * 1.18 * (flip or 1), -s * LEN * (lenK or 1),
-                iw / 2, ih - (footPad or 0), -shd * 0.78, 0)
+                iw / 2, ih - (footPad or 0), -shd * 0.78 * (flip or 1), 0)
         end
     end)
 end

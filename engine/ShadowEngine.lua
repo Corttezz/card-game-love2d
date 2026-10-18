@@ -259,7 +259,7 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
             s * 1.18 * (opts.flip or 1),
             -s * frame.len * lenK,
             iw / 2, ih - pad - baseH,
-            -shd * 0.78, 0)
+            -shd * 0.78 * (opts.flip or 1), 0)
     end
     if yCut then love.graphics.setScissor() end
     if solo then ShadowEngine.endBatch() end
