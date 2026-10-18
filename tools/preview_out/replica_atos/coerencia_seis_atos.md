@@ -34,3 +34,18 @@ item que as frentes 23 e 45 precisam igualar para a intensidade ficar comparáve
 Todas passam pelo mesmo `LuminaireEngine.dayK` (0 até tod 0,45, cheia em 0,85): em 0,65 todas acendem
 fracas e em 0,95 cheias, em todos os atos. A chama pintada no PNG fica sempre (decisão do ato 1). Nada
 divergente encontrado.
+
+## Atualização com os atos 2 e 4 commitados (e669de1d, 71bf6827)
+
+A folha foi refeita com o main que já tem os atos 2 e 4 (os atos 3 e 5 ainda não tinham entrado).
+Régua da luminária de estrada mais perto da câmera, mesma ferramenta:
+
+| Ato | Luminária | Altura | t |
+|-----|-----------|--------|---|
+| 1 fields | poste | 605 px | 0,85 |
+| 2 highlands | pilar-braseiro novo | 573 px | 0,81 |
+| 4 frost | poste de ferro novo | 623 px | 0,87 |
+| 6 dusk | poste novo | 601 px | 0,85 |
+
+Os quatro atos prontos têm luminária de estrada na mesma régua (±4 % considerando a profundidade).
+Sombras: atos 2 e 4 passaram a projetar sombra de árvore como 1 e 6. Pendentes de igualar: atos 3 e 5.

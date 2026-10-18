@@ -43,6 +43,13 @@ return {
 
     lit = {
         fields_bush_0 = 1,
+        dusk_tree_0 = -1,
+        dusk_tree_1 = -1,
+        dusk_tree_2 = -1,
+        dusk_tree_3 = -1,
+        dusk_tree_4 = -1,
+        dusk_tree_5 = -1,
+        dusk_tree_6 = -1,
     },
 
     sizeK = {

@@ -28,3 +28,13 @@ Recortes antes|depois em `recortes/` (lado esquerdo = antes, direito = depois).
 | 7 | Chão mais escuro e frio no horizonte | sim: `groundFar` 0,62 / `groundReach` 0,85 (ato 1) | `depois/b6_dia_fork.png` |
 | 8 | Colagem | corrigido no poste: a arte antiga tinha uma faixa laranja pintada no lado da madeira e uma mão-francesa quadriculada que, ampliada 7x, virava ruído; arte nova (PixelLab `create_image_pro`, referência = poste antigo) com madeira uniforme | `poste_perto_tod0.65.png`, `fogueira_por.png` |
 | 9 | Métrica não prova visual | recortes abertos e olhados um a um (lista acima) | `recortes/` |
+
+## Diorama (adendo do dono, 18/Out)
+
+As 7 árvores do bioma foram julgadas a 4x contra `memory/art_direction_diorama.md`: as antigas (0 a 2) e
+as primeiras novas (3 a 6) liam como massa roxa de valor único, sem planos e com luz de cima. Todas as 7
+foram regeradas (PixelLab `create_image_pro`, referência `dusk_tree_0`, 28 imagens) com copa em três
+planos, oclusão do tronco pela folhagem, tronco com face de luz e o sol do bioma à ESQUERDA
+(`celestial.xr` 0,30): `world_props.lit = -1` em todas, então `flipToSun` vira o lado claro para o sol.
+Escolhidas: `duskd_a__1, b__3, c__3, d__0, e__1, f__1, g__1` (folha `diorama/arvores_antes_depois_4x.png`,
+candidatas em `diorama/candidatas_2x.png`). Poste e marcos não foram regerados nesta passada.

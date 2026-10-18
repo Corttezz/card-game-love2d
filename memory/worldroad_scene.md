@@ -324,6 +324,8 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   sem a faixa laranja pintada e sem a mão-francesa quadriculada) e cintilação refeita só no vidro em
   `anim/dusk_lantern_0/` (o `anim/` tem prioridade sobre o PNG solto: trocar só o PNG não muda nada);
   tamanho 6,1 para o poste medir o mesmo que o do ato 1 em cada profundidade (601 x 605 px em t 0,85).
+  Diorama (adendo do dono): as 7 árvores regeradas com copa em três planos e luz do sol do bioma
+  (à ESQUERDA, `celestial.xr` 0,30), `world_props.lit = -1` para o `flipToSun` manter o lado claro no sol.
 - **Ato 4 / frost (18/Out/2026, frente replica-45, `tools/preview_out/replica_atos/frost/`):** entrada
   `frost` no modelo `fields` (treeDepth com lift 0,30, sombras ligadas: alphaK 2,0, cor de multiplicação
   azul 0,46/0,52/0,66, árvore ×1,35, copa 0,45; chão mais escuro no horizonte); grade só matiz (o pôr
