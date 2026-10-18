@@ -13,8 +13,36 @@ end
 local function fnBody(src, name)
     local s = src:find("local function " .. name .. "%(")
     if not s then return nil end
-    local e = src:find("\nend\n", s, true)
-    return e and src:sub(s, e + 4) or nil
+    local depth, i, n = 0, s, #src
+    while i <= n do
+        local c = src:sub(i, i)
+        if c == "\"" or c == "'" then
+            local j = i + 1
+            while j <= n and src:sub(j, j) ~= c do
+                if src:sub(j, j) == "\\" then j = j + 1 end
+                j = j + 1
+            end
+            i = j + 1
+        elseif src:sub(i, i + 1) == "[[" then
+            local j = src:find("]]", i + 2, true)
+            i = (j or n) + 2
+        elseif c:match("[%a_]") then
+            local w = src:match("^[%w_]+", i)
+            local prev = i > 1 and src:sub(i - 1, i - 1) or " "
+            if prev ~= "." and prev ~= ":" then
+                if w == "function" or w == "do" or w == "if" or w == "repeat" then
+                    depth = depth + 1
+                elseif w == "end" or w == "until" then
+                    depth = depth - 1
+                    if depth == 0 then return src:sub(s, i + #w - 1) end
+                end
+            end
+            i = i + #w
+        else
+            i = i + 1
+        end
+    end
+    return nil
 end
 
 function M.run()
