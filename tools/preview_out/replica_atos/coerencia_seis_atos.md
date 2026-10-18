@@ -49,3 +49,16 @@ Régua da luminária de estrada mais perto da câmera, mesma ferramenta:
 
 Os quatro atos prontos têm luminária de estrada na mesma régua (±4 % considerando a profundidade).
 Sombras: atos 2 e 4 passaram a projetar sombra de árvore como 1 e 6. Pendentes de igualar: atos 3 e 5.
+
+## Fechamento (main 5ce8ac5d, os seis atos commitados)
+
+`seis_atos_batalha.png` refeita com os seis atos prontos + as duas regras de motor desta frente:
+- **Densidade de pixel** (c83a3a5f): pior escala de prop no quadro de batalha 5,7 a 6,2 em todos os atos
+  (inimigo 3,2; teto 2x = 6,4). Antes: 6,1 (abismo) a 11,1 (crepúsculo).
+- **Castelo** (c836e88d): fora da coluna do HUD, no lado oposto ao sol/lua, visível nos seis atos;
+  castelo / maior árvore vizinha da crista 2,25 (pântano) a 2,67 (campos), todos acima de 2x.
+- Luminária de estrada mais perto na faixa do inimigo: 334 a 361 px em t 0,53 a 0,56 nos atos 4, 5 e 6;
+  os postes perto da câmera saíram pela regra de pixel.
+- Ainda lê mal: no ato 3 a tocha da beira da estrada do lado esquerdo cobre parte do castelo; no ato 2 o
+  pilar azul fica na frente da base dele. É paralaxe de verdade (objeto perto na frente do longe), mas
+  compete com o castelo pela atenção.
