@@ -434,12 +434,31 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   de estrada a menos de `dRel` 5 de profundidade do palco cuja caixa encosta na do inimigo (meia largura
   estimada `86 × enemyScreenK × battleSizeK`, altura 2,6x) a menos de `gap` 7 % da largura vai para fora
   (`lane` até 2,4). Recuar em profundidade não resolvia: para a frente bate no teto de pixel (o poste do
-  crepúsculo só cabe até t 0,57), para trás fica atrás do corpo. Atenção: `_lumBoxN` é zerado no começo do
-  `drawProps`, então as caixas de luminária só valem entre o `lumPrepass` e o `drawProps`. (3) Castelo: troca
+  crepúsculo só cabe até t 0,57), para trás fica atrás do corpo. As caixas de luminária são escritas só pelo
+  `lumPrepass` e valem até o próximo quadro (o zeramento no `drawProps` saiu, ver sol coerente). (3) Castelo: troca
   de posição maior que 12 % da largura dele vira fade cruzado de 0,3 s (`CASTLE_APPROACH.fade`,
   `WorldRoad._castleFade`); o resto (deriva do `progress`) segue suave. Ferramenta:
   `lovec . test_one screenshot_castelo_fade <rótulo>` (batalha, encruzilhada abrindo, landmark nos seis
   atos; imprime o maior passo sem fade, hoje ≤ 1,7 px por quadro).
+
+- **Sol coerente com o astro que se vê (18/Out/2026, frente sol-coerente, `tools/preview_out/sol_coerente/`):**
+  o disco desenhado em `celestial.xr/yr` NUNCA aparece (0 px em 8 andares × 6 biomas: a faixa de montanha é
+  opaca no céu inteiro); só abyss e dusk têm astro, e ele é PINTADO na faixa (u 0,505 da PNG, também no
+  `_front` do abyss). A faixa rola com a câmera (`off = camZ × 2,5 × sx`, ladrilho espelhado), então o sol
+  pintado andava 0,125 da largura por andar e atravessava a tela a cada 8 andares, contra uma luz fixa
+  (dusk: luz em 0,30, sol visível de 0,03 a 0,96). Regra: `celestial.painted = u` ancora a faixa (base e
+  `_front`, mesmo `stripTransform`) para o astro pintado cair em `xr`, a faixa desse bioma não rola mais
+  (astro no infinito, sem paralaxe) e o disco desenhado não é desenhado. `xr` segue fonte única da luz.
+  abyss `xr` 0,68 → 0,63 (sol à direita da placa de intenção, antes escondido atrás dela), dusk 0,30 → 0,40
+  (contraluz com inclinação leve para o lado onde já estava): nenhum lado mudou, então nada re-espelhado.
+  Faixa nova com astro pintado: meça `u` na PNG e declare `painted`. Ferramenta:
+  `lovec . test_one screenshot_sol_coerente <rótulo>` (8 andares + encruzilhada, conta o disco em magenta).
+  Junto: a trava castelo × luminária do `test_world_props` lia `_lumBoxN` já zerado pelo `drawProps` (vazia);
+  o zeramento saiu (só o `lumPrepass` escreve as caixas, válidas até o próximo quadro), a trava mede a
+  sobreposição do castelo com as caixas do quadro desenhado contra a de quando ele está em cima de uma
+  (< 50 %), e exige caixas > 0. Provado por mutação: peso da luminária invertido → 6 biomas falham; zeramento
+  de volta → 6 falham. O `pick` do castelo ganhou duas posições em ±2,4 × deslocamento (só se cabem na tela)
+  e a luminária pesa 4 como marcos e landmark: o ato 2 saía do centro ainda sobre o pilar (63 %).
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

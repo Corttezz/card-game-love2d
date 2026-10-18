@@ -1986,7 +1986,7 @@ end
 local function drawCelestialOf(g, x, y, w, bid, alpha)
     local b = BIOME_BY_ID[bid] or rawBiome()
     local cel = b.celestial
-    if not cel then return end
+    if not cel or cel.painted then return end
     local cx = x + cel.xr * w
     local cy = y + cel.yr * (g.crestApexY - y)
     local c = cel.color
@@ -2119,11 +2119,12 @@ local function ridge(seed, i)
          + math.sin(i * 1.7 + seed * 0.7) * 0.15
 end
 
-local function stripTransform(g, x, w, camZ, iw, ih)
+local function stripTransform(g, x, w, camZ, iw, ih, cel)
     local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
     local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
     local tileW = iw * sx
-    local off = (camZ * 2.5 * sx) % (tileW * 2)
+    local off = (cel and cel.painted) and (cel.painted * tileW - cel.xr * w)
+        or (camZ * 2.5 * sx) % (tileW * 2)
     return sx, yTop, tileW, off
 end
 
@@ -2167,7 +2168,8 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
     local img = getSprite("mountains", 0, bid)
     if img then
         local iw, ih = img:getWidth(), img:getHeight()
-        local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
+        local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih,
+            (BIOME_BY_ID[bid] or PropCut.EMPTY).celestial)
         local c = Scene.Grade.color("mountain", 0, LMG.c)
         love.graphics.setColor(c[1], c[2], c[3], alpha)
         drawStripTiles(img, x, sx, yTop, tileW, off)
@@ -2215,7 +2217,8 @@ local function drawMountainsFrontOf(g, x, w, camZ, bid, alpha)
     if _G.WR_DEBUG then require("src.core.Debug").trace("[WR] frontOf bid=" .. tostring(bid) .. " a=" .. alpha .. " img=" .. tostring(img ~= nil and img ~= false)) end
     if not img then return false end
     local iw, ih = img:getWidth(), img:getHeight()
-    local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih)
+    local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih,
+        (BIOME_BY_ID[bid] or PropCut.EMPTY).celestial)
     local c = Scene.Grade.color("mountain", 0, LMG.c)
     love.graphics.setColor(c[1], c[2], c[3], alpha)
     drawStripTiles(img, x, sx, yTop, tileW, off)
@@ -2257,9 +2260,11 @@ function CASTLE_APPROACH.pick(g, w, progress, bid, bw, bh, sinkExtra)
     local lm = WorldRoad._landmark and WorldRoad._lmMark
     local best, bestScore, curScore
     local cur = WorldRoad._castleShift
-    for k = 1, 5 do
+    for k = 1, 7 do
         local dx = (k == 1 and dir * off) or (k == 2 and -dir * off)
-            or (k == 3 and dir * off * 1.7) or (k == 4 and -dir * off * 1.7) or 0
+            or (k == 3 and dir * off * 1.7) or (k == 4 and -dir * off * 1.7)
+            or (k == 6 and dir * off * 2.4) or (k == 7 and -dir * off * 2.4) or 0
+        if k > 5 and math.abs(dx) + bw / 2 > w * 0.48 then break end
         local cx = g.cx + dx
         local by = g.crestYAt(cx) + bh * (0.03 + 0.20 * (1 - progress) + sinkExtra)
         local x1, y1, x2, y2 = cx - bw / 2, by - bh, cx + bw / 2, by
@@ -2278,7 +2283,7 @@ function CASTLE_APPROACH.pick(g, w, progress, bid, bw, bh, sinkExtra)
         end
         local lb = WorldRoad._lumBoxes
         for i = 1, (WorldRoad._lumBoxN or 0) do
-            score = score + C.overlap(x1, y1, x2, y2, lb[i], 0)
+            score = score + C.overlap(x1, y1, x2, y2, lb[i], 0) * 4
         end
         if cur and math.abs(dx - cur) < 2 then curScore = score end
         if not bestScore or score < bestScore then best, bestScore = dx, score end
@@ -3344,7 +3349,6 @@ local lumArg = {}
 
 local function drawProps(g, x, w, camZ)
     table.sort(WorldRoad._props, propZDesc)
-    WorldRoad._lumBoxN = 0
     WorldRoad._pools.shN, WorldRoad._pools.occN = 0, 0
 
     local farPass = WorldRoad._lists.far

@@ -253,18 +253,32 @@ function M.run()
                 end
             end
             local ctop = WorldRoad._castleTop
-            local hit = 0
-            if ctop then
+            local function lumOverlap(cx)
+                local sum = 0
                 for i = 1, (WorldRoad._lumBoxN or 0) do
                     local lb = WorldRoad._lumBoxes[i]
-                    local ox = math.min(ctop.cx + ctop.w / 2, lb.x2) - math.max(ctop.cx - ctop.w / 2, lb.x1)
+                    local ox = math.min(cx + ctop.w / 2, lb.x2) - math.max(cx - ctop.w / 2, lb.x1)
                     local oy = math.min(ctop.baseY, lb.y2) - math.max(ctop.baseY - ctop.h, lb.y1)
-                    if ox > 0 and oy > 0 then hit = hit + ox * oy end
+                    if ox > 0 and oy > 0 then sum = sum + ox * oy end
                 end
+                return sum
             end
-            t:truthy(("bioma %d: castelo no meio da jornada sai do centro e da frente das luminárias (dx %.0f, sobreposição %.0f px²)")
-                :format(b, ctop and (ctop.cx - W / 2) or 0, hit),
-                ctop ~= nil and math.abs(ctop.cx - W / 2) > W * 0.05 and hit < ctop.w * ctop.h * 0.05)
+            local nLum = WorldRoad._lumBoxN or 0
+            t:truthy(("bioma %d: caixas das luminárias de beira de estrada medidas no quadro desenhado (%d)")
+                :format(b, nLum), nLum > 0)
+            local hit, onTop = 1, 0
+            if ctop then
+                for i = 1, nLum do
+                    local lb = WorldRoad._lumBoxes[i]
+                    onTop = math.max(onTop, lumOverlap((lb.x1 + lb.x2) / 2))
+                end
+                if onTop > 0 then hit = lumOverlap(ctop.cx) / onTop end
+            end
+            t:truthy(("bioma %d: a trava enxerga o castelo posto em cima de uma luminária (%.0f px²)")
+                :format(b, onTop), onTop > 0)
+            t:truthy(("bioma %d: castelo no meio da jornada sai do centro e da frente das luminárias (dx %.0f, %.0f%% da sobreposição de quando está em cima de uma)")
+                :format(b, ctop and (ctop.cx - W / 2) or 0, hit * 100),
+                ctop ~= nil and math.abs(ctop.cx - W / 2) > W * 0.05 and hit < 0.5)
             t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
                 :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
         end
