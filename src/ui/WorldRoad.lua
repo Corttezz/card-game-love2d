@@ -3343,11 +3343,19 @@ local function drawProps(g, x, w, camZ)
                             local cs = s * (0.5 + 0.13 * ci) * cvv.scale
                             local cflip = cvv.flip
                             local crot, ckx = Scene.Var.sway(cvv, WorldRoad._time, gw, stiff, reduced)
+                            local tsh = Scene.Grade.cfg("shadow").tree
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
-                                shadowOpts(0.8 * fadeA, cflip,
+                                shadowOpts(0.8 * fadeA * (tsh and tsh.alphaK or 1), cflip,
                                     PropCut.cutOf(cimg, p.kind),
-                                    WorldRoad.SHADOW_PROFILE[p.kind]), t)
+                                    WorldRoad.SHADOW_PROFILE[p.kind]
+                                        or Scene.Grade.cfg("shadow").tree), t)
                             Scene.Contact.queue(cimg, cx2, cy2, cs, t, 0.8 * fadeA, cflip)
+                            local csh = p.kind ~= "bush" and Scene.Grade.cfg("shadow").canopy
+                            if csh then
+                                local crx = cimg:getWidth() * cs * csh.width
+                                Scene.Contact.queueDisc(cx2 + sunShadowDir(g, x, w, cx2) * crx * csh.shift,
+                                    cy2 - 1, crx, crx * csh.flat * (0.5 + 0.5 * t), csh.alpha * 0.8 * fadeA, t)
+                            end
                             local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), t, LMG.c)
                             love.graphics.setColor(math.min(1, cc[1] * 0.88 * cvv.tintR),
                                 math.min(1, cc[2] * 0.88 * cvv.tintG),
@@ -3384,10 +3392,12 @@ local function drawProps(g, x, w, camZ)
                 end
 
                 local aFade = math.min(1, 0.72 + t * 1.1)
+                local tsh = isTree and Scene.Grade.cfg("shadow").tree or nil
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
-                    shadowOpts(aFade * fadeA, lumFlip * vflip,
+                    shadowOpts(aFade * fadeA * (tsh and tsh.alphaK or 1), lumFlip * vflip,
                         lumAnc and lumAnc.footPad or PropCut.cutOf(img, p.kind),
-                        WorldRoad.SHADOW_PROFILE[p.kind]), t) then
+                        WorldRoad.SHADOW_PROFILE[p.kind]
+                            or (isTree and Scene.Grade.cfg("shadow").tree or nil)), t) then
                     local shd = sunShadowDir(g, x, w, pxX)
                     love.graphics.setColor(0, 0, 0, 0.20 * aFade * fadeA)
                     love.graphics.ellipse("fill",
@@ -3396,6 +3406,12 @@ local function drawProps(g, x, w, camZ)
                 end
                 if p.kind ~= "tuft" and p.kind ~= "flowers" then
                     Scene.Contact.queue(img, pxX, sy, s, t, fadeA, lumFlip * vflip)
+                end
+                if isTree and p.kind ~= "bush" and Scene.Grade.cfg("shadow").canopy then
+                    local cs = Scene.Grade.cfg("shadow").canopy
+                    local rx = iw * s * cs.width
+                    Scene.Contact.queueDisc(pxX + sunShadowDir(g, x, w, pxX) * rx * cs.shift,
+                        sy - 1, rx, rx * cs.flat * (0.5 + 0.5 * t), cs.alpha * aFade * fadeA, t)
                 end
 
                 local rot = 0
@@ -3699,6 +3715,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     end
     Scene.Contact.setFrame(Scene.Grade.cfg("contact"), Scene.Grade.shadowTint())
     ShadowEngine.setAlphaK(Scene.Grade.cfg("shadow").alphaK)
+    ShadowEngine.FADE = Scene.Grade.cfg("shadow").fade or 0.45
 
     local gb0 = envColor("grassB")
     local g0 = Scene.Grade.color("ground", 1, LMG.c)

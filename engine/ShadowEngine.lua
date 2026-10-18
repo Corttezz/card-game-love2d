@@ -383,6 +383,7 @@ end
 
 local function drawQueued(q)
     SH.depth = q.t
+    SH.alpha = math.min(0.75, frame.alpha * frame.alphaK * ((q.o and q.o.alphaK) or 1))
     ShadowEngine.sprite(q.img, q.x, q.y, q.s, q.o)
     q.img, q.o = nil, nil
 end
