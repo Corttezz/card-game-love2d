@@ -234,6 +234,57 @@ diz quantas variantes a espécie tem (`PropCut.nvar`; `rollProp`, companheiras e
 - Sombra de copa e faixa de contato só no perto (`PropCut.nearK`); `treeGain` 0,92.
 - Perf 1080p: 5,2 ms mediana, 401 draw calls, 31,6 KB, 0 decode na troca; 188 locais.
 
+**Escala humana do quadro de batalha (18/Out/2026, frente cenario-escala; entregas em
+`tools/preview_out/escala_humana/`: `medidas.md`, `checklist.md`, recortes antes|depois):**
+o dono reprovou o quadro de batalha do ato 1 (poste menor que o inimigo, árvores do meio
+leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do castelo).
+- **Unidade de medida = o inimigo.** Em 1080p o inimigo comum mede 317 px e fica em t=0,385
+  (`battleRelFor` empurra o palco até a carta levantada; `enemyScreenK` 1,555 e
+  `ENEMY_SIZE_PERSP` 0,6), o que dá **6,9 unidades de `size`** na profundidade dele, não as 3,7
+  que a conta ingênua (250 px em rel 9) sugere. Ferramenta: `lovec . test_one escala_humana
+  <rótulo>:<b1..b6|fork|landmark|castelo>` (1080p virtual, `ESCALA_TOD`, `ESCALA_VIRTUAL=WxH`),
+  escreve PNG + `.txt` com altura em px de cada prop (`_hitScene`), inimigo, castelo
+  (`WorldRoad._castleTop.h`) e marco escolhido (`_lmMark.h`); `tools/escala_humana_sheet.py`
+  monta folhas e mede copa × grama.
+- **Tamanhos (dado):** `KIND_SIZE` tree 5,6 / pine 6,0 / deadtree 5,2 (eram 4,6/5,0/4,2);
+  poste de rua 5,0 nos campos, pântano e crepúsculo (3,2/4,2/4,2); braseiros 2,4 a 2,5, tocha
+  2,2, totem 3,0; relicário/cristal/cogumelo/lanterna de mão do gelo intocados. Resultado: poste
+  = 0,68× o inimigo REAL na mesma profundidade (era 0,44), árvore adulta 0,6 a 1,1× (era 0,5 a
+  0,8). A razão literal do brief (poste 1,35×, árvore 1,5× do inimigo real) exigiria poste ≈ 9 e
+  árvore ≈ 10 unidades: a árvore perto passaria de 1100 px e cobriria estrada e cartas. O lever
+  que falta é o tamanho do inimigo (cresce 1,555× em 1080p contra 1,40× do mundo), decisão de
+  legibilidade que não foi mexida.
+- **Crista:** `PropCut.crestK(kind, t)` (`PropCut.CREST = { t = 0.15, k = 0.70 }`) encolhe só
+  as árvores nos últimos 15 % de profundidade (o `persp` tem piso 0,14 e deixava a árvore do
+  horizonte do tamanho do castelo); castelo nasce em `CASTLE_APPROACH.far` 1,3 do tamanho
+  base e cresce `growth` 2,9 (era 1,0 + 3,2: o tamanho final no portão não mudou). Castelo /
+  maior árvore da crista: 1,7 → 2,3 a 2,5 em todos os atos.
+- **Véu das árvores = curva do chão.** `treeDepth.lift` virou multiplicador de
+  `SceneGrade.fogAlpha(t)` (0,25 = o mesmo `VEIL_K` que o chão recebe) com a névoa CRUA do
+  bioma (`haze = {1,1,1}`); o shader `tree_depth.glsl` não clareia mais os escuros; a família
+  `tree` com shader não recebe a névoa clara do tint (`SceneGrade.color`); `sat` 0,85 no
+  horizonte; meia resolução só em t < `lodT` 0,12. Medido em t 0,3 a 0,5: copa/grama vizinha
+  L 1,10 → 0,70 e S 0,92 → 1,84 (no perto é 0,88 / 1,71). lift 1,0 e 0,5 ainda liam lavanda.
+- **Sombras:** a batalha SEMPRE compôs as mesmas sombras da encruzilhada (duas bandas:
+  `endFrame` antes do inimigo e no fim; provado por diff com `ESCALA_NOSHADOW=1`). O que
+  estava errado: `ShadowEngine.sprite` aplicava o cisalhamento do sol DENTRO do espaço do
+  sprite espelhado, então todo prop virado para a estrada (`face`, `flipToSun`) projetava a
+  sombra PARA o sol (postes da direita para a direita). Agora `kx = -shd·0,78·flip`. O poste
+  mais perto continua sem sombra visível porque o sol está à frente da câmera (`celestial.yr`
+  0,14): a sombra cai para baixo da tela; só a faixa de contato aparece.
+- **Luminária de dia:** `LuminaireEngine.setTimeOfDay` (chamado no `WorldRoad.draw`) e
+  `dayK = smoothstep(0.45, 0.85, tod)` (`DAY_GATE`) multiplicam raio e intensidade da luz e
+  da micro-luz; em `dayK = 0` nada é submetido. A chama pintada no PNG fica. No jogo real
+  (tod 0,62 a 1,0) a lanterna acende do andar 1 (fraca) ao 4 (cheia).
+- Perf 1080p: 3,5 ms mediana, 397 draw calls, 31,8 KB; WorldRoad continua em 188 locais.
+- **Cadência das luminárias:** `LUM_STEP` 7 → 13 (jitter 2,5; lado oposto meio passo à
+  frente, 0,45 a 0,65 do passo). Com poste de 5,0 a cadência antiga empilhava quatro postes em
+  volta do inimigo (a cabeça do perto encostava no do meio); agora no máximo 2 por lado na
+  faixa visível de 26 unidades (batalha do ato 1: um em t 0,85 e um em t 0,13). Braseiros,
+  tochas e totens seguem a mesma fila.
+- O que ainda incomoda (ver `checklist.md`): o poste na profundidade do inimigo é 0,68× dele
+  (aceito pelo lead; o lever é `enemyScreenK`, registrado em `medidas.md`).
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica

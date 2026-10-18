@@ -1,0 +1,84 @@
+scene battle act=3 sprite=ember_imp tod=0.65 rel=13.19 t=0.385 sizeK=1.267
+enemy h= 307 visible= 317 w= 307 base= 657 x= 975 top= 417
+castle progress=0.00 h= 181 w= 216 base= 468 x= 960
+shadows endFrame queued=63,58 silhouettes=1 bands=2
+prop brazier   t= 0.02 rel= 24.7 big=1.00 h=  30 w=  21 base= 439 x=1062 box=1051,460,1072,490
+prop brazier   t= 0.32 rel= 14.8 big=1.00 h=  59 w=  41 base= 624 x=1114 box=1094,617,1134,675
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  31 w=  59 base=  98 x= 390 box=360,119,419,150
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  36 w=  70 base= 128 x= 642 box=607,144,676,180
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  40 w=  76 base=  89 x= 300 box=262,101,337,140
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  66 w= 127 base= 137 x= 565 box=502,123,628,189
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  77 w= 148 base= 144 x= 857 box=783,119,930,196
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  83 w= 159 base= 236 x=1755 box=1676,205,1834,287
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  91 w= 175 base= 182 x= 221 box=134,143,308,234
+prop deadtree  t= 0.00 rel= 25.7 big=1.23 h=  92 w=  66 base= 459 x= 519 box=486,419,552,511
+prop deadtree  t= 0.01 rel= 25.1 big=1.25 h= 107 w=  77 base= 453 x=1321 box=1282,398,1359,505
+prop deadtree  t= 0.02 rel= 24.6 big=1.26 h=  79 w=  62 base= 535 x= 196 box=165,508,226,587
+prop deadtree  t= 0.04 rel= 23.6 big=1.01 h=  79 w=  56 base= 503 x= 396 box=367,476,423,555
+prop deadtree  t= 0.04 rel= 23.7 big=1.00 h=  68 w=  53 base= 475 x= 557 box=530,459,583,527
+prop deadtree  t= 0.04 rel= 23.8 big=1.15 h=  89 w=  64 base= 547 x=1734 box=1702,510,1766,599
+prop deadtree  t= 0.06 rel= 22.9 big=1.25 h= 108 w=  77 base= 616 x=1922 box=1883,560,1960,667
+prop deadtree  t= 0.07 rel= 22.4 big=1.13 h=  90 w=  65 base= 623 x=   0 box=-31,584,32,675
+prop deadtree  t= 0.07 rel= 22.6 big=1.00 h=  78 w=  56 base= 611 x=  32 box=3,584,60,662
+prop deadtree  t= 0.08 rel= 22.2 big=1.15 h=  82 w=  65 base= 516 x=1479 box=1447,485,1511,568
+prop deadtree  t= 0.09 rel= 21.6 big=1.11 h=  90 w=  70 base= 612 x=  78 box=43,574,113,664
+prop deadtree  t= 0.10 rel= 21.2 big=1.00 h=  78 w=  61 base= 618 x=1833 box=1802,591,1864,669
+prop deadtree  t= 0.12 rel= 20.7 big=1.09 h= 103 w=  74 base= 560 x= 348 box=310,508,384,611
+prop deadtree  t= 0.14 rel= 19.9 big=1.11 h= 102 w=  73 base= 637 x=1816 box=1779,586,1852,688
+prop deadtree  t= 0.16 rel= 19.3 big=1.25 h= 127 w=  91 base= 548 x=1341 box=1295,473,1386,599
+prop deadtree  t= 0.16 rel= 19.4 big=1.23 h= 131 w=  94 base= 610 x=1685 box=1638,531,1732,662
+prop deadtree  t= 0.17 rel= 19.0 big=1.00 h=  86 w=  67 base= 583 x=1527 box=1492,548,1560,634
+prop deadtree  t= 0.17 rel= 19.0 big=1.02 h=  90 w=  70 base= 667 x=  63 box=27,629,97,719
+prop deadtree  t= 0.19 rel= 18.3 big=1.25 h= 120 w=  94 base= 603 x= 359 box=311,535,405,655
+prop deadtree  t= 0.22 rel= 17.7 big=1.00 h= 100 w=  79 base= 748 x=2006 box=1966,699,2045,799
+prop deadtree  t= 0.22 rel= 17.7 big=1.08 h= 106 w=  83 base= 608 x=1510 box=1468,553,1551,659
+prop deadtree  t= 0.24 rel= 17.0 big=1.20 h= 152 w= 109 base= 669 x= 200 box=145,569,254,721
+prop deadtree  t= 0.25 rel= 16.6 big=1.29 h= 182 w= 131 base= 794 x=-142 box=-207,664,-77,845
+prop deadtree  t= 0.25 rel= 16.7 big=1.00 h= 135 w=  97 base= 673 x=1702 box=1653,589,1750,724
+prop deadtree  t= 0.28 rel= 16.0 big=1.22 h= 159 w= 114 base= 662 x= 326 box=268,555,382,714
+prop deadtree  t= 0.29 rel= 15.5 big=1.11 h= 160 w= 115 base= 720 x= 145 box=88,612,202,772
+prop deadtree  t= 0.31 rel= 15.0 big=1.17 h= 169 w= 121 base= 715 x=1715 box=1654,598,1775,767
+prop deadtree  t= 0.31 rel= 15.2 big=1.17 h= 159 w= 124 base= 808 x=2011 box=1948,701,2073,859
+prop deadtree  t= 0.33 rel= 14.5 big=1.22 h= 190 w= 137 base= 700 x= 318 box=249,561,386,751
+prop deadtree  t= 0.34 rel= 14.3 big=1.08 h= 165 w= 119 base= 758 x= 116 box=56,644,175,809
+prop deadtree  t= 0.35 rel= 14.1 big=1.29 h= 187 w= 147 base= 811 x= -27 box=-100,676,46,863
+prop deadtree  t= 0.40 rel= 12.7 big=1.00 h= 173 w= 124 base= 786 x=1765 box=1703,665,1827,838
+prop deadtree  t= 0.40 rel= 12.8 big=1.00 h= 182 w= 131 base= 933 x=-236 box=-301,803,-170,985
+prop deadtree  t= 0.43 rel= 12.2 big=1.22 h= 190 w= 149 base= 746 x= 364 box=289,608,437,798
+prop deadtree  t= 0.45 rel= 11.6 big=1.24 h= 212 w= 166 base= 803 x=1720 box=1637,642,1803,854
+prop deadtree  t= 0.45 rel= 11.7 big=1.07 h= 234 w= 168 base= 929 x=2083 box=1999,746,2167,980
+prop deadtree  t= 0.45 rel= 11.7 big=1.41 h= 281 w= 202 base= 928 x=2079 box=1978,698,2180,979
+prop deadtree  t= 0.46 rel= 11.4 big=1.03 h= 210 w= 151 base= 768 x=1564 box=1488,610,1639,820
+prop deadtree  t= 0.50 rel= 10.3 big=1.16 h= 276 w= 198 base= 911 x= -25 box=-123,687,74,962
+prop deadtree  t= 0.50 rel= 10.5 big=1.21 h= 260 w= 187 base= 911 x=1956 box=1862,702,2049,962
+prop deadtree  t= 0.51 rel= 10.2 big=1.04 h= 235 w= 169 base= 918 x= -31 box=-115,734,53,969
+prop deadtree  t= 0.52 rel= 10.0 big=1.32 h= 277 w= 217 base=1000 x=-215 box=-323,775,-106,1052
+prop deadtree  t= 0.54 rel=  9.5 big=1.01 h= 277 w= 199 base=1064 x=-309 box=-408,838,-209,1115
+prop deadtree  t= 0.56 rel=  9.0 big=1.19 h= 331 w= 238 base= 877 x=1737 box=1618,598,1856,929
+prop deadtree  t= 0.57 rel=  8.8 big=1.00 h= 276 w= 198 base= 858 x=1650 box=1550,634,1749,910
+prop deadtree  t= 0.57 rel=  8.8 big=1.16 h= 289 w= 226 base= 895 x= 143 box=29,657,256,946
+prop deadtree  t= 0.61 rel=  8.0 big=1.00 h= 267 w= 192 base= 960 x=1898 box=1801,744,1993,1011
+prop deadtree  t= 0.61 rel=  8.1 big=1.00 h= 265 w= 208 base= 985 x= -49 box=-152,772,54,1037
+prop deadtree  t= 0.63 rel=  7.6 big=1.08 h= 259 w= 203 base= 944 x=1817 box=1714,736,1918,995
+prop deadtree  t= 0.67 rel=  6.7 big=1.04 h= 374 w= 269 base=1155 x=-317 box=-451,832,-182,1206
+prop deadtree  t= 0.68 rel=  6.4 big=1.25 h= 419 w= 301 base= 996 x=  55 box=-95,628,205,1047
+prop deadtree  t= 0.69 rel=  6.3 big=1.19 h= 374 w= 269 base=1220 x=2331 box=2195,897,2465,1271
+prop deadtree  t= 0.73 rel=  5.5 big=1.14 h= 392 w= 282 base=1031 x=1887 box=1745,691,2027,1082
+prop deadtree  t= 0.75 rel=  5.0 big=1.29 h= 485 w= 349 base=1053 x=1904 box=1729,619,2078,1104
+prop deadtree  t= 0.80 rel=  4.0 big=1.00 h= 440 w= 317 base=1297 x=-408 box=-565,908,-249,1348
+prop deadtree  t= 0.81 rel=  3.8 big=1.13 h= 451 w= 325 base=1113 x= -37 box=-198,713,125,1164
+prop deadtree  t= 0.81 rel=  3.8 big=1.33 h= 572 w= 411 base=1384 x=2450 box=2244,863,2655,1436
+prop deadtree  t= 0.82 rel=  3.6 big=1.25 h= 464 w= 364 base=1188 x=-186 box=-367,775,-4,1239
+prop deadtree  t= 0.83 rel=  3.3 big=1.06 h= 423 w= 304 base=1188 x=-169 box=-321,816,-16,1240
+prop deadtree  t= 0.85 rel=  3.0 big=1.16 h= 523 w= 376 base=1237 x=2163 box=1975,766,2351,1289
+prop deadtree  t= 0.88 rel=  2.4 big=1.00 h= 460 w= 331 base=1293 x=2230 box=2064,885,2395,1344
+prop deadtree  t= 0.89 rel=  2.1 big=1.14 h= 597 w= 429 base=1132 x=1872 box=1656,586,2086,1184
+prop deadtree  t= 0.94 rel=  1.2 big=1.15 h= 599 w= 431 base=1398 x=-411 box=-626,851,-195,1450
+prop deadtree  t= 0.95 rel=  1.0 big=1.00 h= 531 w= 382 base=1214 x=1976 box=1785,734,2167,1266
+prop deadtree  t= 0.95 rel=  1.0 big=1.27 h= 659 w= 474 base=1383 x=2293 box=2056,775,2530,1434
+prop deadtree  t= 0.97 rel=  0.5 big=1.00 h= 487 w= 382 base=1302 x=-206 box=-396,866,-14,1353
+prop fissure   t= 0.11 rel= 20.9 big=1.00 h=  18 w=  21 base= 522 x= 549 box=538,556,559,573
+prop stump     t= 0.66 rel=  7.0 big=1.00 h=  74 w=  88 base=1030 x= -77 box=-121,1007,-33,1081
+prop torch     t= 0.45 rel= 11.5 big=1.00 h=  69 w=  31 base= 705 x= 780 box=764,687,796,757
+prop torch     t= 0.65 rel=  7.2 big=1.00 h= 104 w=  47 base= 825 x=1181 box=1157,773,1204,877
+prop torch     t= 0.87 rel=  2.5 big=1.00 h= 150 w=  69 base= 966 x= 678 box=643,868,712,1018

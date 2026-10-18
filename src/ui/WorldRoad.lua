@@ -88,6 +88,13 @@ end
 function PropCut.nearK(t)
     return math.min(1, math.max(0, (t - 0.3) / 0.3))
 end
+PropCut.CREST = { t = 0.15, k = 0.70, kinds = { tree = true, pine = true, deadtree = true } }
+function PropCut.crestK(kind, t)
+    local c = PropCut.CREST
+    if not c.kinds[kind] then return 1 end
+    local k = math.min(1, math.max(0, (t or 0) / c.t))
+    return c.k + (1 - c.k) * k
+end
 function PropCut.cutOf(img, kind)
     if not PropCut.kinds[kind] then return 0 end
     local ih = img:getHeight()
@@ -844,7 +851,7 @@ local function rollProp(p, z, forcedSide, noLum)
         p.side = rng:random() < pLeft and -1 or 1
         WorldRoad._sideBal = bal + p.side * (SIDE_W[p.kind] or 0.35)
     end
-    local LUM_STEP = 7
+    local LUM_STEP = 13
     local LUM_JIT  = 2.5
     WorldRoad._nextLumZ = WorldRoad._nextLumZ or {
         [-1] = z + LUM_STEP * (0.15 + rng:random() * 0.20),
@@ -2168,8 +2175,9 @@ local function drawMountainsFront(g, x, w, camZ)
 end
 
 local CASTLE_APPROACH = {
-    fields = 3.2, highlands = 3.2, abyss = 3.4,
-    frost = 2.6, marsh = 3.2, dusk = 3.0,
+    fields = 2.9, highlands = 2.9, abyss = 3.1,
+    frost = 2.3, marsh = 2.9, dusk = 2.7,
+    far = 1.3,
 }
 local CASTLE_SINK_EXTRA = {
     fields = 0.06, frost = 0.07, marsh = 0.06, dusk = 0.06,
@@ -2192,8 +2200,8 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local iw, ih = img:getWidth(), img:getHeight()
     local refW = math.min(w, g.h * 1.5)
     local baseScale = (refW * 0.155) / 218
-    local growth = CASTLE_APPROACH[bid] or 3.2
-    local s = baseScale * (1.0 + (progress ^ 1.4) * growth)
+    local growth = CASTLE_APPROACH[bid] or 2.9
+    local s = baseScale * (CASTLE_APPROACH.far + (progress ^ 1.4) * growth)
     local cx = g.cx
     local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
     local baseY = g.crestYAt(cx)
@@ -2221,6 +2229,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
             y = baseY - ih * s * 0.82,
             s = s,
             progress = progress,
+            h = ih * s, w = iw * s, baseY = baseY, cx = cx,
         }
         WorldRoad._castleBaseHalf = iw * s * 0.44
         GrassField.requireTufts(REL_CREST - 0.1, cx, iw * s * 0.9, 6,
@@ -2335,7 +2344,7 @@ local function drawPropsBehind(g, x, w, camZ)
                 end
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
-                    * (PropCut.sizeK[img] or 1)
+                    * (PropCut.sizeK[img] or 1) * PropCut.crestK(p.kind, 0)
                 local s = g.scaleAt(size, 0, ih)
                 local px2 = pxX - (lumAnc.offX or 0) * s * lumFlip
                 local sink = (1 - em) * ih * s
@@ -2364,7 +2373,7 @@ local function drawPropsBehind(g, x, w, camZ)
             if crest and img and math.abs(pxX - g.cx) < w * 0.26 then
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
-                    * (PropCut.sizeK[img] or 1)
+                    * (PropCut.sizeK[img] or 1) * PropCut.crestK(p.kind, 0)
                 local s = g.scaleAt(size, 0, ih)
                 local isTree = (p.kind == "tree" or p.kind == "pine"
                     or p.kind == "deadtree" or p.kind == "bush")
@@ -3136,6 +3145,7 @@ local function drawProps(g, x, w, camZ)
         local s = g.scaleAt(lm.size or 2.0, t, LMG.refH(lm.key, ih))
         local py = g.latY(0, t)
         local lx = g.cx + roadWobble(lm.z, t, w)
+        lmMark.h, lmMark.w, lmMark.py, lmMark.px = ih * s, iw * s, py, lx
         local shPad = lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
         local shY = py - 1 - shPad * s
         if not ShadowEngine.sprite(img, lx, shY, s,
@@ -3353,7 +3363,7 @@ local function drawProps(g, x, w, camZ)
             if img then
                 local iw, ih = img:getWidth(), img:getHeight()
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
-                    * (PropCut.sizeK[img] or 1)
+                    * (PropCut.sizeK[img] or 1) * PropCut.crestK(p.kind, t)
                 local s = g.scaleAt(size, t, ih)
                 local isTree = (p.kind == "tree" or p.kind == "pine"
                     or p.kind == "deadtree" or p.kind == "bush")

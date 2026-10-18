@@ -1,0 +1,82 @@
+scene battle act=4 sprite=frost_wight tod=0.65 rel=13.19 t=0.385 sizeK=1.267
+enemy h= 307 visible= 317 w= 258 base= 657 x= 975 top= 426
+castle progress=0.00 h= 299 w= 303 base= 495 x= 960
+shadows endFrame queued=58,71 silhouettes=1 bands=2
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  30 w=  57 base= 133 x= 831 box=803,155,859,184
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  35 w=  66 base=  95 x=1390 box=1357,112,1423,146
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  45 w=  87 base= 107 x= 745 box=701,114,788,159
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  59 w= 113 base= 173 x=  85 box=28,166,141,225
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  62 w= 118 base= 115 x=1636 box=1577,105,1694,166
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  85 w= 163 base= 172 x= 111 box=29,139,192,224
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  88 w= 169 base= 198 x= 291 box=206,162,375,250
+prop crystal   t= 0.02 rel= 24.5 big=1.00 h=  17 w=  19 base= 472 x=1410 box=1400,507,1419,524
+prop crystal   t= 0.56 rel=  9.0 big=1.00 h=  60 w=  65 base= 884 x=1755 box=1722,875,1787,935
+prop deadtree  t= 0.00 rel= 25.9 big=1.00 h=  67 w=  50 base= 437 x= 709 box=683,422,733,488
+prop deadtree  t= 0.38 rel= 13.4 big=1.30 h= 303 w= 229 base= 909 x=2142 box=2027,658,2255,961
+prop deadtree  t= 0.95 rel=  1.0 big=1.00 h= 665 w= 503 base=1214 x=1976 box=1724,601,2227,1266
+prop lantern   t= 0.20 rel= 18.0 big=1.00 h=  38 w=  29 base= 555 x= 821 box=806,569,835,607
+prop lantern   t= 0.87 rel=  2.6 big=1.00 h= 152 w=  99 base= 973 x= 678 box=627,873,727,1024
+prop pine      t= 0.00 rel= 25.6 big=1.22 h=  73 w=  61 base= 564 x=1866 box=1835,543,1895,616
+prop pine      t= 0.01 rel= 24.9 big=1.12 h=  89 w=  61 base= 461 x= 560 box=529,424,590,513
+prop pine      t= 0.02 rel= 24.3 big=1.04 h=  72 w=  63 base= 489 x= 420 box=388,468,451,540
+prop pine      t= 0.02 rel= 24.4 big=1.00 h=  65 w=  54 base= 545 x= 166 box=138,532,192,596
+prop pine      t= 0.04 rel= 23.8 big=1.10 h=  96 w=  66 base= 508 x=1568 box=1534,464,1600,560
+prop pine      t= 0.05 rel= 23.2 big=1.02 h=  77 w=  64 base= 583 x=  90 box=57,557,122,634
+prop pine      t= 0.07 rel= 22.3 big=1.22 h= 105 w=  91 base= 500 x=1391 box=1345,447,1436,551
+prop pine      t= 0.08 rel= 21.9 big=1.18 h= 140 w=  97 base= 512 x= 498 box=449,423,546,563
+prop pine      t= 0.08 rel= 21.9 big=1.28 h= 101 w=  84 base= 636 x=1930 box=1887,587,1972,687
+prop pine      t= 0.10 rel= 21.2 big=1.00 h=  93 w=  81 base= 559 x=1609 box=1568,517,1649,610
+prop pine      t= 0.11 rel= 21.0 big=1.15 h= 104 w=  87 base= 602 x= 147 box=103,550,190,654
+prop pine      t= 0.11 rel= 21.0 big=1.16 h= 146 w= 101 base= 513 x=1325 box=1274,419,1375,565
+prop pine      t= 0.15 rel= 19.6 big=1.27 h= 142 w= 119 base= 656 x=1861 box=1801,565,1920,707
+prop pine      t= 0.16 rel= 19.2 big=1.29 h= 156 w= 136 base= 549 x=1342 box=1274,444,1409,600
+prop pine      t= 0.18 rel= 18.7 big=1.02 h= 125 w= 108 base= 640 x= 179 box=124,567,232,691
+prop pine      t= 0.20 rel= 18.2 big=1.24 h= 159 w= 133 base= 737 x= -88 box=-154,630,-21,789
+prop pine      t= 0.21 rel= 17.7 big=1.23 h= 227 w= 157 base= 588 x= 517 box=437,413,595,640
+prop pine      t= 0.21 rel= 17.8 big=1.28 h= 169 w= 141 base= 631 x=1631 box=1560,514,1701,682
+prop pine      t= 0.26 rel= 16.3 big=1.00 h= 137 w= 114 base= 754 x=1938 box=1880,668,1994,805
+prop pine      t= 0.26 rel= 16.4 big=1.00 h= 144 w= 120 base= 698 x= 152 box=91,606,212,750
+prop pine      t= 0.27 rel= 16.2 big=1.01 h= 170 w= 148 base= 634 x= 446 box=371,515,519,686
+prop pine      t= 0.28 rel= 16.0 big=1.18 h= 238 w= 165 base= 767 x=1951 box=1868,580,2033,818
+prop pine      t= 0.30 rel= 15.3 big=1.14 h= 200 w= 174 base= 704 x=1697 box=1610,556,1783,756
+prop pine      t= 0.30 rel= 15.3 big=1.18 h= 269 w= 186 base= 804 x= -88 box=-180,587,5,856
+prop pine      t= 0.32 rel= 14.8 big=1.03 h= 156 w= 131 base= 775 x=1894 box=1828,670,1959,827
+prop pine      t= 0.37 rel= 13.5 big=1.05 h= 222 w= 193 base= 704 x= 413 box=316,533,509,756
+prop pine      t= 0.38 rel= 13.4 big=1.00 h= 180 w= 151 base= 733 x= 287 box=211,605,362,785
+prop pine      t= 0.40 rel= 12.8 big=1.29 h= 333 w= 231 base= 786 x= 151 box=35,504,266,837
+prop pine      t= 0.40 rel= 12.9 big=1.24 h= 263 w= 229 base= 807 x=1844 box=1729,596,1957,858
+prop pine      t= 0.43 rel= 12.1 big=1.42 h= 354 w= 308 base= 939 x=-206 box=-360,636,-52,990
+prop pine      t= 0.44 rel= 11.7 big=1.06 h= 301 w= 209 base= 921 x=2067 box=1962,671,2170,973
+prop pine      t= 0.47 rel= 11.1 big=1.20 h= 329 w= 286 base= 810 x=1701 box=1558,533,1844,862
+prop pine      t= 0.49 rel= 10.6 big=1.11 h= 316 w= 275 base= 960 x=-165 box=-302,695,-26,1011
+prop pine      t= 0.50 rel= 10.3 big=1.08 h= 311 w= 271 base= 842 x= 181 box=45,582,316,893
+prop pine      t= 0.50 rel= 10.5 big=1.28 h= 363 w= 316 base= 987 x=2133 box=1975,676,2290,1039
+prop pine      t= 0.50 rel= 10.5 big=1.39 h= 464 w= 322 base= 829 x= 208 box=46,416,368,880
+prop pine      t= 0.51 rel= 10.2 big=1.14 h= 297 w= 249 base= 807 x= 331 box=206,561,455,859
+prop pine      t= 0.51 rel= 10.2 big=1.15 h= 273 w= 229 base= 915 x=1949 box=1834,694,2063,967
+prop pine      t= 0.53 rel=  9.8 big=1.00 h= 291 w= 253 base= 991 x=-183 box=-309,752,-56,1043
+prop pine      t= 0.53 rel=  9.8 big=1.19 h= 377 w= 328 base= 841 x=1685 box=1520,516,1848,893
+prop pine      t= 0.56 rel=  9.1 big=1.26 h= 381 w= 319 base= 994 x=-140 box=-299,664,19,1045
+prop pine      t= 0.58 rel=  8.7 big=1.22 h= 385 w= 322 base= 881 x=1717 box=1556,548,1878,932
+prop pine      t= 0.62 rel=  7.8 big=1.00 h= 406 w= 281 base=1173 x=2334 box=2193,818,2474,1224
+prop pine      t= 0.63 rel=  7.6 big=1.38 h= 649 w= 449 base=1091 x=-250 box=-474,494,-25,1143
+prop pine      t= 0.65 rel=  7.1 big=1.20 h= 479 w= 417 base= 932 x= 180 box=-28,504,388,983
+prop pine      t= 0.69 rel=  6.3 big=1.20 h= 469 w= 392 base=1122 x=2150 box=1953,704,2346,1173
+prop pine      t= 0.70 rel=  6.1 big=1.00 h= 363 w= 304 base=1042 x= -38 box=-189,730,114,1093
+prop pine      t= 0.70 rel=  6.1 big=1.02 h= 385 w= 322 base=1212 x=-387 box=-547,879,-225,1264
+prop pine      t= 0.74 rel=  5.3 big=1.05 h= 547 w= 379 base=1277 x=2367 box=2178,782,2556,1328
+prop pine      t= 0.75 rel=  5.0 big=1.09 h= 513 w= 446 base=1224 x=-346 box=-568,763,-123,1276
+prop pine      t= 0.76 rel=  4.8 big=1.23 h= 682 w= 473 base=1102 x=2008 box=1771,472,2244,1154
+prop pine      t= 0.78 rel=  4.4 big=1.05 h= 478 w= 400 base=1030 x=1784 box=1584,603,1984,1081
+prop pine      t= 0.79 rel=  4.2 big=1.00 h= 413 w= 345 base=1283 x=-399 box=-571,922,-226,1335
+prop pine      t= 0.80 rel=  4.1 big=1.33 h= 855 w= 593 base=1370 x=2441 box=2145,566,2737,1421
+prop pine      t= 0.82 rel=  3.6 big=1.13 h= 530 w= 461 base=1120 x= -42 box=-272,641,188,1171
+prop pine      t= 0.86 rel=  2.8 big=1.27 h= 842 w= 583 base=1310 x=-361 box=-652,520,-68,1362
+prop pine      t= 0.87 rel=  2.5 big=1.00 h= 737 w= 510 base=1286 x=2226 box=1970,601,2481,1338
+prop pine      t= 0.89 rel=  2.1 big=1.14 h= 784 w= 543 base=1132 x=1871 box=1599,399,2142,1183
+prop pine      t= 0.92 rel=  1.5 big=1.04 h= 756 w= 524 base=1342 x=-337 box=-598,638,-74,1394
+prop pine      t= 0.93 rel=  1.3 big=1.19 h= 609 w= 510 base=1491 x=2467 box=2211,933,2721,1542
+prop pine      t= 0.97 rel=  0.5 big=1.00 h= 664 w= 578 base=1302 x=-206 box=-494,689,83,1353
+prop rock      t= 0.21 rel= 17.9 big=1.00 h=  31 w=  44 base= 615 x=1574 box=1552,636,1595,667
+prop rock      t= 0.72 rel=  5.7 big=1.00 h=  96 w= 136 base=1090 x=2043 box=1974,1045,2110,1141
+prop stump     t= 0.32 rel= 14.7 big=1.00 h=  36 w=  43 base= 719 x= 218 box=196,734,239,770

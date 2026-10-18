@@ -1,0 +1,81 @@
+scene fork bio=1 tod=0.65 camZ=5.5
+castle progress=0.03 h= 260 w= 303 base= 459 x= 960
+shadows endFrame queued=114 bands=1 luma=0.67
+mark battle  h=  94 w=  54 base= 546 x= 677
+mark rest    h= 109 w= 105 base= 533 x= 965
+mark shop    h= 147 w= 169 base= 547 x=1253
+prop bush      t= 0.01 rel= 25.0 big=1.00 h=  28 w=  31 base= 459 x=1520 box=1504,510,1535,538
+prop bush      t= 0.29 rel= 15.7 big=1.00 h=  44 w=  49 base= 749 x=1957 box=1932,784,1981,828
+prop bush      t= 0.45 rel= 11.6 big=1.00 h=  72 w=  80 base= 774 x= 206 box=166,781,245,853
+prop bush      t= 0.52 rel=  9.9 big=1.00 h=  84 w=  92 base= 828 x=1745 box=1699,824,1791,908
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  41 w=  79 base=  93 x=1408 box=1368,132,1447,173
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  45 w=  85 base= 126 x= 311 box=268,161,353,205
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  47 w=  90 base=  81 x=1021 box=976,114,1065,160
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  66 w= 126 base=  94 x= 126 box=63,108,189,173
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  79 w= 151 base= 183 x=1322 box=1247,184,1397,262
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  79 w= 152 base= 146 x= 471 box=395,147,546,226
+prop cloud     t=-1.00 rel= -1.0 big=1.00 h=  86 w= 165 base= 119 x=1103 box=1020,113,1185,199
+prop rock      t= 0.01 rel= 25.3 big=1.00 h=  21 w=  31 base= 513 x= 153 box=137,571,168,592
+prop shrine    t= 0.56 rel=  9.1 big=1.00 h= 105 w=  65 base= 915 x=1930 box=1897,889,1962,994
+prop stump     t= 0.61 rel=  8.0 big=1.00 h=  67 w=  70 base=1105 x=2273 box=2238,1117,2307,1185
+prop tree      t= 0.01 rel= 25.4 big=1.01 h=  72 w=  66 base= 436 x=1404 box=1370,443,1436,515
+prop tree      t= 0.02 rel= 24.4 big=1.28 h=  86 w= 110 base= 469 x= 381 box=326,463,435,549
+prop tree      t= 0.02 rel= 24.6 big=1.20 h=  84 w= 106 base= 562 x=1906 box=1852,558,1958,641
+prop tree      t= 0.03 rel= 24.0 big=1.04 h=  85 w=  93 base= 475 x= 376 box=329,470,423,555
+prop tree      t= 0.03 rel= 24.0 big=1.27 h= 106 w= 113 base= 551 x=  71 box=14,525,127,631
+prop tree      t= 0.03 rel= 24.1 big=1.00 h=  84 w=  91 base= 508 x=1695 box=1649,504,1740,587
+prop tree      t= 0.06 rel= 22.8 big=1.00 h=  75 w=  95 base= 490 x= 386 box=338,495,434,570
+prop tree      t= 0.06 rel= 22.8 big=1.03 h=  82 w=  89 base= 566 x=  79 box=34,563,123,646
+prop tree      t= 0.09 rel= 21.5 big=1.11 h= 116 w= 125 base= 511 x=1538 box=1475,475,1600,591
+prop tree      t= 0.10 rel= 21.2 big=1.09 h= 119 w=  70 base= 622 x= -11 box=-46,582,23,701
+prop tree      t= 0.10 rel= 21.4 big=1.25 h= 121 w= 153 base= 582 x= 103 box=26,541,179,662
+prop tree      t= 0.11 rel= 20.8 big=1.14 h= 108 w= 119 base= 532 x=1577 box=1517,503,1636,612
+prop tree      t= 0.14 rel= 20.0 big=1.33 h= 138 w= 175 base= 620 x=1855 box=1767,562,1942,700
+prop tree      t= 0.17 rel= 19.0 big=1.15 h= 136 w= 124 base= 560 x= 379 box=317,503,440,640
+prop tree      t= 0.18 rel= 18.8 big=1.13 h= 132 w= 168 base= 627 x=1799 box=1715,574,1883,706
+prop tree      t= 0.19 rel= 18.4 big=1.00 h= 116 w= 148 base= 580 x=1583 box=1509,543,1656,659
+prop tree      t= 0.20 rel= 18.1 big=1.13 h= 139 w= 152 base= 598 x=1633 box=1557,539,1709,678
+prop tree      t= 0.21 rel= 17.9 big=1.00 h= 123 w= 156 base= 734 x=-131 box=-208,691,-53,814
+prop tree      t= 0.25 rel= 16.8 big=1.00 h= 185 w= 109 base= 695 x=  43 box=-11,589,97,774
+prop tree      t= 0.27 rel= 16.1 big=1.01 h= 159 w= 174 base= 707 x=  57 box=-30,627,143,787
+prop tree      t= 0.28 rel= 15.8 big=1.16 h= 179 w= 227 base= 654 x= 262 box=148,555,375,734
+prop tree      t= 0.28 rel= 15.8 big=1.16 h= 193 w= 211 base= 768 x=2017 box=1911,655,2122,848
+prop tree      t= 0.30 rel= 15.3 big=1.24 h= 230 w= 252 base= 813 x=2095 box=1969,662,2221,893
+prop tree      t= 0.32 rel= 14.9 big=1.09 h= 227 w= 133 base= 655 x=1573 box=1506,508,1639,734
+prop tree      t= 0.33 rel= 14.5 big=1.23 h= 236 w= 258 base= 647 x= 444 box=314,490,573,726
+prop tree      t= 0.34 rel= 14.2 big=1.00 h= 201 w= 221 base= 829 x=-149 box=-259,707,-39,908
+prop tree      t= 0.38 rel= 13.2 big=1.17 h= 311 w= 183 base= 772 x=  73 box=-18,541,164,852
+prop tree      t= 0.38 rel= 13.3 big=1.00 h= 236 w= 254 base= 838 x=2029 box=1902,681,2156,917
+prop tree      t= 0.38 rel= 13.4 big=1.01 h= 216 w= 195 base= 733 x=1734 box=1635,597,1831,812
+prop tree      t= 0.42 rel= 12.2 big=1.18 h= 318 w= 348 base= 755 x=1708 box=1534,517,1882,835
+prop tree      t= 0.43 rel= 12.1 big=1.23 h= 292 w= 319 base= 917 x=-221 box=-380,705,-61,996
+prop tree      t= 0.46 rel= 11.5 big=1.00 h= 251 w= 227 base= 812 x=1828 box=1714,640,1941,891
+prop tree      t= 0.48 rel= 10.9 big=1.11 h= 317 w= 341 base= 774 x= 279 box=108,536,449,853
+prop tree      t= 0.50 rel= 10.4 big=1.03 h= 307 w= 336 base= 826 x= 139 box=-29,599,306,906
+prop tree      t= 0.51 rel= 10.3 big=1.39 h= 396 w= 503 base= 948 x=-176 box=-427,632,75,1028
+prop tree      t= 0.52 rel= 10.1 big=1.02 h= 286 w= 363 base= 965 x=2119 box=1937,758,2300,1044
+prop tree      t= 0.53 rel=  9.7 big=1.02 h= 310 w= 332 base= 814 x=1676 box=1509,584,1841,894
+prop tree      t= 0.55 rel=  9.3 big=1.00 h= 321 w= 344 base= 840 x= 194 box=21,599,365,920
+prop tree      t= 0.61 rel=  7.9 big=1.00 h= 388 w= 417 base=1036 x=-217 box=-425,728,-8,1116
+prop tree      t= 0.62 rel=  7.7 big=1.14 h= 429 w= 461 base= 870 x= 249 box=18,520,479,950
+prop tree      t= 0.64 rel=  7.2 big=1.03 h= 435 w= 476 base= 980 x= -40 box=-277,624,198,1059
+prop tree      t= 0.65 rel=  7.2 big=1.19 h= 515 w= 303 base= 914 x=1772 box=1620,478,1923,994
+prop tree      t= 0.66 rel=  6.8 big=1.29 h= 522 w= 560 base= 938 x=1814 box=1533,495,2094,1017
+prop tree      t= 0.67 rel=  6.7 big=1.31 h= 531 w= 581 base=1152 x=2282 box=1991,700,2573,1231
+prop tree      t= 0.69 rel=  6.2 big=1.01 h= 392 w= 497 base=1063 x=2081 box=1832,750,2329,1142
+prop tree      t= 0.70 rel=  6.0 big=1.00 h= 473 w= 278 base=1020 x=1966 box=1826,626,2104,1100
+prop tree      t= 0.70 rel=  6.0 big=1.09 h= 488 w= 443 base=1246 x=2401 box=2179,837,2622,1325
+prop tree      t= 0.70 rel=  6.1 big=1.18 h= 436 w= 553 base= 986 x=  29 box=-247,629,305,1065
+prop tree      t= 0.72 rel=  5.7 big=1.27 h= 584 w= 627 base=1260 x=-485 box=-797,756,-171,1339
+prop tree      t= 0.74 rel=  5.2 big=1.18 h= 532 w= 572 base=1177 x=-322 box=-607,724,-36,1257
+prop tree      t= 0.76 rel=  4.7 big=1.20 h= 586 w= 641 base= 988 x= 149 box=-171,482,469,1067
+prop tree      t= 0.81 rel=  3.7 big=1.26 h= 732 w= 430 base=1086 x= -35 box=-250,434,179,1166
+prop tree      t= 0.81 rel=  3.8 big=1.27 h= 610 w= 668 base=1382 x=2486 box=2151,851,2819,1461
+prop tree      t= 0.81 rel=  3.8 big=1.35 h= 622 w= 681 base=1031 x=1820 box=1479,489,2160,1111
+prop tree      t= 0.84 rel=  3.1 big=1.42 h= 763 w= 820 base=1309 x=2341 box=1931,625,2750,1388
+prop tree      t= 0.88 rel=  2.3 big=1.13 h= 742 w= 436 base=1280 x=2251 box=2032,618,2468,1360
+prop tree      t= 0.88 rel=  2.4 big=1.41 h= 772 w= 700 base=1335 x=-423 box=-772,643,-73,1415
+prop tree      t= 0.92 rel=  1.5 big=1.05 h= 651 w= 713 base=1292 x=2222 box=1865,720,2578,1371
+prop tree      t= 0.95 rel=  1.0 big=1.00 h= 637 w= 577 base=1186 x=1976 box=1687,629,2264,1266
+prop tree      t= 0.96 rel=  0.8 big=1.27 h= 839 w= 919 base=1181 x= -30 box=-489,421,429,1261
+prop tree      t= 0.97 rel=  0.5 big=1.00 h= 778 w= 457 base=1273 x=-206 box=-434,575,22,1353
