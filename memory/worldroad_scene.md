@@ -488,6 +488,10 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   Clarear só o ambiente não muda a leitura; clarear o FUNDO sim: `grassA/grassB` +20 % no mesmo matiz,
   `lightNight` 0,70/0,77/0,64, `grade.dusk` 0,98/1,00/0,95. Desvio de luminância do primeiro plano +20 %.
 
+- **Galhos caídos do ato 2 sem ponta creme (18/Out/2026, rodada 4, `tools/preview_out/rodada4/item5/`):** a
+  lasca de `highlands_litter_0/1.png` era o valor mais claro do primeiro plano noturno; trocada por cinza violáceo
+  frio um degrau acima da casca. Regra: clutter de chão nunca é o pixel mais claro da cena à noite.
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica
