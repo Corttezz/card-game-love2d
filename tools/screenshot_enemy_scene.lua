@@ -179,6 +179,21 @@ function M.run(mode)
         local path = "enemy_scene_" .. mode .. "_" .. vw .. "x" .. vh .. ".png"
         vcanvas:newImageData():encode("png", path)
         print("[screenshot] salvo em save-dir: " .. path)
+        local sn, sdt = (os.getenv("ENEMY_SCENE_SEQ") or ""):match("^(%d+):([%d%.]+)$")
+        sn, sdt = tonumber(sn), tonumber(sdt)
+        if sn and sdt and sdt > 0 then
+            for i = 1, sn - 1 do
+                local steps = math.max(1, math.floor(sdt * 60 + 0.5))
+                for _ = 1, steps do WorldRoad.update(1 / 60); EnemyRenderer.update(1 / 60) end
+                love.graphics.setCanvas(vcanvas)
+                love.graphics.clear(0, 0, 0, 1)
+                GameplayScene.draw()
+                love.graphics.setCanvas()
+                local pi = path:gsub("%.png$", "_seq" .. i .. ".png")
+                vcanvas:newImageData():encode("png", pi)
+                print("[screenshot] salvo em save-dir: " .. pi)
+            end
+        end
         love.event.quit()
         return
     end

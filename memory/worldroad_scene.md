@@ -234,6 +234,31 @@ diz quantas variantes a espécie tem (`PropCut.nvar`; `rollProp`, companheiras e
 - Sombra de copa e faixa de contato só no perto (`PropCut.nearK`); `treeGain` 0,92.
 - Perf 1080p: 5,2 ms mediana, 401 draw calls, 31,6 KB, 0 decode na troca; 188 locais.
 
+**Árvores animadas por quadros (18/Out/2026, frente arvores-anim; pedido do dono: "uma
+animação mínima feita pelo PixelLab... só para dar um efeito mais detalhado"):**
+- Quadros em `assets/sprites/world/anim/<bioma>_<kind>_<v>/0..6.png`; o `0.png` é o PNG
+  estático byte a byte. `PropCut.treeFrames` carrega (no `prewarmJobs`, junto do sprite) e
+  `PropCut.frameOf` escolhe: `PropCut.anim = { fps = 5, pingpong = true }`, fase POR INSTÂNCIA
+  = `windPhase` do `PropVariation` (mesma semente do balanço; vizinhas nunca no mesmo quadro).
+  O quadro entra só no `love.graphics.draw` (`PropCut.draw(..., fimg)`): quad de corte, sombra
+  (`ShadowEngine.queue`/`mask`), `ContactShadow`, texel do `tree_depth` e oclusão continuam
+  usando a imagem BASE, o que é exato porque a silhueta é idêntica em todo quadro.
+  `reducedMotion` = sem quadro (estático). Só a árvore principal e a do cluster na faixa
+  visível; a crista (`drawPropsBehind`) fica estática.
+- Geração: `tools/pixellab_tree_anims.py` (`animate_image`, 6 quadros, prompt por família;
+  queue/poll/check/install/sheet/rawsheet/texmem). O modelo REDESENHA a árvore inteira (só ~70 %
+  dos pixels do quadro 0 gerado batem com a base, e tronco/raízes trocam de cor); por isso o
+  install NÃO usa o quadro cru: transfere só o DELTA entre quadros gerados (o que mexeu do
+  quadro 0 gerado ao N), dentro da silhueta da base, fora do contorno de 1 px, fora dos 30 %
+  inferiores (tronco), sem abrir furo, com paleta presa à da base. Portão: IoU cru ≥ 0,97,
+  tronco ≥ 0,95 entre quadros gerados, e anim "viva" (≥ 0,8 % da área mexe).
+- Campos: animadas `fields_tree_0/1/2/4`. `fields_tree_3` e `_5` reprovaram 3 tentativas cada
+  (o modelo deforma a copa/silhueta; com o último quadro pinado na base sai CONGELADO) e ficam
+  só com o balanço. Outros biomas: quadros crus gerados em `tools/preview_out/arvores_anim/raw/`
+  mas NÃO instalados (frentes de replicação vão revisar essas árvores antes). Pinheiros e
+  árvores secas reprovaram em massa no 1º lote (IoU 0,86 a 0,93, tronco 0,74 a 0,90); só
+  `abyss_deadtree_2` passou. Trava: `test_tree_anim`.
+
 **Escala humana do quadro de batalha (18/Out/2026, frente cenario-escala; entregas em
 `tools/preview_out/escala_humana/`: `medidas.md`, `checklist.md`, recortes antes|depois):**
 o dono reprovou o quadro de batalha do ato 1 (poste menor que o inimigo, árvores do meio

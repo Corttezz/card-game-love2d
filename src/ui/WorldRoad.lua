@@ -26,6 +26,7 @@ local PropCut = {
     texel = setmetatable({}, { __mode = "k" }),
     kinds = { tree = true, pine = true, deadtree = true, bush = true },
     nv = {}, EMPTY = {},
+    anim = { fps = 5, pingpong = true }, frames = {},
     v4 = { 0, 1, 0, 0 }, v3 = { 0, 0, 0 }, td = {},
 }
 function PropCut.flipToSun(img, sunRight, fallback)
@@ -125,13 +126,13 @@ function PropCut.occlude(img, kind, x, y, sx, sy, t, occ)
     ShadowEngine.occlude(img, q, x, y, sx, sy, img:getWidth() / 2, ihv, t,
         occ.k, occ.down, occ.side)
 end
-function PropCut.draw(img, kind, x, y, rot, sx, sy, kx)
+function PropCut.draw(img, kind, x, y, rot, sx, sy, kx, fimg)
     local q, ihv = PropCut.get(img, kind)
     local iw = img:getWidth()
     if q then
-        love.graphics.draw(img, q, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
+        love.graphics.draw(fimg or img, q, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
     else
-        love.graphics.draw(img, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
+        love.graphics.draw(fimg or img, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
     end
 end
 
@@ -360,7 +361,7 @@ local function tryLoadPng(name)
     return img
 end
 
-local function readAnimFrames(key)
+local function readAnimFrames(key, light)
     local dir = "assets/sprites/world/anim/" .. key
     local info = love.filesystem.getInfo(dir)
     if not info or info.type ~= "directory" then return nil end
@@ -380,8 +381,10 @@ local function readAnimFrames(key)
             if okd and data then ok, im = pcall(love.graphics.newImage, data) end
             if ok and im then
                 im:setFilter("nearest", "nearest")
-                scanContentRect(im, path, data)
-                Scene.Contact.scan(im, data)
+                if not light then
+                    scanContentRect(im, path, data)
+                    Scene.Contact.scan(im, data)
+                end
                 frames[#frames + 1] = im
             end
         end
@@ -400,6 +403,37 @@ local function luminaireFrames(bid, kind, variant)
     end
     lumFramesCache[key] = frames or false
     return frames
+end
+
+function PropCut.treeFrames(bid, kind, variant)
+    if not PropCut.CREST.kinds[kind] then return nil end
+    local key = bid .. "_" .. kind .. "_" .. variant
+    local hit = PropCut.frames[key]
+    if hit ~= nil then return hit or nil end
+    local frames = readAnimFrames(key, true)
+    if frames then
+        local base = WorldRoad._spriteCache[key]
+        for i = #frames, 1, -1 do
+            local f = frames[i]
+            if base and (f:getWidth() ~= base:getWidth() or f:getHeight() ~= base:getHeight()) then
+                require("src.core.Debug").warn(("[worldroad] quadro %d de %s com tamanho diferente da base: ignorado")
+                    :format(i - 1, key))
+                table.remove(frames, i)
+            end
+        end
+        if #frames < 2 then frames = nil end
+    end
+    PropCut.frames[key] = frames or false
+    return frames
+end
+
+function PropCut.frameOf(frames, phase)
+    local a = PropCut.anim
+    local n = #frames
+    local period = a.pingpong and (2 * n - 2) or n
+    local k = math.floor((WorldRoad._time * a.fps + phase * period) % period)
+    if k >= n then k = period - k end
+    return frames[k + 1]
 end
 
 local lumPathCache = {}
@@ -782,6 +816,13 @@ end
 
 function WorldRoad.propVariants(bid, kind) return PropCut.nvar(bid, kind) end
 function WorldRoad.treeDepthShader() return PropCut.depthShader() end
+function WorldRoad.treeAnim(bid, kind, variant, phase)
+    local base = getSprite(kind, variant, bid)
+    local fr = PropCut.treeFrames(bid, kind, variant)
+    if not fr then return nil, base end
+    return fr, base, phase and PropCut.frameOf(fr, phase) or nil
+end
+WorldRoad.TREE_ANIM = PropCut.anim
 
 function WorldRoad.propCutInfo(kind, variant, bid)
     local img = getSprite(kind, variant or 0, bid)
@@ -3452,9 +3493,11 @@ local function drawProps(g, x, w, camZ)
                             love.graphics.setColor(math.min(1, cc[1] * 0.88 * cvv.tintR),
                                 math.min(1, cc[2] * 0.88 * cvv.tintG),
                                 math.min(1, cc[3] * 0.88 * cvv.tintB), fadeA)
+                            local cfr = (not reduced) and PropCut.treeFrames(p.bid, p.kind, cvar) or nil
                             local cprev = PropCut.beginDepth(cimg, t)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
-                                math.floor(cy2), crot, cs * cflip, cs, ckx * cflip)
+                                math.floor(cy2), crot, cs * cflip, cs, ckx * cflip,
+                                cfr and PropCut.frameOf(cfr, cvv.windPhase / 6.2832) or nil)
                             PropCut.endDepth(cprev)
                             PropCut.mask(cimg, p.kind, math.floor(cx2),
                                 math.floor(cy2), crot, cs * cflip, cs, ckx * cflip, t)
@@ -3523,9 +3566,11 @@ local function drawProps(g, x, w, camZ)
                 love.graphics.setColor(math.min(1, pc[1] * vtR), math.min(1, pc[2] * vtG),
                     math.min(1, pc[3] * vtB), fadeA)
                 local dprev = nil
+                local tfr = (pv and not reduced) and PropCut.treeFrames(p.bid, p.kind, p.variant) or nil
                 if isTree then dprev = PropCut.beginDepth(img, t) end
                 PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
-                    rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip)
+                    rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip,
+                    tfr and PropCut.frameOf(tfr, pv.windPhase / 6.2832) or nil)
                 PropCut.endDepth(dprev)
                 PropCut.mask(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip, t)
@@ -4052,7 +4097,11 @@ local function prewarmJobs(idx)
     kinds[#kinds + 1] = TREE_KIND[bid] or "tree"
     kinds[#kinds + 1] = "tuft"
     for _, kind in ipairs(kinds) do
-        for v = 0, PropCut.nvar(bid, kind) - 1 do getSprite(kind, v, bid); y() end
+        for v = 0, PropCut.nvar(bid, kind) - 1 do
+            getSprite(kind, v, bid)
+            PropCut.treeFrames(bid, kind, v)
+            y()
+        end
     end
     PropCut.depthShader(); y()
     local lumCat = LuminaireEngine.catalog(bid)
@@ -4119,6 +4168,7 @@ function WorldRoad.clearCache()
     WorldRoad._spriteCache = {}
     WorldRoad._quadCache = {}
     lumFramesCache = {}
+    PropCut.frames = {}
     prewarm.done, prewarm.co, prewarm.bid = {}, nil, nil
     require("engine.GrassField").clearCache()
     WeatherEngine.reset()
