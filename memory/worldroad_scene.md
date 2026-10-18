@@ -282,8 +282,14 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   volta do inimigo (a cabeça do perto encostava no do meio); agora no máximo 2 por lado na
   faixa visível de 26 unidades (batalha do ato 1: um em t 0,85 e um em t 0,13). Braseiros,
   tochas e totens seguem a mesma fila.
-- O que ainda incomoda (ver `checklist.md`): o poste na profundidade do inimigo é 0,68× dele
-  (aceito pelo lead; o lever é `enemyScreenK`, registrado em `medidas.md`).
+- **Inimigo cresce com o mundo (18/Out/2026, lead, depois de "faça yes com tudo"):**
+  `ENEMY_SCREEN_GROWTH` 1,4 → 1,05, então em 1080p o inimigo cresce 1,42x como o cenário
+  (289 px em vez de 317) e os props subiram 12 % na mesma régua: poste 5,6, tree/pine/deadtree
+  6,3/6,7/5,9, braseiros 2,7/2,8, tocha 2,5, totem 3,4, lanterna do gelo 1,8. Na profundidade
+  do inimigo o poste vale ~0,85 dele; toda árvore segue mais alta que o poste; o topo do castelo
+  do ato 1 voltou a aparecer acima da barra do inimigo. A sombra projetada do inimigo encurtou
+  25 % (`lenK × 0,75` no `EnemyRenderer`): com o sol à frente da câmera ela cai para a frente
+  dele e lia como mancha na estrada. `test_enemy_stage` exige 1,4 < k1080 < 1,7.
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

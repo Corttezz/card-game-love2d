@@ -863,7 +863,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         local drawn = ShadowEngine.silhouette(shX, shY,
             { smear = iw * scale * 0.035 * smearK,
               widthK = shK,
-              lenK = shK * pLenK,
+              lenK = shK * pLenK * 0.75,
               baseK = pBaseK, riseK = pRiseK,
               contentH = frameH * scale,
               alphaK = shA * sceneShadowA },

@@ -20,7 +20,7 @@ local FIRE_AMBER  = { 1.00, 0.62, 0.25 }
 
 local CATALOG = {
     fields = {
-        lantern = { size = 5.0, face = 1, roadside = true,
+        lantern = { size = 5.6, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = FIRE_AMBER, radiusK = 1.50, coreK = 0.40,
@@ -32,7 +32,7 @@ local CATALOG = {
     },
 
     highlands = {
-        brazier = { size = 2.40, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
+        brazier = { size = 2.70, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.9,
             light = { color = { 0.55, 0.70, 1.00 }, radiusK = 1.60,
                       coreK = 0.50, intensity = 0.85, flicker = "fire" },
@@ -44,12 +44,12 @@ local CATALOG = {
     },
 
     abyss = {
-        brazier = { size = 2.50, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.18 },
+        brazier = { size = 2.80, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.18 },
             weight = 1.0,
             light = { color = { 1.00, 0.45, 0.12 }, radiusK = 1.80,
                       coreK = 0.60, intensity = 0.95, flicker = "fire" },
             embers = { color = { 1.00, 0.55, 0.18 }, count = 4 } },
-        torch = { size = 2.2, roadside = true, lane = { 0.0, 0.10 }, anchor = { 0.50, 0.16 },
+        torch = { size = 2.5, roadside = true, lane = { 0.0, 0.10 }, anchor = { 0.50, 0.16 },
             weight = 0.8,
             light = { color = { 1.00, 0.55, 0.20 }, radiusK = 1.20,
                       coreK = 0.45, intensity = 0.85, flicker = "fire" },
@@ -61,7 +61,7 @@ local CATALOG = {
     },
 
     frost = {
-        brazier = { size = 2.40, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
+        brazier = { size = 2.70, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.8,
             light = { color = { 1.00, 0.58, 0.22 }, radiusK = 1.60,
                       coreK = 0.50, intensity = 0.90, flicker = "fire" },
@@ -70,14 +70,14 @@ local CATALOG = {
             weight = 0.8,
             light = { color = { 0.62, 0.85, 1.00 }, radiusK = 1.10,
                       coreK = 0.35, intensity = 0.70, flicker = "shimmer" } },
-        lantern = { size = 1.6, roadside = true, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.38 },
+        lantern = { size = 1.8, roadside = true, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.38 },
             weight = 0.6,
             light = { color = { 1.00, 0.68, 0.32 }, radiusK = 1.25,
                       coreK = 0.40, intensity = 0.80, flicker = "fire" } },
     },
 
     marsh = {
-        lantern = { size = 5.0, face = 1, roadside = true,
+        lantern = { size = 5.6, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 0.9,
             light = { color = { 0.55, 0.95, 0.45 }, radiusK = 1.35,
@@ -86,14 +86,14 @@ local CATALOG = {
             weight = 1.0,
             light = { color = { 0.45, 0.90, 0.60 }, radiusK = 0.80,
                       coreK = 0.30, intensity = 0.60, flicker = "pulse" } },
-        totem = { size = 3.0, roadside = true, lane = { 0.02, 0.20 }, anchor = { 0.50, 0.18 },
+        totem = { size = 3.4, roadside = true, lane = { 0.02, 0.20 }, anchor = { 0.50, 0.18 },
             weight = 0.6,
             light = { color = { 0.62, 0.88, 0.50 }, radiusK = 1.20,
                       coreK = 0.40, intensity = 0.75, flicker = "wisp" } },
     },
 
     dusk = {
-        lantern = { size = 5.0, face = 1, roadside = true,
+        lantern = { size = 5.6, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = { 1.00, 0.72, 0.30 }, radiusK = 1.40,
