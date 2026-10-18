@@ -129,3 +129,22 @@ bbox opaco do PNG no lado de `SHORTCUT_ICON = 30`), tecla num keycap no canto
 (foco em Continuar e em Coringas, 1024x768/1920x1080, pt_BR/en) e
 `tools/preview_out/icones_pausa/{antes,depois}/`. Trava: `test_boss_mechanics`
 (`testUiIconsNotCardArt`).
+
+**18/Out/2026, ícones ~40 % maiores (pedido do dono):** o ajuste por caixa
+(`drawFit` em 30 px, que dava 0,47 a 0,5 da arte de 64 px) virou escala FIXA
+`SHORTCUT_ICON_SCALE = 0.75` por `IconLoader.drawScaled` (3 px de tela para
+cada 4 da arte, a mesma escala para a família inteira: o maço sai 40×45, a
+máscara 45×44, o diário 45×44, o tomo 38×47). `SHORTCUT_H` 66 → 76 para o
+ícone não encostar no nome nem no keycap. `screenshot_icones_pausa [prefixo]`
+agora cobre 1024x768, 1280x720, 1920x1080 e 2560x1440 nos 5 idiomas e imprime
+`[FAIL]` se `validate()` acusar algo; folha em
+`tools/preview_out/pausa_icones/antes_depois.png`.
+
+**Ícone de ouro próprio (`ui_gold`, 18/Out/2026):** o cash out
+(`RoundEvalScreen` botão) e a chuva de moedas (`CoinBurst`) usavam `coin`, que
+é arte de carta (Aposta Calculada). Gerado pelo mesmo
+`tools/pixellab_icones_pausa.py` (`create_image_pro`, estilo `ui_act_scroll`,
+referência `ui_score_star`; 2 gerações, 32 candidatas, escolhida `ui_gold`
+cand 1: pilha de moedas com o sigilo do olho). `test_boss_mechanics` passa a
+ler `CoinBurst.lua` e `RoundEvalScreen.lua` e exige `ui_gold`. A TopBar
+segue com `assets/icons/coin.png` (ícone de HUD antigo, não é arte de carta).

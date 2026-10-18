@@ -19,5 +19,14 @@
   },
   "ui_forge": {
     "job": "f51d41be-d765-4710-a3ae-f7b1f73b71ac"
+  },
+  "ui_gold": {
+    "job": "5a01e0f5-ab39-47ea-830f-ad4b74ff28dc"
+  },
+  "ui_gold_b": {
+    "job": "9909fe39-0080-4110-9215-d64aca82336a"
+  },
+  "ui_gold_c": {
+    "job": "7451c3dd-3d59-4fa4-8200-ffb98204e1f2"
   }
 }

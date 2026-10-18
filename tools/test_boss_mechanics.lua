@@ -739,6 +739,7 @@ local UI_ICON_FILES = {
     "components/PauseMenu.lua", "components/ClassSelectionScreen.lua",
     "components/RestScreen.lua", "components/TopBar.lua", "components/Menu.lua",
     "src/ui/DamagePreviewPanel.lua", "src/ui/HudPlayerPanel.lua",
+    "src/ui/CoinBurst.lua", "components/RoundEvalScreen.lua",
 }
 
 local function testUiIconsNotCardArt(t)
@@ -751,7 +752,7 @@ local function testUiIconsNotCardArt(t)
         local src = love.filesystem.read(path) or ""
         t:truthy(path .. " lido", src ~= "")
         local names = {}
-        for _, pat in ipairs({ 'IconLoader%.get%("([%w_]+)"%)', 'drawFit%("([%w_]+)"',
+        for _, pat in ipairs({ 'IconLoader%.get%("([%w_]+)"%)', 'IconLoader"%)%.get%("([%w_]+)"%)', 'drawFit%("([%w_]+)"',
                                'icon%s*=%s*"([%w_]+)"', 'setIcon%("([%w_]+)"' }) do
             for n in src:gmatch(pat) do names[#names + 1] = n end
         end
@@ -764,7 +765,7 @@ local function testUiIconsNotCardArt(t)
         end
     end
     for _, n in ipairs({ "ui_deck", "ui_jokers", "ui_journal", "ui_guide",
-                         "ui_health", "ui_mana", "ui_forge" }) do
+                         "ui_health", "ui_mana", "ui_forge", "ui_gold" }) do
         t:truthy("ícone próprio em uso: " .. n, seen[n])
     end
 

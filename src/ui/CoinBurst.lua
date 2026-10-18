@@ -84,7 +84,7 @@ end
 
 function CoinBurst.draw()
     if #coins == 0 then return end
-    local icon = require("src.ui.IconLoader").get("coin")
+    local icon = require("src.ui.IconLoader").get("ui_gold")
     for _, c in ipairs(coins) do
         if c.delay <= 0 and c.a > 0.01 then
             love.graphics.setColor(1, 1, 1, c.a)

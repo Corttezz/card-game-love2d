@@ -241,7 +241,7 @@ function RoundEvalScreen:_buildCashOutButton()
         function() self:_onCashOutClick() end,
         nil, 12
     )
-    self.cashOutButton:setIcon("coin")
+    self.cashOutButton:setIcon("ui_gold")
 end
 
 function RoundEvalScreen:_onCashOutClick()
@@ -331,7 +331,7 @@ end
 
 function RoundEvalScreen:_drawCoins()
     if not self._coins then return end
-    local icon = require("src.ui.IconLoader").get("coin")
+    local icon = require("src.ui.IconLoader").get("ui_gold")
     for _, c in ipairs(self._coins) do
         if (c.a or 0) > 0.01 then
             love.graphics.setColor(1, 1, 1, c.a)

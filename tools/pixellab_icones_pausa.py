@@ -61,6 +61,20 @@ SPECS = {
     "ui_forge": ("a dark iron blacksmith anvil with a small hammer resting on "
                  "top, a burst of bright orange forge sparks, upgrade forge "
                  "emblem. "),
+    "ui_gold": ("a tidy pile of thick stamped gold coins, three short stacks "
+                "of coins leaning on each other with two loose coins lying in "
+                "front, each coin with a dark rim and a small embossed eye "
+                "sigil, warm aged gold with a hard white pixel shine on the "
+                "upper left, treasure and gold currency emblem. "),
+    "ui_gold_b": ("one big round gold coin seen face on, thick beaded rim, an "
+                  "embossed crown sigil in the center, a small stack of three "
+                  "more coins tucked behind it to the lower right, warm aged "
+                  "gold with hard pixel highlights, gold currency emblem. "),
+    "ui_gold_c": ("one big round gold coin seen face on filling the canvas, "
+                  "thick beaded rim, a large embossed open eye sigil in the "
+                  "center, two more coins stacked flat behind it to the lower "
+                  "right, warm aged gold with hard pixel highlights, bold and "
+                  "readable when tiny, gold currency emblem. "),
 }
 
 
