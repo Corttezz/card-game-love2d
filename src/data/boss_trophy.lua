@@ -19,7 +19,7 @@ return {
             particle = "feather", rate = 34, burst = 26,
             colors = { { 0.22, 0.18, 0.30 }, { 0.48, 0.38, 0.66 }, { 0.95, 0.74, 0.34 } },
             glow = { 0.66, 0.46, 0.95 }, ray = { 0.95, 0.74, 0.38 },
-            riseSound = "bossCrowsFlee",
+            riseSound = "crowFlock",
         },
         tower_lich = {
             particle = "shard", rate = 30, burst = 28,

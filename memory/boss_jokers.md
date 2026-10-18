@@ -37,7 +37,8 @@ pegá-lo. A ideia de cada carta é um TROFÉU do chefe vencido.
   `retain_armor` (`JOKER_EFFECT_SCORE` em `tools/autoplay.lua`); o expert_full
   avalia coringa por simulação (`pickBySim`), então a carta nova entra sozinha.
 - Assinatura sonora (`audio/sfx/joker-sig/joker_boss_*.mp3`): recortes de sons
-  do próprio chefe (`audio/sfx/boss/`; carniça = grasnado cortado em 0,95 s,
+  do próprio chefe (`audio/sfx/boss/`; carniça = UM grasnado de `audio/sfx/boss/crow/cine_2.mp3` cortado em 0,95 s
+  (17/Out/2026; o recorte antigo do `boss_crows_caw` tinha "caw caw"),
   eclipse = virada de fase em 1,0 s). ElevenLabs FREE: entram na lista de
   regenerar antes de vender.
 

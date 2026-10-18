@@ -39,9 +39,55 @@ do beat (nada alonga o turno).
   informação (pill, número, marca na barra de vida).
 - **Piloto ciente:** `tools/balance_ai.lua` + `tools/autoplay.lua` respeitam
   carta congelada, leem a Geada e valorizam o que a regra premia.
-- Sons: SÓ arquivos que já existem em `audio/sfx/boss/` e `audio/sfx/`, com
+- Sons: SÓ arquivos que já existem em `audio/sfx/boss/` e `audio/sfx/` (corvos:
+  `audio/sfx/boss/crow/` via `CrowSfx`, seção abaixo), com
   volume MEDIDO (média do arquivo + ganho, alvo de -24 a -27 dB efetivos, a
   faixa dos corvos depois da queixa "alto demais").
+
+## Som dos corvos do rei-carniça (17/Out/2026)
+
+> "O barulho do corvo ainda está muito ruim... Fica tipo duas vezes fazendo o
+> 'war war' dele... Sempre que ataca faz isso, e sempre que aparece faz o mesmo
+> barulho." (dono, 17/Out/2026)
+
+**Antes** (medido por `love . test_one test_crow_sfx`, entrada + 10 turnos do
+rei + morte, semente 4242): UM arquivo, `boss_crows_caw` (três grasnados
+seguidos no próprio arquivo), tocava no rasante e no pouso da entrada (2×) e em
+todo mergulho de corvo com intervalo de 1,4 s (12× em 3 revoadas, 4 por
+revoada); `boss_crows_flee` (dois grasnados) na morte e na subida do coringa
+(2×). A invocação tocava o rugido genérico `enemyBuffRoar`.
+
+**Agora:** 4 momentos, 3 variantes cada, em `audio/sfx/boss/crow/<momento>_<n>.mp3`
+(registro por SCAN em `src/systems/CrowSfx.lua`: arquivo novo = soltar na pasta):
+
+| momento | código | quando | conteúdo |
+|---|---|---|---|
+| aparecer | `crowAppear` | invocação (`Game`, beat `enemy.summon`, no lugar do rugido) | asas chegando; só 1 variante tem um grasnado curto |
+| ataque | `crowDive` | 1º golpe da Revoada com corvo em órbita (`CrowSfx.attack`) | whoosh de mergulho + bicada seca, sem grasnado |
+| revoada | `crowFlock` | 2º som da revoada longa (3+ golpes), pouso da entrada, subida do coringa | asas em massa, sem grasnado |
+| cinemática | `crowCine` | rasante da entrada (`caw = true`) e explosão da morte | UM grasnado cheio + asas |
+
+Regras (`CrowSfx`): pool sem repetir a variante anterior, pitch ±4-7%, cooldown
+de 1,2 s por momento (cinemática 0,6 s) e do ataque como um todo; numa revoada
+de N golpes toca no máximo 2 sons (mergulho no 1º, bando uma vez depois do
+cooldown), nunca um por corvo. O som do mergulho sai 0,18 s depois do beat
+(`DIVE_DELAY`, pelo `EventManager`) para a bicada cair perto do apex. O som não
+depende de reducedMotion (som é informação). **Depois** (mesma simulação):
+aparecer 3 (uma por invocação), mergulho 3 + bando 3 (uma revoada = 2 sons),
+cinemática 2 (entrada 1, morte 1), bando 2 fora da luta (pouso, coringa).
+
+Geração: ElevenLabs `sound-generation` (prompts em `tools/generate_sfx.py`,
+ids `appear_1`...`cine_3`), 20 candidatos (~260 créditos), escolhidos por
+envelope e espectrograma (descartados: mergulho com assobio tonal, bando
+baixo com algo tonal no meio, cinemática fraca). Pós: silêncio cortado nas
+pontas (-50/-55 dB), mono 44,1 kHz, média normalizada em -20,4 dB (pico
+≤ -1 dB), fade 4 ms / até 60 ms. Volume no `loadSound`: aparecer 0,55,
+mergulho 0,45, bando 0,50, cinemática 0,60 → -25,6 / -27,3 / -26,4 / -24,8 dB
+efetivos (faixa -24 a -27 das regras acima). Amostras para o dono ouvir:
+`audio/_amostras_corvo/` (fora do scan). **Licença:** plano FREE do
+ElevenLabs, sem uso comercial: regerar no plano pago antes de vender.
+Trava: `test_crow_sfx` (arquivos e códigos antigos fora, momentos com códigos
+e arquivos exclusivos, sem repetição, cooldown, agrupamento, luta simulada).
 
 ## Ato 2: tower_lich, Runas do Ritual
 

@@ -214,8 +214,10 @@ shot_enemy_sheet [id]`.
   (`BossAura.playerTarget`, convertido por `inverseTransformPoint`), crescendo
   até 2,2× ao chegar na câmera, no MESMO apex do golpe (ATK_WINDUP+ATK_LUNGE),
   estoura 9 penas e volta na janela do recuo: o beat não alonga. O rei só faz
-  o gesto de comando (`kind = "command"`, avanço de 8 px). Grito de corvo
-  baixo (`diveSound`, 0,22, pitch 0,82, no máximo 1 a cada 1,4 s). Bicada
+  o gesto de comando (`kind = "command"`, avanço de 8 px). Som do ataque
+  (17/Out/2026): `CrowSfx.attack(h, hits)` no beat do golpe, mergulho no 1º
+  golpe e bando UMA vez na revoada longa (ver `memory/boss_mechanics.md`,
+  "Som dos corvos"); o grasnado `diveSound` saiu. Bicada
   Real (golpe dele): o avanço de sempre + `hitFeathers = 7` penas no painel.
   Sem corvo na órbita o golpe cai no avanço normal. reducedMotion: nenhum
   mergulho (só o número). Banquete de Carniça (cura) ficou como estava.
@@ -228,7 +230,8 @@ shot_enemy_sheet [id]`.
   de carta, à espera de decisão: `focus` → `rune`, `eclipse` → `moon`
   (StatusPill.ICONS); TopBar usa `star`/`scroll`, Menu `star`; o EnemyRenderer
   cai em `shield_round` só se `armor_shield` faltar.
-- **Som** (média do arquivo + ganho = nível efetivo):
+- **Som** (HISTÓRICO, substituído em 17/Out/2026 pelos sons de
+  `audio/sfx/boss/crow/`, ver `memory/boss_mechanics.md`, "Som dos corvos"):
   `boss_crows_caw` passa-baixa 4,5 kHz ×2 e -3 dB na fonte (média -15,2 →
   -19,3; energia acima de 4 kHz -24,7 → -32,3) e ganho 0,60 → 0,48: -19,6 →
   -25,7 dB. `boss_crows_flee` mesmo passa-baixa e -2 dB (-21,1 → -23,9), ganho

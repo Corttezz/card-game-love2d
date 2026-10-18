@@ -10,9 +10,7 @@ return {
         },
         orbit = { kind = "crow", countBy = "swarm", max = 10, cu = 0.50,
                   cv = 0.10, ru = 0.62, rv = 0.08, speed = 0.45,
-                  sprite = "assets/sprites/characters/enemies/carrion_king/crow",
-                  diveSound = { code = "bossCrowsCaw", path = "audio/sfx/boss/boss_crows_caw.mp3",
-                                volume = 0.22, pitch = 0.82, gap = 1.4 } },
+                  sprite = "assets/sprites/characters/enemies/carrion_king/crow" },
         hitFeathers = 7,
         emit = {
             { kind = "feather", px = 2, rate = 2.2, area = { 0.08, 0.28, 0.92, 0.62 },

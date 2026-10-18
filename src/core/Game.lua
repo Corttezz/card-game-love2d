@@ -30,7 +30,6 @@ Game.__index = Game
 
 Game.DEATH_HOLD = 1.1
 
-Game.SUMMON_ROAR_VOLUME = 0.33
 
 function Game:new()
     local instance = setmetatable({}, Game)
@@ -1112,6 +1111,9 @@ function Game:enemyTurn()
                     return
                 end
                 struck = true
+                if it.swarm and self.enemy:getStatusStacks("swarm") > 0 then
+                    require("src.systems.CrowSfx").attack(h, hits)
+                end
                 if ER and ER.triggerAttack then
                     ER.triggerAttack(animKind, function()
                         applyHit(damage, it.pierce)
@@ -1187,7 +1189,7 @@ function Game:enemyTurn()
     if (it.summon or 0) > 0 then
         CombatBeats.push("enemy.summon", beat(function()
             self.enemy:addStatusEffect({ name = "swarm", stacks = it.summon, duration = 999 })
-            Sfx.playWithVariation("enemyBuffRoar", 1.2, 0.08, Game.SUMMON_ROAR_VOLUME)
+            require("src.systems.CrowSfx").play("crowAppear")
             self:addMessage(I18n.t("enemy_kit.msg.summoned", { value = it.summon },
                 "A revoada cresce: +{value}"), "warning")
             if ER and ER.triggerBuff then ER.triggerBuff() end

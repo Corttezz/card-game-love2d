@@ -195,12 +195,10 @@ function M.run()
     t:truthy("ícone dos corvos carrega 64x64", okImg and img:getWidth() == 64)
 
     local SOUNDS = require("src.ui.BossCinematic").SOUNDS
-    t:truthy("grito de corvo mais baixo (<= 0.48)", SOUNDS.bossCrowsCaw[2] <= 0.48)
-    t:truthy("corvos fugindo mais baixo (<= 0.45)", SOUNDS.bossCrowsFlee[2] <= 0.45)
     t:truthy("sting do cartão mais baixo (<= 0.50)", SOUNDS.bossRevealSting[2] <= 0.50)
-    t:truthy("mergulho com grito baixo (<= 0.25)", o.diveSound.volume <= 0.25)
-    t:truthy("rugido da invocação mais baixo",
-        require("src.core.Game").SUMMON_ROAR_VOLUME < 0.55)
+    for code, spec in pairs(require("src.systems.CrowSfx").MOMENTS) do
+        t:truthy("corvo " .. code .. " no volume dos sons de chefe (<= 0.60)", spec.volume <= 0.60)
+    end
 
     _G.gameSettings = { reducedMotion = true }
     BossAura.reset()

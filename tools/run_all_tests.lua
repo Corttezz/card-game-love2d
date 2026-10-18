@@ -41,6 +41,7 @@ local SUITES = {
     { group = "unit",  name = "test_prop_variation" },
     { group = "unit",  name = "test_boss_visuals" },
     { group = "unit",  name = "test_boss_mechanics" },
+    { group = "unit",  name = "test_crow_sfx" },
     { group = "unit",  name = "test_boss_cinematic" },
     { group = "unit",  name = "test_hand_deal" },
     { group = "unit",  name = "test_enemy_fall" },

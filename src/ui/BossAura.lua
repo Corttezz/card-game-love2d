@@ -290,20 +290,6 @@ function BossAura.dive(id, apex, back)
     s.diveIdx = ((s.diveIdx or 0) % #pool) + 1
     local c = pool[s.diveIdx]
     c.phase, c.t, c.apex, c.back, c.hit = "dive", 0, apex or 0.34, back or 0.42, nil
-    local spec = AURAS[id]
-    local snd = spec.orbit.diveSound
-    if snd and (s.t - (s.lastCaw or -99)) > (snd.gap or 1.2) then
-        s.lastCaw = s.t
-        local a = _G.audioSystem
-        if a and a.loadSound and a.sources and not a.sources[snd.code]
-            and love.filesystem.getInfo(snd.path) then
-            a:loadSound(snd.code, snd.path, { volume = snd.volume })
-        end
-        if a and a.sources and a.sources[snd.code] then
-            a:play(snd.code, { volume = snd.volume,
-                pitch = snd.pitch + (love.math.random() * 2 - 1) * 0.08 })
-        end
-    end
     return true
 end
 

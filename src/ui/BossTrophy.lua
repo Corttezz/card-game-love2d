@@ -1,6 +1,7 @@
 local Data        = require("src.data.boss_trophy")
 local BossJokers  = require("src.systems.BossJokers")
 local Sfx         = require("src.systems.Sfx")
+local CrowSfx     = require("src.systems.CrowSfx")
 local I18n        = require("src.i18n.I18n")
 local FontManager = require("src.ui.FontManager")
 local RevealGlow  = require("src.ui.RevealGlow")
@@ -15,6 +16,7 @@ local function easeOutCubic(k) return 1 - (1 - k) ^ 3 end
 local function easeOutQuart(k) return 1 - (1 - k) ^ 4 end
 
 local function sfx(code, fallback)
+    if CrowSfx.handles(code) and CrowSfx.play(code) then return end
     local name = (code and Sfx.has(code)) and code or fallback
     if name and Sfx.has(name) then Sfx.play(name) end
 end

@@ -159,10 +159,87 @@ SFX = [
         ),
     },
     {
-        "id": "boss_crows_caw", "dir": "audio/sfx/boss",
+        "id": "appear_1", "dir": "audio/sfx/boss/crow",
+        "duration": 1.3,
+        "prompt": (
+            "Large black raven wings flapping in and landing nearby: four heavy wingbeats, a soft feather rustle as it settles, then one single low raspy croak heard far away in the distance, only one short call. Dark fantasy game sound effect, no music."
+        ),
+    },
+    {
+        "id": "appear_2", "dir": "audio/sfx/boss/crow",
+        "duration": 1.4,
+        "prompt": (
+            "Three heavy wingbeats of a raven arriving and landing on a branch, feathers folding. After a pause, one very faint deep croak far in the distance, muffled, a single short call. Dark fantasy game sound effect, no music."
+        ),
+    },
+    {
+        "id": "appear_3", "dir": "audio/sfx/boss/crow",
+        "duration": 1.0,
+        "prompt": (
+            "Only wings: a large black raven flies in and lands, three or four strong wingbeats getting closer, then feathers folding. No bird calls, no cawing, no vocals. Close, dry, dark fantasy game sound effect."
+        ),
+    },
+    {
+        "id": "dive_1", "dir": "audio/sfx/boss/crow",
+        "duration": 0.9,
+        "prompt": (
+            "A single large black bird dives fast through the air: a short sharp whoosh of feathered wings swooping down, ending in a dry hard peck impact of beak and claws striking leather. No bird calls, no cawing, no vocals. Dark fantasy game sound effect, close, dry."
+        ),
+    },
+    {
+        "id": "dive_2", "dir": "audio/sfx/boss/crow",
+        "duration": 0.8,
+        "prompt": (
+            "Fast feathered swoop: a raven dives down with a quick rising whoosh of wings, then a sharp dry thud of a beak and talons striking. Very short. No bird calls, no cawing, no vocals. Dark fantasy combat sound effect."
+        ),
+    },
+    {
+        "id": "dive_3", "dir": "audio/sfx/boss/crow",
+        "duration": 0.8,
+        "prompt": (
+            "A black crow swoops down from above: a short building whoosh of air through stiff feathers, then a single dry knock of a beak striking hard. No bird calls, no cawing, no whistle, no vocals. Close, dry, dark fantasy combat sound effect."
+        ),
+    },
+    {
+        "id": "flock_1", "dir": "audio/sfx/boss/crow",
         "duration": 1.6,
         "prompt": (
-            "A murder of crows cawing and flapping in panic inside a stone hall, several birds, echoing, dark fantasy"
+            "A flock of dozens of black crows takes off at once: a dense mass of flapping wings and rustling feathers, rising and sweeping past, then fading. Only wings, no cawing, no bird calls, no vocals. Dark fantasy game sound effect."
+        ),
+    },
+    {
+        "id": "flock_2", "dir": "audio/sfx/boss/crow",
+        "duration": 1.5,
+        "prompt": (
+            "Swarm of ravens whirling around: thick fluttering of many wings, a rushing cloud of feathers passing overhead and away. Only wings and air, no calls, no cawing, no vocals. Dark fantasy game sound effect."
+        ),
+    },
+    {
+        "id": "flock_3", "dir": "audio/sfx/boss/crow",
+        "duration": 1.4,
+        "prompt": (
+            "Murder of crows scattering: a sudden rush of dozens of wings flapping hard and flying off, rustling feathers, wind. Only wings, no cawing, no vocals. Dark fantasy game sound effect."
+        ),
+    },
+    {
+        "id": "cine_1", "dir": "audio/sfx/boss/crow",
+        "duration": 1.9,
+        "prompt": (
+            "Ominous crow king entrance: slow powerful wingbeats of a huge black bird, then one single long low croaking caw, one call only, with cavernous reverb. Dark fantasy cinematic sound effect, no music."
+        ),
+    },
+    {
+        "id": "cine_2", "dir": "audio/sfx/boss/crow",
+        "duration": 1.8,
+        "prompt": (
+            "A single low guttural raven call, one only, deep and rough, followed by a flurry of wings and falling feathers in a dark hall with reverb. Dark fantasy cinematic sound effect, no music."
+        ),
+    },
+    {
+        "id": "cine_3", "dir": "audio/sfx/boss/crow",
+        "duration": 1.9,
+        "prompt": (
+            "Dying crow lord: one single hoarse fading raven caw, one call only, then wings flutter away and feathers drift down, distant echo. Dark fantasy cinematic sound effect, no music."
         ),
     },
     {
@@ -191,13 +268,6 @@ SFX = [
         "duration": 0.8,
         "prompt": (
             "A violent burst of feathers exploding outward with a whoosh of air, fast rustle, dark fantasy creature death"
-        ),
-    },
-    {
-        "id": "boss_crows_flee", "dir": "audio/sfx/boss",
-        "duration": 1.6,
-        "prompt": (
-            "A flock of crows screeching and fleeing fast, wings beating away into the distance, echo of a stone hall"
         ),
     },
     {

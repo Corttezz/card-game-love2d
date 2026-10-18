@@ -31,13 +31,11 @@ local SOUNDS = {
     bossEyesRumble     = { "audio/sfx/boss/boss_eyes_rumble.mp3",     0.55, loop = true },
     bossBlinkClick     = { "audio/sfx/boss/boss_blink_click.mp3",     0.60 },
     bossWingPass       = { "audio/sfx/boss/boss_wing_pass.mp3",       0.80 },
-    bossCrowsCaw       = { "audio/sfx/boss/boss_crows_caw.mp3",       0.48 },
     bossLandImpact     = { "audio/sfx/boss/boss_land_impact.mp3",     0.90 },
     bossFeathersSettle = { "audio/sfx/boss/boss_feathers_settle.mp3", 0.55 },
     bossRevealSting    = { "audio/sfx/boss/boss_reveal_sting.mp3",    0.50 },
     bossDeathThud      = { "audio/sfx/boss/boss_death_thud.mp3",      0.85 },
     bossFeatherBurst   = { "audio/sfx/boss/boss_feather_burst.mp3",   0.70 },
-    bossCrowsFlee      = { "audio/sfx/boss/boss_crows_flee.mp3",      0.45 },
     bossHoldAmbience   = { "audio/sfx/boss/boss_hold_ambience.mp3",   0.45, loop = true },
     bossRuneIgnite     = { "audio/sfx/boss/boss_rune_ignite.mp3",      0.65 },
     bossFrostStorm     = { "audio/sfx/boss/boss_frost_storm.mp3",      0.60, loop = true },
@@ -127,6 +125,7 @@ local function smooth(k) return k * k * (3 - 2 * k) end
 local function loadSounds()
     if soundsLoaded then return end
     soundsLoaded = true
+    require("src.systems.CrowSfx").load()
     local a = _G.audioSystem
     if not a or not a.loadSound then return end
     for code, spec in pairs(SOUNDS) do
@@ -156,6 +155,11 @@ local function queueSfx(delay, code, fallback, pitch)
 end
 
 local function play(code, fallback, pitch, pitchVar)
+    local Crow = require("src.systems.CrowSfx")
+    if Crow.handles(code) then
+        Crow.play(code)
+        return
+    end
     local name = Sfx.has(code) and code or fallback
     if not name then return end
     if pitch then
@@ -2196,7 +2200,7 @@ local function enterStep(st)
         edge = { side = fly.from, t = 0, dur = fly.dur + 0.25, out = (fly.from == "left") and "right" or "left" }
         stopLoop("bossEyesRumble")
         play("bossWingPass", "sceneRustle", (fly.near and 0.78 or 0.95) + love.math.random() * 0.12, 0)
-        if st.caw then play("bossCrowsCaw", nil, 0.95, 0.08) end
+        if st.caw then play("crowCine") end
     elseif kind == "land" then
         fly = nil
         fx.runes = nil
@@ -2221,7 +2225,7 @@ local function enterStep(st)
         local crowsN = st.crows or 5
         if crowsN > 0 then
             queueSfx(0.45, "bossFeathersSettle", nil)
-            queueSfx(0.15, "bossCrowsCaw", nil, 1.05)
+            queueSfx(0.15, "crowFlock", nil)
         end
         if st.after then queueSfx(st.afterDelay or 0.4, st.after, nil) end
         if stage and stage.bbox then
@@ -2265,7 +2269,7 @@ local function enterStep(st)
     elseif kind == "burst" then
         local pk = st.particle or "feather"
         play(st.sound or "bossFeatherBurst", nil)
-        if (st.crows or 0) > 0 then queueSfx(0.12, "bossCrowsFlee", nil) end
+        if (st.crows or 0) > 0 then queueSfx(0.12, "crowCine", nil) end
         if stage and stage.bbox then
             local gx = stage.bbox.cx
             local body = stage.bbox.topY + (stage.bbox.bottomY - stage.bbox.topY) * 0.42
