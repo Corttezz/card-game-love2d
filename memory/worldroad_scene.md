@@ -342,6 +342,8 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   era um cubo de 0,30x) com `light.pool` (poça no chão, genérico no LuminaireEngine) porque a chama
   no topo deixava o círculo de luz no ar; 3 pinheiros novos (`variants` 6); chama da fogueira
   recolorida de salmão pastel para laranja vivo (a lua a acinzentava e o fogo não lia como fogo).
+  Passe diorama: os 6 pinheiros e o arbusto (era carvalho verde fora do bioma) regerados com luz da
+  lua à direita (`lit = 1`); pilar 4,9 em `lane` 0,12-0,22 (perto da câmera cobria a estrada).
 - **Ato 5 / marsh (18/Out/2026, frente replica-45, `tools/preview_out/replica_atos/marsh/`):** entrada
   `marsh` no modelo `fields` (grade só matiz, treeDepth lift 0,25, sombras alphaK 2,0 com cor de
   multiplicação verde-musgo 0,34/0,40/0,32, árvore ×1,35, copa 0,50, chão mais escuro no horizonte,

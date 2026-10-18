@@ -10,7 +10,7 @@ return {
         fields_tree_4 = 9,
         fields_tree_5 = 9,
 
-        highlands_pine_0 = 9,
+        highlands_pine_0 = 10,
 
         abyss_deadtree_0 = 11,
 
@@ -20,12 +20,12 @@ return {
 
         dusk_tree_0 = 9,
 
-        highlands_pine_1 = 11,
-        highlands_pine_2 = 7,
+        highlands_pine_1 = 10,
+        highlands_pine_2 = 10,
         highlands_deadtree_0 = 8,
-        highlands_pine_3 = 9,
-        highlands_pine_4 = 11,
-        highlands_pine_5 = 7,
+        highlands_pine_3 = 8,
+        highlands_pine_4 = 10,
+        highlands_pine_5 = 10,
         abyss_deadtree_1 = 11,
         abyss_deadtree_2 = 8,
         frost_pine_1 = 3,
@@ -58,6 +58,16 @@ return {
         dusk_tree_4 = -1,
         dusk_tree_5 = -1,
         dusk_tree_6 = -1,
+        highlands_rock_0 = -1,
+        highlands_pine_0 = 1,
+        highlands_pine_1 = 1,
+        highlands_pine_2 = 1,
+        highlands_pine_3 = 1,
+        highlands_pine_4 = 1,
+        highlands_pine_5 = 1,
+        highlands_bush_0 = 1,
+        highlands_bush_1 = 1,
+        highlands_bush_2 = 1,
     },
 
     sizeK = {
@@ -70,8 +80,8 @@ return {
         frost_pine_2 = 0.80,
         frost_pine_4 = 0.80,
         abyss_deadtree_2 = 0.85,
-        highlands_pine_3 = 1.05,
-        highlands_pine_5 = 0.72,
+        highlands_pine_1 = 1.05,
+        highlands_pine_3 = 0.80,
         dusk_tree_2 = 0.90,
     },
 

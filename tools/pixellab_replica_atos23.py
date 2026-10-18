@@ -65,6 +65,40 @@ SPECS = {
         "charred pebbles at the edges, very low and wide, flat on the ground." + STYLE),
 }
 
+DIORAMA = (" Treat the sprite as a small pixel art diorama, not a flat texture: the crown or mass is "
+           "built in three planes (front, middle, back) that advance and recede, clusters of different "
+           "sizes, heights and light values; front clusters overlap and partly hide the branches and the "
+           "trunk; irregular dotted shadow of the clusters falls on the trunk and on the lower clusters; "
+           "front planes have a crisp outline and strong contrast, back planes are darker, softer, lower "
+           "contrast; trunk, branches and roots have thickness with a lit face and a shadow face.")
+MOON_R = " The cold moonlight comes from the upper RIGHT: lit faces on the right and on top, shadow faces on the left and underneath."
+SUN_R = " The red sun comes from the upper RIGHT: lit faces on the right and on top, shadow faces on the left and underneath."
+SOLO = (" Single isolated object only, transparent background, no ground, no floor shadow, nothing cut "
+        "off at the edges. Same hand-drawn pixel art style, palette and pixel scale as the reference, "
+        "crisp 1 px dark outline, limited palette, no smooth gradients, no anti-aliasing, no vector shapes, "
+        "no painterly or realistic 3D rendering.")
+
+HL_PINE = "a pine tree of the cold blue-green highland forest, tiers of drooping needle branches, "
+AB_DEAD = "a dead charred tree of the hellish ember wasteland, bare twisted branches, thin glowing ember cracks in the bark, "
+for k, (ref, w, h, d) in {
+    "dh_pine_a": ("highlands_pine_0.png", 96, 176, HL_PINE + "classic full cone shape, thick trunk, roots at the base"),
+    "dh_pine_b": ("highlands_pine_0.png", 72, 176, HL_PINE + "very tall and narrow spire, sparse tiers with gaps of sky between them, bare lower trunk, roots"),
+    "dh_pine_c": ("highlands_pine_0.png", 104, 176, HL_PINE + "old storm-broken pine, the top snapped off, a few long uneven tiers, crooked trunk, roots"),
+    "dh_pine_d": ("highlands_pine_0.png", 104, 140, HL_PINE + "short wide bushy pine, dense round lower tiers wider than tall, short thick trunk, roots"),
+    "dh_pine_e": ("highlands_pine_0.png", 96, 176, HL_PINE + "wind-bent pine leaning to the left, the crown swept to one side, roots gripping the ground"),
+    "dh_pine_f": ("highlands_pine_0.png", 112, 176, HL_PINE + "twin-trunk pine, two trunks from one root, two overlapping crowns of different heights"),
+    "dh_bush": ("highlands_pine_0.png", 72, 52, "a low juniper and heather shrub of the cold blue-green highlands, several overlapping rounded clumps of needles of different sizes, a few bare twigs, wider than tall"),
+    "da_dead_a": ("abyss_deadtree_0.png", 112, 168, AB_DEAD + "twisted S-curved trunk, claw-like branches spreading at the top, heavy roots"),
+    "da_dead_b": ("abyss_deadtree_0.png", 112, 168, AB_DEAD + "two thick trunks splitting from the same root, branches reaching up like hands"),
+    "da_dead_c": ("abyss_deadtree_0.png", 104, 150, AB_DEAD + "thick burnt stump-like trunk broken at mid height, jagged shattered top, a few side branches, massive roots"),
+    "da_dead_d": ("abyss_deadtree_0.png", 96, 176, AB_DEAD + "tall thin straight trunk with short broken spiky branches pointing up"),
+    "da_dead_e": ("abyss_deadtree_0.png", 124, 140, AB_DEAD + "wide low tree, short thick trunk, long branches spreading sideways almost horizontally"),
+    "da_dead_f": ("abyss_deadtree_0.png", 112, 168, AB_DEAD + "tree bent hard to the left by hot wind, leaning curved trunk, few twisted branches"),
+    "da_bush": ("abyss_deadtree_0.png", 72, 52, "a low dead thorny shrub of the hellish ember wasteland, several overlapping tangles of charred twigs of different sizes, a few glowing ember tips, wider than tall"),
+}.items():
+    light = MOON_R if k.startswith("dh") else SUN_R
+    SPECS[k] = (ref, w, h, d + "." + DIORAMA + light + SOLO)
+
 
 def jobs():
     return json.load(open(JOBS)) if os.path.exists(JOBS) else {}

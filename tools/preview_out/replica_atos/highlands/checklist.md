@@ -29,3 +29,12 @@ batalha 1080p em tod 0,65 e 0,95). Recortes em `recortes/` (antes à esquerda). 
 | 7. chão mais escuro e frio ao fundo | sim (`groundFar` 0,62, `groundReach` 0,85) | `depois/b2_dia_fork.png` |
 | 8. nada de colagem | o braseiro antigo (cubo de tijolo azul saturado, metade da altura de um homem, sem contato) era colagem e foi regerado; a fogueira pastel foi recolorida. Resta a pedra rúnica azul saturada (é mágica, brilha; ficou) | `recortes/braseiro_perto.png`, `recortes/runa_e_base_braseiro.png` |
 | 9. olhei as capturas e recortes | sim, todos os arquivos de `recortes/` e as 14 capturas de `depois/` | |
+
+## Passe diorama + pilar (18/Out, segundo commit)
+
+| item | evidência |
+|---|---|
+| os 6 pinheiros regerados com o prompt diorama (planos de frente/meio/fundo, pinheiro menor atrás em alguns, luz da lua à direita, `lit = 1`): cone cheio, torre fina, topo quebrado, baixo e largo com dois menores atrás, curvado pelo vento, tronco duplo | `../pixellab/folha_dh_pine.png`, `recortes/pinheiros_diorama_meio_dir.png`, `depois_diorama/` |
+| o arbusto era um carvalho verde vivo (fora do bioma, plano): virou zimbro/urze azul-esverdeado em tufos sobrepostos (3 variantes) | `../pixellab/folha_dh_bush.png` |
+| pedra pintada com luz à esquerda: `lit = -1`, espelha para a lua | |
+| revisão do lead: o pilar perto da câmera cobria a estrada e passava da barra de vida. `size` 5,3 → 4,9 (~0,8x na mesma profundidade) e `lane` 0,01-0,12 → 0,12-0,22 (fica ao lado da estrada, chama abaixo da barra) | `recortes/pilar_faixa_estrada.png`, `depois_diorama/b2_batalha_1080p_tod0.75.png` |
