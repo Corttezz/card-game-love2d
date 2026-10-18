@@ -1,4 +1,5 @@
 local LightEngine = require("engine.LightEngine")
+local Debug = require("src.core.Debug")
 
 local LuminaireEngine = {}
 
@@ -68,7 +69,8 @@ local CATALOG = {
         brazier = { size = 2.70, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
             weight = 0.8,
             light = { color = { 1.00, 0.58, 0.22 }, radiusK = 1.60,
-                      coreK = 0.50, intensity = 0.90, flicker = "fire" },
+                      coreK = 0.50, intensity = 0.90, flicker = "fire",
+                      pool = { radiusK = 1.40, intensity = 0.95, sy = 0.35 } },
             embers = { color = { 1.0, 0.68, 0.30 }, count = 3 } },
         crystal = { size = 1.1, lane = { 0.03, 0.40 }, anchor = { 0.50, 0.35 },
             weight = 0.8,
@@ -104,7 +106,8 @@ local CATALOG = {
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = { 1.00, 0.72, 0.30 }, radiusK = 1.40,
-                      coreK = 0.40, intensity = 0.85, flicker = "fire" } },
+                      coreK = 0.40, intensity = 0.85, flicker = "fire",
+                      pool = { radiusK = 1.10, intensity = 0.95, sy = 0.35 } } },
         shrine = { size = 1.6, lane = { 0.30, 0.75 }, anchor = { 0.50, 0.42 },
             weight = 0.5,
             light = { color = { 1.00, 0.78, 0.45 }, radiusK = 0.95,
@@ -200,14 +203,8 @@ function LuminaireEngine.anchor(bid, kind, variant, path)
     return res
 end
 
-function LuminaireEngine.submit(bid, kind, a)
-    local def = LuminaireEngine.def(bid, kind)
-    if not def then return end
-    local dayK = LuminaireEngine.dayK(a.tod)
-    if dayK <= 0 then return end
-    local L = def.light
+local function flickerOf(L, seed)
     local time = love.timer.getTime()
-    local seed = (a.seed or 0) % 1000
     local fi, fr = 1, 1
     if L.flicker == "fire" then
         local n = love.math.noise(time * 1.4, seed) * 0.75
@@ -228,6 +225,66 @@ function LuminaireEngine.submit(bid, kind, a)
         fi = 0.80 + 0.20 * s
         fr = 0.90 + 0.14 * s
     end
+    return fi, fr
+end
+
+LuminaireEngine.EMIT = { on = true, intensity = 0.22, radiusK = 0.75, levels = 3, cell = 4, upK = 2.2 }
+local emit = { shader = nil, ok = nil, img = nil }
+
+local function emitShader()
+    if emit.ok == nil then
+        local ok, sh = pcall(love.graphics.newShader, "shaders/light_emit.glsl")
+        emit.ok = ok and sh and true or false
+        emit.shader = emit.ok and sh or nil
+        if not emit.ok then
+            Debug.warn("[LuminaireEngine] shader light_emit falhou: " .. tostring(sh))
+        end
+        local d = love.image.newImageData(2, 2)
+        d:mapPixel(function() return 1, 1, 1, 1 end)
+        emit.img = love.graphics.newImage(d)
+    end
+    return emit.shader
+end
+
+function LuminaireEngine.drawPool(bid, kind, a)
+    local E = LuminaireEngine.EMIT
+    local def = E.on and LuminaireEngine.def(bid, kind)
+    local P = def and def.light.pool
+    if not P or (a.t or 1) < LuminaireEngine.POOL_MIN_T * 0.5 then return end
+    local dayK = LuminaireEngine.dayK(a.tod)
+    if dayK <= 0 or not LightEngine.isEnabled() then return end
+    local sh = emitShader()
+    if not sh then return end
+    local L = def.light
+    local fi, fr = flickerOf(L, (a.seed or 0) % 1000)
+    local distK = 0.42 + 0.58 * math.min(1, (a.t or 1) / 0.55)
+    local r = math.min(P.radiusK * a.flameH * fr * distK, a.capR or 1e9) * dayK * E.radiusK
+    local inten = E.intensity * P.intensity * fi * (0.6 + 0.4 * distK) * (a.alphaK or 1) * dayK
+    if r < 2 or inten <= 0.01 then return end
+    local pr, pg, pb, pa = love.graphics.getColor()
+    local bm, am = love.graphics.getBlendMode()
+    local prevSh = love.graphics.getShader()
+    love.graphics.setShader(sh)
+    sh:send("levels", E.levels)
+    sh:send("cell", E.cell)
+    sh:send("intensity", inten)
+    sh:send("upK", E.upK)
+    love.graphics.setBlendMode("add", "alphamultiply")
+    love.graphics.setColor(L.color[1], L.color[2], L.color[3], 1)
+    local sc = r
+    love.graphics.draw(emit.img, math.floor(a.gx), math.floor(a.gy), 0, sc, sc * (P.sy or 0.35), 1, 1)
+    love.graphics.setShader(prevSh)
+    love.graphics.setBlendMode(bm, am)
+    love.graphics.setColor(pr, pg, pb, pa)
+end
+
+function LuminaireEngine.submit(bid, kind, a)
+    local def = LuminaireEngine.def(bid, kind)
+    if not def then return end
+    local dayK = LuminaireEngine.dayK(a.tod)
+    if dayK <= 0 then return end
+    local L = def.light
+    local fi, fr = flickerOf(L, (a.seed or 0) % 1000)
     local base = a.flameH or a.sh
     local aK = a.alphaK or 1
     local distK = 0.42 + 0.58 * math.min(1, (a.t or 1) / 0.55)

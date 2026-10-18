@@ -479,6 +479,10 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   recalcule `painted` (coluna menos corte, sobre a largura nova). Dissolve com Bayer foi tentado e rejeitado
   (coluna pontilhada e silhueta fantasma).
 
+- **Poça emissiva no chão (18/Out/2026, rodada 4, `tools/preview_out/rodada4/item3/`):** o `drawProps` chama
+  `LuminaireEngine.drawPool` antes do sprite de cada luminária com `light.pool` (detalhe em
+  `memory/lighting_engine.md`, "Exceção implementada"). Lanterna do dusk e braseiro do frost ganharam `pool`.
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica

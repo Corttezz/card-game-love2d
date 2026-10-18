@@ -175,6 +175,15 @@ nome e não é o lightmap: **bloom Kawase seletivo sobre canvas emissivo,
 F6.3**. Tabela de riscos: "halo real além da silhueta = F6.3 (bloom), NÃO
 lightmap".
 
+### Exceção implementada: poça de CHÃO emissiva (18/Out/2026, rodada 4)
+A fronteira acima permite poça de chão aditiva, e o dono pediu fogo e lanternas que EMITEM no entardecer
+(tod 0,85: a poça multiplicativa sumia no chão escuro). `LuminaireEngine.drawPool` desenha, no slot de
+profundidade da luminária e ANTES do sprite dela, uma elipse aditiva (`shaders/light_emit.glsl`): 3 degraus +
+Bayer em célula de 4 px, cor da chama, × `dayK` (zero de dia), metade de trás 2,2× mais curta para não subir em
+objeto do fundo. Props da frente, grama e o próprio poste cobrem; o lightmap multiplica depois. NÃO é aditivo em
+silhueta: borda quente de vizinho continua só pelo multiply. Calibração em `LuminaireEngine.EMIT`; trava
+`test_light_emit`; provas em `tools/preview_out/rodada4/item3/`.
+
 ### O sintoma que faz a ideia parecer boa — e a causa real
 "Braseiro aceso e o chão não muda" (medido em `enemy4_winter_monarch`: dois
 fogos, chão intacto). A causa NÃO é falta de aditivo: é o AMBIENTE claro

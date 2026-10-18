@@ -3814,6 +3814,14 @@ local function drawProps(g, x, w, camZ)
                 end
                 rot = rot + pokeRot(p)
 
+                if lumDef then
+                    local la = lumArg
+                    la.gx = pxX + ((lumFlip < 0 and 1 - (lumAnc.ax or 0.5) or (lumAnc.ax or 0.5)) - 0.5) * iw * s
+                    la.gy, la.t, la.seed, la.capR, la.alphaK = sy, t, p.z, g.h * 0.30, fadeA
+                    la.flameH = math.max(8, ih * s * (1 - (lumAnc.ay or 0.3)) - sink2)
+                    LuminaireEngine.drawPool(p.bid, p.kind, la)
+                end
+
                 local pc = Scene.Grade.color(Scene.Grade.familyOf(p.kind, lumDef ~= nil), t, LMG.c)
                 love.graphics.setColor(math.min(1, pc[1] * vtR), math.min(1, pc[2] * vtG),
                     math.min(1, pc[3] * vtB), fadeA)

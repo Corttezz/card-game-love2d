@@ -34,6 +34,7 @@ local SUITES = {
     { group = "unit",  name = "test_interior_fx" },
     { group = "unit",  name = "test_world_shadows" },
     { group = "unit",  name = "test_sky_strip" },
+    { group = "unit",  name = "test_light_emit" },
     { group = "unit",  name = "test_tree_anim" },
     { group = "unit",  name = "test_weather" },
     { group = "unit",  name = "test_world_props" },
