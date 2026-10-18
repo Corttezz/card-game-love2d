@@ -2,7 +2,7 @@ local function landmarks(scorchR, scorchA, glowA, selfL)
     selfL = selfL or 0
     return {
         rest   = { scorch = { radius = scorchR, alpha = scorchA }, embers = true,
-                   smoke = "thin", pulse = 0.18, selfLight = selfL },
+                   smoke = "thin", pulse = 0.18, selfLight = selfL * 2 },
         battle = { flagWave = true, dust = { rate = 0.4, alpha = 0.10 }, selfLight = selfL },
         shop   = { windowGlow = { alpha = glowA or 0.22, spread = 1.4 }, smoke = "chimney",
                    selfLight = selfL },

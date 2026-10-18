@@ -1195,7 +1195,7 @@ local LANDMARK_SHADOW_PAD = {
     abyss_landmark_elite      = 2, landmark_elite        = 2,
 }
 local LANDMARK_LIGHT = {
-    landmark_rest  = { color = { 1.00, 0.62, 0.28 }, radiusK = 0.55, intensity = 0.55 },
+    landmark_rest  = { color = { 1.00, 0.62, 0.28 }, radiusK = 0.95, intensity = 0.85 },
     landmark_elite = { color = { 0.72, 0.38, 1.00 }, radiusK = 0.45, intensity = 0.50 },
     landmark_shop  = { color = { 1.00, 0.72, 0.38 }, radiusK = 0.30, intensity = 0.45 },
     landmark_event = { color = { 0.45, 0.80, 1.00 }, radiusK = 0.30, intensity = 0.45 },
