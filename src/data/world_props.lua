@@ -5,6 +5,10 @@ return {
     sink = {
         fields_tree_0 = 11,
         fields_tree_1 = 11,
+        fields_tree_2 = 11,
+        fields_tree_3 = 10,
+        fields_tree_4 = 9,
+        fields_tree_5 = 9,
 
         highlands_pine_0 = 9,
 
@@ -16,7 +20,6 @@ return {
 
         dusk_tree_0 = 9,
 
-        fields_tree_2 = 9,
         highlands_pine_1 = 11,
         highlands_pine_2 = 7,
         highlands_deadtree_0 = 8,
@@ -32,15 +35,22 @@ return {
     },
 
     lit = {
-        fields_tree_0 = 1,
-        fields_tree_2 = -1,
         fields_bush_0 = 1,
     },
 
     sizeK = {
+        fields_tree_1 = 0.92,
+        fields_tree_2 = 0.98,
+        fields_tree_3 = 0.94,
+        fields_tree_4 = 1.06,
+        fields_tree_5 = 0.88,
         frost_pine_1 = 0.72,
         frost_pine_2 = 0.80,
         abyss_deadtree_2 = 0.85,
         dusk_tree_2 = 0.90,
+    },
+
+    variants = {
+        fields_tree = 6,
     },
 }

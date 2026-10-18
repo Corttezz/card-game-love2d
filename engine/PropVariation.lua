@@ -18,10 +18,12 @@ function PropVariation.of(seed, kind, tbl)
     local h4 = hash01(seed * 3.31 + 2.2)
     local h5 = hash01(seed * 5.07 + 41.9)
     local h6 = hash01(seed * 1.91 + 3.7)
+    local h7 = hash01(seed * 2.63 + 11.3)
     local tk = tbl.tint or 0
-    out.tintR = 1 + (h1 - 0.5) * 2 * tk
-    out.tintG = 1 + (h2 - 0.5) * 2 * tk * 0.6
-    out.tintB = 1 + (h3 - 0.5) * 2 * tk
+    local bk = 1 + (h7 - 0.5) * 2 * (tbl.bright or 0)
+    out.tintR = (1 + (h1 - 0.5) * 2 * tk) * bk
+    out.tintG = (1 + (h2 - 0.5) * 2 * tk * 0.6) * bk
+    out.tintB = (1 + (h3 - 0.5) * 2 * tk) * bk
     out.scale = 1 + (h4 - 0.5) * 2 * (tbl.scale or 0)
     out.flip = (tbl.flip and h5 < 0.5) and -1 or 1
     out.windPhase = tbl.windPhase and (h6 * 6.2832) % 6.2832 or 0

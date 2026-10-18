@@ -210,6 +210,30 @@ tom fixo nos pontos de desenho do WorldRoad/EnemyRenderer).
   experimento com recortes 3x por `tools/realismo_sheet.py`. Perf 1080p 4,4 ms,
   389 draw calls, 31 KB.
 
+**Árvores novas do ato 1 por plano (18/Out/2026, frente arvores-novas; prova e
+checklist em `tools/preview_out/arvores_novas/`):** o dono rejeitou as árvores
+antigas e a troca de 3 (massa uniforme no meio). Agora `fields_tree_0..5` = seis
+candidatas `fields_sun_*` (a_0, c_3, a_3, a_1, b_2, c_0: redonda, larga, com vãos,
+inclinada, alta, em patamares; todas neutras de luz, sem `lit`), `world_props.variants`
+diz quantas variantes a espécie tem (`PropCut.nvar`; `rollProp`, companheiras e
+`prewarmJobs` leem dali) e `makeWall` nunca repete a variante da vizinha do mesmo lado.
+- **Tratamento por plano = `shaders/tree_depth.glsl`**, só na família `tree` e só
+  em bioma com `grade.treeDepth` (`SceneGrade.treeDepth(t)` → `PropCut.beginDepth`):
+  névoa por PIXEL para `SceneGrade.treeHaze()` (névoa crua × `haze` por canal; os
+  escuros sobem mais), saturação por pixel (`satNear` no perto → `sat` no fundo),
+  meia resolução NÍTIDA no fundo (`lod`: amostra pontual do bloco 2×2; a média 2×2
+  virava blur e foi rejeitada) e volume topo-claro/base-escura (`vol`). No perto o
+  shader é pixel-idêntico ao desenho cru fora de `vol`/`satNear` (trava em
+  `test_world_props`). O `tdSat` saiu do tint do `SceneGrade.color` (num tint quase
+  branco não dessaturava nada).
+- **Lição:** clarear a base escura de TODAS as copas (lift alto, sem volume) deixa a
+  mata do meio MAIS uniforme; o que separa árvore de árvore é o contraste dentro da
+  copa (topo claro, base escura) e a diferença de brilho entre vizinhas
+  (`PropVariation.bright` ±16 % além do tom ±6 %). A névoa entra devagar
+  (`near` 0,70 → `far` 0,25) e mais verde que roxa.
+- Sombra de copa e faixa de contato só no perto (`PropCut.nearK`); `treeGain` 0,92.
+- Perf 1080p: 5,2 ms mediana, 401 draw calls, 31,6 KB, 0 decode na troca; 188 locais.
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica

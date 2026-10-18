@@ -24,10 +24,12 @@ local S = {
     shr = 0, shg = 0, shb = 0,
     satNear = 1, satFar = 1, contrastFar = 1,
     fr = 1, fg = 1, fb = 1, fogNear = 0, fogFar = 0, fogCurve = 1,
+    f0r = 1, f0g = 1, f0b = 1,
     ar = 1, ag = 1, ab = 1,
     liftRef = 0, maxLift = 1,
     groundFar = 1, groundReach = 0.6, treeGain = 1, tnr = 1, tng = 1, tnb = 1,
     tdNear = 0.6, tdFar = 0.3, tdSat = 1, tdBright = 1, tdFog = 0,
+    tdLift = 0, tdLod = 0, tdVol = 0, tdHzR = 1, tdHzG = 1, tdHzB = 1, tdSatNear = 1, tdOn = false,
     depth = 1,
 }
 
@@ -47,9 +49,10 @@ local function resolve(g, tod, into)
     into.satNear, into.satFar = g.satNear, g.satFar
     into.contrastFar = lerp(g.contrastFarDay or g.contrastFar, g.contrastFar, tod)
     local fd = g.fogDusk or g.fog
-    into.fr = math.min(1.6, lerp(g.fog[1], fd[1], tod) * 1.9)
-    into.fg = math.min(1.6, lerp(g.fog[2], fd[2], tod) * 1.9)
-    into.fb = math.min(1.6, lerp(g.fog[3], fd[3], tod) * 1.9)
+    into.f0r, into.f0g, into.f0b = lerp(g.fog[1], fd[1], tod), lerp(g.fog[2], fd[2], tod), lerp(g.fog[3], fd[3], tod)
+    into.fr = math.min(1.6, into.f0r * 1.9)
+    into.fg = math.min(1.6, into.f0g * 1.9)
+    into.fb = math.min(1.6, into.f0b * 1.9)
     into.fogNear, into.fogFar, into.fogCurve = g.fogNear, g.fogFar, g.fogCurve
     into.liftRef, into.maxLift = g.liftRef or 0, g.maxLift or 1
     into.groundFar, into.groundReach = g.groundFar or 1, g.groundReach or 0.6
@@ -59,14 +62,19 @@ local function resolve(g, tod, into)
     local td = g.treeDepth
     into.tdNear, into.tdFar = td and td.near or 0.6, td and td.far or 0.3
     into.tdSat, into.tdBright, into.tdFog = td and td.sat or 1, td and td.bright or 1, td and td.fog or 0
+    into.tdLift, into.tdLod, into.tdVol = td and td.lift or 0, td and td.lod or 0, td and td.vol or 0
+    into.tdSatNear = td and td.satNear or 1
+    local hz = td and td.haze
+    into.tdHzR, into.tdHzG, into.tdHzB = hz and hz[1] or 1, hz and hz[2] or 1, hz and hz[3] or 1
+    into.tdOn = td ~= nil
     return into
 end
 
 local prevLine = {}
 local FIELDS = { "tr", "tg", "tb", "shr", "shg", "shb", "satNear", "satFar",
-                 "contrastFar", "fr", "fg", "fb", "fogNear", "fogFar", "fogCurve",
+                 "contrastFar", "fr", "fg", "fb", "f0r", "f0g", "f0b", "fogNear", "fogFar", "fogCurve",
                  "liftRef", "maxLift", "groundFar", "groundReach", "treeGain", "tnr", "tng", "tnb",
-                 "tdNear", "tdFar", "tdSat", "tdBright", "tdFog" }
+                 "tdNear", "tdFar", "tdSat", "tdBright", "tdFog", "tdLift", "tdLod", "tdVol", "tdHzR", "tdHzG", "tdHzB", "tdSatNear" }
 
 function SceneGrade.begin(bid, tod, fromBid, blendK, amb)
     tod = clamp01(tod or 1)
@@ -81,6 +89,7 @@ function SceneGrade.begin(bid, tod, fromBid, blendK, amb)
             local f = FIELDS[i]
             S[f] = lerp(prevLine[f], S[f], k)
         end
+        S.tdOn = S.tdOn or prevLine.tdOn
     end
     if amb then
         S.ar, S.ag, S.ab = amb[1] or 1, amb[2] or 1, amb[3] or 1
@@ -107,6 +116,24 @@ function SceneGrade.fogAlpha(t)
 end
 
 function SceneGrade.fogColor() return S.fr, S.fg, S.fb end
+function SceneGrade.fogRaw() return S.f0r, S.f0g, S.f0b end
+function SceneGrade.treeHaze()
+    return math.min(1, S.f0r * S.tdHzR), math.min(1, S.f0g * S.tdHzG), math.min(1, S.f0b * S.tdHzB)
+end
+function SceneGrade.stamp() return S.stamp end
+
+function SceneGrade.treeDepth(t, out)
+    if not S.tdOn or not SceneGrade.isActive() then return nil end
+    t = clamp01(t or 1)
+    local dk = clamp01((S.tdNear - t) / math.max(1e-3, S.tdNear - S.tdFar))
+    out = out or {}
+    out.lift = S.tdLift * dk
+    out.sat = lerp(S.tdSatNear, S.tdSat, dk)
+    out.lod = (dk >= 0.999 and S.tdLod > 0.5) and 1 or 0
+    out.vol = S.tdVol * (1 - 0.6 * dk)
+    out.dk = dk
+    return out
+end
 function SceneGrade.fogParams() return S.fogNear, S.fogFar, S.fogCurve end
 function SceneGrade.ground() return S.groundFar, S.groundReach end
 function SceneGrade.shadowTint() return S.shr, S.shg, S.shb end
@@ -128,7 +155,7 @@ function SceneGrade.color(family, t, out)
         fa = 1 - (1 - fa) * (1 - dk * S.tdFog)
     end
     r, g, b = lerp(r, S.fr, fa), lerp(g, S.fg, fa), lerp(b, S.fb, fa)
-    local sat = lerp(S.satFar, S.satNear, t) * lerp(1, S.tdSat, dk)
+    local sat = lerp(S.satFar, S.satNear, t)
     local l = 0.299 * r + 0.587 * g + 0.114 * b
     r, g, b = lerp(l, r, sat), lerp(l, g, sat), lerp(l, b, sat)
     local bright = lerp(S.contrastFar, 1, math.min(1, t / CONTRAST_REACH))

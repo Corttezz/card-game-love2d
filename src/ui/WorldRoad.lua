@@ -23,12 +23,70 @@ local PropCut = {
     vis = setmetatable({}, { __mode = "k" }),
     sizeK = setmetatable({}, { __mode = "k" }),
     lit = setmetatable({}, { __mode = "k" }),
+    texel = setmetatable({}, { __mode = "k" }),
     kinds = { tree = true, pine = true, deadtree = true, bush = true },
+    nv = {}, EMPTY = {},
+    v4 = { 0, 1, 0, 0 }, v3 = { 0, 0, 0 }, td = {},
 }
 function PropCut.flipToSun(img, sunRight, fallback)
     local lit = PropCut.lit[img]
     if not lit then return fallback end
     return (lit == (sunRight and 1 or -1)) and 1 or -1
+end
+function PropCut.nvar(bid, kind)
+    local byBid = PropCut.nv[bid]
+    if not byBid then byBid = {}; PropCut.nv[bid] = byBid end
+    local n = byBid[kind]
+    if not n then
+        n = (PropCut.data.variants or PropCut.EMPTY)[bid .. "_" .. kind] or 3
+        byBid[kind] = n
+    end
+    return n
+end
+function PropCut.depthShader()
+    if PropCut.sh == nil then
+        local ok, sh = pcall(love.graphics.newShader, "shaders/tree_depth.glsl")
+        PropCut.sh = ok and sh or false
+        if not ok then
+            require("src.core.Debug").warn("[worldroad] shader de profundidade das árvores não compilou: "
+                .. tostring(sh))
+        end
+    end
+    return PropCut.sh
+end
+function PropCut.beginDepth(img, t)
+    local td = Scene.Grade.treeDepth(t, PropCut.td)
+    if not td then return nil end
+    local sh = PropCut.depthShader()
+    if not sh then return nil end
+    local prev = love.graphics.getShader()
+    local v4 = PropCut.v4
+    v4[1], v4[2], v4[3], v4[4] = td.lift, td.sat, td.lod, td.vol
+    sh:send("depth", v4)
+    local stamp = Scene.Grade.stamp()
+    if PropCut.fogStamp ~= stamp then
+        PropCut.fogStamp = stamp
+        local v3 = PropCut.v3
+        v3[1], v3[2], v3[3] = Scene.Grade.treeHaze()
+        sh:send("fog", v3)
+    end
+    if PropCut.texelImg ~= img then
+        PropCut.texelImg = img
+        local tx = PropCut.texel[img]
+        if not tx then
+            tx = { 1 / img:getWidth(), 1 / img:getHeight() }
+            PropCut.texel[img] = tx
+        end
+        sh:send("texel", tx)
+    end
+    love.graphics.setShader(sh)
+    return prev or false
+end
+function PropCut.endDepth(prev)
+    if prev ~= nil then love.graphics.setShader(prev or nil) end
+end
+function PropCut.nearK(t)
+    return math.min(1, math.max(0, (t - 0.3) / 0.3))
 end
 function PropCut.cutOf(img, kind)
     if not PropCut.kinds[kind] then return 0 end
@@ -715,6 +773,9 @@ local function getSprite(kind, variant, bid)
     return img
 end
 
+function WorldRoad.propVariants(bid, kind) return PropCut.nvar(bid, kind) end
+function WorldRoad.treeDepthShader() return PropCut.depthShader() end
+
 function WorldRoad.propCutInfo(kind, variant, bid)
     local img = getSprite(kind, variant or 0, bid)
     if not img then return nil end
@@ -830,7 +891,7 @@ local function rollProp(p, z, forcedSide, noLum)
     local ldef = LuminaireEngine.def(b.id, p.kind)
     local lane = (ldef and ldef.lane) or KIND_LANE[p.kind] or KIND_LANE.default
     p.lane = lane[1] + rng:random() * (lane[2] - lane[1])
-    p.variant = rng:random(0, 2)
+    p.variant = rng:random(0, PropCut.nvar(b.id, p.kind) - 1)
     p.bid = b.id
     p.big = 1
     p.cluster = nil
@@ -889,6 +950,13 @@ local function makeWall(p)
     local rng = WorldRoad._rng
     p.wall = true
     p.kind = TREE_KIND[p.bid] or "tree"
+    local n = PropCut.nvar(p.bid, p.kind)
+    local wv = WorldRoad._wallVar
+    if not wv then wv = {}; WorldRoad._wallVar = wv end
+    if n > 1 and p.variant == wv[p.side] then
+        p.variant = (p.variant + 1 + rng:random(0, n - 2)) % n
+    end
+    wv[p.side] = p.variant
     p.lane = 0.2 + rng:random() * 0.6
     p.big = 1 + rng:random() * 0.3
     p.cluster = rng:random() < 0.5 and rng:random(1, 2) or nil
@@ -2313,7 +2381,7 @@ local function drawPropsBehind(g, x, w, camZ)
                         local off = p.side
                             * (0.85 * ci + math.abs(p.jitter) * 0.45) * iw * s
                             + p.jitter * 10
-                        local cimg = getSprite(p.kind, (p.variant + ci) % 3, p.bid)
+                        local cimg = getSprite(p.kind, (p.variant + ci) % PropCut.nvar(p.bid, p.kind), p.bid)
                         if cimg then
                             local cvv = Scene.Var.of(p.z + ci * 17.3, p.kind, Scene.Grade.cfg("trees"))
                             local cs = s * (0.5 + 0.13 * ci) * cvv.scale
@@ -2323,16 +2391,21 @@ local function drawPropsBehind(g, x, w, camZ)
                             love.graphics.setColor(math.min(1, cc[1] * 0.6 * cvv.tintR),
                                 math.min(1, cc[2] * 0.6 * cvv.tintG),
                                 math.min(1, cc[3] * 0.6 * cvv.tintB), fadeA)
+                            local cprev = PropCut.beginDepth(cimg, 0)
                             PropCut.draw(cimg, p.kind, math.floor(pxX + off),
                                 math.floor(ccrest + (1 - em) * cihv * cs), 0, cs * cvv.flip, cs)
+                            PropCut.endDepth(cprev)
                         end
                     end
                 end
                 local cb = Scene.Grade.color(Scene.Grade.familyOf(p.kind), 0, LMG.c)
                 love.graphics.setColor(math.min(1, cb[1] * 0.66 * vtR), math.min(1, cb[2] * 0.66 * vtG),
                     math.min(1, cb[3] * 0.66 * vtB), fadeA)
+                local bprev = nil
+                if isTree then bprev = PropCut.beginDepth(img, 0) end
                 PropCut.draw(img, p.kind, math.floor(pxX),
                     math.floor(crest + sink), 0, s * vflip, s)
+                PropCut.endDepth(bprev)
             end
         end
         ::continue_emerge::
@@ -3344,7 +3417,7 @@ local function drawProps(g, x, w, camZ)
                             + p.jitter * 10
                         local cx2 = pxX + off
                         local cy2 = g.latY(cx2 - g.cx, t)
-                        local cvar = (p.variant + ci) % 3
+                        local cvar = (p.variant + ci) % PropCut.nvar(p.bid, p.kind)
                         local cimg = getSprite(p.kind, cvar, p.bid)
                         if cimg then
                             local cvv = Scene.Var.of(p.z + ci * 17.3, p.kind, Scene.Grade.cfg("trees"))
@@ -3357,19 +3430,22 @@ local function drawProps(g, x, w, camZ)
                                     PropCut.cutOf(cimg, p.kind),
                                     WorldRoad.SHADOW_PROFILE[p.kind]
                                         or Scene.Grade.cfg("shadow").tree), t)
-                            Scene.Contact.queue(cimg, cx2, cy2, cs, t, 0.8 * fadeA, cflip)
-                            local csh = p.kind ~= "bush" and Scene.Grade.cfg("shadow").canopy
+                            local cnk = PropCut.nearK(t)
+                            Scene.Contact.queue(cimg, cx2, cy2, cs, t, 0.8 * fadeA * (0.35 + 0.65 * cnk), cflip)
+                            local csh = p.kind ~= "bush" and cnk > 0 and Scene.Grade.cfg("shadow").canopy
                             if csh then
                                 local crx = cimg:getWidth() * cs * csh.width
                                 Scene.Contact.queueDisc(cx2 + sunShadowDir(g, x, w, cx2) * crx * csh.shift,
-                                    cy2 - 1, crx, crx * csh.flat * (0.5 + 0.5 * t), csh.alpha * 0.8 * fadeA, t)
+                                    cy2 - 1, crx, crx * csh.flat * (0.5 + 0.5 * t), csh.alpha * 0.8 * fadeA * cnk, t)
                             end
                             local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), t, LMG.c)
                             love.graphics.setColor(math.min(1, cc[1] * 0.88 * cvv.tintR),
                                 math.min(1, cc[2] * 0.88 * cvv.tintG),
                                 math.min(1, cc[3] * 0.88 * cvv.tintB), fadeA)
+                            local cprev = PropCut.beginDepth(cimg, t)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
                                 math.floor(cy2), crot, cs * cflip, cs, ckx * cflip)
+                            PropCut.endDepth(cprev)
                             PropCut.mask(cimg, p.kind, math.floor(cx2),
                                 math.floor(cy2), crot, cs * cflip, cs, ckx * cflip, t)
                         end
@@ -3412,14 +3488,15 @@ local function drawProps(g, x, w, camZ)
                         pxX + shd * iw * s * 0.16, sy - 1,
                         iw * s * 0.24, math.max(2, 4 * g.persp(t)))
                 end
+                local nk = isTree and PropCut.nearK(t) or 1
                 if p.kind ~= "tuft" and p.kind ~= "flowers" then
-                    Scene.Contact.queue(img, pxX, sy, s, t, fadeA, lumFlip * vflip)
+                    Scene.Contact.queue(img, pxX, sy, s, t, fadeA * (0.35 + 0.65 * nk), lumFlip * vflip)
                 end
-                if isTree and p.kind ~= "bush" and Scene.Grade.cfg("shadow").canopy then
+                if isTree and p.kind ~= "bush" and nk > 0 and Scene.Grade.cfg("shadow").canopy then
                     local cs = Scene.Grade.cfg("shadow").canopy
                     local rx = iw * s * cs.width
                     Scene.Contact.queueDisc(pxX + sunShadowDir(g, x, w, pxX) * rx * cs.shift,
-                        sy - 1, rx, rx * cs.flat * (0.5 + 0.5 * t), cs.alpha * aFade * fadeA, t)
+                        sy - 1, rx, rx * cs.flat * (0.5 + 0.5 * t), cs.alpha * aFade * fadeA * nk, t)
                 end
 
                 local rot = 0
@@ -3435,8 +3512,11 @@ local function drawProps(g, x, w, camZ)
                 local pc = Scene.Grade.color(Scene.Grade.familyOf(p.kind, lumDef ~= nil), t, LMG.c)
                 love.graphics.setColor(math.min(1, pc[1] * vtR), math.min(1, pc[2] * vtG),
                     math.min(1, pc[3] * vtB), fadeA)
+                local dprev = nil
+                if isTree then dprev = PropCut.beginDepth(img, t) end
                 PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip)
+                PropCut.endDepth(dprev)
                 PropCut.mask(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip, t)
                 if isTree and fadeA >= 0.5 then
@@ -3918,6 +3998,7 @@ function WorldRoad.resetRun()
     WorldRoad._entry = nil
     WorldRoad._encounter = nil
     WorldRoad._fork = nil
+    WorldRoad._wallVar = nil
     WorldRoad._landmark = nil
     WorldRoad._enemyDraw = nil
     WorldRoad._enemyBaseY = nil
@@ -3960,8 +4041,9 @@ local function prewarmJobs(idx)
     kinds[#kinds + 1] = TREE_KIND[bid] or "tree"
     kinds[#kinds + 1] = "tuft"
     for _, kind in ipairs(kinds) do
-        for v = 0, 2 do getSprite(kind, v, bid); y() end
+        for v = 0, PropCut.nvar(bid, kind) - 1 do getSprite(kind, v, bid); y() end
     end
+    PropCut.depthShader(); y()
     local lumCat = LuminaireEngine.catalog(bid)
     for _, kind in ipairs(kindOrder(lumCat)) do
         for v = 0, 2 do

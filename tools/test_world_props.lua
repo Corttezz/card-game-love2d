@@ -61,6 +61,97 @@ function M.run()
         end
     end
 
+    for key, n in pairs(props.variants or {}) do
+        local bid, kind = key:match("^(%a+)_(%a+)$")
+        t:eq(key .. ": WorldRoad.propVariants = tabela", WorldRoad.propVariants(bid, kind), n)
+        for v = 0, n - 1 do
+            t:truthy(("%s: variante %d tem PNG e sink"):format(key, v),
+                love.filesystem.getInfo(WORLD .. key .. "_" .. v .. ".png") ~= nil
+                and props.sink[key .. "_" .. v] ~= nil)
+        end
+        t:falsy(("%s: nenhum PNG além das %d variantes declaradas"):format(key, n),
+            love.filesystem.getInfo(WORLD .. key .. "_" .. n .. ".png") ~= nil)
+    end
+    t:eq("sem entrada em variants: 3 variantes", WorldRoad.propVariants("highlands", "pine"), 3)
+
+    do
+        local sh = WorldRoad.treeDepthShader()
+        if t:truthy("shader de profundidade das árvores compila", sh ~= nil and sh ~= false) then
+            local img = love.graphics.newImage(WORLD .. "fields_tree_0.png")
+            img:setFilter("nearest", "nearest")
+            local iw, ih = img:getDimensions()
+            local prevShader = love.graphics.getShader()
+            local function render(depth)
+                local cv = love.graphics.newCanvas(iw, ih)
+                love.graphics.setCanvas(cv)
+                love.graphics.clear(0, 0, 0, 0)
+                love.graphics.setShader()
+                love.graphics.setBlendMode("alpha")
+                love.graphics.setColor(0.9, 0.95, 0.85, 1)
+                if depth then
+                    sh:send("depth", depth)
+                    sh:send("fog", { 0.6, 0.68, 0.74 })
+                    sh:send("texel", { 1 / iw, 1 / ih })
+                    love.graphics.setShader(sh)
+                end
+                love.graphics.draw(img, 0, 0)
+                love.graphics.setShader()
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.setCanvas()
+                return cv:newImageData()
+            end
+            local plain, near, far = render(nil), render({ 0, 1, 0, 0 }), render({ 0.3, 0.8, 1, 0 })
+            love.graphics.setShader(prevShader)
+            local same, diff, opaque = true, 0, 0
+            for y = 0, ih - 1 do
+                for x = 0, iw - 1 do
+                    local r0, g0, b0, a0 = plain:getPixel(x, y)
+                    local r1, g1, b1, a1 = near:getPixel(x, y)
+                    local r2, g2, b2 = far:getPixel(x, y)
+                    if math.abs(r0 - r1) > 1 / 255 or math.abs(g0 - g1) > 1 / 255
+                       or math.abs(b0 - b1) > 1 / 255 or math.abs(a0 - a1) > 1 / 255 then same = false end
+                    if a0 > 0.5 then
+                        opaque = opaque + 1
+                        if math.abs(r0 - r2) + math.abs(g0 - g2) + math.abs(b0 - b2) > 0.02 then diff = diff + 1 end
+                    end
+                end
+            end
+            t:truthy("perto (lift 0, sat 1, lod 0, vol 0): pixel-idêntico ao desenho cru", same)
+            t:truthy(("longe (lift/sat/lod): a maioria dos pixels muda (%d de %d)"):format(diff, opaque),
+                diff > opaque * 0.5)
+        end
+    end
+
+    do
+        WorldRoad.clearCache()
+        WorldRoad.resetRun()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        for _ = 1, 3 do WorldRoad.update(1 / 30) end
+        local bySide = { [-1] = {}, [1] = {} }
+        for _, p in ipairs(WorldRoad._props) do
+            if p.wall and not p.ghost then table.insert(bySide[p.side], p) end
+        end
+        local used, pairsN, equalN = {}, 0, 0
+        for _, list in pairs(bySide) do
+            table.sort(list, function(a, b) return a.z < b.z end)
+            for i, p in ipairs(list) do
+                used[p.variant] = true
+                if i > 1 then
+                    pairsN = pairsN + 1
+                    if list[i - 1].variant == p.variant then equalN = equalN + 1 end
+                end
+            end
+        end
+        local nUsed = 0
+        for _ in pairs(used) do nUsed = nUsed + 1 end
+        t:truthy(("parede dos campos usa pelo menos 5 das 6 variantes (%d)"):format(nUsed), nUsed >= 5)
+        t:truthy(("parede: vizinhas do mesmo lado raramente repetem a silhueta (%d de %d)"):format(equalN, pairsN),
+            pairsN > 10 and equalN <= pairsN * 0.2)
+        WorldRoad.clearCache()
+        WorldRoad.resetRun()
+    end
+
     local cut0, vis0, h0 = WorldRoad.propCutInfo("tree", 0, "fields")
     t:eq("fields tree v0: sink da tabela", cut0, props.sink.fields_tree_0)
     t:eq("fields tree v0: altura visível = altura - sink", vis0, h0 - cut0)

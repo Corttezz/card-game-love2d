@@ -120,6 +120,28 @@ function M.run()
     t:truthy("blend no meio: cor entre as duas linhas", between)
     t:truthy("blend no meio: fogAlpha finito", SceneGrade.fogAlpha(0.3) == SceneGrade.fogAlpha(0.3))
 
+    do
+        SceneGrade.begin("fields", 0, nil, 1, amb)
+        local n1, nm, nf = SceneGrade.treeDepth(1, {}), SceneGrade.treeDepth(0.45, {}), SceneGrade.treeDepth(0.2, {})
+        local td = DATA.fields.grade.treeDepth
+        t:truthy("treeDepth(1): sem névoa, sem meia resolução, volume cheio",
+            n1 and n1.lift == 0 and n1.lod == 0 and n1.vol == td.vol)
+        t:near("treeDepth(1): saturação do perto", n1.sat, td.satNear or 1, 1e-6)
+        t:truthy("treeDepth(0.45): névoa parcial, nítido", nm.lift > 0 and nm.lift < td.lift and nm.lod == 0)
+        t:truthy("treeDepth(0.2): névoa cheia, meia resolução, menos saturação",
+            math.abs(nf.lift - td.lift) < 1e-6 and nf.lod == 1 and nf.sat < nm.sat and nm.sat < n1.sat)
+        local hr, hg, hb = SceneGrade.treeHaze()
+        local fr, fg, fb = SceneGrade.fogRaw()
+        t:truthy("névoa das árvores clareia a névoa crua e fica em [0,1]",
+            hr >= fr and hg >= fg and hb >= fb and hr <= 1 and hg <= 1 and hb <= 1)
+        SceneGrade.begin("highlands", 0, nil, 1, amb)
+        t:falsy("bioma sem treeDepth: treeDepth = nil (sem shader)", SceneGrade.treeDepth(0.2, {}))
+        SceneGrade.begin("highlands", 0, "fields", 0.5, amb)
+        local mid = SceneGrade.treeDepth(0.2, {})
+        t:truthy("no blend a partir dos campos a névoa das árvores esvai, sem salto",
+            mid ~= nil and mid.lift > 0 and mid.lift < td.lift)
+    end
+
     t:eq("familyOf(tree)", SceneGrade.familyOf("tree"), "tree")
     t:eq("familyOf(pine)", SceneGrade.familyOf("pine"), "tree")
     t:eq("familyOf(bush)", SceneGrade.familyOf("bush"), "tree")

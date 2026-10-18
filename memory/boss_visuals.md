@@ -323,3 +323,13 @@ nome e bytes ≠ de qualquer ícone de carta, 64x64, e TopBar/Menu não pedem ma
 `star`/`scroll`). Provas: `hud_foco_eclipse.png`
 (`PREVIEW_HUD_ECLIPSE=1 lovec . preview_battle_hud`), `topbar_3x.png`,
 `menu_rodape_3x.png` (`MENU_PROFILE=1 lovec . screenshot_menu_v2`).
+
+## Assets PixelLab fora dos chefes gerados nesta rodada (18/Out/2026)
+
+- Árvores dos campos `assets/sprites/world/fields_tree_0..5.png`: seis das
+  12 candidatas `fields_sun_a/b/c__N` (`tools/pixellab_trees.py`,
+  `create_image_pro` com o `fields_tree_1.png` antigo como referência de estilo;
+  gerações gastas pela frente realismo-cenario, zero gasto novo nesta rodada).
+  Escolha, medidas e tratamento por plano em
+  `tools/preview_out/arvores_novas/checklist.md` e em
+  [worldroad_scene.md](worldroad_scene.md).
