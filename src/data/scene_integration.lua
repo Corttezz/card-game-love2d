@@ -17,11 +17,11 @@ return {
         grade = {
             day = { 1.00, 0.985, 0.95 }, dusk = { 1.00, 0.94, 1.00 },
             shadowTint = { 0.36, 0.22, 0.46 },
-            satNear = 1.0, satFar = 0.5, contrastFar = 0.6, contrastFarDay = 1.0,
+            satNear = 1.0, satFar = 0.5, contrastFar = 0.6, contrastFarDay = 0.85,
             fog = { 0.40, 0.44, 0.56 }, fogDusk = { 0.46, 0.38, 0.52 },
             fogNear = 0.0, fogFar = 0.42, fogCurve = 2.4,
             liftRef = 0.6, maxLift = 1.6,
-            groundFar = 0.8, groundReach = 0.7, treeGain = 0.8,
+            groundFar = 0.62, groundReach = 0.85, treeGain = 0.8,
             treeNear = { 0.95, 1.0, 0.93 },
         },
         contact = { alpha = 0.65, height = 0.04, spread = 1.1, dither = true },
