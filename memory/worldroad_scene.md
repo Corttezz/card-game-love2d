@@ -417,6 +417,30 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   vidro aceso precisa ser âmbar saturado; com lightmap multiply-only a poça só aparece onde o ambiente
   já escureceu (tod ≥ ~0,9).
 
+- **Primeiro plano, luminária descolada e castelo sem deslize (18/Out/2026, frente primeiro-plano,
+  folhas em `tools/preview_out/primeiro_plano/`):** (1) Com o corte de pixel o terço de baixo virou chão
+  vazio. `engine/GroundClutter.lua` + dados em `src/data/ground_clutter.lua`: detalhe BAIXO de chão por
+  bioma (tufos, pedras, toco, flores; e arte nova `highlands_grass/litter`, `abyss_embers`, `frost_drift`,
+  `marsh_reeds/roots`, `dusk_blooms/leaves`, PixelLab `create_image_pro`, 150 gerações). Posição por hash
+  da célula de z (`cell` 1,05, `chance` 0,85), lateral em múltiplos da meia-largura da estrada (`uMin`
+  1,3 a `uMax` 3,7, com o mesmo `roadWobble` da estrada), só em t ≥ 0,5. A escala NÃO vem do `size`: é
+  `k × PIX.ref × enemyScreenK × persp(t)`, então `k` é a razão direta para o pixel do inimigo em t = 1
+  (todos ≤ 1,5, teto da regra 2,0). Entra no `nearPass` do `drawProps` (ordenado por z: fatia de grama,
+  frente/trás do inimigo), sombra e contato só nos sólidos, tufos de grama na frente da base. Na batalha
+  não entra na faixa da mão (`WorldRoad.setHandZone`, chamado no `syncBattleStage` com a mão inicial
+  inteira). Custo 1080p: +20 a 33 draw calls, +0,1 a 0,4 ms. Trava `test_world_props`: 2 a 8 por lado,
+  ≤ 2x o pixel do inimigo, fora da estrada. (2) Luminária colada no inimigo (atos 5 e 6): `LMG.unglue`
+  (dados em `WorldRoad.GLUE`), só na batalha parada, depois do recuo e do poste do meio: luminária de beira
+  de estrada a menos de `dRel` 5 de profundidade do palco cuja caixa encosta na do inimigo (meia largura
+  estimada `86 × enemyScreenK × battleSizeK`, altura 2,6x) a menos de `gap` 7 % da largura vai para fora
+  (`lane` até 2,4). Recuar em profundidade não resolvia: para a frente bate no teto de pixel (o poste do
+  crepúsculo só cabe até t 0,57), para trás fica atrás do corpo. Atenção: `_lumBoxN` é zerado no começo do
+  `drawProps`, então as caixas de luminária só valem entre o `lumPrepass` e o `drawProps`. (3) Castelo: troca
+  de posição maior que 12 % da largura dele vira fade cruzado de 0,3 s (`CASTLE_APPROACH.fade`,
+  `WorldRoad._castleFade`); o resto (deriva do `progress`) segue suave. Ferramenta:
+  `lovec . test_one screenshot_castelo_fade <rótulo>` (batalha, encruzilhada abrindo, landmark nos seis
+  atos; imprime o maior passo sem fade, hoje ≤ 1,7 px por quadro).
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica

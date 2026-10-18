@@ -268,6 +268,31 @@ function M.run()
             t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
                 :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
         end
+        do
+            WorldRoad.restoreProgress(1, 3)
+            for _ = 1, 30 do WorldRoad.update(1 / 30) end
+            WorldRoad._blend = nil
+            WorldRoad._prevBiomeIndex = nil
+            love.graphics.setCanvas(cv)
+            WorldRoad.draw(0, 52, W, H - 52, 1)
+            love.graphics.setCanvas()
+            local cx0 = WorldRoad._castleTop.cx
+            local target = WorldRoad._castleShift
+            WorldRoad._castleShift = target + W * 0.3
+            local mids = 0
+            for _ = 1, 20 do
+                WorldRoad.update(1 / 60)
+                love.graphics.setCanvas(cv)
+                WorldRoad.draw(0, 52, W, H - 52, 1)
+                love.graphics.setCanvas()
+                local cx = WorldRoad._castleTop.cx
+                if math.abs(cx - cx0) > 2 and math.abs(cx - (cx0 + W * 0.3)) > 2 then mids = mids + 1 end
+            end
+            t:truthy("o castelo pulou de lado com fade (origem gravada)",
+                math.abs((WorldRoad._castleFade.from or 0) - (target + W * 0.3)) < 1)
+            t:eq("castelo troca de lado longe por fade, sem posição intermediária na crista", mids, 0)
+            t:truthy("o fade do castelo dura 0,3 s", math.abs(WorldRoad._castleFade.dur - 0.3) < 1e-6)
+        end
         for _, b in ipairs({ 5, 6 }) do
             WorldRoad.restoreProgress(b, 3)
             for _ = 1, 400 do

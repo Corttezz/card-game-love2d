@@ -2240,6 +2240,8 @@ local CASTLE_APPROACH = {
     side = 0.17, sidePow = 1.5,
 }
 CASTLE_APPROACH.box = { x1 = 0, y1 = 0, x2 = 0, y2 = 0 }
+CASTLE_APPROACH.fade = { far = 0.12, dur = 0.3, ease = 14 }
+WorldRoad._castleFade = CASTLE_APPROACH.fade
 function CASTLE_APPROACH.overlap(x1, y1, x2, y2, b, padTop)
     local ox = math.min(x2, b.x2) - math.max(x1, b.x1)
     local oy = math.min(y2, b.y2) - math.max(y1, b.y1 - (padTop or 0))
@@ -2309,13 +2311,28 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local s = baseScale * (CASTLE_APPROACH.far + (progress ^ 1.4) * growth)
     local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
     local shift = CASTLE_APPROACH.pick(g, w, progress, bid, iw * s, ih * s, sinkExtra)
+    local cf = CASTLE_APPROACH.fade
+    local fadeFrom, fadeK = nil, 1
     if alpha >= 1 then
         local cs, ct0, now = WorldRoad._castleShift, WorldRoad._castleShiftT, WorldRoad._time
-        if cs and ct0 and now >= ct0 and now - ct0 < 0.5 then
-            local k = 1 - math.exp(-(now - ct0) * 25)
-            shift = math.abs(shift - cs) < 1 and shift or cs + (shift - cs) * k
+        if cs and math.abs(shift - cs) >= iw * s * cf.far then
+            cf.from, cf.t0 = cs, now
+        elseif cs and ct0 and now >= ct0 and math.abs(shift - cs) >= 1 then
+            shift = cs + (shift - cs) * math.min(1, (now - ct0) * cf.ease)
+        end
+        if cf.t0 and now >= cf.t0 and now - cf.t0 < cf.dur then
+            fadeFrom, fadeK = cf.from, (now - cf.t0) / cf.dur
+        else
+            cf.t0 = nil
         end
         WorldRoad._castleShift, WorldRoad._castleShiftT = shift, now
+    end
+    if fadeFrom then
+        local ox = g.cx + fadeFrom
+        local oy = g.crestYAt(ox) + ih * s * (0.03 + 0.20 * (1 - progress) + sinkExtra)
+        local oc = Scene.Grade.color("castle", 0.35 + 0.65 * progress, LMG.c)
+        love.graphics.setColor(oc[1], oc[2], oc[3], alpha * (1 - fadeK))
+        love.graphics.draw(img, math.floor(ox - iw * s / 2), math.floor(oy - ih * s), 0, s, s)
     end
     local cx = g.cx + shift
     local baseY = g.crestYAt(cx)
@@ -2329,7 +2346,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     end
 
     local cc = Scene.Grade.color("castle", 0.35 + 0.65 * progress, LMG.c)
-    love.graphics.setColor(cc[1], cc[2], cc[3], alpha)
+    love.graphics.setColor(cc[1], cc[2], cc[3], alpha * fadeK)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
     if alpha >= 1 and lmc and lmc.lowFog and progress > 0.55 then
@@ -2366,12 +2383,12 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
             local r = LW.radiusK * iw * s
             LightEngine.submit({
                 x = tx, y = ty, radius = r * 1.6 * fr,
-                color = wcol, intensity = LW.intensity * 0.55 * fi,
+                color = wcol, intensity = LW.intensity * 0.55 * fi * fadeK,
                 dither = true, ditherAmt = 0.28, levels = 8,
                 seed = sd, z = 999,
             })
             LightEngine.submitMicro(tx, ty, r * 0.45 * fr, wcol,
-                LW.intensity * fi, 999)
+                LW.intensity * fi * fadeK, 999)
         end
     end
     return true
@@ -4287,6 +4304,7 @@ function WorldRoad.resetRun()
     WorldRoad._enemyBaseY = nil
     WorldRoad._nextLumZ = nil
     WorldRoad._castleShift, WorldRoad._castleShiftT = nil, nil
+    CASTLE_APPROACH.fade.t0 = nil
     WorldRoad._lumMidZ = nil
     WorldRoad._timeOfDay = 1
     WorldRoad._timeOfDayTarget = 1
