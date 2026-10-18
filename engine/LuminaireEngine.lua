@@ -75,7 +75,8 @@ local CATALOG = {
             lane = { 0.0, 0.08 }, anchor = { 0.80, 0.40 },
             weight = 0.9,
             light = { color = { 1.00, 0.68, 0.32 }, radiusK = 1.50,
-                      coreK = 0.40, intensity = 0.95, flicker = "fire" } },
+                      coreK = 0.40, intensity = 0.95, flicker = "fire",
+                      pool = { radiusK = 0.80, intensity = 0.80, sy = 0.35 } } },
     },
 
     marsh = {

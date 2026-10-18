@@ -334,7 +334,8 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   A "lanterna de mão" (caixinha de pedra de 36 px, 0,24× o inimigo, lia como lixeira) virou poste de
   ferro nevado com braço de volutas (PixelLab `create_image_pro`, ref. de forma `fields_lantern_0`, de
   paleta a antiga): size 5,6, `face` 1, 0,86 a 0,88× o inimigo; chama tremulando por script em
-  `anim/frost_lantern_0/`. Fogueira `selfLight` 0,20.
+  `anim/frost_lantern_0/`. Fogueira `selfLight` 0,20. 2º passe (adendo diorama): `light.pool` 0,80/0,80
+  no poste e 3 pinheiros novos pedidos como diorama (`frost_pine_3..5`, `variants.frost_pine = 6`).
 - **Ato 2 highlands (18/Out/2026, frente replica-23, `tools/preview_out/replica_atos/highlands/`):**
   entrada do ato 1 replicada (treeDepth, treeNear, sombra 2,2 com árvore/copa e cor fria, contato
   0,65, chão perto claro/longe escuro); braseiro regerado como pilar de 2,5 m (0,87x o inimigo,
