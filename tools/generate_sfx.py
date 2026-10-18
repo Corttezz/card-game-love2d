@@ -158,88 +158,100 @@ SFX = [
             "A single dry wet click, like a giant eyelid snapping shut and open once, close and intimate, creature sound, short"
         ),
     },
+    # Corvos v2 (18/Out/2026): o dono reprovou a v1 ("parecendo um zumbi"). Pedir
+    # "no cawing" / "low croak" devolvia grunhido grave. O que funcionou: descrever
+    # GRAVACAO DE CAMPO de corvo com o "caw" agudo e seco, com influence 0.7, e
+    # filtrar por espectro (centroide >= 900 Hz, energia < 500 Hz <= 35 %, evento
+    # sustentado <= 0,6 s). Normalizados a pico 0,9 depois de gerados.
     {
         "id": "appear_1", "dir": "audio/sfx/boss/crow",
-        "duration": 1.3,
+        "duration": 0.6, "influence": 0.7,
         "prompt": (
-            "Large black raven wings flapping in and landing nearby: four heavy wingbeats, a soft feather rustle as it settles, then one single low raspy croak heard far away in the distance, only one short call. Dark fantasy game sound effect, no music."
+            "Field recording of a carrion crow: one single sharp high 'caw', natural outdoors, dry, close, no reverb, no music, no voice, no growl, no processing."
         ),
     },
     {
         "id": "appear_2", "dir": "audio/sfx/boss/crow",
-        "duration": 1.4,
+        "duration": 0.6, "influence": 0.7,
         "prompt": (
-            "Three heavy wingbeats of a raven arriving and landing on a branch, feathers folding. After a pause, one very faint deep croak far in the distance, muffled, a single short call. Dark fantasy game sound effect, no music."
+            "One real crow caw, a short raspy nasal 'kaa', bright and sharp, recorded close, dry, natural, no reverb, no music, no voice, no growl."
         ),
     },
     {
         "id": "appear_3", "dir": "audio/sfx/boss/crow",
-        "duration": 1.0,
+        "duration": 0.6, "influence": 0.7,
         "prompt": (
-            "Only wings: a large black raven flies in and lands, three or four strong wingbeats getting closer, then feathers folding. No bird calls, no cawing, no vocals. Close, dry, dark fantasy game sound effect."
+            "Carrion crow single call 'caw' recorded close in a field, a quick wing flutter right before the call, dry, natural, no reverb, no music, no voice, no growl."
         ),
     },
     {
         "id": "dive_1", "dir": "audio/sfx/boss/crow",
-        "duration": 0.9,
+        "duration": 0.8, "influence": 0.7,
         "prompt": (
-            "A single large black bird dives fast through the air: a short sharp whoosh of feathered wings swooping down, ending in a dry hard peck impact of beak and claws striking leather. No bird calls, no cawing, no vocals. Dark fantasy game sound effect, close, dry."
+            "Field recording: a crow swoops past very close, one fast whoosh of flapping wings, then one sharp short 'caw', dry, outdoors, no reverb, no music, no voice, no growl."
         ),
     },
     {
         "id": "dive_2", "dir": "audio/sfx/boss/crow",
-        "duration": 0.8,
+        "duration": 0.8, "influence": 0.7,
         "prompt": (
-            "Fast feathered swoop: a raven dives down with a quick rising whoosh of wings, then a sharp dry thud of a beak and talons striking. Very short. No bird calls, no cawing, no vocals. Dark fantasy combat sound effect."
+            "Fast wing flaps of a crow passing close followed by one short sharp crow call 'kaa', natural outdoor recording, dry and close, no echo, no music, no voice, no growl."
         ),
     },
     {
         "id": "dive_3", "dir": "audio/sfx/boss/crow",
-        "duration": 0.8,
+        "duration": 0.8, "influence": 0.7,
         "prompt": (
-            "A black crow swoops down from above: a short building whoosh of air through stiff feathers, then a single dry knock of a beak striking hard. No bird calls, no cawing, no whistle, no vocals. Close, dry, dark fantasy combat sound effect."
+            "Single crow attack: quick rustle of stiff feathers and a wing snap, then one loud brief high-pitched 'caw', field recording, close, dry, no reverb, no music, no voice, no growl."
         ),
     },
     {
         "id": "flock_1", "dir": "audio/sfx/boss/crow",
-        "duration": 1.6,
+        "duration": 1.8, "influence": 0.7,
         "prompt": (
-            "A flock of dozens of black crows takes off at once: a dense mass of flapping wings and rustling feathers, rising and sweeping past, then fading. Only wings, no cawing, no bird calls, no vocals. Dark fantasy game sound effect."
+            "Dozens of crows calling 'caw caw' overlapping at mid distance, with a burst of many wings flapping as the flock scatters, real outdoor recording, dry, no music, no voice, no growl."
         ),
     },
     {
         "id": "flock_2", "dir": "audio/sfx/boss/crow",
-        "duration": 1.5,
+        "duration": 1.8, "influence": 0.7,
         "prompt": (
-            "Swarm of ravens whirling around: thick fluttering of many wings, a rushing cloud of feathers passing overhead and away. Only wings and air, no calls, no cawing, no vocals. Dark fantasy game sound effect."
+            "A flock of crows startled from a tree: sudden flurry of wings and several sharp high crow caws at different distances, natural field recording, no reverb, no music, no voice, no growl."
         ),
     },
     {
         "id": "flock_3", "dir": "audio/sfx/boss/crow",
-        "duration": 1.4,
+        "duration": 1.8, "influence": 0.7,
         "prompt": (
-            "Murder of crows scattering: a sudden rush of dozens of wings flapping hard and flying off, rustling feathers, wind. Only wings, no cawing, no vocals. Dark fantasy game sound effect."
+            "Crows mobbing: a chorus of harsh high 'caw' calls from many crows, close and far, with rapid wingbeats passing by, outdoor nature recording, dry, no music, no voice, no growl."
         ),
     },
     {
         "id": "cine_1", "dir": "audio/sfx/boss/crow",
-        "duration": 1.9,
+        "duration": 2.0, "influence": 0.7,
         "prompt": (
-            "Ominous crow king entrance: slow powerful wingbeats of a huge black bird, then one single long low croaking caw, one call only, with cavernous reverb. Dark fantasy cinematic sound effect, no music."
+            "Field recording of one large crow calling slowly: three deliberate harsh high 'caw... caw... caw', slightly distant across an open field, natural, no music, no voice, no growl."
         ),
     },
     {
         "id": "cine_2", "dir": "audio/sfx/boss/crow",
-        "duration": 1.8,
+        "duration": 2.0, "influence": 0.7,
         "prompt": (
-            "A single low guttural raven call, one only, deep and rough, followed by a flurry of wings and falling feathers in a dark hall with reverb. Dark fantasy cinematic sound effect, no music."
+            "A big crow calls twice, slow and loud 'kraa, kraa', high and raspy, heard from some distance outdoors, real recording, no music, no voice, no growl, no heavy reverb."
         ),
     },
     {
         "id": "cine_3", "dir": "audio/sfx/boss/crow",
-        "duration": 1.9,
+        "duration": 2.0, "influence": 0.7,
         "prompt": (
-            "Dying crow lord: one single hoarse fading raven caw, one call only, then wings flutter away and feathers drift down, distant echo. Dark fantasy cinematic sound effect, no music."
+            "One large crow, three slow sharp caws with pauses between them, echoing softly across a quiet field at dusk, nature recording, no music, no voice, no growling."
+        ),
+    },
+    {
+        "id": "joker_boss_carrion", "dir": "audio/sfx/joker-sig",
+        "duration": 0.8, "influence": 0.7,
+        "prompt": (
+            "One quick sharp crow 'caw' with a rustle of feathers right after, field recording, close, dry, no reverb, no music, no voice, no growl."
         ),
     },
     {
@@ -454,7 +466,7 @@ def generate(item, api_key):
     body = json.dumps({
         "text": item["prompt"],
         "duration_seconds": item.get("duration", 1.0),
-        "prompt_influence": 0.55,
+        "prompt_influence": item.get("influence", 0.55),
         "model_id": "eleven_text_to_sound_v2",
     }).encode("utf-8")
 

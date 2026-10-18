@@ -60,12 +60,32 @@ revoada); `boss_crows_flee` (dois grasnados) na morte e na subida do coringa
 **Agora:** 4 momentos, 3 variantes cada, em `audio/sfx/boss/crow/<momento>_<n>.mp3`
 (registro por SCAN em `src/systems/CrowSfx.lua`: arquivo novo = soltar na pasta):
 
-| momento | código | quando | conteúdo |
+| momento | código | quando | conteúdo (v2, 18/Out/2026) |
 |---|---|---|---|
-| aparecer | `crowAppear` | invocação (`Game`, beat `enemy.summon`, no lugar do rugido) | asas chegando; só 1 variante tem um grasnado curto |
-| ataque | `crowDive` | 1º golpe da Revoada com corvo em órbita (`CrowSfx.attack`) | whoosh de mergulho + bicada seca, sem grasnado |
-| revoada | `crowFlock` | 2º som da revoada longa (3+ golpes), pouso da entrada, subida do coringa | asas em massa, sem grasnado |
-| cinemática | `crowCine` | rasante da entrada (`caw = true`) e explosão da morte | UM grasnado cheio + asas |
+| aparecer | `crowAppear` | invocação (`Game`, beat `enemy.summon`, no lugar do rugido) | UM "caw" curto e seco (0,6 s) |
+| ataque | `crowDive` | 1º golpe da Revoada com corvo em órbita (`CrowSfx.attack`) | batida de asa rápida + UM "caw" curto (0,8 s) |
+| revoada | `crowFlock` | 2º som da revoada longa (3+ golpes), pouso da entrada, subida do coringa | vários corvos grasnando ao longe + asas (1,8 s) |
+| cinemática | `crowCine` | rasante da entrada (`caw = true`) e explosão da morte | corvo grande: 2 a 3 grasnados lentos, leve distância (2 s) |
+
+**v2 (18/Out/2026).** A v1 (asas sem grasnado, "low croak" nas poucas vozes) foi
+reprovada pelo dono: "ficou muito ruim, não tem nada a ver com corvo, parecendo
+um zumbi". Medido, era isso mesmo: mergulho e revoada com centroide espectral de
+28 a 355 Hz e 74 a 100 % da energia abaixo de 500 Hz (rosnado), e o pedido "no
+cawing" no prompt é o que puxava o modelo para o grunhido. O que funcionou foi
+descrever GRAVAÇÃO DE CAMPO de corvo de verdade ("field recording of a carrion
+crow, one sharp 'caw', dry, close, no reverb, no music, no voice, no growl"),
+`prompt_influence` 0,7, 4 candidatos por momento e um filtro OBJETIVO antes de
+escolher (ninguém ouviu): decodifica com ffmpeg, FFT em numpy, e rejeita
+centroide < 900 Hz, energia < 500 Hz > 35 % ou evento sustentado > 0,6 s
+(envelope a -12 dB do pico). Os 13 instalados (12 corvos + assinatura do
+coringa) ficaram com centroide de 1,6 a 2,4 kHz, 0 a 3 % abaixo de 500 Hz e 84 a
+96 % entre 1 e 4 kHz, o grasnado visível no espectrograma como pilha harmônica de
+1,4 a 2,6 kHz durando 0,25 a 0,45 s; peak normalizado a 0,9 (três candidatos
+saíam clipando acima de 1,0). Descartados: `dive` em glissando descendente (soa
+assobio, não grasnado), `flock` contínua (evento > 0,6 s) e `cine` com várias
+vozes empilhadas e centroide de 3 kHz (estridente). Custo: 10 créditos por
+segundo gerado, 232 créditos no total. Cópias para o dono ouvir em
+`audio/_amostras_corvo/v2/` (fora do git, `LEIA.md` diz qual é qual).
 
 Regras (`CrowSfx`): pool sem repetir a variante anterior, pitch ±4-7%, cooldown
 de 1,2 s por momento (cinemática 0,6 s) e do ataque como um todo; numa revoada

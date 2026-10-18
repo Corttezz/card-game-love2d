@@ -19,3 +19,6 @@ build/
 # Binarios de terceiros baixados pelo dono (rcedit, Steamworks) - ver memory/release_pipeline.md
 /vendor/
 tools/vendor/
+
+# Amostras de audio para o dono ouvir (copias dos instalados, fora do git)
+audio/_amostras_corvo/

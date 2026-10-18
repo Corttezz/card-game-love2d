@@ -37,10 +37,13 @@ pegá-lo. A ideia de cada carta é um TROFÉU do chefe vencido.
   `retain_armor` (`JOKER_EFFECT_SCORE` em `tools/autoplay.lua`); o expert_full
   avalia coringa por simulação (`pickBySim`), então a carta nova entra sozinha.
 - Assinatura sonora (`audio/sfx/joker-sig/joker_boss_*.mp3`): recortes de sons
-  do próprio chefe (`audio/sfx/boss/`; carniça = UM grasnado de `audio/sfx/boss/crow/cine_2.mp3` cortado em 0,95 s
-  (17/Out/2026; o recorte antigo do `boss_crows_caw` tinha "caw caw"),
-  eclipse = virada de fase em 1,0 s). ElevenLabs FREE: entram na lista de
-  regenerar antes de vender.
+  do próprio chefe (`audio/sfx/boss/`; eclipse = virada de fase em 1,0 s).
+  Carniça (18/Out/2026): arquivo PRÓPRIO gerado junto com os corvos v2, UM "caw"
+  curto + farfalhar de pena (0,8 s; prompt em `tools/generate_sfx.py`,
+  `joker_boss_carrion`). O recorte anterior do `cine_2` v1 media centroide de
+  838 Hz, quase nada entre 1 e 4 kHz: rosnado, não grasnado (ver
+  `memory/boss_mechanics.md`, "Som dos corvos", v2). ElevenLabs FREE: entram na
+  lista de regenerar antes de vender.
 
 ## Arte
 
