@@ -1321,6 +1321,7 @@ LMG.tint4 = { 1, 1, 1, 1 }
 LMG.LIGHT_SHOP_GLOW = { 1.00, 0.72, 0.38 }
 LMG.EMBERS = { color = { 1.00, 0.62, 0.22 }, count = 3 }
 LMG.SELF_LIGHT = { 1.00, 0.90, 0.74 }
+LMG.SHADE = { 0.42, 0.42, 0.50 }
 function LMG.selfLight(lmk, px, py, iw, ih, s, rel, alphaK)
     if not lmk or not lmk.selfLight or lmk.selfLight <= 0 or alphaK <= 0.05 then return end
     local gx, gy = love.graphics.transformPoint(px, py - ih * s * 0.45)
@@ -3718,8 +3719,8 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         local k = (ex - ccx) / 1000
         local D = (g.bottomY - g.crestApexY) * k
         ShadowEngine.setClip(ccx, ccy, g.R * k, D)
-        local sr, sg, sb = Scene.Grade.shadowTint()
-        ShadowEngine.setTint(sr * 0.3, sg * 0.3, sb * 0.3)
+        local shc = Scene.Grade.cfg("shadow").color or LMG.SHADE
+        ShadowEngine.setTint(shc[1], shc[2], shc[3])
     end
 
     WeatherEngine.beginFrame({ geom = g, x = x, w = w, camZ = WorldRoad._camZ,

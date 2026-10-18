@@ -170,8 +170,14 @@ aí; o código só lê.
 - `ShadowEngine.occlude` (volume na copa) existe, mas está desligado (`selfShade.k = 0`): em intensidade
   baixa o roxo do shadowTint deixava a copa acinzentada (saturação 131 → 104 no pôr do sol).
 
+**Fechamento do ato 1 (17/Out, `09_final/checklist.md`):** sombra de pixel art = UMA cópia da
+silhueta (sem smear), resolução 1/2, esmaecimento em `ShadowEngine.STEPS` (3) degraus e composição
+por MULTIPLICAÇÃO com a cor de sombra do bioma (`shadow.color`). A mistura alpha com a cor de tinta
+pintava roxo/cinza sobre a grama e lia como sujeira. Trava: no máximo 4 tons no esmaecimento.
+Árvores perto: `treeNear` leve (0,95/1/0,93), `treeGain 0.8`.
+
 **Números (1024×768, test_perf_budget isolado):** antes 427 draw calls /
-30,5 KB; depois 463 / 31,3 KB (o véu é ~40 draw calls). Locais do arquivo
+30,5 KB; depois 389 / 31,5 KB, 4,1 ms em 1080p (o véu é ~40 draw calls). Locais do arquivo
 `WorldRoad.lua`: 198 → 188 (`python tools/count_locals.py src/ui/WorldRoad.lua`).
 
 **Travas:** `test_scene_grade`, `test_contact_shadow`, `test_landmark_fx`,

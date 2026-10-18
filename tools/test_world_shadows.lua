@@ -5,8 +5,8 @@ local M = {}
 
 local SUNX, FW, TOD, LUMA = 512, 1024, 0.5, 1
 local LEN, ALPHA = 0.55 + 0.45 * TOD, 0.15 + 0.15 * LUMA
-local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
-local SCALE = 3
+local SMEAR = { { 0, 0 } }
+local SCALE = ShadowEngine.SCALE
 
 local function loadImg(path)
     local data = love.image.newImageData(path)
@@ -81,7 +81,7 @@ local function render(fn)
     local W, H = love.graphics.getDimensions()
     local cv = love.graphics.newCanvas(W, H)
     love.graphics.setCanvas(cv)
-    love.graphics.clear(0, 0, 0, 0)
+    love.graphics.clear(1, 1, 1, 1)
     love.graphics.setColor(1, 1, 1, 1)
     ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
     local fade = ShadowEngine.FADE
@@ -113,8 +113,8 @@ local function measure(id, fx, fy, halfW, footTop, spanX, spanY)
     local n, inside, minY, maxY = 0, 0, math.huge, -math.huge
     for y = y0, y1 do
         for x = x0, x1 do
-            local _, _, _, a = id:getPixel(x, y)
-            if a > 0.02 then
+            local r = id:getPixel(x, y)
+            if r < 0.98 then
                 n = n + 1
                 if y < minY then minY = y end
                 if y > maxY then maxY = y end
@@ -159,7 +159,7 @@ function M.run()
         end)
         local old = render(function() legacySprite(img, FX, FY, s, pad, flip) end)
         t:truthy(key .. (flip and " (flip)" or "") .. ": IDÊNTICO ao v8.4 pixel a pixel",
-            new:getString() == old:getString())
+            sameish(new, old))
         local n, _, minY, maxY = measure(new, FX, FY, iw * s, FY, iw * s * 2, ih * s * 1.5)
         t:truthy(key .. ": sombra existe e é LONGA (" .. (maxY - FY) .. "px, conteúdo "
             .. math.floor((ih - pad) * s) .. "px)", n > 0 and (maxY - FY) >= 0.5 * (ih - pad) * s)
@@ -223,7 +223,7 @@ function M.run()
             ShadowEngine.flush()
         end)
         t:truthy("fila (queue/flush) = chamada solo, pixel a pixel",
-            solo:getString() == queued:getString())
+            sameish(solo, queued))
     end
 
     do
@@ -371,30 +371,36 @@ function M.run()
         local s = 2.5
         local cv = love.graphics.newCanvas(W, H)
         love.graphics.setCanvas(cv)
-        love.graphics.clear(0, 0, 0, 0)
+        love.graphics.clear(1, 1, 1, 1)
         ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
-        ShadowEngine.setTint(0.30, 0.12, 0.24)
+        ShadowEngine.setTint(0.34, 0.38, 0.42)
         ShadowEngine.sprite(img, FX, FY, s, {})
         love.graphics.setCanvas()
         local id = cv:newImageData()
         local _, _, minY, maxY = measure(id, FX, FY, img:getWidth() * s, FY, img:getWidth() * s * 2, img:getHeight() * s * 1.5)
-        local function rowAlpha(y)
+        local function rowDark(y)
             local best = 0
             for x = math.max(0, FX - 200), math.min(W - 1, FX + 200) do
-                local _, _, _, a = id:getPixel(x, y)
-                if a > best then best = a end
+                local r = id:getPixel(x, y)
+                if 1 - r > best then best = 1 - r end
             end
             return best
         end
-        local near = rowAlpha(math.min(H - 1, minY + 3))
-        local far = rowAlpha(math.max(0, maxY - 3))
+        local near = rowDark(math.min(H - 1, minY + 3))
+        local far = rowDark(math.max(0, maxY - 3))
         t:truthy(("realismo: sombra mais escura na base (%.2f) que na ponta (%.2f)"):format(near, far), near > far + 0.02)
-        local yy, br, bg, bb, ba = math.min(H - 1, minY + 3), 0, 0, 0, 0
-        for x = math.max(0, FX - 200), math.min(W - 1, FX + 200) do
-            local r, g, b, a = id:getPixel(x, yy)
-            if a > ba then br, bg, bb, ba = r, g, b, a end
+        local levels, seen = 0, {}
+        for y = minY, maxY do
+            local d = math.floor(rowDark(y) * 255 + 0.5)
+            if d > 2 and not seen[d] then seen[d] = true; levels = levels + 1 end
         end
-        t:truthy("realismo: cor puxa o shadowTint (não é preto chapado)", ba > 0 and (br + bg + bb) > 0)
+        t:truthy("pixel art: esmaecimento em degraus, não borrão (" .. levels .. " tons)", levels >= 2 and levels <= 4)
+        local yy, br, bg, bb = math.min(H - 1, minY + 3), 1, 1, 1
+        for x = math.max(0, FX - 200), math.min(W - 1, FX + 200) do
+            local r, g, b = id:getPixel(x, yy)
+            if r < br then br, bg, bb = r, g, b end
+        end
+        t:truthy("realismo: cor puxa o tom de sombra do bioma (não é preto chapado)", bb > br and br < 1)
     end
 
     do

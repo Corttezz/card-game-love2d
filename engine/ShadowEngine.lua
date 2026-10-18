@@ -8,7 +8,7 @@ local frame = {
     alpha = 0.26,
     stamp = -1,
     alphaK = 1,
-    tr = 0, tg = 0, tb = 0,
+    tr = 0.42, tg = 0.42, tb = 0.5,
     cx = 0, cy = 0, R = 1, D = 1, clip = false,
 }
 function ShadowEngine.setTint(r, g, b) frame.tr, frame.tg, frame.tb = r or 0, g or 0, b or 0 end
@@ -44,8 +44,10 @@ function ShadowEngine.tipShiftAt(px)
     return tipShift(px)
 end
 
-local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
-local SCALE = 3
+local SMEAR = { { 0, 0 } }
+local SCALE = 2
+ShadowEngine.SCALE = SCALE
+ShadowEngine.STEPS = 3
 local scratch, batching, batchPrev
 local soloAlphaK
 local SH = { cv = {}, vT = { 0, 0, 0, 0 }, depth = 1, alpha = 1,
@@ -55,9 +57,11 @@ ShadowEngine.MASK = true
 
 SH.FADE_SRC = [[
 uniform float fadeK;
+uniform float steps;
 vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
     vec4 t = Texel(tex, tc);
-    float cov = t.a * color.a * (1.0 - fadeK * color.b * clamp(1.0 - tc.y, 0.0, 1.0));
+    float d = floor(clamp(1.0 - tc.y, 0.0, 0.999) * steps) / steps;
+    float cov = t.a * color.a * (1.0 - fadeK * color.b * d);
     float on = step(0.004, t.a);
     if (color.g > 0.5) return vec4(0.0, cov, color.r * on, 0.0);
     return vec4(color.r * on, 0.0, 0.0, cov);
@@ -88,7 +92,7 @@ vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
         if (s.g > 0.0 && m > 0.0 && abs(m - s.b) <= eps) oa = s.g;
     }
     float a = 1.0 - (1.0 - pa) * (1.0 - oa);
-    return vec4(tint.rgb * a, a);
+    return vec4(mix(vec3(1.0), tint.rgb, a), 1.0);
 }
 ]]
 
@@ -141,7 +145,10 @@ local function openCanvas(key, shader)
     love.graphics.scale(1 / SCALE)
     if SH.ok then
         love.graphics.setShader(shader or SH.fade)
-        if not shader then SH.fade:send("fadeK", ShadowEngine.FADE) end
+        if not shader then
+            SH.fade:send("fadeK", ShadowEngine.FADE)
+            SH.fade:send("steps", ShadowEngine.STEPS)
+        end
     end
     batching = true
 end
@@ -162,7 +169,7 @@ end
 local function composite(cv, aMul, mask)
     love.graphics.push()
     love.graphics.origin()
-    love.graphics.setBlendMode("alpha", "premultiplied")
+    love.graphics.setBlendMode("multiply", "premultiplied")
     local prevShader = love.graphics.getShader()
     if SH.ok then
         love.graphics.setShader(SH.comp)
@@ -177,6 +184,7 @@ local function composite(cv, aMul, mask)
         SH.comp:send("px", SH.vP)
         love.graphics.setColor(1, 1, 1, 1)
     else
+        love.graphics.setBlendMode("alpha", "premultiplied")
         love.graphics.setColor(0, 0, 0, aMul)
     end
     love.graphics.draw(cv, 0, 0, 0, SCALE, SCALE)
