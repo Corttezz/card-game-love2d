@@ -2,7 +2,7 @@ local STYLES = {
     dust = {
         shape = "dot", colors = { { 0.86, 0.76, 0.60 }, { 0.70, 0.62, 0.50 } },
         size = { 1, 1.9 }, vy = { 3, 9 }, gravity = 38, vmax = 46, vx = { -1.5, 1.5 },
-        sway = { 0, 1.5 }, swayHz = 1.4, alpha = 0.88, life = 9, streakGap = 1.3,
+        sway = { 0, 1.5 }, swayHz = 1.4, alpha = 0.88, life = 9,
     },
     feather = {
         shape = "feather", colors = { { 0.58, 0.48, 0.84 }, { 0.70, 0.60, 0.94 }, { 0.44, 0.34, 0.64 } },
@@ -30,7 +30,7 @@ local STYLES = {
     snow = {
         shape = "dot", colors = { { 0.92, 0.96, 1.00 }, { 0.78, 0.88, 1.00 } },
         size = { 1, 1.9 }, vy = { 3, 8 }, gravity = 4, vmax = 20, vx = { -3, 3 },
-        sway = { 4, 9 }, swayHz = 1.8, alpha = 0.9, life = 16, rest = 0.6, streakGap = 2.2,
+        sway = { 4, 9 }, swayHz = 1.8, alpha = 0.9, life = 16, rest = 0.6,
     },
     ice = {
         shape = "shard", colors = { { 0.70, 0.86, 1.00 }, { 0.90, 0.97, 1.00 } },
@@ -41,12 +41,12 @@ local STYLES = {
     spore = {
         shape = "dot", colors = { { 0.55, 0.70, 0.36 }, { 0.36, 0.48, 0.24 } },
         size = { 1, 1.9 }, vy = { 2, 6 }, gravity = 5, vmax = 20, vx = { -2, 2 },
-        sway = { 3, 6 }, swayHz = 1.2, alpha = 0.8, life = 16, streakGap = 2.0,
+        sway = { 3, 6 }, swayHz = 1.2, alpha = 0.8, life = 16,
     },
     mote = {
         shape = "dot", colors = { { 0.85, 0.82, 0.78 }, { 0.62, 0.60, 0.62 } },
         size = { 1, 1.9 }, vy = { 2, 6 }, gravity = 4, vmax = 18, vx = { -2, 2 },
-        sway = { 2, 5 }, swayHz = 1.0, alpha = 0.7, life = 16, streakGap = 2.0,
+        sway = { 2, 5 }, swayHz = 1.0, alpha = 0.7, life = 16,
     },
     air_dust = {
         shape = "dot", colors = { { 0.80, 0.70, 0.56 }, { 0.66, 0.58, 0.46 } },
@@ -84,7 +84,7 @@ local AREA = {
     [6] = { x0 = 150, x1 = 250, y0 = 34, y1 = 62, floor0 = 200, floor1 = 240 },
 }
 
-local SHAKE = { hit = 1.6, drop = 3.2, hitDur = 0.12, dropDur = 0.30 }
+local SHAKE = { hit = 2.4, drop = 4.6, hitDur = 0.14, dropDur = 0.40 }
 local LIGHT = { hit = 0.45, drop = 0.7, swell = 0.25, hitDur = 0.32, dropDur = 0.6 }
 
 local function boss(hit, drop, swell, extra)
@@ -99,33 +99,33 @@ return {
     COOLDOWN = { shake = 0.45, drop = 4.0, debris = 0.3, breath = 4.0 },
     REDUCED_LIGHT = 0.35,
     RAIN = { now = 0.35, spread = 1.0 },
-    TRICKLE = { min = 0.6, max = 1.2 },
-    DEFAULT = boss({ { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 0, 6, "streak" }, { "dust", 2, 5 } },
-        { { "dust", 28, 44 }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "pebble", 4, 8 } },
+    TRICKLE = { min = 0.9, max = 1.9 },
+    DEFAULT = boss({ { "dust", 6, 12, "cluster" }, { "dust", 2, 5 } },
+        { { "dust", 28, 44 }, { "pebble", 4, 8 } },
         { "dust", 2.5 },
-        { trickle = { "dust", 5, 8 }, ambient = { "air_dust", 12, 0.5 } }),
+        { trickle = { "dust", 1, 3 }, ambient = { "air_dust", 12, 0.5 } }),
     BY_BOSS = {
-        carrion_king = boss({ { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 0, 6, "streak" }, { "dust", 2, 5 }, { "feather", 0, 1 } },
-            { { "dust", 28, 44 }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "feather", 2, 4 }, { "pebble", 4, 8 } },
+        carrion_king = boss({ { "dust", 6, 12, "cluster" }, { "dust", 2, 5 }, { "feather", 0, 1 } },
+            { { "dust", 28, 44 }, { "feather", 2, 4 }, { "pebble", 4, 8 } },
             { "dust", 2.5 },
-            { trickle = { "dust", 5, 8 }, ambient = { "air_dust", 12, 0.5 } }),
-        tower_lich = boss({ { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 0, 6, "streak" }, { "dust", 2, 4 }, { "shard", 0, 1 } },
-            { { "shard", 6, 10 }, { "dust", 24, 36 }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "pebble", 4, 6 } },
+            { trickle = { "dust", 1, 3 }, ambient = { "air_dust", 12, 0.5 } }),
+        tower_lich = boss({ { "dust", 6, 12, "cluster" }, { "dust", 2, 4 }, { "shard", 0, 1 } },
+            { { "shard", 6, 10 }, { "dust", 24, 36 }, { "pebble", 4, 6 } },
             { "dust", 2 },
-            { trickle = { "dust", 5, 8 }, ambient = { "air_mote", 12, 0.5 } }),
-        abyss_tyrant = boss({ { "pebble", 1, 3 }, { "ember", 2, 4 }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 0, 6, "streak" } },
-            { { "pebble", 10, 16 }, { "ember", 8, 14 }, { "dust", 24, 36 }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" }, { "dust", 5, 8, "streak" } },
+            { trickle = { "dust", 1, 3 }, ambient = { "air_mote", 12, 0.5 } }),
+        abyss_tyrant = boss({ { "pebble", 1, 3 }, { "ember", 2, 4 }, { "dust", 6, 12, "cluster" } },
+            { { "pebble", 10, 16 }, { "ember", 8, 14 }, { "dust", 24, 36 } },
             { "ember", 3 },
-            { trickle = { "dust", 5, 8 }, ambient = { "air_ember", 12, 0.5 } }),
-        winter_monarch = boss({ { "snow", 4, 8 }, { "snow", 5, 8, "streak" }, { "snow", 5, 8, "streak" }, { "snow", 0, 6, "streak" }, { "ice", 0, 2 } },
-            { { "ice", 6, 10 }, { "snow", 28, 40 }, { "snow", 5, 8, "streak" }, { "snow", 5, 8, "streak" }, { "snow", 5, 8, "streak" } }, { "snow", 3 },
-            { trickle = { "snow", 5, 8 }, ambient = { "air_snow", 12, 0.5 } }),
-        rot_colossus = boss({ { "spore", 4, 6 }, { "spore", 5, 8, "streak" }, { "spore", 5, 8, "streak" }, { "spore", 0, 6, "streak" } },
-            { { "spore", 20, 28 }, { "dust", 12, 18 }, { "spore", 5, 8, "streak" }, { "spore", 5, 8, "streak" }, { "spore", 5, 8, "streak" }, { "pebble", 4, 6 } },
+            { trickle = { "dust", 1, 3 }, ambient = { "air_ember", 12, 0.5 } }),
+        winter_monarch = boss({ { "snow", 4, 8 }, { "snow", 6, 12, "cluster" }, { "ice", 0, 2 } },
+            { { "ice", 6, 10 }, { "snow", 28, 40 } }, { "snow", 3 },
+            { trickle = { "snow", 1, 3 }, ambient = { "air_snow", 12, 0.5 } }),
+        rot_colossus = boss({ { "spore", 4, 6 }, { "spore", 6, 12, "cluster" } },
+            { { "spore", 20, 28 }, { "dust", 12, 18 }, { "pebble", 4, 6 } },
             { "spore", 2 },
-            { trickle = { "spore", 5, 8 }, ambient = { "air_spore", 12, 0.5 } }),
-        eclipse_queen = boss({ { "mote", 2, 6 }, { "mote", 5, 8, "streak" }, { "mote", 5, 8, "streak" }, { "mote", 0, 6, "streak" } },
-            { { "mote", 20, 28 }, { "mote", 5, 8, "streak" }, { "mote", 5, 8, "streak" }, { "mote", 5, 8, "streak" } }, { "mote", 2 },
-            { trickle = { "mote", 5, 8 }, ambient = { "air_mote", 10, 0.5 } }),
+            { trickle = { "spore", 1, 3 }, ambient = { "air_spore", 12, 0.5 } }),
+        eclipse_queen = boss({ { "mote", 2, 6 }, { "mote", 6, 12, "cluster" } },
+            { { "mote", 20, 28 } }, { "mote", 2 },
+            { trickle = { "mote", 1, 3 }, ambient = { "air_mote", 10, 0.5 } }),
     },
 }

@@ -113,20 +113,19 @@ antes/depois e respostas em `tools/preview_out/musica_reativa/polish/checklist.m
   células; horizontal com espinha escura e ponta do lado do balanço quando
   |seno| > 0,6, senão diagonal com degrau a cada 2 células (zigue-zague
   lento: `sway` 10 a 16, `swayHz` 1,1, `vy` 4 a 8, `vmax` 11).
-- **Filetes** (`CeilingDebris.spawnStreak(style, n, area)`): n partículas de
-  1u em coluna (`streakGap` do estilo, 1,3 px de arte na poeira), mesmo x,
-  mesma fase de balanço, `vy` escalonado em 0,4. Entrada de lista com 4º
-  campo `"streak"` (`{ "dust", 3, 5, "streak" }`); `"cluster"` mantém o
-  aglomerado antigo de 6 px.
-- **Chuva do drop** (`REACT.RAIN = { now = 0.35, spread = 1.0 }`): os filetes
-  e 35% dos contáveis saem no cue, o resto cai distribuído por 1,0 s
-  (`startRain` / `rainTick`, cicla as entradas não-streak). Contagens da 2ª
-  passada: poeira 28 a 44 (Rei) / 24 a 36 (Lich, Tirano), neve 28 a 40,
-  esporos/motes 20 a 28, pedrinhas 4 a 8 (Rei, Lich, Colosso) / 10 a 16
-  (Tirano), penas 2 a 4, lascas 6 a 10, 3 filetes de 5 a 8.
-- **Cadência entre hits** (`REACT.TRICKLE`, `r.trickle = { estilo, min, max }`):
-  um filete de 5 a 8 a cada 0,6 a 1,2 s enquanto ativo; o hit solta 2 a 3
-  filetes (a 3ª entrada é `{ 0, 6, "streak" }`, cresce com o `power`).
+- **Filetes em coluna: REMOVIDOS (18/Out/2026, dono: "ficou parecendo cobra ou
+  chuva")**. `CeilingDebris.spawnStreak` e o 4º campo `"streak"` saíram; só
+  existem `spawn` (espalhado pela faixa do teto) e `"cluster"` (aglomerado de
+  6 px em volta de um ponto do teto). Nada de partículas alinhadas em x.
+- **Chuva do drop** (`REACT.RAIN = { now = 0.35, spread = 1.0 }`): 35% dos
+  contáveis saem no cue, o resto cai distribuído por 1,0 s (`startRain` /
+  `rainTick`, cicla as entradas). Contagens: poeira 28 a 44 (Rei) / 24 a 36
+  (Lich, Tirano), neve 28 a 40, esporos/motes 20 a 28, pedrinhas 4 a 8 (Rei,
+  Lich, Colosso) / 10 a 16 (Tirano), penas 2 a 4, lascas 6 a 10.
+- **Hit**: um aglomerado de 6 a 12 (`{ estilo, 6, 12, "cluster" }`) mais 2 a
+  5 espalhados (e a pena/lasca ocasional).
+- **Cadência entre hits** (`REACT.TRICKLE = { 0.9, 1.9 }`, `r.trickle = {
+  estilo, 1, 3 }`): 1 a 3 partículas num aglomerado a cada 0,9 a 1,9 s.
 - **Poeira no ar** (`r.ambient = { estilo, máx, intervalo }`,
   `CeilingDebris.spawnFloat(style, area, preLife)`): 12 flutuantes
   `kind = "float"` de 1u (10 na Rainha), alpha 0,52 a 0,55, 1 a 3 px/s com
@@ -161,19 +160,22 @@ do inimigo. `MusicReact` deixou de chamar o `ScreenShake` global: guarda o
 próprio envelope (`shake.amp/dur/time`, decai no `update`) e expõe
 `MusicReact.shakeOffset()` (aleatório por quadro × envelope × slider
 `screenshake`). O `GameplayScene.draw` lê o offset no passe do mundo quando
-`interior`, CLAMPA pela folga do cover-fit (`(tr.dw - w) / 2`,
-`(tr.dh - h) / 2`: em 1080p a arte 400x256 encaixa exato na largura, logo o
-tremor é só vertical; sem o clamp apareceria uma coluna preta na borda) e
-faz `push / translate` em volta de fundo + InteriorFX + MusicReact.draw +
-chefe + drawFront, com `pop` antes dos overlays. O bbox do chefe sai em
-coordenadas sem deslocamento, então `EnemyHud` (barra e intent), TopBar,
-mão e botões, desenhados fora do passe, ficam parados. O scissor do
-`drawFront` não é afetado por transform (LÖVE), então o recorte sob a
-TopBar continua certo. Prova: `screenshot_musica_reativa <chefe>:drop:tremor`
-grava `polish/<pasta>/<chefe>_drop_tremor_prova.png` (antes | impacto com
-offset forçado de 4 px | diff: amarelo = mudou), onde o salão e o chefe
-mudam e a carta da mão não. `reducedMotion`: `doShake` continua sem tremor.
-Hook de teste: `MusicReact.shakeOffsetProbe`.
+`interior` e faz `push / translate / scale` em volta de fundo + InteriorFX +
+MusicReact.draw + chefe + drawFront, com `pop` antes dos overlays.
+**Sem clamp pela folga do cover-fit** (a 1ª versão clampava, e em 1080p a
+arte 400x256 encaixa exato na largura, então o tremor horizontal virava 0 e
+o dono disse "a câmera parou de mexer"): em vez disso o passe ganha um
+zoom de `1 + 2·m/min(w,h)` em volta do centro (m = |offset| máximo, 1 a
+5 px), que cobre as bordas e dispensa o clamp. Amplitude (`SHAKE` em
+`music_reactions.lua`): hit 2,4 px por 0,14 s, drop 4,6 px por 0,40 s
+(eram 1,6 / 3,2; dono pediu "aumentar um pouquinho"); `test_music_react`
+exige teto ≤ 5 px. O bbox do chefe sai em coordenadas sem deslocamento,
+então `EnemyHud` (barra e intent), TopBar, mão e botões, desenhados fora do
+passe, ficam parados. Prova: `screenshot_musica_reativa <chefe>:drop:tremor`
+grava `polish/<pasta>/<chefe>_drop_tremor_prova.png` (antes | impacto |
+diff: amarelo = mudou), onde o salão e o chefe mudam e a carta da mão não
+(a carta "viva" muda de quadro por conta própria). `reducedMotion`:
+`doShake` continua sem tremor.
 
 ## Drops do Monarca (18/Out/2026)
 

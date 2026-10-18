@@ -127,7 +127,7 @@ local function reactCases(t)
         maxI = math.max(maxI, sh.i)
         if i > 1 then minGap = math.min(minGap, sh.at - st.shakes[i - 1].at) end
     end
-    t:truthy(string.format("tremor com teto baixo (maior %.2f px)", maxI), maxI <= 3.5)
+    t:truthy(string.format("tremor com teto baixo (maior %.2f px)", maxI), maxI <= 5.0)
     t:truthy(string.format("cooldown impede tremor continuo (menor intervalo %.2fs)", minGap),
         minGap >= 0.34)
     t:truthy(string.format("tremor ocupa menos de 1/3 da faixa (%.0f%%)", busy / data.duration * 100),

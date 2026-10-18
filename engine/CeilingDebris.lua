@@ -85,32 +85,6 @@ function CeilingDebris.spawn(style, count, area, cluster)
     return made
 end
 
-function CeilingDebris.spawnStreak(style, count, area)
-    if not style or not area then return 0 end
-    local made = 0
-    local cx = area.x0 + rnd() * (area.x1 - area.x0)
-    local y0 = area.y0 + rnd() * 6
-    local vy = range(style.vy, 0)
-    local phase = rnd() * 6.283
-    local floorY = area.floor0 + rnd() * (area.floor1 - area.floor0)
-    local gap = style.streakGap or 1.6
-    for i = 1, count or 3 do
-        local p = slot()
-        if not p then break end
-        wake(p, style, "fall")
-        p.x = cx + (rnd() - 0.5) * 0.6
-        p.y = y0 - (i - 1) * gap
-        p.vx = 0
-        p.vy = vy + (i - 1) * 0.4
-        p.floorY = floorY
-        p.size = 1
-        p.swayK = range(style.sway, 0) * 0.5
-        p.phase = phase
-        made = made + 1
-    end
-    return made
-end
-
 function CeilingDebris.spawnFloat(style, area, preLife)
     if not style or not area then return 0 end
     local p = slot()

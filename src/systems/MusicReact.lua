@@ -109,9 +109,6 @@ end
 local function spawnEntry(e, count, area)
     local style = REACT.STYLES[e[1]]
     if not style or count <= 0 then return 0 end
-    if e[4] == "streak" then
-        return CeilingDebris.spawnStreak(style, count, area)
-    end
     return CeilingDebris.spawn(style, count, area, (e[4] == "cluster") and 6 or nil)
 end
 
@@ -126,7 +123,7 @@ local function spawnList(list, power, fraction)
     for _, e in ipairs(list) do
         local count = entryCount(e, power)
         if fraction then
-            count = (e[4] == "streak") and count or math.ceil(count * fraction)
+            count = math.ceil(count * fraction)
         end
         n = n + spawnEntry(e, count, area)
     end
@@ -139,7 +136,7 @@ local function startRain(list, power)
     rain.list, rain.power = list, power
     rain.total = 0
     for _, e in ipairs(list) do
-        if e[4] ~= "streak" then
+        do
             rain.total = rain.total + math.max(0, entryCount(e, power) - math.ceil(entryCount(e, power) * R.now))
         end
     end
@@ -160,7 +157,7 @@ local function rainTick(dt)
         local pick
         for _ = 1, #list do
             rain.i = (rain.i % #list) + 1
-            if list[rain.i][4] ~= "streak" then pick = list[rain.i] break end
+            pick = list[rain.i] break
         end
         if not pick then break end
         n = n + spawnEntry(pick, 1, area)
@@ -181,7 +178,7 @@ local function trickleTick(r)
     trickle.next = nextTrickle()
     local e = r.trickle
     local count = love.math.random(e[2], e[3])
-    return spawnEntry({ e[1], count, count, "streak" }, count, areaFor(hall))
+    return spawnEntry({ e[1], count, count, "cluster" }, count, areaFor(hall))
 end
 
 local function ambientTick(dt, r, fill)

@@ -438,17 +438,13 @@ function GameplayScene.draw()
     if interior then
         local mdx, mdy = require("src.systems.MusicReact").shakeOffset()
         if mdx ~= 0 or mdy ~= 0 then
-            local htr = SceneBackground.getCoverTransform(
-                "castle_hall_" .. InteriorFX.hallFor(currentAct), width, height)
-            local sx = htr and math.max(0, (htr.dw - width) * 0.5) or 0
-            local sy = htr and math.max(0, (htr.dh - height) * 0.5) or 0
-            mdx = math.max(-sx, math.min(sx, mdx))
-            mdy = math.max(-sy, math.min(sy, mdy))
-            if mdx ~= 0 or mdy ~= 0 then
-                hallShake = true
-                love.graphics.push()
-                love.graphics.translate(math.floor(mdx + 0.5), math.floor(mdy + 0.5))
-            end
+            local m = math.ceil(math.max(math.abs(mdx), math.abs(mdy)))
+            local zk = 1 + 2 * m / math.max(1, math.min(width, height))
+            hallShake = true
+            love.graphics.push()
+            love.graphics.translate(math.floor(width / 2 + mdx + 0.5), math.floor(height / 2 + mdy + 0.5))
+            love.graphics.scale(zk)
+            love.graphics.translate(-math.floor(width / 2), -math.floor(height / 2))
         end
     end
     if worldBattle then
