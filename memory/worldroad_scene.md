@@ -377,6 +377,9 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   musgo, cipreste com joelhos, tronco partido, forquilha, nó inchado; PixelLab `create_image_pro` com
   `marsh_deadtree_0/1` de referência), `variants.marsh_deadtree = 8`, `sink` 8 a 10. Sem `lit`: a
   assimetria medida no PNG é de forma, não de luz.
+  2ª rodada (revisão do lead): chão verde-grama vivo → oliva escuro de lama (`grassA/B`, `grassTint`),
+  `groundFar` 0,55; poças com juncos e reflexo como `marsh_rock_0..3` (`sizeK` 1,40, peso 7); poste
+  `lane` 0,15..0,30 (encostava no inimigo); sombra de árvore `lenK` 0,95 / ×1,45 (caía sob a copa).
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

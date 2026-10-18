@@ -83,7 +83,7 @@ local CATALOG = {
 
     marsh = {
         lantern = { size = 5.6, face = 1, roadside = true,
-            lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
+            lane = { 0.15, 0.30 }, anchor = { 0.78, 0.46 },
             weight = 0.9,
             light = { color = { 0.55, 0.95, 0.45 }, radiusK = 1.60,
                       coreK = 0.45, intensity = 1.00, flicker = "wisp",
