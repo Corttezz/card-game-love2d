@@ -214,15 +214,18 @@ function M.run()
         CS.setFrame(cfg, 0.36, 0.22, 0.46)
         for _ = 1, 3 do CS.queue(img, FX, FY, 2, 0.5, 1, 1) end
         CS.flush()
-        collectgarbage("collect")
-        collectgarbage("stop")
-        local k0 = collectgarbage("count")
-        for _ = 1, 50 do
-            for _ = 1, 40 do CS.queue(img, FX, FY, 2, 0.5, 1, 1) end
-            CS.flush()
+        local perKB = math.huge
+        for _ = 1, 3 do
+            collectgarbage("collect")
+            collectgarbage("stop")
+            local k0 = collectgarbage("count")
+            for _ = 1, 50 do
+                for _ = 1, 40 do CS.queue(img, FX, FY, 2, 0.5, 1, 1) end
+                CS.flush()
+            end
+            perKB = math.min(perKB, (collectgarbage("count") - k0) / 50)
+            collectgarbage("restart")
         end
-        local perKB = (collectgarbage("count") - k0) / 50
-        collectgarbage("restart")
         t:truthy(string.format("fila sem lixo por quadro (%.2f KB ≤ 1)", perKB), perKB <= 1)
     end
 

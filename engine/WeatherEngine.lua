@@ -773,27 +773,33 @@ local function drawHaze()
 end
 
 function WeatherEngine.drawLowFog(x, yTop, w, h, cfg, alphaK)
-    if not cfg or (cfg.alpha or 0) <= 0 or h < 2 then return end
+    if not cfg or (cfg.alpha or 0) <= 0 or h < 2 or w < 2 then return end
     if not hazeImg then buildHaze() end
     local r, g, b = 0.9, 0.9, 0.95
     if SceneGrade.isActive() then r, g, b = SceneGrade.fogColor() end
     r, g, b = min(1, r), min(1, g), min(1, b)
     local a = cfg.alpha * (alphaK or 1)
     local s = max(1, floor(h / HAZE_H + 0.5))
-    local bandH = HAZE_H * s
+    local bandH = min(h, HAZE_H * s)
+    local texH = floor(bandH / s)
+    if texH < 1 then return end
     local tm = reduced() and 0 or time
     local drift = (cfg.drift or 0) * 600 * tm
-    local off = floor((drift % (HAZE_W * s)) / s) * s
-    local sx0, sy0 = love.graphics.transformPoint(x, yTop)
-    local sx1, sy1 = love.graphics.transformPoint(x + w, yTop + h)
-    love.graphics.push("all")
-    love.graphics.setScissor(floor(min(sx0, sx1)), floor(min(sy0, sy1)),
-        math.ceil(abs(sx1 - sx0)), math.ceil(abs(sy1 - sy0)))
+    local off = floor(drift / s) % HAZE_W
+    local texW = math.ceil(w / s)
+    WeatherEngine._lowFogQuad = WeatherEngine._lowFogQuad
+        or love.graphics.newQuad(0, 0, 1, 1, HAZE_W, HAZE_H)
+    local q = WeatherEngine._lowFogQuad
+    local y0 = HAZE_H - texH
+    q:setViewport(off, y0, texW, texH, HAZE_W, HAZE_H)
     love.graphics.setColor(r, g, b, a)
-    love.graphics.draw(hazeImg, hazeQuad, x - HAZE_W * s * 2 + off, yTop + h - bandH, 0, s, s)
-    love.graphics.setColor(r, g, b, a * 0.6)
-    love.graphics.draw(hazeImg, hazeQuad, x - HAZE_W * s * 2 - off, yTop + h - bandH * 0.6, 0, s, s)
-    love.graphics.pop()
+    love.graphics.draw(hazeImg, q, x, yTop + h - texH * s, 0, s, s)
+    local texH2 = floor(texH * 0.6)
+    if texH2 >= 1 then
+        q:setViewport((HAZE_W - off) % HAZE_W, HAZE_H - texH2, texW, texH2, HAZE_W, HAZE_H)
+        love.graphics.setColor(r, g, b, a * 0.6)
+        love.graphics.draw(hazeImg, q, x, yTop + h - texH2 * s, 0, s, s)
+    end
     love.graphics.setColor(1, 1, 1, 1)
     WeatherEngine.stats.lowFogBands = WeatherEngine.stats.lowFogBands + 2
 end
