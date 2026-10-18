@@ -148,7 +148,7 @@ WorldRoad.TRAVEL_DURATION = 6.5
 local SEGMENT_LEN = WorldRoad.TRAVEL_DISTANCE * 8
 
 local KIND_SIZE = {
-    tree = 4.6, pine = 5.0, deadtree = 4.2, fence = 1.55, sign = 1.7,
+    tree = 5.6, pine = 6.0, deadtree = 5.2, fence = 1.55, sign = 1.7,
     bush = 1.35, rock = 1.05, flowers = 0.7, stump = 0.9, ruin = 2.9,
     tuft = 0.5, lantern = 1.9, brazier = 1.25,
 }
