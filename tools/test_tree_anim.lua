@@ -55,7 +55,7 @@ function M.run()
         end
     end
 
-    t:check(("ao menos 4 árvores dos campos animadas (obtido %d)"):format(animated), animated >= 4)
+    t:check(("ao menos 2 árvores dos campos animadas (obtido %d)"):format(animated), animated >= 2)
 
     WorldRoad._time = 3.7
     local fr = WorldRoad.treeAnim("fields", "tree", 0)

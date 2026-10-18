@@ -3,11 +3,11 @@ return {
     SINK_MAX_FRAC = 0.15,
 
     sink = {
-        fields_tree_0 = 11,
-        fields_tree_1 = 11,
+        fields_tree_0 = 12,
+        fields_tree_1 = 9,
         fields_tree_2 = 11,
-        fields_tree_3 = 10,
-        fields_tree_4 = 9,
+        fields_tree_3 = 11,
+        fields_tree_4 = 8,
         fields_tree_5 = 9,
 
         highlands_pine_0 = 10,
@@ -58,6 +58,11 @@ return {
 
     lit = {
         fields_bush_0 = 1,
+        fields_tree_1 = 1,
+        fields_tree_2 = 1,
+        fields_tree_3 = 1,
+        fields_tree_4 = 1,
+        fields_tree_5 = 1,
         dusk_tree_0 = -1,
         dusk_tree_1 = -1,
         dusk_tree_2 = -1,

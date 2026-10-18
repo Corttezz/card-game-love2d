@@ -252,12 +252,22 @@ animação mínima feita pelo PixelLab... só para dar um efeito mais detalhado"
   quadro 0 gerado ao N), dentro da silhueta da base, fora do contorno de 1 px, fora dos 30 %
   inferiores (tronco), sem abrir furo, com paleta presa à da base. Portão: IoU cru ≥ 0,97,
   tronco ≥ 0,95 entre quadros gerados, e anim "viva" (≥ 0,8 % da área mexe).
-- Campos: animadas `fields_tree_0/1/2/4`. `fields_tree_3` e `_5` reprovaram 3 tentativas cada
+- Campos (árvores antigas, substituídas pelo diorama abaixo): animadas `fields_tree_0/1/2/4`. `fields_tree_3` e `_5` reprovaram 3 tentativas cada
   (o modelo deforma a copa/silhueta; com o último quadro pinado na base sai CONGELADO) e ficam
   só com o balanço. Outros biomas: quadros crus gerados em `tools/preview_out/arvores_anim/raw/`
   mas NÃO instalados (frentes de replicação vão revisar essas árvores antes). Pinheiros e
   árvores secas reprovaram em massa no 1º lote (IoU 0,86 a 0,93, tronco 0,74 a 0,90); só
   `abyss_deadtree_2` passou. Trava: `test_tree_anim`.
+- **Diorama do ato 1 (18/Out/2026, frente diorama-ato1, `tools/preview_out/diorama_ato1/checklist.md`):**
+  as seis `fields_tree_*`, `fields_bush_0/rock_0/stump_0/shrine_0/flowers_0` regeradas pela regra de
+  `memory/art_direction_diorama.md` com `create_image_pro` (style image = o sprite do slot; uma chamada já devolve
+  silhuetas diferentes, aproveitadas para outros slots). O PixelLab pinta luz à ESQUERDA mesmo pedindo sol à
+  direita: espelhar o PNG e dar `lit = 1`. O plano de fundo da copa vem verde ACINZENTADO (lê como névoa colada):
+  trocar por verde escuro. Canvas maior NÃO funciona com style image (o modelo devolve a árvore com o mesmo
+  tamanho em px no meio do canvas, 7 chamadas perdidas). Referência com terra assada é copiada em todas as
+  candidatas: gerar sem `reference_images`. Disco de copa dos campos 0,55/0,42 → 0,20/0,32 (manchas soltas).
+  Poste novo rejeitado (viga de 7 px e lanterna enorme no 1080p). Animação refeita: só `fields_tree_0` e `_2`
+  passaram o portão; `test_tree_anim` exige ao menos 2.
 
 **Escala humana do quadro de batalha (18/Out/2026, frente cenario-escala; entregas em
 `tools/preview_out/escala_humana/`: `medidas.md`, `checklist.md`, recortes antes|depois):**

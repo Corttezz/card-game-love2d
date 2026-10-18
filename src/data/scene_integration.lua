@@ -29,7 +29,7 @@ return {
         contact = { alpha = 0.65, height = 0.04, spread = 1.1, dither = true },
         shadow = { alphaK = 2.2, fade = 0.30, color = { 0.34, 0.38, 0.42 },
                    tree = { lenK = 0.70, alphaK = 1.45 },
-                   canopy = { alpha = 0.55, width = 0.42, flat = 0.30, shift = 0.25 } },
+                   canopy = { alpha = 0.20, width = 0.32, flat = 0.30, shift = 0.25 } },
         occlusion = { baseCover = 0.10, tuftsMin = 3, tuftsMax = 6, tuftScale = { 0.8, 1.2 } },
         lowFog = { alpha = 0.18, height = 0.09, drift = 0.02 },
         trees = { tint = 0.06, bright = 0.16, scale = 0.08, flip = true, windPhase = true,
