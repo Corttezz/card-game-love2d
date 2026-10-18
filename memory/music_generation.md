@@ -617,7 +617,8 @@ triplicado e devolve a cópia do meio (o loop continua sem emenda; o
 Lich da Torre = candidata 1, "começando a partir do segundo 10"; Monarca do
 Inverno = candidata 1; Tirano do Abismo = candidata 1; Colosso Podre = nenhuma
 (segue em `musicBoss`); Rainha do Eclipse = fica com `music-boss-eclipse.mp3`;
-Rei-Carniça = intocado ("perfeito").
+Rei-Carniça = intocado ("perfeito") até 18/Out/2026 (ver "Rei-Carniça:
+início corrigido" abaixo).
 
 **A queixa:** "parece que o começo delas é uma parte do final". Correta. O
 `make_loop.py` (fora do repo) monta o arquivo como `crossfade(cabeça, cauda) +
@@ -691,9 +692,35 @@ em 18,0 s. Se o dono quiser, o mesmo tratamento cabe nele sem regerar.
 **Travas:** `test_music` (`loopPoints`: os 3 voltam para `loopStart` e nunca
 para o 0, mesma fonte sem play/stop/instância nova, fase do atraso preservada,
 mudo fora da janela, crossfade de saída cruzando o `loopEnd`, uma faixa só,
-colosso na genérica, rainha e Rei-Carniça intocados); `test_music_flow` cenário
+colosso na genérica, rainha com a dela; desde 18/Out o Rei-Carniça entra nos
+`LOOP_BOSSES` dos dois testes); `test_music_flow` cenário
 `bossloop` (luta, volta do loop, Continuar no meio da luta, matar na luta, cash
 out, matar durante a entrada; atenção: o `UnlockShowcase` aberto no menu congela
 o combate retomado, por isso o cenário fecha os overlays antes do Continuar, como
 o jogador faria); `love . check_loop` mede a emenda `loopEnd → loopStart`
 (0 avisos; as colisões de brilho entre faixas são outra medida e já existiam).
+
+### Rei-Carniça: início corrigido (18/Out/2026, frente pendencias)
+
+O dono ouviu a mesma queixa no Rei-Carniça ("o começo parece parte do
+final"). Causa igual à dos outros: o `make_loop.py` abre o arquivo com o
+crossfade de UM compasso (2,5 s a 96 BPM) da CAUDA sobre a cabeça, e as
+batidas das duas metades ainda ficam 0,25 s fora de fase nesse trecho (hits da
+cauda em 0,63/1,88 s, da cabeça em 2,76 s). O arquivo era loop NATIVO de 85 s,
+sem entrada em `music_loops.lua`, então cortar o começo e deixar o loop nativo
+quebraria a emenda (o fim voltaria para 2,7 s dentro do ciclo).
+
+Solução: ROTAÇÃO do ciclo + ponto de loop, sem gerar nada novo e sem mexer na
+loudness. `cut = 2,745034 s` (cruzamento de zero no vale de silêncio de -34 dB,
+13 ms antes do ataque da intro real em 2,758 s). Arquivo novo = ciclo
+rotacionado (`old[cut:85] + old[0:cut]`) ladrilhado até `loopStart + 85 + 6 s`
+com o último 1 s em fade; `loopStart = 4,086190 s` (vale de -35 dB dentro da
+primeira volta, cruzamento de zero), `loopEnd = 89,086190 s` (exatamente um
+ciclo depois: a emenda é cópia sample a sample). Duração 95,09 s, 192k CBR
+(`libmp3lame -b:a 192k`). `check_loop`: salto 0,0071 (limite 0,05), 0 avisos.
+Cues regeradas (`python tools/music_cues.py carrion_king`: 47 hits, 5 swells,
+4 drops, 91 % no pico grave). Cópias para o dono em
+`audio/_amostras_chefe/Rei-Carnica - original.mp3` e
+`Rei-Carnica - inicio corrigido.mp3` (pasta fora do git). O trecho do
+crossfade continua existindo no meio do loop (agora em 82,3 a 84,8 s), onde o
+dono já o aprovou; só o primeiro contato mudou.

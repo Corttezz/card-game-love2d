@@ -315,6 +315,7 @@ function M.sectionsOff(t)
 end
 
 M.LOOP_BOSSES = {
+    carrion_king = "musicBossCarrionKing",
     tower_lich = "musicBossTowerLich",
     winter_monarch = "musicBossWinterMonarch",
     abyss_tyrant = "musicBossAbyssTyrant",
@@ -339,7 +340,6 @@ function M.loopPoints(t)
     t:falsy("rainha sem boss-eclipse_queen.mp3 (fica com a dela)",
         love.filesystem.getInfo("audio/music/" .. MD.bossFile("eclipse_queen")) ~= nil)
     t:eq("rainha usa music-boss-eclipse", MD.TRACKS[MD.BOSS_TRACKS.eclipse_queen], "music-boss-eclipse.mp3")
-    t:eq("rei-carnica sem ponto de loop (arquivo aprovado intocado)", LOOPS.musicBossCarrionKing, nil)
     for code in pairs(LOOPS) do
         t:truthy("ponto de loop de " .. code .. " e de uma faixa que o diretor conhece",
             MD.TRACKS[code] ~= nil or MD.isBossCode(code))

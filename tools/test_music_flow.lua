@@ -571,6 +571,7 @@ local function scenarioBossEdge()
 end
 
 local LOOP_BOSSES = {
+    { act = 1, id = "carrion_king", code = "musicBossCarrionKing" },
     { act = 2, id = "tower_lich", code = "musicBossTowerLich" },
     { act = 3, id = "abyss_tyrant", code = "musicBossAbyssTyrant" },
     { act = 4, id = "winter_monarch", code = "musicBossWinterMonarch" },

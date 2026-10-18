@@ -109,12 +109,15 @@ local function reactCases(t)
     _G.gameSettings = { musicReact = true, reducedMotion = false, screenshake = 1 }
     MR.reset(); MR.resetStats()
     local st = fakeWorld()
-    st.dur = data.duration
-    run(st, data.duration, ctx)
+    local lp = require("src.systems.MusicDirector").LOOPS[st.code]
+    st.dur = lp and lp.loopEnd or data.duration
+    run(st, st.dur, ctx)
     local s = MR.stats()
     local nHit, nDrop = 0, 0
     for _, c in ipairs(data.cues) do
-        if c.kind == "hit" then nHit = nHit + 1 elseif c.kind == "drop" then nDrop = nDrop + 1 end
+        if c.t <= st.dur then
+            if c.kind == "hit" then nHit = nHit + 1 elseif c.kind == "drop" then nDrop = nDrop + 1 end
+        end
     end
     t:truthy("todos os hits da faixa dispararam (" .. s.hit .. "/" .. nHit .. ")", s.hit >= nHit - 1)
     t:eq("drops disparados", s.drop, nDrop)
