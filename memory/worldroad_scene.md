@@ -341,6 +341,14 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   era um cubo de 0,30x) com `light.pool` (poça no chão, genérico no LuminaireEngine) porque a chama
   no topo deixava o círculo de luz no ar; 3 pinheiros novos (`variants` 6); chama da fogueira
   recolorida de salmão pastel para laranja vivo (a lua a acinzentava e o fogo não lia como fogo).
+- **Ato 5 / marsh (18/Out/2026, frente replica-45, `tools/preview_out/replica_atos/marsh/`):** entrada
+  `marsh` no modelo `fields` (grade só matiz, treeDepth lift 0,25, sombras alphaK 2,0 com cor de
+  multiplicação verde-musgo 0,34/0,40/0,32, árvore ×1,35, copa 0,50, chão mais escuro no horizonte,
+  fogueira `selfLight` 0,12); lanterna verde 1,60 de raio e 1,00 de intensidade com `light.pool`
+  0,80/0,80 (verde sobre grama verde quase não aparecia e a chama no alto não alcançava o chão). A parede era 3 árvores iguais: `marsh_deadtree_3..7` (inclinada com cortina de
+  musgo, cipreste com joelhos, tronco partido, forquilha, nó inchado; PixelLab `create_image_pro` com
+  `marsh_deadtree_0/1` de referência), `variants.marsh_deadtree = 8`, `sink` 8 a 10. Sem `lit`: a
+  assimetria medida no PNG é de forma, não de luz.
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

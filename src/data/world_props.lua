@@ -33,6 +33,11 @@ return {
         frost_deadtree_0 = 7,
         marsh_deadtree_1 = 9,
         marsh_deadtree_2 = 8,
+        marsh_deadtree_3 = 8,
+        marsh_deadtree_4 = 10,
+        marsh_deadtree_5 = 8,
+        marsh_deadtree_6 = 8,
+        marsh_deadtree_7 = 8,
         dusk_tree_1 = 9,
         dusk_tree_2 = 7,
         dusk_tree_3 = 5,
@@ -70,5 +75,6 @@ return {
         fields_tree = 6,
         dusk_tree = 7,
         highlands_pine = 6,
+        marsh_deadtree = 8,
     },
 }
