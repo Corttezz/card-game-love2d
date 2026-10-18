@@ -26,8 +26,8 @@ local function hitRows(WorldRoad, y0)
         local rel = p and p.z and (p.z - WorldRoad._camZ) or nil
         local t = rel and tOf(rel) or -1
         rows[#rows + 1] = string.format(
-            "prop %-9s t=%5.2f rel=%5.1f big=%4.2f h=%4.0f w=%4.0f base=%4.0f x=%4.0f box=%d,%d,%d,%d",
-            he.kind, t or -1, rel or -1, p and p.big or 1,
+            "prop %-9s t=%5.2f rel=%5.1f big=%4.2f s=%5.2f h=%4.0f w=%4.0f base=%4.0f x=%4.0f box=%d,%d,%d,%d",
+            he.kind, t or -1, rel or -1, p and p.big or 1, he.s or -1,
             he.y2 - he.y1, he.x2 - he.x1, he.y2 - (y0 or 0), (he.x1 + he.x2) / 2,
             he.x1, he.y1, he.x2, he.y2)
     end

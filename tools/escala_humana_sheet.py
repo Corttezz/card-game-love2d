@@ -22,7 +22,7 @@ def rows(identity, label, scene):
 def props(lines, kind=None, tmin=None, tmax=None):
     out = []
     for ln in lines:
-        m = re.match(r"prop (\S+)\s+t=\s*([-\d.]+) rel=\s*([-\d.]+) big=([\d.]+) h=\s*(\d+) w=\s*(\d+) base=\s*(-?\d+) x=\s*(-?\d+) box=(-?\d+),(-?\d+),(-?\d+),(-?\d+)", ln)
+        m = re.match(r"prop (\S+)\s+t=\s*([-\d.]+) rel=\s*([-\d.]+) big=([\d.]+)(?: s=\s*[-\d.]+)? h=\s*(\d+) w=\s*(\d+) base=\s*(-?\d+) x=\s*(-?\d+) box=(-?\d+),(-?\d+),(-?\d+),(-?\d+)", ln)
         if not m:
             continue
         k, t, rel, big, h, w, base, x, x1, y1, x2, y2 = m.groups()

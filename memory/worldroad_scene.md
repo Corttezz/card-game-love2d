@@ -315,6 +315,16 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   do ato 1 voltou a aparecer acima da barra do inimigo. A sombra projetada do inimigo encurtou
   25 % (`lenK × 0,75` no `EnemyRenderer`): com o sol à frente da câmera ela cai para a frente
   dele e lia como mancha na estrada. `test_enemy_stage` exige 1,4 < k1080 < 1,7.
+- **Densidade de pixel (18/Out/2026, frente replica-6, folha `tools/preview_out/replica_atos/seis_atos_densidade_pixel.png`):**
+  prop perto da câmera chegava a 9 a 11x de escala (árvore dos campos 9,2, crepúsculo 11,1, poste 8,9)
+  contra 3,2 do inimigo em 1080p, e lia como blocos. Regra: `PropCut.PIX` + `PropCut.nearFade` no
+  `drawProps`: prop cuja escala geométrica passaria de `cap` (2,0) × pixel de referência do inimigo
+  (`ref` 2,08 × `enemyScreenK`) não é desenhado (parado: corte seco; na viagem: some em `fade` 0,88 a
+  1,0 da razão). Testado e rejeitado: teto suave de escala (o poste perto encolhia para 1,4x o inimigo e
+  a profundidade achatava, tudo a partir de t 0,65 com o mesmo tamanho). Com o recuo a parede mais perto
+  fica em t 0,6 a 0,8 com tronco e raiz à vista; o poste perto da câmera sai, os da profundidade do
+  inimigo ficam. Pior escala nos seis atos: 5,7 a 6,2. Trava em `test_world_props` (seis biomas, com a
+  variação de escala por instância). `escala_humana` imprime `s=` por prop.
 - **Ato 6 / dusk (18/Out/2026, frente replica-6, `tools/preview_out/replica_atos/dusk/`):** entrada
   `dusk` copiada do modelo `fields` (treeDepth, sombra de árvore e disco de copa, contato 0,65, chão
   mais escuro no horizonte); temperatura virou só matiz (o `dusk` 0,78/0,56/0,70 apagava as copas

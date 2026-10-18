@@ -90,6 +90,15 @@ function PropCut.nearK(t)
     return math.min(1, math.max(0, (t - 0.3) / 0.3))
 end
 PropCut.CREST = { t = 0.15, k = 0.70, kinds = { tree = true, pine = true, deadtree = true } }
+PropCut.PIX = { ref = 2.08, cap = 2.0, fade = 0.88 }
+function PropCut.nearFade(rawS, screenK, soft)
+    local c = PropCut.PIX
+    local r = rawS / (c.cap * c.ref * screenK)
+    if not soft then return r <= 1 and 1 or 0 end
+    if r <= c.fade then return 1 end
+    local k = math.min(1, (r - c.fade) / (1 - c.fade))
+    return 1 - k * k * (3 - 2 * k)
+end
 function PropCut.crestK(kind, t)
     local c = PropCut.CREST
     if not c.kinds[kind] then return 1 end
@@ -3119,6 +3128,7 @@ local hitPool = {}
 local function hitSlot(idx)
     local e = hitPool[idx]
     if not e then e = {}; hitPool[idx] = e end
+    e.s = nil
     return e
 end
 local lumArg = {}
@@ -3382,6 +3392,11 @@ local function drawProps(g, x, w, camZ)
 
             local img = getSprite(p.kind, p.variant, p.bid)
             local fadeA = propFadeK(p)
+            if img then
+                fadeA = fadeA * PropCut.nearFade(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1)
+                    * (PropCut.sizeK[img] or 1) * PropCut.crestK(p.kind, t), t, img:getHeight()),
+                    WorldRoad.enemyScreenK(g.h), WorldRoad._travel ~= nil)
+            end
             if fadeA <= 0.01 then img = nil end
 
             if img and WorldRoad._fork and rdef and rdef.roadside
@@ -3614,7 +3629,7 @@ local function drawProps(g, x, w, camZ)
                     local hidx = #hsn + 1
                     local he = hitSlot(hidx)
                     he.x1, he.y1, he.x2, he.y2 = bx1, by1, bx2, by2
-                    he.ref, he.kind = p, p.kind
+                    he.ref, he.kind, he.s = p, p.kind, s
                     hsn[hidx] = he
                 end
                 drawLeafFx(p, pxX, sy + sink2, iw, ih, s)

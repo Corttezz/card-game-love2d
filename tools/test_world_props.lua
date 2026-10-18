@@ -220,6 +220,37 @@ function M.run()
         for _ = 1, 5 do frame() end
         t:eq("com tufos e câmera parada a grama ainda reusa o lote (0 builds)", GrassField.stats.builds, 0)
 
+        local capPix = 2.0 * 2.08 * WorldRoad.enemyScreenK(H - 52) * 1.1
+        for b = 1, 6 do
+            WorldRoad.restoreProgress(b, 3)
+            for _ = 1, 400 do
+                if WorldRoad.isPrewarmed(b) then break end
+                WorldRoad.prewarmTick(0.05, b)
+            end
+            for _ = 1, 90 do WorldRoad.update(1 / 30) end
+            WorldRoad._blend = nil
+            WorldRoad._prevBiomeIndex = nil
+            love.graphics.setCanvas(cv)
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.draw(0, 52, W, H - 52, b)
+            love.graphics.setCanvas()
+            local worst, nS = 0, 0
+            for _, he in ipairs(WorldRoad._hitScene) do
+                if he.s then
+                    nS = nS + 1
+                    if he.s > worst then worst = he.s end
+                end
+            end
+            t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
+                :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
+        end
+        WorldRoad.resetRun()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.51
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        for _ = 1, 4 do frame() end
+
         _G.gameSettings = { reducedMotion = true }
         GrassField.resetStats()
         WorldRoad._camZ = WorldRoad._camZ + 0.01
