@@ -344,6 +344,12 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   recolorida de salmão pastel para laranja vivo (a lua a acinzentava e o fogo não lia como fogo).
   Passe diorama: os 6 pinheiros e o arbusto (era carvalho verde fora do bioma) regerados com luz da
   lua à direita (`lit = 1`); pilar 4,9 em `lane` 0,12-0,22 (perto da câmera cobria a estrada).
+- **Ato 3 abyss (18/Out/2026, frente replica-23, `tools/preview_out/replica_atos/abyss/`):** entrada
+  do ato 1 com pôr do sol só matiz quente (o `dusk` antigo escurecia e roxeava), sombra 2,2 em cor
+  de multiplicação marrom (galhos aparecem no chão), disco de copa 0,20 (árvore sem folha); tocha
+  regerada como poste de ferro de 2,5 m (0,87x, era 0,29x) e pilar-braseiro (0,8x, `lane` afastada),
+  ambos com `light.pool`; fissura azul (fora da paleta) virou fenda de lava; 6 árvores mortas e 3
+  arbustos novos (diorama, luz à direita); `grassA/B` com mais contraste (chão chapado).
 - **Ato 5 / marsh (18/Out/2026, frente replica-45, `tools/preview_out/replica_atos/marsh/`):** entrada
   `marsh` no modelo `fields` (grade só matiz, treeDepth lift 0,25, sombras alphaK 2,0 com cor de
   multiplicação verde-musgo 0,34/0,40/0,32, árvore ×1,35, copa 0,50, chão mais escuro no horizonte,
