@@ -492,6 +492,91 @@ function M.run()
     end
 
     do
+        local SceneGrade = require("engine.SceneGrade")
+        WorldRoad.clearCache()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        for _ = 1, 3 do frame(1) end
+        t:truthy("véu de profundidade desenhado por fatia (" .. tostring(WeatherEngine.stats.veilBands) .. ")",
+            (WeatherEngine.stats.veilBands or 0) >= 3)
+        t:truthy("névoa baixa desenhada na base das montanhas (" .. tostring(WeatherEngine.stats.lowFogBands) .. ")",
+            (WeatherEngine.stats.lowFogBands or 0) >= 1)
+        SceneGrade.begin("fields", 1, nil, 1, { 0.8, 0.8, 0.8 })
+        t:truthy("véu mais forte no horizonte que na base",
+            WeatherEngine._veilAlphaAt(0) > WeatherEngine._veilAlphaAt(1))
+        t:truthy("véu nunca passa de 0,5", WeatherEngine._veilAlphaAt(0) <= 0.5)
+
+        WeatherEngine.disabled = true
+        frame(1)
+        t:truthy("clima desligado ainda desenha o véu de profundidade", (WeatherEngine.stats.veilBands or 0) >= 3)
+        WeatherEngine.disabled = false
+
+        do
+            local Wv, Hv = love.graphics.getDimensions()
+            local function sideShot(k)
+                local saved = WeatherEngine.VEIL_K
+                WeatherEngine.VEIL_K = k
+                local cv = love.graphics.newCanvas(Wv, Hv)
+                love.graphics.setCanvas(cv)
+                love.graphics.clear(0, 0, 0, 1)
+                WorldRoad.draw(0, 52, Wv, Hv - 52, 1)
+                love.graphics.setCanvas()
+                WeatherEngine.VEIL_K = saved
+                return cv:newImageData()
+            end
+            local on, off = sideShot(0.55), sideShot(0)
+            local yApex = math.floor(52 + (Hv - 52) * 0.40)
+            local same = true
+            for y = yApex, yApex + 12 do
+                for _, x in ipairs({ 2, 6, Wv - 3, Wv - 7 }) do
+                    local r1, g1, b1 = on:getPixel(x, y)
+                    local r2, g2, b2 = off:getPixel(x, y)
+                    if math.abs(r1 - r2) + math.abs(g1 - g2) + math.abs(b1 - b2) > 0.01 then same = false end
+                end
+            end
+            t:truthy("véu segue a curva do domo (não pinta o céu nas laterais)", same)
+        end
+
+        local W2, H2 = love.graphics.getDimensions()
+        local function lowFogShot(tm, rm)
+            _G.gameSettings = { reducedMotion = rm }
+            local cv = love.graphics.newCanvas(W2, H2)
+            love.graphics.setCanvas(cv)
+            love.graphics.clear(0.2, 0.2, 0.2, 1)
+            WeatherEngine.update(0, { biomeId = "fields", camZ = 5.5, time = tm })
+            SceneGrade.begin("fields", 0.5, nil, 1, { 0.8, 0.8, 0.8 })
+            WeatherEngine.drawLowFog(0, 200, W2, 60, { alpha = 0.4, height = 0.1, drift = 0.02 }, 1)
+            love.graphics.setCanvas()
+            return cv:newImageData()
+        end
+        local a1 = lowFogShot(100, false)
+        local a2 = lowFogShot(130, false)
+        local r0 = select(1, a1:getPixel(10, 100))
+        local inside = false
+        local moved = false
+        for x = 0, W2 - 1, 7 do
+            local r, _, _, _ = a1:getPixel(x, 250)
+            if math.abs(r - 0.2) > 0.01 then inside = true end
+            local rb = a2:getPixel(x, 250)
+            if math.abs(r - rb) > 0.005 then moved = true end
+        end
+        t:truthy("névoa baixa: pinta dentro da faixa", inside)
+        t:truthy("névoa baixa: fora da faixa intacto", math.abs(r0 - 0.2) < 0.005)
+        t:truthy("névoa baixa: deriva com o tempo", moved)
+        local b1 = lowFogShot(100, true)
+        local b2 = lowFogShot(130, true)
+        t:truthy("reducedMotion: névoa baixa parada (quadros idênticos)", b1:getString() == b2:getString())
+        _G.gameSettings = { reducedMotion = false }
+
+        local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
+        local pm = src:find("drawMountains(g, x, w, WorldRoad._camZ)", 1, true)
+        local pf = src:find("WeatherEngine.drawLowFog(", 1, true)
+        local pmf = src:find("drawMountainsFront(g, x, w, WorldRoad._camZ)", 1, true)
+        t:truthy("WorldRoad: névoa baixa entre o fundo e a frente das montanhas",
+            pm ~= nil and pf ~= nil and pmf ~= nil and pm < pf and pf < pmf)
+    end
+
+    do
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
         local eng = love.filesystem.read("engine/WeatherEngine.lua") or ""
         t:truthy("WorldRoad: flush do clima DENTRO da fatia da grama",

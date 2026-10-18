@@ -1,6 +1,7 @@
 local WeatherEngine = {}
 local QuadMesh = require("engine.QuadMesh")
 local GrassField = require("engine.GrassField")
+local SceneGrade = require("engine.SceneGrade")
 
 local floor, min, max, sin, abs = math.floor, math.min, math.max, math.sin, math.abs
 local c8 = QuadMesh.c8
@@ -80,9 +81,14 @@ local poolN = 0
 local lastCtx = nil
 local windP = GrassField.PRESETS.fields
 local camZ0 = 0
+local veilRel = 0
+WeatherEngine.VEIL_K = 0.45
+WeatherEngine.VEIL_SEGS = 24
+local function veilAlphaAt(t) return SceneGrade.fogAlpha(t) * WeatherEngine.VEIL_K end
+WeatherEngine._veilAlphaAt = veilAlphaAt
 
 WeatherEngine.disabled = false
-WeatherEngine.stats = { particles = 0, quads = 0, flushes = 0 }
+WeatherEngine.stats = { particles = 0, quads = 0, flushes = 0, veilBands = 0, lowFogBands = 0 }
 
 local function reduced()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -486,6 +492,8 @@ function WeatherEngine.beginFrame(f)
     geo.relCrest, geo.tPow = f.relCrest, f.tPow
     if prefill and cur and lastCtx then WeatherEngine.update(0, lastCtx) end
     nS, cursorK, microN, poolN = 0, 0, 0, 0
+    veilRel = f.relCrest
+    WeatherEngine.stats.veilBands, WeatherEngine.stats.lowFogBands = 0, 0
     if WeatherEngine.disabled or nP == 0 then return end
     qm = qm or QuadMesh.new(1024)
     qm:reset()
@@ -645,19 +653,56 @@ function WeatherEngine.beginFrame(f)
     WeatherEngine.stats.pools, WeatherEngine.stats.micro = poolN, microN
 end
 
-function WeatherEngine.flushTo(relLow)
-    if nS == 0 or cursorK >= nS then return end
-    local k2 = cursorK
-    while k2 < nS and relS[k2 + 1] >= relLow do k2 = k2 + 1 end
-    if k2 == cursorK then return end
-    local from = cursorK > 0 and qEnd[cursorK] or 0
-    local to = qEnd[k2]
-    cursorK = k2
-    if to > from then
-        love.graphics.setColor(1, 1, 1, 1)
-        qm:draw(from, to - from)
-        WeatherEngine.stats.flushes = WeatherEngine.stats.flushes + 1
+local function depthVeil(relLow)
+    if not geo or not geo.latY or not SceneGrade.isActive() then return end
+    local lo = max(0, relLow)
+    if lo >= veilRel then return end
+    local relCrest, tPow = geo.relCrest, geo.tPow
+    local tA = tOfRel(veilRel, relCrest, tPow)
+    local tB = tOfRel(lo, relCrest, tPow)
+    veilRel = lo
+    if not tA or not tB then return end
+    local a = veilAlphaAt((tA + tB) * 0.5)
+    if a < 0.004 then return end
+    local r, g, b = SceneGrade.fogColor()
+    r, g, b = min(1, r), min(1, g), min(1, b)
+    local segs = WeatherEngine.VEIL_SEGS
+    local sw = geo.w / segs
+    local drawn = false
+    love.graphics.setColor(r, g, b, a)
+    for k = 0, segs - 1 do
+        local x0 = floor(geo.x + k * sw)
+        local x1 = floor(geo.x + (k + 1) * sw)
+        local dx = (x0 + x1) * 0.5 - geo.cx
+        local yA = floor(geo.latY(dx, tA))
+        local yB = floor(geo.latY(dx, tB))
+        if yB > yA and x1 > x0 then
+            love.graphics.rectangle("fill", x0, yA, x1 - x0, yB - yA)
+            drawn = true
+        end
     end
+    love.graphics.setColor(1, 1, 1, 1)
+    if drawn then
+        WeatherEngine.stats.veilBands = WeatherEngine.stats.veilBands + 1
+    end
+end
+
+function WeatherEngine.flushTo(relLow)
+    if nS > 0 and cursorK < nS then
+        local k2 = cursorK
+        while k2 < nS and relS[k2 + 1] >= relLow do k2 = k2 + 1 end
+        if k2 > cursorK then
+            local from = cursorK > 0 and qEnd[cursorK] or 0
+            local to = qEnd[k2]
+            cursorK = k2
+            if to > from then
+                love.graphics.setColor(1, 1, 1, 1)
+                qm:draw(from, to - from)
+                WeatherEngine.stats.flushes = WeatherEngine.stats.flushes + 1
+            end
+        end
+    end
+    depthVeil(relLow)
 end
 
 local hazeImg, hazeQuad = nil, nil
@@ -725,6 +770,32 @@ local function drawHaze()
     love.graphics.rectangle("fill", x, y, w, h)
     love.graphics.pop()
     WeatherEngine.stats.hazeBands = drawn
+end
+
+function WeatherEngine.drawLowFog(x, yTop, w, h, cfg, alphaK)
+    if not cfg or (cfg.alpha or 0) <= 0 or h < 2 then return end
+    if not hazeImg then buildHaze() end
+    local r, g, b = 0.9, 0.9, 0.95
+    if SceneGrade.isActive() then r, g, b = SceneGrade.fogColor() end
+    r, g, b = min(1, r), min(1, g), min(1, b)
+    local a = cfg.alpha * (alphaK or 1)
+    local s = max(1, floor(h / HAZE_H + 0.5))
+    local bandH = HAZE_H * s
+    local tm = reduced() and 0 or time
+    local drift = (cfg.drift or 0) * 600 * tm
+    local off = floor((drift % (HAZE_W * s)) / s) * s
+    local sx0, sy0 = love.graphics.transformPoint(x, yTop)
+    local sx1, sy1 = love.graphics.transformPoint(x + w, yTop + h)
+    love.graphics.push("all")
+    love.graphics.setScissor(floor(min(sx0, sx1)), floor(min(sy0, sy1)),
+        math.ceil(abs(sx1 - sx0)), math.ceil(abs(sy1 - sy0)))
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.draw(hazeImg, hazeQuad, x - HAZE_W * s * 2 + off, yTop + h - bandH, 0, s, s)
+    love.graphics.setColor(r, g, b, a * 0.6)
+    love.graphics.draw(hazeImg, hazeQuad, x - HAZE_W * s * 2 - off, yTop + h - bandH * 0.6, 0, s, s)
+    love.graphics.pop()
+    love.graphics.setColor(1, 1, 1, 1)
+    WeatherEngine.stats.lowFogBands = WeatherEngine.stats.lowFogBands + 2
 end
 
 function WeatherEngine.flushAll()
@@ -815,6 +886,7 @@ function WeatherEngine.reset()
     curId, cur = nil, nil
     geo = nil
     veilCur = 0
+    veilRel = 0
 end
 
 function WeatherEngine.setIntensityOverride(v) overrideI = v end

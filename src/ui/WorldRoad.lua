@@ -3576,6 +3576,11 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     drawCelestial(g, x, y, w)
     drawMountains(g, x, w, WorldRoad._camZ)
     drawClouds(g, x, y, w)
+    do
+        local lf = Scene.Grade.cfg("lowFog")
+        local bandH = math.floor(h * lf.height)
+        WeatherEngine.drawLowFog(x, g.crestApexY - bandH, w, bandH + 6, lf, 1)
+    end
     WeatherEngine.drawSky(g, x, w)
     drawMountainsFront(g, x, w, WorldRoad._camZ)
     drawBirds(g, x, y, w)
