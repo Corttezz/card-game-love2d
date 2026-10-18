@@ -32,6 +32,10 @@ return {
         marsh_deadtree_2 = 8,
         dusk_tree_1 = 9,
         dusk_tree_2 = 7,
+        dusk_tree_3 = 5,
+        dusk_tree_4 = 8,
+        dusk_tree_5 = 8,
+        dusk_tree_6 = 9,
     },
 
     lit = {
@@ -52,5 +56,6 @@ return {
 
     variants = {
         fields_tree = 6,
+        dusk_tree = 7,
     },
 }

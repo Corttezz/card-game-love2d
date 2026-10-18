@@ -290,6 +290,15 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   do ato 1 voltou a aparecer acima da barra do inimigo. A sombra projetada do inimigo encurtou
   25 % (`lenK × 0,75` no `EnemyRenderer`): com o sol à frente da câmera ela cai para a frente
   dele e lia como mancha na estrada. `test_enemy_stage` exige 1,4 < k1080 < 1,7.
+- **Ato 6 / dusk (18/Out/2026, frente replica-6, `tools/preview_out/replica_atos/dusk/`):** entrada
+  `dusk` copiada do modelo `fields` (treeDepth, sombra de árvore e disco de copa, contato 0,65, chão
+  mais escuro no horizonte); temperatura virou só matiz (o `dusk` 0,78/0,56/0,70 apagava as copas
+  perto para quase preto); névoa = cor medida da base das montanhas, cor de sombra púrpura. Árvores
+  3 → 7 variantes (`dusk_tree_3..6`: choupo, carmim de outono, meio pelada, chorona;
+  `variants.dusk_tree = 7`), porque a parede era uma massa roxa única. Poste regenerado (madeira
+  sem a faixa laranja pintada e sem a mão-francesa quadriculada) e cintilação refeita só no vidro em
+  `anim/dusk_lantern_0/` (o `anim/` tem prioridade sobre o PNG solto: trocar só o PNG não muda nada);
+  tamanho 5,8 porque a arte nova é 1 px mais baixa.
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
