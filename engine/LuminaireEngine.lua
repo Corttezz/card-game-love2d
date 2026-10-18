@@ -70,7 +70,7 @@ local CATALOG = {
             weight = 0.8,
             light = { color = { 1.00, 0.58, 0.22 }, radiusK = 1.60,
                       coreK = 0.50, intensity = 0.90, flicker = "fire",
-                      pool = { radiusK = 1.40, intensity = 0.95, sy = 0.35 } },
+                      pool = { radiusK = 1.40, intensity = 0.70, emit = 2.2, color = { 1.00, 0.50, 0.16 }, sy = 0.35 } },
             embers = { color = { 1.0, 0.68, 0.30 }, count = 3 } },
         crystal = { size = 1.1, lane = { 0.03, 0.40 }, anchor = { 0.50, 0.35 },
             weight = 0.8,
@@ -81,7 +81,7 @@ local CATALOG = {
             weight = 0.9,
             light = { color = { 1.00, 0.68, 0.32 }, radiusK = 1.50,
                       coreK = 0.40, intensity = 0.95, flicker = "fire",
-                      pool = { radiusK = 0.80, intensity = 0.80, sy = 0.35 } } },
+                      pool = { radiusK = 1.25, intensity = 0.45, emit = 4.5, color = { 1.00, 0.46, 0.12 }, sy = 0.35 } } },
     },
 
     marsh = {
@@ -259,7 +259,7 @@ function LuminaireEngine.drawPool(bid, kind, a)
     local fi, fr = flickerOf(L, (a.seed or 0) % 1000)
     local distK = 0.42 + 0.58 * math.min(1, (a.t or 1) / 0.55)
     local r = math.min(P.radiusK * a.flameH * fr * distK, a.capR or 1e9) * dayK * E.radiusK
-    local inten = E.intensity * P.intensity * fi * (0.6 + 0.4 * distK) * (a.alphaK or 1) * dayK
+    local inten = E.intensity * P.intensity * (P.emit or 1) * fi * (0.6 + 0.4 * distK) * (a.alphaK or 1) * dayK
     if r < 2 or inten <= 0.01 then return end
     local pr, pg, pb, pa = love.graphics.getColor()
     local bm, am = love.graphics.getBlendMode()
@@ -270,7 +270,8 @@ function LuminaireEngine.drawPool(bid, kind, a)
     sh:send("intensity", inten)
     sh:send("upK", E.upK)
     love.graphics.setBlendMode("add", "alphamultiply")
-    love.graphics.setColor(L.color[1], L.color[2], L.color[3], 1)
+    local pc = P.color or L.color
+    love.graphics.setColor(pc[1], pc[2], pc[3], 1)
     local sc = r
     love.graphics.draw(emit.img, math.floor(a.gx), math.floor(a.gy), 0, sc, sc * (P.sy or 0.35), 1, 1)
     love.graphics.setShader(prevSh)
@@ -300,7 +301,7 @@ function LuminaireEngine.submit(bid, kind, a)
         LightEngine.submit({
             x = a.gx, y = a.gy,
             radius = math.min(P.radiusK * base * fr * distK, (a.capR or 1e9)) * dayK,
-            color = L.color, intensity = P.intensity * fi * (0.6 + 0.4 * distK) * aK * dayK,
+            color = P.color or L.color, intensity = P.intensity * fi * (0.6 + 0.4 * distK) * aK * dayK,
             dither = true, ditherAmt = 0.28, levels = 8, sy = P.sy or 0.35,
             seed = a.seed, z = a.rel,
         })

@@ -492,6 +492,16 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   lasca de `highlands_litter_0/1.png` era o valor mais claro do primeiro plano noturno; trocada por cinza violáceo
   frio um degrau acima da casca. Regra: clutter de chão nunca é o pixel mais claro da cena à noite.
 
+- **Luz pintada das montanhas × astro e poça âmbar na neve (18/Out/2026, frente montanhas-luz,
+  `tools/preview_out/montanhas_luz/medidas.md`):** medido face esquerda × direita das cristas (alfa da `_front`):
+  fields e highlands acesos à direita (sol 0,79, lua 0,74), abyss e frost simétricos (contraluz e frontal), dusk à
+  esquerda (sol 0,40), marsh sem encosta. Nenhuma faixa invertida: o "fields aceso pela esquerda" era a cópia
+  espelhada do ladrilho antigo; nada espelhado, costura e `painted` intactos. Poça do ato 4: o mapa de luz só
+  multiplica, então âmbar sobre neve fria satura em branco e lê como clareira pálida; o calor só vem da emissão
+  aditiva. `pool.color` e `pool.emit` opcionais (genéricos) no `LuminaireEngine`; frost com poça laranja
+  1,00/0,46/0,12, mapa de luz da poça mais fraco e emissão mais forte (R-B da poça +17,6 → +32,5 em tod 0,85).
+  Regra: luz quente sobre chão frio e claro pede cor na EMISSÃO, não no mapa de luz.
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica
