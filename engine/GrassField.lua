@@ -141,6 +141,28 @@ local GF_FORMAT = {
     { "GrassWind", "float", 4 },
 }
 local K_CLUMP, K_CREST, K_BLADE, K_BROAD, K_FLOWER = 0, 1, 2, 3, 4
+GrassField.CELL_H = CELL_H
+local tufts, tuftN = {}, 0
+function GrassField.beginFrame() tuftN = 0 end
+function GrassField.requireTufts(rel, x, w, n, scale)
+    if rel ~= rel or x ~= x then return end
+    tuftN = tuftN + 1
+    local q = tufts[tuftN]
+    if not q then q = {}; tufts[tuftN] = q end
+    q.rel, q.x, q.w = rel, x, math.max(2, w or 2)
+    q.n, q.s, q.done = math.max(1, math.floor(n or 3)), math.max(0.02, scale or 1), false
+end
+function GrassField._tuftRequests() return tufts, tuftN end
+local function tuftSig(relFrom, relTo)
+    local sig = 0
+    for i = 1, tuftN do
+        local q = tufts[i]
+        if q.rel > relFrom and q.rel <= relTo then
+            sig = sig + math.floor(q.x) * 7 + math.floor(q.w) + q.n * 13 + math.floor(q.s * 100) * 3
+        end
+    end
+    return sig
+end
 
 GrassField.SHADER_VERTEX = [[
 uniform float uT;      // relógio do mundo (ctx.time)
@@ -238,10 +260,10 @@ local shader
 local frameId_
 local cache = { valid = false, slices = {} }
 local frameMode, sliceIdx, cacheable = "build", 0, false
-GrassField.stats = { replays = 0, builds = 0, sprites = 0 }
+GrassField.stats = { replays = 0, builds = 0, sprites = 0, tufts = 0 }
 function GrassField.resetStats()
     local st = GrassField.stats
-    st.replays, st.builds, st.sprites = 0, 0, 0
+    st.replays, st.builds, st.sprites, st.tufts = 0, 0, 0, 0
 end
 local cDark = { 0, 0, 0 }
 local rowCache = {}
@@ -353,6 +375,7 @@ function GrassField.draw(ctx)
     local P = GrassField.PRESETS[ctx.biomeId] or DEFAULT_PRESET
     local relFrom = ctx.relFrom or -1
     local relTo = ctx.relTo or (ctx.relCrest + 2)
+    local sig = tuftSig(relFrom, relTo)
 
     local frameId = ctx.frame or ctx.time
     if frameId ~= frameId_ then
@@ -384,7 +407,11 @@ function GrassField.draw(ctx)
     sliceIdx = sliceIdx + 1
     if frameMode == "replay" then
         local sl = cache.slices[sliceIdx]
-        if sl and sl[1] == relFrom and sl[2] == relTo then
+        if sl and sl[1] == relFrom and sl[2] == relTo and sl[5] == sig then
+            for i = 1, tuftN do
+                local q = tufts[i]
+                if q.rel > relFrom and q.rel <= relTo then q.done = true end
+            end
             if sl[4] > 0 then
                 local prev = love.graphics.getShader()
                 love.graphics.setShader(shader)
@@ -694,6 +721,36 @@ function GrassField.draw(ctx)
         end
     end
 
+    for i = 1, tuftN do
+        local q = tufts[i]
+        if not q.done and q.rel > relFrom and q.rel <= relTo then
+            q.done = true
+            local tq = g.tOf(q.rel)
+            if tq and tq > 0 then
+                local nx = (q.x - ctx.x) / w
+                local zq = camZ + q.rel
+                local qx = math.floor(q.x)
+                for bi = 0, q.n - 1 do
+                    local hb = hash(qx * 31 + bi, 17)
+                    local hv = hash(qx * 53 + bi, 7)
+                    local bx = q.x - q.w * 0.5 + (bi + 0.5) / q.n * q.w
+                        + (hb - 0.5) * q.w / q.n
+                    local base = g.latY(bx - g.cx, tq)
+                    local s = q.s * (0.72 + hb * 0.55)
+                    local vquad = (hv < P.broad)
+                        and (N_THIN + math.floor(hb * N_BROAD)) or math.floor(hv * N_THIN)
+                    local ht = hash(qx * 17 + bi, 23)
+                    local c = (ht < 0.25) and cDark or ((ht < 0.55) and cMid or cLight)
+                    emit(math.floor(bx), math.floor(base + 1),
+                        s * ((hb < 0.5) and 1 or -1), s,
+                        CELL_W / 2, CELL_H, CELL_W, CELL_H, quads[vquad],
+                        c8(c[1]), c8(c[2]), c8(c[3]), K_BLADE, nx, zq, hb, hv)
+                end
+                GrassField.stats.tufts = GrassField.stats.tufts + q.n
+            end
+        end
+    end
+
     local count = qm.n - sliceStart
     if count > 0 then
         qm:upload(sliceStart, qm.n)
@@ -708,7 +765,7 @@ function GrassField.draw(ctx)
         sl = {}
         cache.slices[sliceIdx] = sl
     end
-    sl[1], sl[2], sl[3], sl[4] = relFrom, relTo, sliceStart, count
+    sl[1], sl[2], sl[3], sl[4], sl[5] = relFrom, relTo, sliceStart, count, sig
     GrassField._lastCount = count
     local st = GrassField.stats
     st.builds, st.sprites = st.builds + 1, st.sprites + count
@@ -720,6 +777,7 @@ function GrassField.clearCache()
     cache = { valid = false, slices = {} }
     rowCache = {}
     lastCamZ = nil
+    tuftN = 0
 end
 
 return GrassField

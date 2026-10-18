@@ -79,6 +79,80 @@ function M.run()
     t:eq("arbusto sem entrada: SINK_DEFAULT_FRAC da altura", cutBush,
         math.floor(hBush * props.SINK_DEFAULT_FRAC + 0.5))
 
+    do
+        local GrassField = require("engine.GrassField")
+        local savedSettings = _G.gameSettings
+        _G.gameSettings = { reducedMotion = false }
+        local W, H = love.graphics.getDimensions()
+        local cv = love.graphics.newCanvas(W, H)
+        local function frame()
+            WorldRoad.update(1 / 30)
+            love.graphics.setCanvas(cv)
+            love.graphics.clear(0, 0, 0, 1)
+            WorldRoad.draw(0, 52, W, H - 52, 1)
+            WorldRoad.drawOverlays(0, 52, W, H - 52)
+            love.graphics.setCanvas()
+        end
+        WorldRoad.clearCache()
+        WorldRoad.resetRun()
+        WorldRoad.setBiome(1)
+        WorldRoad._camZ = 5.5
+        for _ = 1, 10 do frame() end
+        WorldRoad._blend = nil
+        WorldRoad._prevBiomeIndex = nil
+        WorldRoad._landmark = { key = "landmark_rest", z = WorldRoad._camZ + 9, size = 3.6, phase = 0 }
+        WorldRoad._camZ = WorldRoad._camZ + 0.01
+        GrassField.resetStats()
+        frame()
+        local total = GrassField.stats.builds + GrassField.stats.replays
+        local at = WorldRoad._landmarkDrawnAt or -1
+        t:truthy(("landmark escolhido pintado ENTRE fatias de grama (fatia %d de %d)"):format(at, total),
+            at > 0 and at < total)
+        t:truthy("tufos escritos no quadro (" .. GrassField.stats.tufts .. ")", GrassField.stats.tufts > 0)
+        local lx = WorldRoad.getRoadAnchor(9, 0, 52, W, H - 52)
+        local reqs, n = GrassField._tuftRequests()
+        local near = false
+        for i = 1, n do
+            if math.abs(reqs[i].x - lx) < 3 and reqs[i].rel < 9 and reqs[i].rel > 8.5 then near = true end
+        end
+        t:truthy("tufo pedido na frente da base do landmark", near)
+        local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
+        t:falsy("drawLandmarkFront não existe mais", src:find("drawLandmarkFront", 1, true) ~= nil)
+        t:truthy("landmark escolhido desenha dentro de drawProps (balanço da cena)",
+            src:find("local function drawChosenLandmark()", 1, true) ~= nil)
+        t:truthy("GrassField.beginFrame antes do castelo",
+            src:find("GrassField%.beginFrame%(%).-drawCastle%(g, x, w, WorldRoad%._camZ%)") ~= nil)
+
+        GrassField.resetStats()
+        for _ = 1, 50 do frame() end
+        GrassField.resetStats()
+        for _ = 1, 5 do frame() end
+        t:eq("com tufos e câmera parada a grama ainda reusa o lote (0 builds)", GrassField.stats.builds, 0)
+
+        _G.gameSettings = { reducedMotion = true }
+        GrassField.resetStats()
+        WorldRoad._camZ = WorldRoad._camZ + 0.01
+        frame()
+        t:truthy("reducedMotion mantém os tufos (informação, não movimento)", GrassField.stats.tufts > 0)
+        _G.gameSettings = { reducedMotion = false }
+
+        local realBegin = GrassField.beginFrame
+        GrassField.beginFrame = function()
+            realBegin()
+            GrassField.requireTufts(5, 100, 10, 3, 0.01)
+        end
+        GrassField.resetStats()
+        WorldRoad._camZ = WorldRoad._camZ + 0.01
+        local okMin = pcall(frame)
+        GrassField.beginFrame = realBegin
+        t:truthy("tufo com escala mínima não quebra", okMin)
+
+        WorldRoad._landmark = nil
+        WorldRoad.clearCache()
+        WorldRoad.resetRun()
+        _G.gameSettings = savedSettings
+    end
+
     return t:done()
 end
 

@@ -2100,6 +2100,8 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
             progress = progress,
         }
         WorldRoad._castleBaseHalf = iw * s * 0.44
+        GrassField.requireTufts(REL_CREST - 0.1, cx, iw * s * 0.9, 6,
+            (ih * s * 0.05) / GrassField.CELL_H)
 
         local LW = Config.Lighting.WINDOW
         local bio = BIOME_BY_ID[bid]
@@ -2895,44 +2897,6 @@ local function shadowOpts(alphaK, flip, footPad, prof)
     return o
 end
 
-local function drawLandmarkFront(g, x, w, camZ)
-    local lm = WorldRoad._landmark
-    if not lm then return end
-    local rel = lm.z - camZ
-    if rel < -3 then WorldRoad._landmark = nil; return end
-    local t = g.tOf(rel)
-    if not t then return end
-    local img = getLandmark(lm.key)
-    if not img then return end
-    img = landmarkFrame(lm.key, lm.phase or lm.z) or img
-    local iw, ih = img:getWidth(), img:getHeight()
-    local s = g.scaleAt(lm.size or 2.0, t, LMG.refH(lm.key, ih))
-    local py = g.crestApexY + (g.bottomY - g.crestApexY) * t
-    local lx = g.cx + roadWobble(lm.z, t, w)
-    local shPad = lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
-    local shY = py - 1 - shPad * s
-    if not ShadowEngine.sprite(img, lx, shY, s,
-        shadowOpts(nil, nil, shPad, lmCfg(WorldRoad.SHADOW_PROFILE, lm.key))) then
-        love.graphics.setColor(0, 0, 0, 0.22)
-        love.graphics.ellipse("fill",
-            lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
-            shY, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
-        love.graphics.setColor(1, 1, 1, 1)
-    end
-    local lmk = Scene.Grade.cfg("landmarks")[lm.key:match("landmark_(%a+)$") or ""]
-    if lmk and lmk.scorch then
-        Scene.Contact.scorch(lx, shY, iw * s, t, lmk.scorch.radius, lmk.scorch.alpha)
-    end
-    Scene.Contact.queue(img, lx, shY, s, t, 1, 1)
-    local lc = Scene.Grade.color("landmark", t, LMG.c)
-    love.graphics.setColor(lc[1], lc[2], lc[3], 1)
-    love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
-    love.graphics.setColor(1, 1, 1, 1)
-    drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1)
-    submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z)
-    submitLandmarkOccluder(img, lx, py, iw, ih, s, rel)
-end
-
 local function drawCrestFog(g, x, w)
     local fog = envColor("fog")
     local fogLimitY = g.crestApexY + (g.bottomY - g.crestApexY) * 0.22
@@ -2951,7 +2915,7 @@ local function drawCrestFog(g, x, w)
 end
 
 local propZDesc = function(a, c) return a.z > c.z end
-local _farPass, _nearPass, _behind, _front = {}, {}, {}, {}
+WorldRoad._lists = { far = {}, near = {}, behind = {}, front = {} }
 local function clearList(t) for i = #t, 1, -1 do t[i] = nil end end
 local function occluderSlot()
     local P = WorldRoad._pools
@@ -2973,8 +2937,8 @@ local function drawProps(g, x, w, camZ)
     table.sort(WorldRoad._props, propZDesc)
     WorldRoad._pools.shN, WorldRoad._pools.occN = 0, 0
 
-    local farPass = _farPass
-    local nearPass = _nearPass
+    local farPass = WorldRoad._lists.far
+    local nearPass = WorldRoad._lists.near
     clearList(farPass)
     clearList(nearPass)
     for _, p in ipairs(WorldRoad._props) do
@@ -3005,6 +2969,61 @@ local function drawProps(g, x, w, camZ)
                 for i = 1, f.n do f._geo[i] = nil; f.markBoxes[i] = nil end
             end
         end
+    end
+    local lmMark = nil
+    do
+        local lm = WorldRoad._landmark
+        if lm then
+            local relL = lm.z - camZ
+            if relL < -3 then
+                WorldRoad._landmark = nil
+            else
+                local tL = g.tOf(relL)
+                if tL and tL >= 0 then
+                    lmMark = WorldRoad._lmMark or {}
+                    WorldRoad._lmMark = lmMark
+                    lmMark.rel, lmMark.t, lmMark.lm, lmMark.drawn = relL, tL, lm, false
+                end
+            end
+        end
+    end
+    local function drawChosenLandmark()
+        local lm, rel, t = lmMark.lm, lmMark.rel, lmMark.t
+        local img = getLandmark(lm.key)
+        if not img then return end
+        img = landmarkFrame(lm.key, lm.phase or lm.z) or img
+        local iw, ih = img:getWidth(), img:getHeight()
+        local s = g.scaleAt(lm.size or 2.0, t, LMG.refH(lm.key, ih))
+        local py = g.latY(0, t)
+        local lx = g.cx + roadWobble(lm.z, t, w)
+        local shPad = lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
+        local shY = py - 1 - shPad * s
+        if not ShadowEngine.sprite(img, lx, shY, s,
+            shadowOpts(nil, nil, shPad, lmCfg(WorldRoad.SHADOW_PROFILE, lm.key))) then
+            love.graphics.setColor(0, 0, 0, 0.22)
+            love.graphics.ellipse("fill",
+                lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
+                shY, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
+            love.graphics.setColor(1, 1, 1, 1)
+        end
+        local lmk = Scene.Grade.cfg("landmarks")[lm.key:match("landmark_(%a+)$") or ""]
+        if lmk and lmk.scorch then
+            Scene.Contact.scorch(lx, shY, iw * s, t, lmk.scorch.radius, lmk.scorch.alpha)
+        end
+        Scene.Contact.queue(img, lx, shY, s, t, 1, 1)
+        local lc = Scene.Grade.color("landmark", t, LMG.c)
+        love.graphics.setColor(lc[1], lc[2], lc[3], 1)
+        love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
+        love.graphics.setColor(1, 1, 1, 1)
+        drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1)
+        submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z)
+        submitLandmarkOccluder(img, lx, py, iw, ih, s, rel)
+        local oc2 = Scene.Grade.cfg("occlusion")
+        local th = oc2.baseCover * ih * s / GrassField.CELL_H
+        GrassField.requireTufts(rel - 0.05, lx, iw * s * 0.3, oc2.tuftsMin, th * 0.8)
+        GrassField.requireTufts(rel - 0.05, lx - iw * s * 0.36, iw * s * 0.28, oc2.tuftsMax, th * 1.3)
+        GrassField.requireTufts(rel - 0.05, lx + iw * s * 0.36, iw * s * 0.28, oc2.tuftsMax, th * 1.3)
+        WorldRoad._landmarkDrawnAt = GrassField.stats.builds + GrassField.stats.replays
     end
     local function drawForkPhysical()
         local f, relM, tM = fkMarks.f, fkMarks.rel, fkMarks.t
@@ -3067,6 +3086,13 @@ local function drawProps(g, x, w, camZ)
                 if aMul > 0.6 then
                     submitLandmarkOccluder(img, px, py, iw, ih, s, relM)
                 end
+                do
+                    local oc2 = Scene.Grade.cfg("occlusion")
+                    local hsh = (i * 0.618) % 1
+                    GrassField.requireTufts(relM - 0.05, px, iw * s * 0.8,
+                        oc2.tuftsMin + math.floor(hsh * (oc2.tuftsMax - oc2.tuftsMin + 1)),
+                        oc2.baseCover * ih * s * aMul / GrassField.CELL_H)
+                end
                 f._geo[i] = { px = px, py = py, s = s, iw = iw, ih = ih,
                               aMul = aMul, hovered = hovered }
                 local grow = 14
@@ -3091,6 +3117,11 @@ local function drawProps(g, x, w, camZ)
                 flushGrassTo(fkMarks.rel)
                 drawForkPhysical()
                 fkMarks.drawn = true
+            end
+            if lmMark and not lmMark.drawn and rel < lmMark.rel then
+                flushGrassTo(lmMark.rel)
+                drawChosenLandmark()
+                lmMark.drawn = true
             end
             flushGrassTo(rel)
             local over = math.max(0, -rel)
@@ -3247,6 +3278,19 @@ local function drawProps(g, x, w, camZ)
                 love.graphics.setColor(pc[1], pc[2], pc[3], fadeA)
                 PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip, s, gustKx * lumFlip)
+                if p.kind ~= "tuft" and p.kind ~= "flowers" and p.kind ~= "fence"
+                   and fadeA >= 0.5 then
+                    local oc2 = Scene.Grade.cfg("occlusion")
+                    local isTree = (p.kind == "tree" or p.kind == "pine"
+                        or p.kind == "deadtree" or p.kind == "bush")
+                    local hsh = (p.z * 7.31) % 1
+                    local nT = isTree and (1 + math.floor(hsh * 2))
+                        or (oc2.tuftsMin + math.floor(hsh * (oc2.tuftsMax - oc2.tuftsMin + 1)))
+                    local hpx = oc2.baseCover * ihv * s * (isTree and 0.6 or 1)
+                        * (oc2.tuftScale[1] + hsh * (oc2.tuftScale[2] - oc2.tuftScale[1]))
+                    GrassField.requireTufts(rel - 0.05, pxX, iw * s * 0.8, nT,
+                        hpx / GrassField.CELL_H)
+                end
 
                 if not p.ghost and p.kind ~= "tuft" and p.kind ~= "flowers" then
                     local hsn = WorldRoad._hitScene
@@ -3345,7 +3389,7 @@ local function drawProps(g, x, w, camZ)
     if enemyFn then
         local et = g.tOf(WorldRoad.BATTLE_REL)
         local baseY = (et and g.latY(0, et)) or WorldRoad._enemyBaseY or 1e9
-        local behind, front = _behind, _front
+        local behind, front = WorldRoad._lists.behind, WorldRoad._lists.front
         clearList(behind)
         clearList(front)
         for _, p in ipairs(nearPass) do
@@ -3375,6 +3419,11 @@ local function drawProps(g, x, w, camZ)
         flushGrassTo(fkMarks.rel)
         drawForkPhysical()
         fkMarks.drawn = true
+    end
+    if lmMark and not lmMark.drawn then
+        flushGrassTo(lmMark.rel)
+        drawChosenLandmark()
+        lmMark.drawn = true
     end
     flushGrassTo(-1)
     ShadowEngine.flush()
@@ -3520,6 +3569,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
 
     WeatherEngine.beginFrame({ geom = g, x = x, w = w, camZ = WorldRoad._camZ,
         relCrest = REL_CREST, tPow = T_POW })
+    GrassField.beginFrame()
 
     _profMark('pre')
     drawSky(g, x, y, w)
@@ -3629,7 +3679,6 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     _profMark('props')
     love.graphics.pop()
 
-    drawLandmarkFront(g, x, w, WorldRoad._camZ)
     drawEncounterFront(g, x, w, WorldRoad._camZ)
 
     if WorldRoad._travel then
