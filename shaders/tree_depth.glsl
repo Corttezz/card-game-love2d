@@ -19,7 +19,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc)
     }
     float l = dot(p.rgb, vec3(0.299, 0.587, 0.114));
     p.rgb = mix(vec3(l), p.rgb, depth.y);
-    p.rgb = mix(p.rgb, fog, depth.x * clamp(1.3 - 0.6 * l, 0.6, 1.3));
+    p.rgb = mix(p.rgb, fog, depth.x);
     p.rgb *= 1.0 + depth.w * (0.5 - uv.y) * 2.0;
     return vec4(p.rgb * color.rgb, p.a * color.a);
 }

@@ -122,18 +122,25 @@ function M.run()
 
     do
         SceneGrade.begin("fields", 0, nil, 1, amb)
-        local n1, nm, nf = SceneGrade.treeDepth(1, {}), SceneGrade.treeDepth(0.45, {}), SceneGrade.treeDepth(0.2, {})
+        local n1, nm, nf = SceneGrade.treeDepth(1, {}), SceneGrade.treeDepth(0.45, {}), SceneGrade.treeDepth(0.05, {})
         local td = DATA.fields.grade.treeDepth
         t:truthy("treeDepth(1): sem névoa, sem meia resolução, volume cheio",
             n1 and n1.lift == 0 and n1.lod == 0 and n1.vol == td.vol)
         t:near("treeDepth(1): saturação do perto", n1.sat, td.satNear or 1, 1e-6)
         t:truthy("treeDepth(0.45): névoa parcial, nítido", nm.lift > 0 and nm.lift < td.lift and nm.lod == 0)
-        t:truthy("treeDepth(0.2): névoa cheia, meia resolução, menos saturação",
-            math.abs(nf.lift - td.lift) < 1e-6 and nf.lod == 1 and nf.sat < nm.sat and nm.sat < n1.sat)
+        t:near("treeDepth(0.45): névoa da árvore = curva do chão", nm.lift, SceneGrade.fogAlpha(0.45) * td.lift, 1e-6)
+        t:truthy("treeDepth(0.05): névoa do horizonte, meia resolução, menos saturação",
+            nf.lift > nm.lift and nf.lift <= SceneGrade.fogAlpha(0) * td.lift + 1e-6
+            and nf.lod == 1 and nf.sat < nm.sat and nm.sat < n1.sat)
+        t:truthy("treeDepth(0.2): nítido (meia resolução só no horizonte)", SceneGrade.treeDepth(0.2, {}).lod == 0)
+        t:truthy("dessaturação no horizonte de no máximo 15%", td.sat >= 0.85)
         local hr, hg, hb = SceneGrade.treeHaze()
         local fr, fg, fb = SceneGrade.fogRaw()
-        t:truthy("névoa das árvores clareia a névoa crua e fica em [0,1]",
-            hr >= fr and hg >= fg and hb >= fb and hr <= 1 and hg <= 1 and hb <= 1)
+        t:truthy("névoa das árvores = névoa crua do bioma (sem clarear)",
+            math.abs(hr - fr) < 1e-6 and math.abs(hg - fg) < 1e-6 and math.abs(hb - fb) < 1e-6)
+        local gc, tc = SceneGrade.color("grass", 0.45, {}), SceneGrade.color("tree", 0.45, {})
+        t:truthy("tint da árvore em t=0,45 não é mais claro que o tint da grama em t=1 (névoa só no shader)",
+            SceneGrade.color("tree", 0.45, {})[2] <= SceneGrade.color("grass", 1, {})[2] + 1e-6 and gc and tc)
         SceneGrade.begin("highlands", 0, nil, 1, amb)
         t:falsy("bioma sem treeDepth: treeDepth = nil (sem shader)", SceneGrade.treeDepth(0.2, {}))
         SceneGrade.begin("highlands", 0, "fields", 0.5, amb)

@@ -29,7 +29,7 @@ local S = {
     liftRef = 0, maxLift = 1,
     groundFar = 1, groundReach = 0.6, treeGain = 1, tnr = 1, tng = 1, tnb = 1,
     tdNear = 0.6, tdFar = 0.3, tdSat = 1, tdBright = 1, tdFog = 0,
-    tdLift = 0, tdLod = 0, tdVol = 0, tdHzR = 1, tdHzG = 1, tdHzB = 1, tdSatNear = 1, tdOn = false,
+    tdLift = 0, tdLod = 0, tdLodT = 0.12, tdVol = 0, tdHzR = 1, tdHzG = 1, tdHzB = 1, tdSatNear = 1, tdOn = false,
     depth = 1,
 }
 
@@ -64,6 +64,7 @@ local function resolve(g, tod, into)
     into.tdSat, into.tdBright, into.tdFog = td and td.sat or 1, td and td.bright or 1, td and td.fog or 0
     into.tdLift, into.tdLod, into.tdVol = td and td.lift or 0, td and td.lod or 0, td and td.vol or 0
     into.tdSatNear = td and td.satNear or 1
+    into.tdLodT = td and td.lodT or 0.12
     local hz = td and td.haze
     into.tdHzR, into.tdHzG, into.tdHzB = hz and hz[1] or 1, hz and hz[2] or 1, hz and hz[3] or 1
     into.tdOn = td ~= nil
@@ -74,7 +75,7 @@ local prevLine = {}
 local FIELDS = { "tr", "tg", "tb", "shr", "shg", "shb", "satNear", "satFar",
                  "contrastFar", "fr", "fg", "fb", "f0r", "f0g", "f0b", "fogNear", "fogFar", "fogCurve",
                  "liftRef", "maxLift", "groundFar", "groundReach", "treeGain", "tnr", "tng", "tnb",
-                 "tdNear", "tdFar", "tdSat", "tdBright", "tdFog", "tdLift", "tdLod", "tdVol", "tdHzR", "tdHzG", "tdHzB", "tdSatNear" }
+                 "tdNear", "tdFar", "tdSat", "tdBright", "tdFog", "tdLift", "tdLod", "tdLodT", "tdVol", "tdHzR", "tdHzG", "tdHzB", "tdSatNear" }
 
 function SceneGrade.begin(bid, tod, fromBid, blendK, amb)
     tod = clamp01(tod or 1)
@@ -127,9 +128,9 @@ function SceneGrade.treeDepth(t, out)
     t = clamp01(t or 1)
     local dk = clamp01((S.tdNear - t) / math.max(1e-3, S.tdNear - S.tdFar))
     out = out or {}
-    out.lift = S.tdLift * dk
+    out.lift = S.tdLift * SceneGrade.fogAlpha(t)
     out.sat = lerp(S.tdSatNear, S.tdSat, dk)
-    out.lod = (dk >= 0.999 and S.tdLod > 0.5) and 1 or 0
+    out.lod = (t < S.tdLodT and S.tdLod > 0.5) and 1 or 0
     out.vol = S.tdVol * (1 - 0.6 * dk)
     out.dk = dk
     return out
@@ -152,7 +153,7 @@ function SceneGrade.color(family, t, out)
     local dk = 0
     if family == "tree" then
         dk = clamp01((S.tdNear - t) / math.max(1e-3, S.tdNear - S.tdFar))
-        fa = 1 - (1 - fa) * (1 - dk * S.tdFog)
+        if S.tdOn then fa = dk * S.tdFog else fa = 1 - (1 - fa) * (1 - dk * S.tdFog) end
     end
     r, g, b = lerp(r, S.fr, fa), lerp(g, S.fg, fa), lerp(b, S.fb, fa)
     local sat = lerp(S.satFar, S.satNear, t)
