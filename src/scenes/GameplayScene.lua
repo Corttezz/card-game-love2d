@@ -208,6 +208,11 @@ local function syncBattleStage()
         local width, height = love.graphics.getWidth(), love.graphics.getHeight()
         WorldRoad.setBattleRel(WorldRoad.battleRelFor(0, tb, width, height - tb, limit))
     end)
+    local hs = handScale()
+    local vw, vh = love.graphics.getWidth(), love.graphics.getHeight()
+    local half = (96 * (Config.Cards.BASE_SCALE or 1.333) * hs
+        + Config.Utils.getResponsiveSize(Config.UI.CARD_SPACING_RATIO, 120, "width") * hs * ((Config.Game.INITIAL_HAND_SIZE or 5) - 1)) / 2
+    WorldRoad.setHandZone((vw / 2 - half) * k, (vw / 2 + half) * k, (vh - vh * 0.2 * hs) * k)
 end
 GameplayScene.syncBattleStage = syncBattleStage
 

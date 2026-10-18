@@ -14,6 +14,7 @@ local Scene = {
     Grade = require("engine.SceneGrade"),
     Contact = require("engine.ContactShadow"),
     Var = require("engine.PropVariation"),
+    Clutter = require("engine.GroundClutter"),
 }
 
 local PropCut = {
@@ -1248,6 +1249,12 @@ function WorldRoad.battleRelFor(x, y, w, h, footLimitY)
     if t <= 0 then return far end
     local rel = REL_CREST * (1 - t ^ (1 / T_POW))
     return math.max(near, math.min(far, rel))
+end
+
+function WorldRoad.setHandZone(x1, x2, y)
+    local hz = WorldRoad._handZone or {}
+    hz.x1, hz.x2, hz.y = x1, x2, y
+    WorldRoad._handZone = hz
 end
 
 function WorldRoad.setBattleRel(rel)
@@ -3228,6 +3235,25 @@ local function shadowOpts(alphaK, flip, footPad, prof)
     return o
 end
 
+LMG.cEnv = { profile = WorldRoad.SHADOW_PROFILE }
+function LMG.clutterEnv(g, x, w, camZ)
+    local e = LMG.cEnv
+    e.g, e.x, e.w, e.camZ = g, x, w, camZ
+    e.bid = rawBiome().id
+    e.time = WorldRoad._time
+    e.reduced = (_G.gameSettings and _G.gameSettings.reducedMotion) or false
+    e.getSprite, e.wobble, e.shadowOpts = getSprite, roadWobble, shadowOpts
+    e.roadHalfK = ROAD_HALF
+    e.screenK = WorldRoad.enemyScreenK(g.h)
+    e.pixRef = PropCut.PIX.ref
+    e.flipToSun = PropCut.flipToSun
+    e.sunRight = sunShadowDir(g, x, w, g.cx) < 0
+    e.relMax = REL_CREST * (1 - Scene.Clutter.DATA.tMin ^ (1 / T_POW))
+    e.fork = WorldRoad._fork ~= nil
+    e.hand = WorldRoad._enemyDraw and WorldRoad._handZone or nil
+    return e
+end
+
 local function drawCrestFog(g, x, w)
     local fog = envColor("fog")
     local fogLimitY = g.crestApexY + (g.bottomY - g.crestApexY) * 0.22
@@ -3279,6 +3305,9 @@ local function drawProps(g, x, w, camZ)
         local t0 = g.tOf(rel0)
         if t0 and t0 < 0.25 then farPass[#farPass + 1] = p
         else nearPass[#nearPass + 1] = p end
+    end
+    if Scene.Clutter.collect(nearPass, LMG.clutterEnv(g, x, w, camZ)) > 0 then
+        table.sort(nearPass, propZDesc)
     end
 
     local grassRel = REL_CREST + 2
@@ -3523,7 +3552,8 @@ local function drawProps(g, x, w, camZ)
             local pxX = g.cx + lateral
             local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.13
 
-            local img = getSprite(p.kind, p.variant, p.bid)
+            if p.clutter then Scene.Clutter.draw(p, LMG.cEnv) end
+            local img = not p.clutter and getSprite(p.kind, p.variant, p.bid) or nil
             if img and lmMark and lmMark.w and rdef and rdef.roadside
                and rel > lmMark.rel - 4.5 and rel < lmMark.rel + 1.5 then
                 local lsc = g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1)
@@ -4267,6 +4297,10 @@ local function prewarmJobs(idx)
             PropCut.treeFrames(bid, kind, v)
             y()
         end
+    end
+    for _, e in ipairs(Scene.Clutter.entries(bid) or PropCut.EMPTY) do
+        for v = 0, (e.n or 1) - 1 do getSprite(e.kind, v, bid) end
+        y()
     end
     PropCut.depthShader(); y()
     local lumCat = LuminaireEngine.catalog(bid)

@@ -230,10 +230,21 @@ function M.run()
             for _ = 1, 90 do WorldRoad.update(1 / 30) end
             WorldRoad._blend = nil
             WorldRoad._prevBiomeIndex = nil
+            WorldRoad._lumMidZ = nil
+            WorldRoad.setHandZone(W * 0.36, W * 0.64, H * 0.8)
+            WorldRoad.setBattleEnemyDraw(function() end, nil)
             love.graphics.setCanvas(cv)
             love.graphics.clear(0, 0, 0, 1)
             WorldRoad.draw(0, 52, W, H - 52, b)
             love.graphics.setCanvas()
+            local GC = require("engine.GroundClutter")
+            local cs = GC.stats
+            t:truthy(("bioma %d: primeiro plano com 2 a 8 detalhes de chão por lado (esq %d, dir %d)")
+                :format(b, cs.left, cs.right), cs.left >= 2 and cs.right >= 2 and cs.left <= 8 and cs.right <= 8)
+            t:truthy(("bioma %d: detalhe de chão até 2x o pixel do inimigo (pior %.2f)"):format(b, cs.worst),
+                cs.worst > 0 and cs.worst <= 2.0)
+            t:truthy(("bioma %d: detalhe de chão fora da estrada (folga %.0f px)"):format(b, cs.roadGap),
+                cs.roadGap > -W * 0.02)
             local worst, nS = 0, 0
             for _, he in ipairs(WorldRoad._hitScene) do
                 if he.s then
