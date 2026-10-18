@@ -30,7 +30,7 @@ local ARROW_W   = 28
 
 local U = 1
 local function S(v) return math.floor(v * U + 0.5) end
-local MAX_ROWS  = 5
+local MAX_ROWS  = 6
 
 local LANG_BADGE = { pt_BR = "PT", en = "EN", es = "ES", fr = "FR", de = "DE" }
 
@@ -231,6 +231,9 @@ function SettingsMenu:_tabs()
             toggle("reduced_motion", "settings.reduced_motion",
                 function() return gs().reducedMotion and true or false end,
                 function(v) gs().reducedMotion = v end),
+            toggle("music_react", "settings.music_react",
+                function() return gs().musicReact ~= false end,
+                function(v) gs().musicReact = v end),
             { key = "tips", kind = "toggle", label = I18n.t("tutorial.settings_tips"),
               get = function() return gs().tipsEnabled ~= false end,
               step = function() gs().tipsEnabled = not (gs().tipsEnabled ~= false) end },
@@ -445,6 +448,7 @@ function SettingsMenu:_persist()
         tipsEnabled   = g.tipsEnabled ~= false,
         previewDetails = g.previewDetails and true or false,
         muteOnFocusLoss = g.muteOnFocusLoss ~= false,
+        musicReact    = g.musicReact ~= false,
         locale        = I18n.getLocale(),
     }
     for k, v in pairs(snapshot) do g[k] = v end

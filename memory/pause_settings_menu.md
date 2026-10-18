@@ -34,7 +34,7 @@ dourada, Configurações, Salvar e sair, Abandonar em vermelho) → RODAPÉ.
 Sem altura: modo `full` → `nodesc` (some descrição) → `compact` (somem os
 atalhos, o resumo vira 1 linha). Quem cede é o conteúdo, nunca as zonas.
 
-**Config — abas de altura fixa** (`MAX_ROWS = 5` desde o v4, o painel não pula ao
+**Config — abas de altura fixa** (`MAX_ROWS = 6` desde 17/Out/2026, eram 5 desde o v4; a 6ª linha é "Cenário reage à música" na aba Jogo, o painel não pula ao
 trocar de aba, = `tab_h` do Balatro): Áudio (Geral/Música/Efeitos/Ambiente/
 Silenciar fora da janela), Vídeo
 (Tela cheia/VSync/CRT/Iluminação), Jogo (Ritmo do combate/Tremor/Movimento

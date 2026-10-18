@@ -35,6 +35,7 @@ return {
         lighting  = "Lighting",
         screenshake = "Screen shake",
         reduced_motion = "Reduced motion",
+        music_react = "Scenery reacts to music",
         language    = "Language",
         on          = "ON",
         off         = "OFF",

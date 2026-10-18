@@ -1,0 +1,23 @@
+return {
+    track = "music-boss.mp3",
+    duration = 20,
+    cues = {
+        { t = 0.35, kind = "hit", power = 0.48 },
+        { t = 1.84, kind = "hit", power = 0.96 },
+        { t = 2.56, kind = "hit", power = 0.62 },
+        { t = 4.23, kind = "hit", power = 0.98 },
+        { t = 5.9, kind = "hit", power = 0.59 },
+        { t = 5.95, kind = "swell", power = 0.47, dur = 2.57 },
+        { t = 6.64, kind = "hit", power = 0.93 },
+        { t = 8.03, kind = "hit", power = 1 },
+        { t = 10.44, kind = "hit", power = 0.88 },
+        { t = 11.17, kind = "hit", power = 0.54 },
+        { t = 12.82, kind = "drop", power = 0.62 },
+        { t = 14.51, kind = "hit", power = 0.58 },
+        { t = 15.24, kind = "hit", power = 0.91 },
+        { t = 17.11, kind = "hit", power = 0.57 },
+        { t = 17.63, kind = "hit", power = 1 },
+        { t = 19.43, kind = "hit", power = 0.98 },
+        { t = 19.82, kind = "hit", power = 0.55 },
+    },
+}

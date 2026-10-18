@@ -98,6 +98,7 @@ local emberAcc = 0
 local time = 0
 local gust = nil
 local pulseBoost = nil
+local musicGlow = { k = 0, t = 0, dur = 0 }
 InteriorFX.fogHook = nil
 local veilCur = 0
 local eclipseLvl, eclipseDawn = 0, 0
@@ -229,6 +230,7 @@ end
 
 function InteriorFX.clear()
     gust = nil
+    musicGlow.k, musicGlow.dur = 0, 0
     veilCur = 0
     eclipseLvl, eclipseDawn = 0, 0
     for i = #particles, 1, -1 do particles[i] = nil end
@@ -340,6 +342,10 @@ step = function(dt, hall)
     if gust then
         gust.t = gust.t + dt
         if gust.t >= gust.dur then gust = nil end
+    end
+    if musicGlow.dur > 0 then
+        musicGlow.t = musicGlow.t + dt
+        if musicGlow.t >= musicGlow.dur then musicGlow.k, musicGlow.dur = 0, 0 end
     end
     if pulseBoost then
         pulseBoost.t = pulseBoost.t + dt
@@ -496,6 +502,19 @@ function InteriorFX.pulseBoostK()
     return 1 + (pulseBoost.k - 1) * math.max(0, 1 - pulseBoost.t / pulseBoost.dur)
 end
 
+function InteriorFX.musicPulse(k, dur)
+    local cur = InteriorFX.musicLevel()
+    k = math.max(0, math.min(1, k or 0.3))
+    if k < cur then return end
+    musicGlow.k, musicGlow.t, musicGlow.dur = k, 0, math.max(0.05, dur or 0.3)
+end
+function InteriorFX.musicLevel()
+    if musicGlow.dur <= 0 then return 0 end
+    local p = musicGlow.t / musicGlow.dur
+    local env = (p < 0.12) and (p / 0.12) or (1 - (p - 0.12) / 0.88)
+    return musicGlow.k * math.max(0, env)
+end
+
 function InteriorFX.gust(strength, dur)
     gust = { k = math.max(0, math.min(1, strength or 1)), t = 0, dur = math.max(0.05, dur or 0.5) }
 end
@@ -571,8 +590,9 @@ function InteriorFX.draw(hall)
     if img then HallAnim.draw(hallAnims[hall], tr, time) end
     if img then
         love.graphics.setBlendMode("add")
+        local mg = 1 + InteriorFX.musicLevel()
         for i, f in ipairs(cfg.flames) do
-            love.graphics.setColor(1, 1, 1, (cfg.flameGlow or 0.75) * flicker(i))
+            love.graphics.setColor(1, 1, 1, (cfg.flameGlow or 0.75) * flicker(i) * mg)
             love.graphics.draw(img, quadFor(hall, "f" .. i, f), ox + f[1] * s, oy + f[2] * s, 0, s, s)
         end
         for i, pz in ipairs(cfg.pulses) do
@@ -585,6 +605,7 @@ function InteriorFX.draw(hall)
             else
                 a = pz[6] * (0.5 + 0.5 * math.sin(time * pz[5] + i * 1.7))
             end
+            a = a * mg
             love.graphics.setColor(1, 1, 1, a)
             love.graphics.draw(img, quadFor(hall, "p" .. i, pz), ox + pz[1] * s, oy + pz[2] * s, 0, s, s)
         end

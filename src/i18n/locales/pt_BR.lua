@@ -35,6 +35,7 @@ return {
         lighting  = "Iluminação",
         screenshake = "Tremor de tela",
         reduced_motion  = "Movimento reduzido",
+        music_react  = "Cenário reage à música",
         language        = "Idioma",
         on              = "LIGADO",
         off             = "DESLIGADO",

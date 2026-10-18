@@ -1,0 +1,21 @@
+return {
+    track = "music-boss-eclipse.mp3",
+    duration = 28,
+    cues = {
+        { t = 4.43, kind = "hit", power = 0.66 },
+        { t = 5.55, kind = "hit", power = 0.7 },
+        { t = 7.24, kind = "hit", power = 0.77 },
+        { t = 7.79, kind = "hit", power = 0.79 },
+        { t = 9.5, kind = "swell", power = 0.46, dur = 2.94 },
+        { t = 11.64, kind = "hit", power = 0.84 },
+        { t = 12.19, kind = "hit", power = 0.72 },
+        { t = 13.83, kind = "hit", power = 0.81 },
+        { t = 14.49, kind = "hit", power = 0.36 },
+        { t = 20.45, kind = "hit", power = 0.43 },
+        { t = 22.2, kind = "hit", power = 0.77 },
+        { t = 22.61, kind = "hit", power = 0.69 },
+        { t = 24.71, kind = "hit", power = 0.48 },
+        { t = 26.87, kind = "hit", power = 0.97 },
+        { t = 27.75, kind = "hit", power = 0.67 },
+    },
+}

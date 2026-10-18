@@ -211,6 +211,8 @@ local defendTime = 0
 local buffTime = 0
 local knockTime = 0
 local slashTime = 0
+local breath = { t = 0, k = 0 }
+EnemyRenderer.BREATH_DUR = 0.55
 local buffParticles = {}
 
 local DEFEND_DUR = 0.9
@@ -228,6 +230,7 @@ function EnemyRenderer.resetRun()
     poisonTime, defendTime, buffTime, knockTime, slashTime = 0, 0, 0, 0, 0
     buffParticles = {}
     hurtTime = 0
+    breath.t = 0
     poseSink = 0
     fallT, landT = 0, -1
     dust = {}
@@ -295,6 +298,24 @@ function EnemyRenderer.triggerBuff()
         })
     end
     for _, p in ipairs(buffParticles) do p.maxLife = p.life end
+end
+
+function EnemyRenderer.isBusy()
+    return attackFx ~= nil or hurtTime > 0 or knockTime > 0
+        or (currentAnimName ~= nil and currentAnimName ~= "idle")
+end
+
+function EnemyRenderer.musicBreath(power)
+    if not currentEnemyId or EnemyRenderer.isBusy() then return false end
+    breath.t = EnemyRenderer.BREATH_DUR
+    breath.k = math.max(0, math.min(1, power or 0.5))
+    return true
+end
+
+function EnemyRenderer.breathLift()
+    if breath.t <= 0 or EnemyRenderer.isBusy() then return 0 end
+    local p = 1 - breath.t / EnemyRenderer.BREATH_DUR
+    return math.floor(math.sin(p * math.pi) * (1 + breath.k) + 0.5)
 end
 
 function EnemyRenderer.isAttacking()
@@ -385,6 +406,7 @@ function EnemyRenderer.update(dt)
         if d.life <= 0 then table.remove(dust, i) end
     end
     if hurtTime > 0 then hurtTime = math.max(0, hurtTime - dt) end
+    if breath.t > 0 then breath.t = math.max(0, breath.t - dt) end
     if arrivalT > 0 then arrivalT = math.max(0, arrivalT - dt) end
     if poisonTime > 0 then poisonTime = math.max(0, poisonTime - dt) end
     if defendTime > 0 then defendTime = math.max(0, defendTime - dt) end
@@ -793,6 +815,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX + driftX
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
         + footY + atkDY + hoverY
+        - EnemyRenderer.breathLift() * math.max(1, math.floor(scale + 0.5))
     lastFoot = {
         bodyX = drawX + (EnemyRenderer.bodyAxis(id) + 0.5 + (idleM.off - curM.off)) * scale,
         hudCx = bodyCx,

@@ -38,6 +38,7 @@ return {
         on          = "ON",
         off         = "OFF",
         reduced_motion = "Movimiento reducido",
+        music_react = "El escenario reacciona a la música",
         close       = "CERRAR",
         tab_audio   = "Audio",
         tab_video   = "Video",

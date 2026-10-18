@@ -58,6 +58,7 @@ local SUITES = {
     { group = "unit",  name = "test_pixelcanvas_state" },
     { group = "unit",  name = "test_screen_exits" },
     { group = "unit",  name = "test_music" },
+    { group = "unit",  name = "test_music_react" },
     { group = "unit",  name = "test_window" },
     { group = "unit",  name = "test_release" },
     { group = "unit",  name = "test_app_loop" },

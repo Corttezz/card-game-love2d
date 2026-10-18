@@ -38,6 +38,7 @@ return {
         on          = "AN",
         off         = "AUS",
         reduced_motion = "Weniger Bewegung",
+        music_react = "Kulisse reagiert auf Musik",
         close       = "SCHLIESSEN",
         tab_audio   = "Audio",
         tab_video   = "Video",

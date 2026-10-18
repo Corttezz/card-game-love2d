@@ -38,6 +38,7 @@ return {
         on          = "ON",
         off         = "OFF",
         reduced_motion = "Mouvement réduit",
+        music_react = "Le décor réagit à la musique",
         close       = "FERMER",
         tab_audio   = "Audio",
         tab_video   = "Vidéo",

@@ -457,6 +457,8 @@ function GameplayScene.draw()
             SceneLayer.draw(0, topBarHeight, width, height - topBarHeight, currentAct)
         else
             InteriorFX.draw(hallAct)
+            require("src.systems.MusicReact").draw(
+                SceneBackground.getCoverTransform("castle_hall_" .. hallAct, width, height))
             interiorHall = hallAct
             BossCinematic.drawBack()
         end
@@ -764,8 +766,20 @@ function GameplayScene.update(dt)
         if isInt then
             UiScale.outside(InteriorFX.update, dt, InteriorFX.hallFor((runU and runU.actNumber) or 1))
         end
+        do
+            local enemyM = game.enemy
+            local fighting = isInt and ntU == "boss" and GameplayScene.inBossRoom(ntU)
+                and not BossCinematic.phase() and enemyM ~= nil and not enemyM:isDefeated()
+            require("src.systems.MusicReact").update(dt, {
+                fighting = fighting,
+                bossId = (runU and runU.currentNode and runU.currentNode.enemyId)
+                    or (enemyM and enemyM.spriteId),
+                hall = InteriorFX.hallFor((runU and runU.actNumber) or 1),
+            })
+        end
         if lastInterior ~= nil and isInt ~= lastInterior then
             interiorFade = 1
+            require("src.systems.MusicReact").reset()
             if isInt then
                 InteriorFX.clear()
                 require("src.ui.InteriorDepth").reset()

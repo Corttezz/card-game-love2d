@@ -7,6 +7,8 @@ local BossAura = {}
 local warned = {}
 local state = {}
 local glowImg = nil
+local musicGlow = { t = 0, k = 0 }
+BossAura.MUSIC_PULSE_DUR = 0.7
 local edgeCache = {}
 
 local function reducedMotion()
@@ -91,7 +93,20 @@ local function edges(id)
     return e
 end
 
+function BossAura.musicPulse(k)
+    musicGlow.t = BossAura.MUSIC_PULSE_DUR
+    musicGlow.k = math.max(0, math.min(1, k or 0.5))
+end
+
+function BossAura.musicLevel()
+    if musicGlow.t <= 0 then return 0 end
+    local p = 1 - musicGlow.t / BossAura.MUSIC_PULSE_DUR
+    local env = (p < 0.15) and (p / 0.15) or (1 - (p - 0.15) / 0.85)
+    return musicGlow.k * 0.8 * math.max(0, env)
+end
+
 function BossAura.reset()
+    musicGlow.t = 0
     state = {}
 end
 
@@ -319,6 +334,7 @@ function BossAura.update(dt, id, dying)
     if not spec then return end
     local s = getState(id)
     s.t = s.t + dt
+    if musicGlow.t > 0 then musicGlow.t = math.max(0, musicGlow.t - dt) end
     local flock = flockSpec(spec)
     if flock then syncFlock(flock, s, dt, reducedMotion()) end
     if dying then
@@ -468,7 +484,7 @@ local function drawGlows(r, spec, s, fade)
         elseif g.pulse and not still then
             k = 0.78 + 0.22 * math.sin(t * g.pulse + i)
         end
-        local a = (g.a or 0.4) * k * fade
+        local a = (g.a or 0.4) * k * fade * (1 + BossAura.musicLevel())
         local rad = (g.r or 4) * r.scale * (0.92 + 0.08 * k)
         local x = r.x + g.u * r.w
         local y = r.y + g.v * r.h
