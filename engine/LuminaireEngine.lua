@@ -32,7 +32,7 @@ local CATALOG = {
     },
 
     highlands = {
-        brazier = { size = 4.90, roadside = true, lane = { 0.12, 0.22 }, anchor = { 0.50, 0.08 },
+        brazier = { size = 4.90, roadside = true, lane = { 0.32, 0.42 }, anchor = { 0.50, 0.08 },
             weight = 0.9,
             light = { color = { 0.55, 0.70, 1.00 }, radiusK = 0.95,
                       coreK = 0.50, intensity = 0.85, flicker = "fire",

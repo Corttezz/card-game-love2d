@@ -30,3 +30,4 @@ tod 0,65, 0,75 e 0,95). Recortes em `recortes/` (antes à esquerda). Medidas:
 | 7. chão mais escuro ao fundo e com variação no perto (lead: "chapado") | sim: `groundFar` 0,62 / `groundReach` 0,85; `biomes.lua` abyss `grassA/B` com mais contraste (0,22/0,18 → 0,27/0,16 no vermelho) | `depois/b3_batalha_1080p_tod0.75.png` |
 | 8. colagem (lead: chamas soltas perto da câmera) | a fissura era um par de pedras azul-acinzentadas (fora da paleta) com luz; virou fenda de lava no chão (PixelLab), `size` 0,9 → 0,5 para manter a densidade de pixel, brilho pulsando em 9 quadros | `../pixellab/cand/ab_fissure__12.png` |
 | 9. olhei as capturas e recortes | sim | |
+| última passada do lead: árvores mortas do meio enlameadas | brasa das fendas devolvida no PNG das 6 variantes (pixels de brasa ×1,35 em valor) e véu das árvores mais leve no abismo (`treeDepth.lift` 0,25 → 0,12, `sat` 0,85 → 0,95, `satNear` 1,15) | `recortes/arvores_meio_brasa.png`, `final/` |
