@@ -144,6 +144,20 @@ aí; o código só lê.
 - A ferramenta de captura fixa o idioma em inglês (a identity de teste
   herdava alemão e as folhas não comparavam igual com igual).
 
+**Rodada de realismo (17/Out, depois de o dono rejeitar a calibração 0604051c; checklist em
+`tools/preview_out/integracao_terreno/07_realismo/checklist.md`):**
+- SOMBRA RESPEITA PROFUNDIDADE: `ShadowEngine.flushBand/guard/commit/endFrame` e `ContactShadow`
+  idem. As sombras são descarregadas com cada fatia de grama, recortadas pela faixa do domo
+  (`setClip`), e um objeto só é desenhado depois de a fila pendente que cruza a caixa dele sair.
+  A fila única no fim do quadro pintava a sombra de trás sobre o poste da frente (trava em
+  `test_world_shadows`).
+- Sombra com gradiente ao longo do comprimento (`ShadowEngine.FADE`), na cor do shadowTint.
+  Força +60% (alphaK 1.6), não 2x.
+- Chão em degradê contínuo por pixel: o véu do `WeatherEngine` virou shader (`groundFar/groundReach`).
+- Árvores: `treeGain`, variação de tom 0,02. O shader de volume das árvores foi tentado e retirado
+  (não convencia).
+- Custo: 561 draw calls e 7,7 ms em 1080p (eram 4,3). Baratear = máscara num passe só.
+
 **Números (1024×768, test_perf_budget isolado):** antes 427 draw calls /
 30,5 KB; depois 463 / 31,3 KB (o véu é ~40 draw calls). Locais do arquivo
 `WorldRoad.lua`: 198 → 188 (`python tools/count_locals.py src/ui/WorldRoad.lua`).

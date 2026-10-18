@@ -580,7 +580,7 @@ function M.run()
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
         local eng = love.filesystem.read("engine/WeatherEngine.lua") or ""
         t:truthy("WorldRoad: flush do clima DENTRO da fatia da grama",
-            src:find("drawGrass%(g, x, w, camZ, relLow, grassRel%)%s*\n%s*grassRel = relLow[^\n]*\n%s*WeatherEngine%.flushTo%(relLow%)") ~= nil)
+            src:find("drawGrass%(g, x, w, camZ, relLow, grassRel%)[^\n]*\n[^%z]-grassRel = relLow[^\n]*\n%s*WeatherEngine%.flushTo%(relLow%)") ~= nil)
         t:truthy("WorldRoad: clima além da crista antes do domo",
             src:find("WeatherEngine%.flushTo%(REL_CREST%)%s*\n%s*_profMark%('castle'%)%s*\n%s*drawDome") ~= nil)
         t:truthy("WorldRoad: raio entre nuvens e montanhas da frente",

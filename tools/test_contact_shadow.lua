@@ -231,8 +231,8 @@ function M.run()
 
     do
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
-        t:truthy("WorldRoad: ContactShadow.flush logo após ShadowEngine.flush",
-            src:find("ShadowEngine%.flush%(%)%s*\n%s*Scene%.Contact%.flush%(%)") ~= nil)
+        t:truthy("WorldRoad: sombras e contato descarregam por fatia, junto da grama",
+            src:find("ShadowEngine.flushBand(tLo, tHi)\n            Scene.Contact.flushBand(tLo, tHi)", 1, true) ~= nil)
         t:truthy("WorldRoad: scan no tryLoadPng e no toImage",
             select(2, src:gsub("Scene%.Contact%.scan%(img, data%)", "")) >= 2)
         t:truthy("WorldRoad: scan nos quadros de animação",

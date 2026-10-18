@@ -1,4 +1,5 @@
 local PropVariation = {}
+PropVariation.EMPTY = {}
 
 local out = { tintR = 1, tintG = 1, tintB = 1, scale = 1, flip = 1,
               windPhase = 0, canopy = 0, trunk = 0 }
@@ -10,7 +11,7 @@ end
 
 function PropVariation.of(seed, kind, tbl)
     seed = seed or 0
-    tbl = tbl or out
+    tbl = tbl or PropVariation.EMPTY
     local h1 = hash01(seed * 1.37 + 0.11)
     local h2 = hash01(seed * 2.19 + 7.3)
     local h3 = hash01(seed * 0.73 + 19.1)

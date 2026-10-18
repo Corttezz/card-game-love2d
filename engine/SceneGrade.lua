@@ -19,13 +19,14 @@ local CONTRAST_REACH = 0.25
 SceneGrade.FAMILY_DEPTH = { landmark = 0.35, enemy = 0.35 }
 
 local S = {
-    bid = "fields", stamp = -1,
+    bid = "fields", stamp = -1, fromBid = nil, blendK = 1,
     tr = 1, tg = 1, tb = 1,
     shr = 0, shg = 0, shb = 0,
     satNear = 1, satFar = 1, contrastFar = 1,
     fr = 1, fg = 1, fb = 1, fogNear = 0, fogFar = 0, fogCurve = 1,
     ar = 1, ag = 1, ab = 1,
     liftRef = 0, maxLift = 1,
+    groundFar = 1, groundReach = 0.6, treeGain = 1,
     depth = 1,
 }
 
@@ -50,17 +51,21 @@ local function resolve(g, tod, into)
     into.fb = math.min(1.6, lerp(g.fog[3], fd[3], tod) * 1.9)
     into.fogNear, into.fogFar, into.fogCurve = g.fogNear, g.fogFar, g.fogCurve
     into.liftRef, into.maxLift = g.liftRef or 0, g.maxLift or 1
+    into.groundFar, into.groundReach = g.groundFar or 1, g.groundReach or 0.6
+    into.treeGain = g.treeGain or 1
     return into
 end
 
 local prevLine = {}
 local FIELDS = { "tr", "tg", "tb", "shr", "shg", "shb", "satNear", "satFar",
                  "contrastFar", "fr", "fg", "fb", "fogNear", "fogFar", "fogCurve",
-                 "liftRef", "maxLift" }
+                 "liftRef", "maxLift", "groundFar", "groundReach", "treeGain" }
 
 function SceneGrade.begin(bid, tod, fromBid, blendK, amb)
     tod = clamp01(tod or 1)
     S.bid = DATA[bid] and bid or "fields"
+    S.fromBid = (fromBid and DATA[fromBid]) and fromBid or nil
+    S.blendK = blendK or 1
     resolve(gradeOf(S.bid), tod, S)
     if fromBid and DATA[fromBid] and blendK and blendK < 1 then
         resolve(gradeOf(fromBid), tod, prevLine)
@@ -95,6 +100,8 @@ function SceneGrade.fogAlpha(t)
 end
 
 function SceneGrade.fogColor() return S.fr, S.fg, S.fb end
+function SceneGrade.fogParams() return S.fogNear, S.fogFar, S.fogCurve end
+function SceneGrade.ground() return S.groundFar, S.groundReach end
 function SceneGrade.shadowTint() return S.shr, S.shg, S.shb end
 
 function SceneGrade.color(family, t, out)
@@ -113,6 +120,7 @@ function SceneGrade.color(family, t, out)
     local l = 0.299 * r + 0.587 * g + 0.114 * b
     r, g, b = lerp(l, r, sat), lerp(l, g, sat), lerp(l, b, sat)
     local bright = lerp(S.contrastFar, 1, math.min(1, t / CONTRAST_REACH))
+    if family == "tree" then bright = bright * S.treeGain end
     out[1] = clamp01(r * bright)
     out[2] = clamp01(g * bright)
     out[3] = clamp01(b * bright)
@@ -129,7 +137,9 @@ function SceneGrade.flatColor(family, out)
 end
 
 function SceneGrade.cfg(section)
-    local e = DATA[S.bid] or DATA.fields
+    local id = S.bid
+    if S.fromBid and S.blendK < 0.5 then id = S.fromBid end
+    local e = DATA[id] or DATA.fields
     return e[section]
 end
 

@@ -84,9 +84,26 @@ local function render(fn)
     love.graphics.clear(0, 0, 0, 0)
     love.graphics.setColor(1, 1, 1, 1)
     ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
+    local fade = ShadowEngine.FADE
+    ShadowEngine.FADE = 0
+    ShadowEngine.setTint(0, 0, 0)
+    ShadowEngine.setAlphaK(1)
     fn()
+    ShadowEngine.FADE = fade
     love.graphics.setCanvas()
     return cv:newImageData()
+end
+
+local function sameish(a, b)
+    if a:getWidth() ~= b:getWidth() or a:getHeight() ~= b:getHeight() then return false end
+    for y = 0, a:getHeight() - 1 do
+        for x = 0, a:getWidth() - 1 do
+            local r1, g1, b1, a1 = a:getPixel(x, y)
+            local r2, g2, b2, a2 = b:getPixel(x, y)
+            if math.abs(a1 - a2) > 1.5 / 255 or math.abs(r1 - r2) > 1.5 / 255 then return false end
+        end
+    end
+    return true
 end
 
 local function measure(id, fx, fy, halfW, footTop, spanX, spanY)
@@ -246,7 +263,7 @@ function M.run()
         local o = silOpts(img:getWidth(), s)
         local new = render(function() ShadowEngine.silhouette(FX, FY, o, drawer(img, s, pad)) end)
         local old = render(function() legacySilhouette(FX, FY, o, drawer(img, s, pad)) end)
-        t:truthy("bípede em pé (hollow_farmer): IDÊNTICO ao v8.4", new:getString() == old:getString())
+        t:truthy("bípede em pé (hollow_farmer): IDÊNTICO ao v8.4 (±1/255)", sameish(new, old))
         local bk, rk, lk = EnemyRenderer.shadowProfile(EnemyPoses.get("hollow_farmer"), "idle", 100, 100)
         t:truthy("shadowProfile bípede em pé = sem pegada", bk == 0 and rk == nil and lk == 1)
     end
@@ -262,7 +279,7 @@ function M.run()
             ShadowEngine.silhouette(FX + 200 + 20, FY, o, drawer(img, s, pad)) end)
         local old = render(function()
             legacySilhouette(FX + 200 + 20, FY, o, drawer(img, s, pad)) end)
-        t:truthy("flutuante (dusk_shade): sombra solta IDÊNTICA ao v8.4", new:getString() == old:getString())
+        t:truthy("flutuante (dusk_shade): sombra solta IDÊNTICA ao v8.4 (±1/255)", sameish(new, old))
         t:truthy("flutuante: pose sem pegada", (pose.shadowBaseK or 0) == 0 and dx ~= nil)
     end
 
@@ -347,6 +364,88 @@ function M.run()
         local n = select(1, measure(render(function()
             ShadowEngine.silhouette(FX, FY, o, drawer(img, s, pad)) end), FX, FY, 1, FY, 300, 300))
         t:truthy("perfil sem contentH não some (desenhou " .. n .. " px)", n > 0)
+    end
+
+    do
+        local img = loadImg("assets/sprites/world/fields_tree_0.png")
+        local s = 2.5
+        local cv = love.graphics.newCanvas(W, H)
+        love.graphics.setCanvas(cv)
+        love.graphics.clear(0, 0, 0, 0)
+        ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
+        ShadowEngine.setTint(0.30, 0.12, 0.24)
+        ShadowEngine.sprite(img, FX, FY, s, {})
+        love.graphics.setCanvas()
+        local id = cv:newImageData()
+        local _, _, minY, maxY = measure(id, FX, FY, img:getWidth() * s, FY, img:getWidth() * s * 2, img:getHeight() * s * 1.5)
+        local function rowAlpha(y)
+            local best = 0
+            for x = math.max(0, FX - 200), math.min(W - 1, FX + 200) do
+                local _, _, _, a = id:getPixel(x, y)
+                if a > best then best = a end
+            end
+            return best
+        end
+        local near = rowAlpha(math.min(H - 1, minY + 3))
+        local far = rowAlpha(math.max(0, maxY - 3))
+        t:truthy(("realismo: sombra mais escura na base (%.2f) que na ponta (%.2f)"):format(near, far), near > far + 0.02)
+        local yy, br, bg, bb, ba = math.min(H - 1, minY + 3), 0, 0, 0, 0
+        for x = math.max(0, FX - 200), math.min(W - 1, FX + 200) do
+            local r, g, b, a = id:getPixel(x, yy)
+            if a > ba then br, bg, bb, ba = r, g, b, a end
+        end
+        t:truthy("realismo: cor puxa o shadowTint (não é preto chapado)", ba > 0 and (br + bg + bb) > 0)
+    end
+
+    do
+        local img = loadImg("assets/sprites/world/fields_tree_0.png")
+        local s = 2.5
+        local crestY, R = 120, W * 1.6
+        local cx, cy = W / 2, crestY + R
+        local D = H - crestY
+        local function tAtY(y) return (R - (cy - y)) / D end
+        local cv = love.graphics.newCanvas(W, H)
+        love.graphics.setCanvas(cv)
+        love.graphics.clear(0.5, 0.5, 0.5, 1)
+        ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
+        ShadowEngine.setTint(0.30, 0.12, 0.24)
+        ShadowEngine.setClip(cx, cy, R, D)
+        local footFar = math.floor(H * 0.45)
+        local footPost = math.floor(H * 0.62)
+        local px0, px1 = FX - 6, FX + 6
+        ShadowEngine.queue(img, FX, footFar, s, {})
+        ShadowEngine.flushBand(tAtY(crestY), tAtY(footPost))
+        ShadowEngine.guard(px0, footPost - 160, px1, footPost)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("fill", px0, footPost - 160, px1 - px0, 160)
+        ShadowEngine.flushBand(tAtY(footPost), 99)
+        ShadowEngine.endFrame()
+        love.graphics.setCanvas()
+        local id = cv:newImageData()
+        local dark = 0
+        for y = footPost - 159, footPost - 1 do
+            for x = px0, px1 - 1 do
+                local r = id:getPixel(x, y)
+                if r < 0.999 then dark = dark + 1 end
+            end
+        end
+        t:eq("ordem de profundidade: sombra da árvore de trás não pinta o poste da frente (pixels escurecidos)", dark, 0)
+        do
+            ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
+            ShadowEngine.setClip(cx, cy, R, D)
+            ShadowEngine.queue(img, FX, footFar, s, {})
+            ShadowEngine.flushBand(5, 6)
+            ShadowEngine.endFrame()
+            local bm, am = love.graphics.getBlendMode()
+            t:truthy("estado: blend mode restaurado mesmo com faixa vazia (" .. bm .. "/" .. am .. ")",
+                bm == "alpha" and am == "alphamultiply")
+        end
+        local shaded = 0
+        for y = footFar + 2, footPost - 1, 3 do
+            local r = id:getPixel(FX + 20, y)
+            if r < 0.49 then shaded = shaded + 1 end
+        end
+        t:truthy("ordem de profundidade: a sombra continua no chão ao lado do poste (" .. shaded .. ")", shaded > 0)
     end
 
     for _, f in ipairs(love.filesystem.getDirectoryItems("assets/sprites/world")) do

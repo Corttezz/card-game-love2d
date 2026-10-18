@@ -86,7 +86,6 @@ local windP = GrassField.PRESETS.fields
 local camZ0 = 0
 local veilRel = 0
 WeatherEngine.VEIL_K = 0.25
-WeatherEngine.VEIL_SEGS = 24
 local function veilAlphaAt(t) return SceneGrade.fogAlpha(t) * WeatherEngine.VEIL_K end
 WeatherEngine._veilAlphaAt = veilAlphaAt
 
@@ -498,6 +497,7 @@ function WeatherEngine.beginFrame(f)
     if prefill and cur and lastCtx then WeatherEngine.update(0, lastCtx) end
     nS, cursorK, microN, poolN = 0, 0, 0, 0
     veilRel = f.relCrest
+    WeatherEngine._veil.on = false
     WeatherEngine.stats.veilBands, WeatherEngine.stats.lowFogBands = 0, 0
     if WeatherEngine.disabled or nP == 0 then return end
     qm = qm or QuadMesh.new(1024)
@@ -659,38 +659,75 @@ function WeatherEngine.beginFrame(f)
     WeatherEngine.stats.pools, WeatherEngine.stats.micro = poolN, microN
 end
 
+WeatherEngine._veil = { on = false, cx = 0, cy = 0, R = 1, D = 1,
+    vC = { 0, 0 }, vB = { 0, 0 }, vF = { 0, 0, 0 }, vP = { 0, 0, 1, 0 }, vG = { 1, 0.6 } }
+WeatherEngine._veil.SRC = [[
+uniform vec2 C;
+uniform float R;
+uniform float D;
+uniform vec2 band;
+uniform vec3 fog;
+uniform vec4 P;
+uniform vec2 G;
+vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
+    float t = (R - distance(sc, C)) / D;
+    if (t < band.x || t >= band.y) discard;
+    float tt = clamp(t, 0.0, 1.0);
+    float fa = (P.x + (P.y - P.x) * pow(1.0 - tt, P.z)) * P.w;
+    float dk = mix(G.x, 1.0, smoothstep(0.0, G.y, tt));
+    float k = dk * (1.0 - fa);
+    return vec4(fog * fa * dk, 1.0 - k);
+}
+]]
+
+function WeatherEngine.setClip(cx, cy, R, D)
+    local V = WeatherEngine._veil
+    V.on, V.cx, V.cy, V.R, V.D = true, cx, cy, R, math.max(1, D)
+end
+
 local function depthVeil(relLow)
-    if not geo or not geo.latY or not SceneGrade.isActive() then return end
+    local V = WeatherEngine._veil
+    if not geo or not geo.latY or not V.on or not SceneGrade.isActive() then return end
     local lo = max(0, relLow)
     if lo >= veilRel then return end
     local relCrest, tPow = geo.relCrest, geo.tPow
     local tA = tOfRel(veilRel, relCrest, tPow)
     local tB = tOfRel(lo, relCrest, tPow)
     veilRel = lo
-    if not tA or not tB then return end
-    local a = veilAlphaAt((tA + tB) * 0.5)
-    if a < 0.004 then return end
+    if not tA or not tB or tB <= tA then return end
+    if V.shader == nil then
+        local ok, sh = pcall(love.graphics.newShader, V.SRC)
+        V.shader = ok and sh or false
+        if not ok then require("src.core.Debug").warn("[WeatherEngine] shader do véu não compilou: " .. tostring(sh)) end
+    end
+    if not V.shader then return end
+    local yA = floor(geo.latY(0, tA)) - 2
+    local yB = floor(geo.latY(geo.w * 0.5, tB)) + 2
+    if yB <= yA then return end
     local r, g, b = SceneGrade.fogColor()
-    r, g, b = min(1, r), min(1, g), min(1, b)
-    local segs = WeatherEngine.VEIL_SEGS
-    local sw = geo.w / segs
-    local drawn = false
-    love.graphics.setColor(r, g, b, a)
-    for k = 0, segs - 1 do
-        local x0 = floor(geo.x + k * sw)
-        local x1 = floor(geo.x + (k + 1) * sw)
-        local dx = (x0 + x1) * 0.5 - geo.cx
-        local yA = floor(geo.latY(dx, tA))
-        local yB = floor(geo.latY(dx, tB))
-        if yB > yA and x1 > x0 then
-            love.graphics.rectangle("fill", x0, yA, x1 - x0, yB - yA)
-            drawn = true
-        end
-    end
+    local fn, ff, fc = SceneGrade.fogParams()
+    local gf, gr = SceneGrade.ground()
+    local sh = V.shader
+    local prev = love.graphics.getShader()
+    love.graphics.setShader(sh)
+    V.vC[1], V.vC[2] = V.cx, V.cy
+    sh:send("C", V.vC)
+    sh:send("R", V.R)
+    sh:send("D", V.D)
+    V.vB[1], V.vB[2] = (tA <= 0) and 0 or tA, (tB >= 1) and 99 or tB
+    sh:send("band", V.vB)
+    V.vF[1], V.vF[2], V.vF[3] = min(1, r), min(1, g), min(1, b)
+    sh:send("fog", V.vF)
+    V.vP[1], V.vP[2], V.vP[3], V.vP[4] = fn, ff, fc, WeatherEngine.VEIL_K
+    sh:send("P", V.vP)
+    V.vG[1], V.vG[2] = gf, gr
+    sh:send("G", V.vG)
+    love.graphics.setBlendMode("alpha", "premultiplied")
     love.graphics.setColor(1, 1, 1, 1)
-    if drawn then
-        WeatherEngine.stats.veilBands = WeatherEngine.stats.veilBands + 1
-    end
+    love.graphics.rectangle("fill", geo.x - 4, yA, geo.w + 8, yB - yA)
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setShader(prev)
+    WeatherEngine.stats.veilBands = WeatherEngine.stats.veilBands + 1
 end
 
 function WeatherEngine.flushTo(relLow)
