@@ -3,6 +3,18 @@ local LightEngine = require("engine.LightEngine")
 local LuminaireEngine = {}
 
 LuminaireEngine.POOL_MIN_T = 0.50
+LuminaireEngine.DAY_GATE = { 0.45, 0.85 }
+
+local frameTod = 1
+function LuminaireEngine.setTimeOfDay(tod)
+    frameTod = math.max(0, math.min(1, tod or 1))
+end
+function LuminaireEngine.dayK(tod)
+    local g = LuminaireEngine.DAY_GATE
+    local k = ((tod or frameTod) - g[1]) / (g[2] - g[1])
+    k = math.max(0, math.min(1, k))
+    return k * k * (3 - 2 * k)
+end
 
 local FIRE_AMBER  = { 1.00, 0.62, 0.25 }
 
@@ -184,6 +196,8 @@ end
 function LuminaireEngine.submit(bid, kind, a)
     local def = LuminaireEngine.def(bid, kind)
     if not def then return end
+    local dayK = LuminaireEngine.dayK(a.tod)
+    if dayK <= 0 then return end
     local L = def.light
     local time = love.timer.getTime()
     local seed = (a.seed or 0) % 1000
@@ -212,14 +226,14 @@ function LuminaireEngine.submit(bid, kind, a)
     local distK = 0.42 + 0.58 * math.min(1, (a.t or 1) / 0.55)
     LightEngine.submit({
         x = a.fx, y = a.fy,
-        radius = math.min(L.radiusK * base * fr * distK, (a.capR or 1e9)),
-        color = L.color, intensity = L.intensity * fi * (0.6 + 0.4 * distK) * aK,
+        radius = math.min(L.radiusK * base * fr * distK, (a.capR or 1e9)) * dayK,
+        color = L.color, intensity = L.intensity * fi * (0.6 + 0.4 * distK) * aK * dayK,
         dither = true, ditherAmt = 0.28, levels = 8,
         seed = a.seed, z = a.rel,
     })
     LightEngine.submitMicro(a.fx, a.fy,
-        math.min(L.coreK * base * 0.6 * fr * distK, (a.capR or 1e9) * 0.4),
-        L.color, 0.9 * fi * aK, a.rel)
+        math.min(L.coreK * base * 0.6 * fr * distK, (a.capR or 1e9) * 0.4) * dayK,
+        L.color, 0.9 * fi * aK * dayK, a.rel)
 end
 
 local function hash01(n)

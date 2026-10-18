@@ -3800,6 +3800,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         local sunX = cel and (x + cel.xr * w) or g.cx
         ShadowEngine.setFrame(sunX, w, WorldRoad._timeOfDay,
             LightEngine.ambientLuma())
+        LuminaireEngine.setTimeOfDay(WorldRoad._timeOfDay)
     end
     Scene.Contact.setFrame(Scene.Grade.cfg("contact"), Scene.Grade.shadowTint())
     ShadowEngine.setAlphaK(Scene.Grade.cfg("shadow").alphaK)
