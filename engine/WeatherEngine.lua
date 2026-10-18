@@ -85,7 +85,7 @@ local lastCtx = nil
 local windP = GrassField.PRESETS.fields
 local camZ0 = 0
 local veilRel = 0
-WeatherEngine.VEIL_K = 0.45
+WeatherEngine.VEIL_K = 0.25
 WeatherEngine.VEIL_SEGS = 24
 local function veilAlphaAt(t) return SceneGrade.fogAlpha(t) * WeatherEngine.VEIL_K end
 WeatherEngine._veilAlphaAt = veilAlphaAt
@@ -786,9 +786,7 @@ function WeatherEngine.drawLowFog(x, yTop, w, h, cfg, alphaK)
     r, g, b = min(1, r), min(1, g), min(1, b)
     local a = cfg.alpha * (alphaK or 1)
     local s = max(1, floor(h / HAZE_H + 0.5))
-    local bandH = min(h, HAZE_H * s)
-    local texH = floor(bandH / s)
-    if texH < 1 then return end
+    local sy = h / HAZE_H
     local tm = reduced() and 0 or time
     local drift = (cfg.drift or 0) * 600 * tm
     local off = floor(drift / s) % HAZE_W
@@ -796,16 +794,12 @@ function WeatherEngine.drawLowFog(x, yTop, w, h, cfg, alphaK)
     WeatherEngine._lowFogQuad = WeatherEngine._lowFogQuad
         or love.graphics.newQuad(0, 0, 1, 1, HAZE_W, HAZE_H)
     local q = WeatherEngine._lowFogQuad
-    local y0 = HAZE_H - texH
-    q:setViewport(off, y0, texW, texH, HAZE_W, HAZE_H)
+    q:setViewport(off, 0, texW, HAZE_H, HAZE_W, HAZE_H)
     love.graphics.setColor(r, g, b, a)
-    love.graphics.draw(hazeImg, q, x, yTop + h - texH * s, 0, s, s)
-    local texH2 = floor(texH * 0.6)
-    if texH2 >= 1 then
-        q:setViewport((HAZE_W - off) % HAZE_W, HAZE_H - texH2, texW, texH2, HAZE_W, HAZE_H)
-        love.graphics.setColor(r, g, b, a * 0.6)
-        love.graphics.draw(hazeImg, q, x, yTop + h - texH2 * s, 0, s, s)
-    end
+    love.graphics.draw(hazeImg, q, x, yTop, 0, s, sy)
+    q:setViewport((HAZE_W - off) % HAZE_W, 0, texW, HAZE_H, HAZE_W, HAZE_H)
+    love.graphics.setColor(r, g, b, a * 0.6)
+    love.graphics.draw(hazeImg, q, x, yTop + h * 0.4, 0, s, sy * 0.6)
     love.graphics.setColor(1, 1, 1, 1)
     WeatherEngine.stats.lowFogBands = WeatherEngine.stats.lowFogBands + 2
 end

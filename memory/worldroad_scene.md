@@ -122,8 +122,30 @@ aí; o código só lê.
    cisalha), companheiras balançam com fase própria. `of` devolve tabela
    reutilizada: copie antes de chamar de novo (`LMG.pvCopy`).
 
+**Calibração do ato 1 com o dono (17/Out, folhas antes|depois em
+`tools/preview_out/integracao_terreno/06_calibracao/`, medidas em `medidas.txt`):**
+- temperatura do sol é só MATIZ (dia 1/0,985/0,95, pôr 1/0,94/1): a versão
+  que escurecia dobrava o ambiente do LightEngine e apagava o pôr do sol;
+- névoa da cor da BASE DAS MONTANHAS (`fog` dia azul-acinzentado, `fogDusk`
+  lilás), `fogCurve 2.4` (só o fundo), `VEIL_K 0.25`: névoa pêssego virava
+  grama cáqui;
+- chão, estrada e grama pedem cor em t=1 (textura atravessa todas as
+  profundidades; a distância fica com o véu): t=0,5 dessaturava e achatava;
+- oclusor de TODA família ganha o mesmo `liftRef/maxLift` da tabela (0,72/1,8,
+  os valores do lift antigo das árvores): sem ele a mata ficava escura e sem
+  detalhe no pôr do sol;
+- `FAMILY_DEPTH` (landmark e inimigo 0,35): o que é escolha ou informação de
+  jogo não some na distância;
+- sombras: `contact.alpha 0.72`, `shadow.alphaK 2.0` (teto 0,75); faixa de
+  contato com altura até 35% da largura do vão (poste fino não vira bloco);
+- castelo: sem sombra projetada (caía por cima das montanhas e da própria
+  base); `ContactShadow.queueDisc` no topo da colina, abaixo da crista;
+- marcos da encruzilhada com luz própria (`landmarks.*.selfLight`, poça rasa).
+- A ferramenta de captura fixa o idioma em inglês (a identity de teste
+  herdava alemão e as folhas não comparavam igual com igual).
+
 **Números (1024×768, test_perf_budget isolado):** antes 427 draw calls /
-30,5 KB; depois 469 / 31,5 KB (o véu é ~40 draw calls). Locais do arquivo
+30,5 KB; depois 463 / 31,3 KB (o véu é ~40 draw calls). Locais do arquivo
 `WorldRoad.lua`: 198 → 188 (`python tools/count_locals.py src/ui/WorldRoad.lua`).
 
 **Travas:** `test_scene_grade`, `test_contact_shadow`, `test_landmark_fx`,

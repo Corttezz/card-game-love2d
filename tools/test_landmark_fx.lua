@@ -147,8 +147,8 @@ function M.run()
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
         t:falsy("castelo: as duas elipses fixas saíram",
             src:find("ellipse(\"fill\", cx + shd * iw * s * 0.20", 1, true) ~= nil)
-        t:truthy("castelo: ShadowEngine.queue no lugar delas",
-            src:find("ShadowEngine.queue(img, cx, crest2 + 2, s, LMG.castleShOpts)", 1, true) ~= nil)
+        t:truthy("castelo: sombra do morro em disco na fila de contato (abaixo da crista)",
+            src:find("Scene.Contact.queueDisc(cx, crest2 + ry", 1, true) ~= nil)
         t:truthy("WorldRoad lê 'landmarks' da tabela para o castelo",
             src:find('Scene.Grade.cfg("landmarks").castle', 1, true) ~= nil)
         t:truthy("WorldRoad emite poeira pela bandeira", src:find("WeatherEngine.emitDust(", 1, true) ~= nil)

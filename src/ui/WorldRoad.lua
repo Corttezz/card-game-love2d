@@ -1309,9 +1309,18 @@ LMG.c = {}
 LMG.fc = {}
 LMG.pvCopy = { windPhase = 0, canopy = 0, trunk = 0 }
 LMG.tint4 = { 1, 1, 1, 1 }
-LMG.castleShOpts = { baseK = 0.12, lenK = 0.30, alphaK = 0.8 }
 LMG.LIGHT_SHOP_GLOW = { 1.00, 0.72, 0.38 }
 LMG.EMBERS = { color = { 1.00, 0.62, 0.22 }, count = 3 }
+LMG.SELF_LIGHT = { 1.00, 0.90, 0.74 }
+function LMG.selfLight(lmk, px, py, iw, ih, s, rel, alphaK)
+    if not lmk or not lmk.selfLight or lmk.selfLight <= 0 or alphaK <= 0.05 then return end
+    local gx, gy = love.graphics.transformPoint(px, py - ih * s * 0.45)
+    LightEngine.submit({
+        x = gx, y = gy, radius = math.max(iw, ih) * s * 0.75, sy = 0.8,
+        color = LMG.SELF_LIGHT, intensity = lmk.selfLight * alphaK,
+        dither = true, ditherAmt = 0.22, levels = 6, z = rel,
+    })
+end
 
 local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha, thin)
     local sm = lmCfg(LANDMARK_SMOKE, key)
@@ -2107,10 +2116,12 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local lmc = Scene.Grade.cfg("landmarks").castle
     if alpha >= 1 and lmc and lmc.hillShadow then
         local crest2 = g.crestYAt(cx)
-        ShadowEngine.queue(img, cx, crest2 + 2, s, LMG.castleShOpts)
+        local ry = math.max(2, (3 + 7 * progress) * g.h / 768)
+        Scene.Contact.queueDisc(cx, crest2 + ry, iw * s * 0.42, ry,
+            Scene.Grade.cfg("contact").alpha * 0.55)
     end
 
-    local cc = Scene.Grade.color("castle", 0.6 + 0.4 * progress, LMG.c)
+    local cc = Scene.Grade.color("castle", 0.35 + 0.65 * progress, LMG.c)
     love.graphics.setColor(cc[1], cc[2], cc[3], alpha)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
@@ -2428,7 +2439,7 @@ local function drawDomeTexOf(g, x, w, bid, alpha, slot)
         ds.count = qm.n
         qm:upload(0, qm.n)
     end
-    local c = Scene.Grade.color("ground", 0.5, LMG.c)
+    local c = Scene.Grade.color("ground", 1, LMG.c)
     love.graphics.setColor(c[1], c[2], c[3], alpha)
     ds.qm:draw(0, ds.count, tex.img)
     love.graphics.setColor(1, 1, 1, 1)
@@ -2437,7 +2448,7 @@ end
 local function drawDome(g, x, y, w)
     local grassA = envColor("grassA")
     local grassB = envColor("grassB")
-    local gc = Scene.Grade.color("ground", 0.5, LMG.c)
+    local gc = Scene.Grade.color("ground", 1, LMG.c)
     local gr, gg, gb = gc[1], gc[2], gc[3]
 
     love.graphics.setColor(grassB[1] * 0.78 * gr, grassB[2] * 0.78 * gg, grassB[3] * 0.78 * gb, 1)
@@ -2474,7 +2485,7 @@ end
 local function drawTerrainDetail(g, x, w, camZ)
     local gA = envColor("grassA")
     local gB = envColor("grassB")
-    local gc = Scene.Grade.color("ground", 0.5, LMG.c)
+    local gc = Scene.Grade.color("ground", 1, LMG.c)
     local dark  = { gB[1] * 0.70 * gc[1], gB[2] * 0.70 * gc[2], gB[3] * 0.70 * gc[3] }
     local light = { math.min(1, gA[1] * 1.45) * gc[1], math.min(1, gA[2] * 1.40) * gc[2],
                     math.min(1, gA[3] * 1.25) * gc[3] }
@@ -2584,7 +2595,7 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
         local lum = (gA[1] + gA[2] + gA[3]) / 3
         local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
         _grassFork = { cs = {}, ws = {} }
-        local gc = Scene.Grade.color("grass", 0.5, LMG.c)
+        local gc = Scene.Grade.color("grass", 1, LMG.c)
         _grassCtx = {
             x = x, w = w,
             time = WorldRoad._time,
@@ -2856,7 +2867,7 @@ local function drawRoad(g, x, w, camZ)
         qm:upload(0, qm.n)
         local prevShader = love.graphics.getShader()
         love.graphics.setShader(QuadMesh.untexturedShader())
-        local rc = Scene.Grade.color("road", 0.5, LMG.c)
+        local rc = Scene.Grade.color("road", 1, LMG.c)
         love.graphics.setColor(rc[1], rc[2], rc[3], 1)
         qm:draw(0, qm.n, tileUsed)
         love.graphics.setShader(prevShader)
@@ -3063,6 +3074,7 @@ local function drawProps(g, x, w, camZ)
         love.graphics.setColor(1, 1, 1, 1)
         drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1, lmk and lmk.smoke == "thin")
         submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z, 1, lmk)
+        LMG.selfLight(lmk, lx, py, iw, ih, s, rel, 1)
         if lmk and lmk.embers then
             local anc = LuminaireEngine.anchor("landmark", lm.key, 0,
                 "assets/sprites/world/" .. lm.key .. ".png")
@@ -3151,6 +3163,7 @@ local function drawProps(g, x, w, camZ)
                 drawLandmarkSmoke(key, px, py, iw, ih, s, aMul, lmk and lmk.smoke == "thin")
                 submitLandmarkLight(key, px, py, iw, ih, s, relM,
                     i * 31.7, aMul * (hovered and 1.4 or 1), lmk)
+                LMG.selfLight(lmk, px, py, iw, ih, s, relM, aMul * (hovered and 1.3 or 1))
                 if lmk and lmk.embers and aMul > 0.5 then
                     local anc = LuminaireEngine.anchor("landmark", key, 0,
                         "assets/sprites/world/" .. key .. ".png")
@@ -3654,9 +3667,10 @@ function WorldRoad.draw(x, y, w, h, actNumber)
             LightEngine.ambientLuma())
     end
     Scene.Contact.setFrame(Scene.Grade.cfg("contact"), Scene.Grade.shadowTint())
+    ShadowEngine.setAlphaK(Scene.Grade.cfg("shadow").alphaK)
 
     local gb0 = envColor("grassB")
-    local g0 = Scene.Grade.color("ground", 0.5, LMG.c)
+    local g0 = Scene.Grade.color("ground", 1, LMG.c)
     love.graphics.setColor(gb0[1] * 0.78 * g0[1], gb0[2] * 0.78 * g0[2], gb0[3] * 0.78 * g0[3], 1)
     love.graphics.rectangle("fill", x, y, w, h)
 

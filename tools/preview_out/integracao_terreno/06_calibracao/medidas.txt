@@ -1,0 +1,6 @@
+dia fork grama_meio L 39->33 det 7.1->6.4 | grama_fundo L 52->51 det 12.9->11.3 | chao_perto L 70->69 det 1.4->1.4 | chao_meio L 83->86 det 3.3->3.2 | arvores_fundo L 66->64 det 9.9->8.9 | fork_marcos L 61->64 det 11.7->11.6
+meio fork grama_meio L 29->24 det 5.3->4.6 | grama_fundo L 41->40 det 10.2->9.0 | chao_perto L 53->52 det 1.1->1.1 | chao_meio L 63->65 det 2.6->2.5 | arvores_fundo L 51->49 det 7.8->6.9 | fork_marcos L 51->53 det 10.4->10.0
+por fork grama_meio L 27->21 det 4.4->3.8 | grama_fundo L 35->33 det 8.8->7.8 | chao_perto L 36->35 det 0.7->0.7 | chao_meio L 43->43 det 1.8->1.7 | arvores_fundo L 39->37 det 6.7->5.9 | fork_marcos L 41->43 det 8.9->8.5
+dia landmark grama_meio L 39->33 det 7.2->6.4 | grama_fundo L 40->38 det 13.3->12.2 | chao_perto L 66->62 det 2.0->2.0 | chao_meio L 98->101 det 9.3->9.2 | arvores_fundo L 53->51 det 13.0->11.6
+meio landmark grama_meio L 31->25 det 5.8->5.0 | grama_fundo L 31->29 det 10.6->9.4 | chao_perto L 53->49 det 1.8->1.7 | chao_meio L 98->100 det 9.0->9.0 | arvores_fundo L 40->38 det 10.4->8.9
+por landmark grama_meio L 28->23 det 5.1->4.4 | grama_fundo L 28->26 det 9.5->8.5 | chao_perto L 38->34 det 1.4->1.4 | chao_meio L 96->99 det 9.0->8.9 | arvores_fundo L 36->35 det 8.5->7.4

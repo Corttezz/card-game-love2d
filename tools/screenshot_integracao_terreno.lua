@@ -46,6 +46,7 @@ local function setup(bio, scene)
         WorldRoad._camZ = 5.5
         tick(30, false)
         require("src.i18n.I18n").init()
+        require("src.i18n.I18n").setLocale("en", true)
         local MM = require("src.systems.MapManager")
         local nodes = {}
         for i, ty in ipairs({ "battle", "rest", "shop" }) do

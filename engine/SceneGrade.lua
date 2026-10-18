@@ -16,6 +16,7 @@ SceneGrade.KIND_FAMILY = {
 
 local NO_GRADE = { mountain = true }
 local CONTRAST_REACH = 0.25
+SceneGrade.FAMILY_DEPTH = { landmark = 0.35, enemy = 0.35 }
 
 local S = {
     bid = "fields", stamp = -1,
@@ -24,6 +25,7 @@ local S = {
     satNear = 1, satFar = 1, contrastFar = 1,
     fr = 1, fg = 1, fb = 1, fogNear = 0, fogFar = 0, fogCurve = 1,
     ar = 1, ag = 1, ab = 1,
+    liftRef = 0, maxLift = 1,
     depth = 1,
 }
 
@@ -42,16 +44,19 @@ local function resolve(g, tod, into)
     into.shr, into.shg, into.shb = g.shadowTint[1], g.shadowTint[2], g.shadowTint[3]
     into.satNear, into.satFar = g.satNear, g.satFar
     into.contrastFar = g.contrastFar
-    into.fr = math.min(1.6, g.fog[1] * 1.9)
-    into.fg = math.min(1.6, g.fog[2] * 1.9)
-    into.fb = math.min(1.6, g.fog[3] * 1.9)
+    local fd = g.fogDusk or g.fog
+    into.fr = math.min(1.6, lerp(g.fog[1], fd[1], tod) * 1.9)
+    into.fg = math.min(1.6, lerp(g.fog[2], fd[2], tod) * 1.9)
+    into.fb = math.min(1.6, lerp(g.fog[3], fd[3], tod) * 1.9)
     into.fogNear, into.fogFar, into.fogCurve = g.fogNear, g.fogFar, g.fogCurve
+    into.liftRef, into.maxLift = g.liftRef or 0, g.maxLift or 1
     return into
 end
 
 local prevLine = {}
 local FIELDS = { "tr", "tg", "tb", "shr", "shg", "shb", "satNear", "satFar",
-                 "contrastFar", "fr", "fg", "fb", "fogNear", "fogFar", "fogCurve" }
+                 "contrastFar", "fr", "fg", "fb", "fogNear", "fogFar", "fogCurve",
+                 "liftRef", "maxLift" }
 
 function SceneGrade.begin(bid, tod, fromBid, blendK, amb)
     tod = clamp01(tod or 1)
@@ -99,6 +104,8 @@ function SceneGrade.color(family, t, out)
         return out
     end
     t = clamp01(t or 1)
+    local fk = SceneGrade.FAMILY_DEPTH[family]
+    if fk then t = 1 - (1 - t) * fk end
     local r, g, b = S.tr, S.tg, S.tb
     local fa = SceneGrade.fogAlpha(t)
     r, g, b = lerp(r, S.fr, fa), lerp(g, S.fg, fa), lerp(b, S.fb, fa)
@@ -114,7 +121,10 @@ end
 
 function SceneGrade.flatColor(family, out)
     out = out or {}
-    out[1], out[2], out[3] = S.ar, S.ag, S.ab
+    local l = 0.299 * S.ar + 0.587 * S.ag + 0.114 * S.ab
+    local k = 1
+    if S.liftRef > 0 and l > 0 then k = math.min(S.maxLift, math.max(1, S.liftRef / l)) end
+    out[1], out[2], out[3] = math.min(1, S.ar * k), math.min(1, S.ag * k), math.min(1, S.ab * k)
     return out
 end
 

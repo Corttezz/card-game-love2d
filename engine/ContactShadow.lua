@@ -11,6 +11,7 @@ local warned = setmetatable({}, { __mode = "k" })
 local frame = { alpha = 0.55, height = 0.035, spread = 1.08, dither = true,
                 r = 0.2, g = 0.15, b = 0.25 }
 local queue, qn = {}, 0
+local discs, dn = {}, 0
 local qm
 
 local function hash01(n)
@@ -100,6 +101,32 @@ local function unit()
     return math.max(1, math.floor(H / 250 + 0.5))
 end
 
+function ContactShadow.queueDisc(x, y, rx, ry, alpha)
+    if rx ~= rx or ry ~= ry or rx < 1 or ry < 1 then return end
+    dn = dn + 1
+    local d = discs[dn]
+    if not d then d = {}; discs[dn] = d end
+    d.x, d.y, d.rx, d.ry, d.a = x, y, rx, ry, alpha or 0.4
+end
+
+local function disc(d)
+    local u = unit()
+    local r, g, b = frame.r * 0.35, frame.g * 0.35, frame.b * 0.35
+    local rows = math.max(1, math.floor(d.ry / u))
+    for row = -rows, rows do
+        local f = row / (rows + 0.5)
+        local ff = 1 - f * f
+        local half = d.rx * math.sqrt(math.max(0, ff))
+        half = half * (0.9 + 0.1 * hash01(d.x * 0.13 + row * 7.3))
+        local wd = math.floor(half * 2 + 0.5)
+        if wd >= 1 then
+            qm:rect(math.floor(d.x - half), math.floor(d.y + row * u), wd, u,
+                0, 0, 1, 1, r, g, b, d.a * (ff ^ 0.7))
+        end
+    end
+end
+
+
 local function band(q, fp)
     local s, fl = q.s, q.flip
     local hpx = math.max(1, math.floor(frame.height * fp.w * s * (0.55 + 0.45 * q.t) + 0.5))
@@ -107,29 +134,32 @@ local function band(q, fp)
     local r, g, b = frame.r * 0.35, frame.g * 0.35, frame.b * 0.35
     local u = unit()
     local y0 = math.floor(q.y)
-    local h2 = math.max(1, math.floor(hpx * 0.5 + 0.5))
     for i = 1, #fp.spans do
         local sp = fp.spans[i]
         local cxs = (sp[1] + sp[2] + 1) * 0.5 - fp.w * 0.5
         local wd = math.max(1, math.floor((sp[2] - sp[1] + 1) * frame.spread * s + 0.5))
         local x0 = math.floor(q.x + fl * cxs * s - wd * 0.5)
-        qm:rect(x0, y0, wd, hpx, 0, 0, 1, 1, r, g, b, a)
+        local hs = math.max(1, math.min(hpx, math.floor(wd * 0.35 + 0.5)))
+        local h2s = math.max(1, math.floor(hs * 0.5 + 0.5))
+        qm:rect(x0, y0, wd, hs, 0, 0, 1, 1, r, g, b, a)
         local inset = math.floor(wd * (0.12 + 0.10 * hash01(sp[1] * 3.1 + sp[2])) + 0.5)
         local w2 = wd - 2 * inset
         if w2 >= 1 then
-            qm:rect(x0 + inset, y0 + hpx, w2, h2, 0, 0, 1, 1, r, g, b, a * 0.55)
+            qm:rect(x0 + inset, y0 + hs, w2, h2s, 0, 0, 1, 1, r, g, b, a * 0.55)
         end
         if frame.dither and wd > 3 * u then
-            qm:rect(x0 - u, y0, u, math.max(1, hpx - u), 0, 0, 1, 1, r, g, b, a * 0.45)
-            qm:rect(x0 + wd, y0, u, math.max(1, hpx - u), 0, 0, 1, 1, r, g, b, a * 0.45)
+            qm:rect(x0 - u, y0, u, math.max(1, hs - u), 0, 0, 1, 1, r, g, b, a * 0.45)
+            qm:rect(x0 + wd, y0, u, math.max(1, hs - u), 0, 0, 1, 1, r, g, b, a * 0.45)
         end
     end
 end
 
 function ContactShadow.flush()
-    if qn == 0 then return end
+    if qn == 0 and dn == 0 then return end
     qm = qm or QuadMesh.new(2048)
     qm:reset()
+    for i = 1, dn do disc(discs[i]) end
+    dn = 0
     for i = 1, qn do
         local q = queue[i]
         local fp = foot[q.img]

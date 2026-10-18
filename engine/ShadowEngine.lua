@@ -7,7 +7,9 @@ local frame = {
     len = 0.5,
     alpha = 0.26,
     stamp = -1,
+    alphaK = 1,
 }
+function ShadowEngine.setAlphaK(k) frame.alphaK = k or 1 end
 ShadowEngine.stats = { queued = 0 }
 
 function ShadowEngine.setFrame(sunX, w, tod, luma)
@@ -68,7 +70,7 @@ function ShadowEngine.endBatch()
     love.graphics.pop()
     love.graphics.setCanvas(batchPrev)
     love.graphics.setBlendMode("alpha", "premultiplied")
-    love.graphics.setColor(0, 0, 0, frame.alpha * (soloAlphaK or 1))
+    love.graphics.setColor(0, 0, 0, math.min(0.75, frame.alpha * frame.alphaK * (soloAlphaK or 1)))
     soloAlphaK = nil
     love.graphics.draw(scratch, 0, 0, 0, SCALE, SCALE)
     love.graphics.setBlendMode("alpha")

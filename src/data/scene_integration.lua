@@ -1,11 +1,13 @@
-local function landmarks(scorchR, scorchA, glowA)
+local function landmarks(scorchR, scorchA, glowA, selfL)
+    selfL = selfL or 0
     return {
         rest   = { scorch = { radius = scorchR, alpha = scorchA }, embers = true,
-                   smoke = "thin", pulse = 0.18 },
-        battle = { flagWave = true, dust = { rate = 0.4, alpha = 0.10 } },
-        shop   = { windowGlow = { alpha = glowA or 0.22, spread = 1.4 }, smoke = "chimney" },
-        event  = { lanternGlow = true },
-        elite  = { runeFlicker = true },
+                   smoke = "thin", pulse = 0.18, selfLight = selfL },
+        battle = { flagWave = true, dust = { rate = 0.4, alpha = 0.10 }, selfLight = selfL },
+        shop   = { windowGlow = { alpha = glowA or 0.22, spread = 1.4 }, smoke = "chimney",
+                   selfLight = selfL },
+        event  = { lanternGlow = true, selfLight = selfL },
+        elite  = { runeFlicker = true, selfLight = selfL },
         castle = { lowFog = true, hillShadow = true },
     }
 end
@@ -13,17 +15,20 @@ end
 return {
     fields = {
         grade = {
-            day = { 1.00, 0.97, 0.90 }, dusk = { 0.92, 0.84, 0.94 },
+            day = { 1.00, 0.985, 0.95 }, dusk = { 1.00, 0.94, 1.00 },
             shadowTint = { 0.36, 0.22, 0.46 },
-            satNear = 1.0, satFar = 0.45, contrastFar = 0.72,
-            fog = { 0.55, 0.42, 0.28 }, fogNear = 0.0, fogFar = 0.45, fogCurve = 1.6,
+            satNear = 1.0, satFar = 0.5, contrastFar = 0.6,
+            fog = { 0.40, 0.44, 0.56 }, fogDusk = { 0.46, 0.38, 0.52 },
+            fogNear = 0.0, fogFar = 0.42, fogCurve = 2.4,
+            liftRef = 0.72, maxLift = 1.8,
         },
-        contact = { alpha = 0.55, height = 0.035, spread = 1.08, dither = true },
+        contact = { alpha = 0.72, height = 0.045, spread = 1.1, dither = true },
+        shadow = { alphaK = 2.0 },
         occlusion = { baseCover = 0.10, tuftsMin = 3, tuftsMax = 6, tuftScale = { 0.8, 1.2 } },
         lowFog = { alpha = 0.18, height = 0.09, drift = 0.02 },
         trees = { tint = 0.05, scale = 0.08, flip = true, windPhase = true,
                   canopySway = 0.030, trunkSway = 0.010, bushSway = 0.040 },
-        landmarks = landmarks(1.7, 0.55, 0.32),
+        landmarks = landmarks(1.7, 0.55, 0.32, 0.22),
     },
     highlands = {
         grade = {
@@ -33,6 +38,7 @@ return {
             fog = { 0.38, 0.34, 0.48 }, fogNear = 0.02, fogFar = 0.52, fogCurve = 1.5,
         },
         contact = { alpha = 0.50, height = 0.035, spread = 1.08, dither = true },
+        shadow = { alphaK = 1.0 },
         occlusion = { baseCover = 0.09, tuftsMin = 2, tuftsMax = 5, tuftScale = { 0.7, 1.1 } },
         lowFog = { alpha = 0.26, height = 0.11, drift = 0.015 },
         trees = { tint = 0.04, scale = 0.07, flip = true, windPhase = true,
@@ -47,6 +53,7 @@ return {
             fog = { 0.55, 0.20, 0.10 }, fogNear = 0.0, fogFar = 0.40, fogCurve = 1.7,
         },
         contact = { alpha = 0.60, height = 0.035, spread = 1.08, dither = true },
+        shadow = { alphaK = 1.0 },
         occlusion = { baseCover = 0.07, tuftsMin = 2, tuftsMax = 4, tuftScale = { 0.7, 1.0 } },
         lowFog = { alpha = 0.14, height = 0.07, drift = 0.03 },
         trees = { tint = 0.06, scale = 0.09, flip = true, windPhase = true,
@@ -61,6 +68,7 @@ return {
             fog = { 0.55, 0.60, 0.68 }, fogNear = 0.04, fogFar = 0.55, fogCurve = 1.4,
         },
         contact = { alpha = 0.45, height = 0.035, spread = 1.08, dither = true },
+        shadow = { alphaK = 1.0 },
         occlusion = { baseCover = 0.07, tuftsMin = 2, tuftsMax = 4, tuftScale = { 0.6, 1.0 } },
         lowFog = { alpha = 0.30, height = 0.12, drift = 0.012 },
         trees = { tint = 0.03, scale = 0.08, flip = true, windPhase = true,
@@ -75,6 +83,7 @@ return {
             fog = { 0.38, 0.42, 0.24 }, fogNear = 0.03, fogFar = 0.50, fogCurve = 1.5,
         },
         contact = { alpha = 0.55, height = 0.035, spread = 1.08, dither = true },
+        shadow = { alphaK = 1.0 },
         occlusion = { baseCover = 0.13, tuftsMin = 4, tuftsMax = 7, tuftScale = { 0.9, 1.4 } },
         lowFog = { alpha = 0.28, height = 0.10, drift = 0.018 },
         trees = { tint = 0.05, scale = 0.08, flip = true, windPhase = true,
@@ -89,6 +98,7 @@ return {
             fog = { 0.72, 0.48, 0.22 }, fogNear = 0.0, fogFar = 0.42, fogCurve = 1.6,
         },
         contact = { alpha = 0.55, height = 0.035, spread = 1.08, dither = true },
+        shadow = { alphaK = 1.0 },
         occlusion = { baseCover = 0.10, tuftsMin = 3, tuftsMax = 6, tuftScale = { 0.8, 1.2 } },
         lowFog = { alpha = 0.20, height = 0.09, drift = 0.02 },
         trees = { tint = 0.05, scale = 0.08, flip = true, windPhase = true,
