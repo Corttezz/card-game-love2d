@@ -23,6 +23,7 @@ return {
             liftRef = 0.6, maxLift = 1.6,
             groundFar = 0.62, groundReach = 0.85, treeGain = 0.8,
             treeNear = { 0.95, 1.0, 0.93 },
+            treeDepth = { near = 0.55, far = 0.25, sat = 0.65, bright = 0.80, fog = 0.30 },
         },
         contact = { alpha = 0.65, height = 0.04, spread = 1.1, dither = true },
         shadow = { alphaK = 2.2, fade = 0.30, color = { 0.34, 0.38, 0.42 },
