@@ -401,6 +401,21 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   2ª rodada (revisão do lead): chão verde-grama vivo → oliva escuro de lama (`grassA/B`, `grassTint`),
   `groundFar` 0,55; poças com juncos e reflexo como `marsh_rock_0..3` (`sizeK` 1,40, peso 7); poste
   `lane` 0,15..0,30 (encostava no inimigo); sombra de árvore `lenK` 0,95 / ×1,45 (caía sob a copa).
+- **Landmarks, castelos e poste do ato 1 pela regra diorama (18/Out/2026, frente landmarks-diorama,
+  `tools/preview_out/landmarks_diorama/julgamento.md`):** luz pintada medida em cada PNG contra
+  `celestial.xr`. Arte boa com luz do lado errado foi ESPELHADA (PNG e todos os quadros de `anim/`,
+  inclusive `_shop_hover` e `_castle_door`): fields elite/shop/castelo, highlands castelo, abyss shop,
+  frost battle/elite/castelo, marsh castelo, dusk battle/castelo; `lightWindows` e `LANDMARK_SMOKE.xf`
+  espelhados junto (x → 1-x). Regerados no PixelLab `create_image_pro` (style image = arte atual): poste
+  `fields_lantern_0` (poste quadrado de ~5 px com face de luz à direita, lanterna 0,22 da altura, vidro
+  âmbar; `light.pool` 1,20/1,10), fogueiras de frost/marsh/dusk (anel de pedras e lenha; a do pântano era
+  chama sobre mancha chapada) e elites de marsh/dusk (totem com raízes; menir com runas). Animação das
+  artes novas por `tools/bake_luminaire_flicker.py` (flame no fogo, glow no vidro e nas runas). Regra
+  genérica: luminária de beira de estrada entre 4,5 unidades à frente e 1,5 atrás do landmark escolhido
+  é afastada para fora até meia largura dele + meia largura dela + 3 % da tela (o pilar do ato 3 colava
+  na fogueira; 8 % empurrava o poste do ato 6 para dentro da copa). Lição: o grade lava vidro creme, o
+  vidro aceso precisa ser âmbar saturado; com lightmap multiply-only a poça só aparece onde o ambiente
+  já escureceu (tod ≥ ~0,9).
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

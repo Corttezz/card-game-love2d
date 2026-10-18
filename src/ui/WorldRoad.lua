@@ -185,7 +185,7 @@ WorldRoad.SHADOW_PROFILE = {
     abyss_landmark_rest     = { baseK = 0.25, riseK = 0.19 },
     frost_landmark_rest     = { baseK = 0.25, riseK = 0.24 },
     marsh_landmark_rest     = { baseK = 0.25, riseK = 0.17 },
-    dusk_landmark_rest      = { baseK = 0.17, riseK = 0.20, lenK = 0.60 },
+    dusk_landmark_rest      = { baseK = 0.25, riseK = 0.28, lenK = 0.60 },
 }
 
 local function kindSize(kind, bid)
@@ -1314,11 +1314,11 @@ local LANDMARK_SHADOW_PAD = {
     frost_landmark_event     = 3, marsh_landmark_event = 5,
     dusk_landmark_event      = 3,
     highlands_landmark_rest = 1,  abyss_landmark_rest = 5,
-    frost_landmark_rest     = 3,  marsh_landmark_rest = 5,
-    dusk_landmark_rest      = 4,
+    frost_landmark_rest     = 1,  marsh_landmark_rest = 1,
+    dusk_landmark_rest      = 1,
     highlands_landmark_battle = 0, frost_landmark_battle = 0,
     highlands_landmark_elite  = 2, frost_landmark_elite  = 1,
-    marsh_landmark_elite      = 5, dusk_landmark_elite  = 0,
+    marsh_landmark_elite      = 1, dusk_landmark_elite  = 1,
     abyss_landmark_elite      = 2, landmark_elite        = 2,
 }
 local LANDMARK_LIGHT = {
@@ -1329,9 +1329,9 @@ local LANDMARK_LIGHT = {
     landmark_miniboss = { color = { 1.00, 0.45, 0.25 }, radiusK = 0.40, intensity = 0.50 },
 }
 local LANDMARK_SMOKE = {
-    landmark_shop = { xf = 0.325, yf = 0.02 },
+    landmark_shop = { xf = 0.675, yf = 0.02 },
     highlands_landmark_shop = { xf = 0.233, yf = 0.00 },
-    abyss_landmark_shop     = { xf = 0.230, yf = 0.00, color = { 0.72, 0.64, 0.58 } },
+    abyss_landmark_shop     = { xf = 0.770, yf = 0.00, color = { 0.72, 0.64, 0.58 } },
     frost_landmark_shop     = { xf = 0.339, yf = 0.00, color = { 0.42, 0.44, 0.49 } },
     marsh_landmark_shop     = { xf = 0.739, yf = 0.02, color = { 0.72, 0.74, 0.62 } },
     dusk_landmark_shop      = { xf = 0.212, yf = 0.00, color = { 0.38, 0.32, 0.28 } },
@@ -3524,6 +3524,16 @@ local function drawProps(g, x, w, camZ)
             local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.13
 
             local img = getSprite(p.kind, p.variant, p.bid)
+            if img and lmMark and lmMark.w and rdef and rdef.roadside
+               and rel > lmMark.rel - 4.5 and rel < lmMark.rel + 1.5 then
+                local lsc = g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1)
+                    * (PropCut.sizeK[img] or 1), t, img:getHeight())
+                local need = lmMark.w * 0.5 + img:getWidth() * lsc * 0.5 + w * 0.03
+                if (pxX - lmMark.px) * p.side < need then
+                    pxX = lmMark.px + p.side * need
+                    sy = g.latY(pxX - g.cx, t) + over * g.h * 0.13
+                end
+            end
             local fadeA = propFadeK(p)
             if img then
                 fadeA = fadeA * PropCut.nearFade(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1)
