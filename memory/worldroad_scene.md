@@ -186,6 +186,30 @@ pintava roxo/cinza sobre a grama e lia como sujeira. Trava: no máximo 4 tons no
 **Regra:** cor de sprite da cena só pelo `SceneGrade` (nada de `setColor` com
 tom fixo nos pontos de desenho do WorldRoad/EnemyRenderer).
 
+**Realismo do ato 1 (18/Out/2026, frente realismo-cenario; pesquisa em
+`tools/preview_out/realismo/00_pesquisa.md`, um `checklist.md` por experimento):**
+- Sombra de árvore: a fila do `ShadowEngine` passa a HONRAR o `alphaK` por entrada
+  (`drawQueued`); `shadow.alphaK` global 2,2 (inimigo e marcos, um degrau acima),
+  árvores ×`shadow.tree.alphaK` 1,45 e `lenK` 0,70 (sol mais alto: a copa cai do lado
+  do tronco); `shadow.fade` vira dado; disco de sombra de copa sob cada árvore
+  (`shadow.canopy`, `ContactShadow.queueDisc`, em união com a silhueta). O global
+  3,0 pintava um borrão sob o inimigo da viagem: rejeitado.
+- Chão: `groundFar` 0,62 / `groundReach` 0,85 / `contrastFarDay` 0,85 (perto claro,
+  longe escuro, pedido do dono).
+- Árvores por plano: `grade.treeDepth = { near, far, sat, bright, fog }` só na
+  família `tree` (`SceneGrade.color`): a crista recua para a névoa; meio ~88 % de
+  saturação (sat 0,55 acinzentava o meio: rejeitado).
+- Lado iluminado: `world_props.lit[sprite] = ±1` medido no PNG; `PropCut.flipToSun`
+  espelha para o lado pintado ficar virado ao sol (`celestial.xr`); sem `lit` o
+  espelho segue sorteado.
+- Fogueira: `LANDMARK_LIGHT.landmark_rest` 0,95/0,85, `selfLight` ×2 no rest;
+  lanterna dos campos 1,50/0,95 e `size` 4,2 → 3,2 (poste de 2,5 m tinha 91 % da
+  altura de uma árvore adulta).
+- Medidas: árvore t=1 / 0,5 / 0,22 = 400-560 / 180-200 / 90-100 px (`persp` certo);
+  `tools/realismo_measure.lua` lista tamanho por profundidade; folhas antes|atual|
+  experimento com recortes 3x por `tools/realismo_sheet.py`. Perf 1080p 4,4 ms,
+  389 draw calls, 31 KB.
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica

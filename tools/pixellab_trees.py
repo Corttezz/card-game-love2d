@@ -109,6 +109,33 @@ EXTRA = {
 }
 
 
+COMMON_SUN = (". Single isolated tree only, nothing else: no ground, no grass, no "
+              "landscape, no shadow on the floor. The whole tree including every "
+              "root tip and the top of the crown is inside the canvas with a small "
+              "margin, nothing cut off at the edges. Transparent background. Same "
+              "hand-drawn pixel art style as the reference tree: crisp 1 px dark "
+              "outline, exactly the same colour palette, flat clustered shading with "
+              "at most 4 greens, no noise. The sun is high and to the UPPER RIGHT: "
+              "the right side and the top of every leaf cluster are the light green, "
+              "the left side and the whole underside of the crown are the dark "
+              "green, the trunk is darker just under the crown, thick visible roots "
+              "spread at the base. Same scale as the reference (same trunk thickness "
+              "and the same size of leaf clusters). No smooth gradients, no "
+              "anti-aliasing, no photographic rendering.")
+
+SUN_SPECS = {
+    "fields_sun_a": ("fields_tree_1.png", 112, 112,
+        "an old oak tree of the same green forest: a round full crown of the same "
+        "leaf clusters, a single straight thick trunk, knotted roots at the base"),
+    "fields_sun_b": ("fields_tree_1.png", 112, 112,
+        "a tall oak tree of the same green forest: the crown taller than wide, "
+        "the trunk forking into two limbs near the top, roots spreading at the base"),
+    "fields_sun_c": ("fields_tree_1.png", 112, 112,
+        "a wide spreading oak of the same green forest: a broad low crown wider "
+        "than tall, a short massive trunk, gnarled roots at the base"),
+}
+
+
 def specs_flat():
     """nome → (ref, w, h, desc) unindo SPECS (bioma_a/b) e EXTRA."""
     out = {}
@@ -116,6 +143,7 @@ def specs_flat():
         for var, desc in variants.items():
             out[f"{bid}_{var}"] = (ref, w, h, desc)
     out.update(EXTRA)
+    out.update(SUN_SPECS)
     return out
 
 
@@ -150,7 +178,7 @@ def queue(names=None):
                 continue
             ref64 = _b64file(os.path.join(WORLD, ref))
             args = {
-                "description": desc + COMMON,
+                "description": desc + (COMMON_SUN if name in SUN_SPECS else COMMON),
                 "width": w, "height": h, "no_background": True,
                 "style_image_base64": ref64,
                 "style_copy": ["color_palette", "outline", "detail", "shading"],
@@ -277,7 +305,7 @@ def process():
     J = jobs()
     report = []
     for f in sorted(os.listdir(RAW)):
-        m = re.match(r"^([a-z]+_[a-z]+)__(\d+)\.png$", f)
+        m = re.match(r"^([a-z]+_[a-z_]+)__(\d+)\.png$", f)
         if not m or m.group(1) not in specs_flat():
             continue
         name = m.group(1)
