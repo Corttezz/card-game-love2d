@@ -70,10 +70,11 @@ local CATALOG = {
             weight = 0.8,
             light = { color = { 0.62, 0.85, 1.00 }, radiusK = 1.10,
                       coreK = 0.35, intensity = 0.70, flicker = "shimmer" } },
-        lantern = { size = 1.8, roadside = true, lane = { 0.0, 0.08 }, anchor = { 0.50, 0.38 },
-            weight = 0.6,
-            light = { color = { 1.00, 0.68, 0.32 }, radiusK = 1.25,
-                      coreK = 0.40, intensity = 0.80, flicker = "fire" } },
+        lantern = { size = 5.6, face = 1, roadside = true,
+            lane = { 0.0, 0.08 }, anchor = { 0.80, 0.40 },
+            weight = 0.9,
+            light = { color = { 1.00, 0.68, 0.32 }, radiusK = 1.50,
+                      coreK = 0.40, intensity = 0.95, flicker = "fire" } },
     },
 
     marsh = {
