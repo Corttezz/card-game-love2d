@@ -8,7 +8,7 @@ local FIRE_AMBER  = { 1.00, 0.62, 0.25 }
 
 local CATALOG = {
     fields = {
-        lantern = { size = 4.2, face = 1, roadside = true,
+        lantern = { size = 3.2, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = FIRE_AMBER, radiusK = 1.50, coreK = 0.40,
