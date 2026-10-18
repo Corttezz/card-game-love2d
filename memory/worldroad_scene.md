@@ -344,6 +344,17 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   estrada, como a cena do portão pede. A clareira da grama segue o castelo (`castleGapX`) e prop da
   crista na frente dele some (t < 0,3; na viagem esmaece de 0,24 a 0,36). Castelo / maior árvore da
   crista vizinha: 2,3 a 3,7 nos seis atos (o ato 6 passou de 1,8 para 2,4 sem mudar tamanho).
+- **Castelo desvia dos marcos e postes + poste aceso garantido na batalha (18/Out/2026, frente
+  replica-6, folhas `seis_atos_postes_castelo.png` e `seis_atos_encruzilhada_castelo.png`):** o lado do
+  castelo é escolhido por `CASTLE_APPROACH.pick` entre 5 posições (lado oposto ao sol, lado do sol, as
+  duas a 1,7×, centro) pela menor sobreposição com as caixas dos marcos da encruzilhada (com o rótulo),
+  o landmark escolhido e as luminárias de beira de estrada já calculadas no mesmo quadro
+  (`LMG.lumPrepass`, antes do castelo); o centro só vale fora da batalha. Troca suave em 0,25 s. A
+  regra de pixel tirava o poste perto da câmera e deixava os atos 1 e 6 sem poste aceso: agora, com a
+  cena parada, a luminária que cairia no corte RECUA para a profundidade do teto (sem encostar em
+  outro poste: 5 do mesmo lado, 2,5 do oposto) e, se não houver nenhuma entre t 0,42 e 0,66, a mais
+  próxima vai para t 0,52. Medido nos seis atos × 3 sementes (`ESCALA_SEED` no `escala_humana`):
+  18 de 18 quadros com luminária no meio.
 - **Ato 6 / dusk (18/Out/2026, frente replica-6, `tools/preview_out/replica_atos/dusk/`):** entrada
   `dusk` copiada do modelo `fields` (treeDepth, sombra de árvore e disco de copa, contato 0,65, chão
   mais escuro no horizonte); temperatura virou só matiz (o `dusk` 0,78/0,56/0,70 apagava as copas

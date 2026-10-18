@@ -63,10 +63,10 @@ local function battle(act, tod, spriteId)
     game:startGame()
     local run = game.runManager.currentRun
     run.actNumber = act
-    run.floorInAct = 3
+    run.floorInAct = tonumber(os.getenv("ESCALA_FLOOR") or "") or 3
     run.currentNode = { type = "battle" }
     local sid = spriteId or EnemyRenderer.resolveSpriteId(act, "battle")
-    game.enemy = EnemyRoster.spawn(Enemy, sid, ActSystem.getEnemyStats(act, 3, "battle"))
+    game.enemy = EnemyRoster.spawn(Enemy, sid, ActSystem.getEnemyStats(act, run.floorInAct, "battle"))
     game.enemy.isBoss = false
     _G.game = game
     local topBar = TopBar:new()
@@ -76,6 +76,12 @@ local function battle(act, tod, spriteId)
     GameplayScene.init({ game = game, topBar = topBar, gameUI = gameUI, playButton = playButton })
     if game.messageSystem then game.messageSystem.messages = {} end
 
+    local seed = tonumber(os.getenv("ESCALA_SEED") or "")
+    if seed then
+        WorldRoad.restoreProgress(act, 3)
+        WorldRoad._rng:setSeed(seed)
+        WorldRoad._props = {}
+    end
     WorldRoad.setBiome(act)
     WorldRoad.setTimeOfDay(tod, true)
     for _ = 1, 90 do

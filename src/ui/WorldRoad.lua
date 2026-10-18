@@ -209,6 +209,8 @@ WorldRoad._entry = nil
 WorldRoad._ambient = {}
 WorldRoad._smoke = {}
 WorldRoad._castleTop = nil
+WorldRoad._lumBoxes = {}
+WorldRoad._lumBoxN = 0
 WorldRoad._birds = {}
 WorldRoad._birdTimer = 3
 WorldRoad._critters = {}
@@ -2230,6 +2232,51 @@ local CASTLE_APPROACH = {
     far = 1.3,
     side = 0.17, sidePow = 1.5,
 }
+CASTLE_APPROACH.box = { x1 = 0, y1 = 0, x2 = 0, y2 = 0 }
+function CASTLE_APPROACH.overlap(x1, y1, x2, y2, b, padTop)
+    local ox = math.min(x2, b.x2) - math.max(x1, b.x1)
+    local oy = math.min(y2, b.y2) - math.max(y1, b.y1 - (padTop or 0))
+    if ox <= 0 or oy <= 0 then return 0 end
+    return ox * oy
+end
+function CASTLE_APPROACH.pick(g, w, progress, bid, bw, bh, sinkExtra)
+    local C = CASTLE_APPROACH
+    local dir = ((((BIOME_BY_ID[bid] or rawBiome()).celestial or PropCut.EMPTY).xr or 0.5) > 0.5) and -1 or 1
+    local off = w * C.side * (1 - progress) ^ C.sidePow
+    local f = WorldRoad._fork
+    if f and (f.animIn or 0) < 1 and WorldRoad._castleShift then return WorldRoad._castleShift end
+    local lm = WorldRoad._landmark and WorldRoad._lmMark
+    local best, bestScore, curScore
+    local cur = WorldRoad._castleShift
+    for k = 1, 5 do
+        local dx = (k == 1 and dir * off) or (k == 2 and -dir * off)
+            or (k == 3 and dir * off * 1.7) or (k == 4 and -dir * off * 1.7) or 0
+        local cx = g.cx + dx
+        local by = g.crestYAt(cx) + bh * (0.03 + 0.20 * (1 - progress) + sinkExtra)
+        local x1, y1, x2, y2 = cx - bw / 2, by - bh, cx + bw / 2, by
+        local score = (k - 1) * 0.02 * bw * bh
+        if k == 5 and WorldRoad._enemyDraw and off > 1 then score = score + bw * bh end
+        if f and f.markBoxes then
+            for i = 1, f.n do
+                local b = f.markBoxes[i]
+                if b then score = score + C.overlap(x1, y1, x2, y2, b, 28) * 4 end
+            end
+        end
+        if lm and lm.w and lm.px then
+            local b = C.box
+            b.x1, b.y1, b.x2, b.y2 = lm.px - lm.w / 2, lm.py - lm.h, lm.px + lm.w / 2, lm.py
+            score = score + C.overlap(x1, y1, x2, y2, b, 0) * 4
+        end
+        local lb = WorldRoad._lumBoxes
+        for i = 1, (WorldRoad._lumBoxN or 0) do
+            score = score + C.overlap(x1, y1, x2, y2, lb[i], 0)
+        end
+        if cur and math.abs(dx - cur) < 2 then curScore = score end
+        if not bestScore or score < bestScore then best, bestScore = dx, score end
+    end
+    if curScore and curScore <= bestScore + bw * bh * 0.08 then return cur end
+    return best
+end
 local CASTLE_SINK_EXTRA = {
     fields = 0.06, frost = 0.07, marsh = 0.06, dusk = 0.06,
 }
@@ -2253,9 +2300,17 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local baseScale = (refW * 0.155) / 218
     local growth = CASTLE_APPROACH[bid] or 2.9
     local s = baseScale * (CASTLE_APPROACH.far + (progress ^ 1.4) * growth)
-    local cx = g.cx + w * CASTLE_APPROACH.side * (1 - progress) ^ CASTLE_APPROACH.sidePow
-        * ((((BIOME_BY_ID[bid] or rawBiome()).celestial or PropCut.EMPTY).xr or 0.5) > 0.5 and -1 or 1)
     local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
+    local shift = CASTLE_APPROACH.pick(g, w, progress, bid, iw * s, ih * s, sinkExtra)
+    if alpha >= 1 then
+        local cs, ct0, now = WorldRoad._castleShift, WorldRoad._castleShiftT, WorldRoad._time
+        if cs and ct0 and now >= ct0 and now - ct0 < 0.5 then
+            local k = 1 - math.exp(-(now - ct0) * 25)
+            shift = math.abs(shift - cs) < 1 and shift or cs + (shift - cs) * k
+        end
+        WorldRoad._castleShift, WorldRoad._castleShiftT = shift, now
+    end
+    local cx = g.cx + shift
     local baseY = g.crestYAt(cx)
         + ih * s * (0.03 + 0.20 * (1 - progress) + sinkExtra)
     local lmc = Scene.Grade.cfg("landmarks").castle
@@ -2315,7 +2370,81 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     return true
 end
 
+function LMG.lumPrepass(g, w, camZ)
+    if not WorldRoad._travel then
+        local screenK = WorldRoad.enemyScreenK(g.h)
+        for _, p in ipairs(WorldRoad._props) do
+            if not p._recuo and not p.ghost and LuminaireEngine.def(p.bid, p.kind) then
+                local tP = g.tOf(p.z - camZ)
+                local img = tP and getSprite(p.kind, p.variant, p.bid)
+                if img then
+                    local size = kindSize(p.kind, p.bid) * (p.big or 1) * (PropCut.sizeK[img] or 1)
+                    if PropCut.nearFade(g.scaleAt(size, tP, img:getHeight()), screenK, false) <= 0 then
+                        p._recuo = true
+                        local capS = PropCut.PIX.cap * PropCut.PIX.ref * screenK * 0.95
+                        local pt = capS * img:getHeight() / (size * g.h * UNIT_PX * 1.25)
+                        local tN = (math.max(0, pt - 0.14) / 0.86) ^ (1 / 1.65)
+                        local zN = camZ + REL_CREST * (1 - math.min(1, tN) ^ (1 / T_POW))
+                        local free = true
+                        for _, q in ipairs(WorldRoad._props) do
+                            local qd = q ~= p and LuminaireEngine.def(q.bid, q.kind)
+                            if qd and qd.roadside
+                               and math.abs(q.z - zN) < (q.side == p.side and 5 or 2.5) then
+                                free = false
+                                break
+                            end
+                        end
+                        if free then p.z = zN end
+                    end
+                end
+            end
+        end
+        if WorldRoad._lumMidZ ~= camZ and #WorldRoad._props > 0 then
+            WorldRoad._lumMidZ = camZ
+            local has, best, bestD = false, nil, nil
+            for _, p in ipairs(WorldRoad._props) do
+                local d = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
+                local tP = d and d.roadside and g.tOf(p.z - camZ)
+                if tP then
+                    if tP >= 0.42 and tP <= 0.66 then has = true; break end
+                    local dd = math.abs(tP - 0.52)
+                    if not bestD or dd < bestD then best, bestD = p, dd end
+                end
+            end
+            if not has and best then
+                best.z = camZ + REL_CREST * (1 - 0.52 ^ (1 / T_POW))
+                best._recuo = true
+            end
+        end
+    end
+    WorldRoad._lumBoxN = 0
+    local screenK = WorldRoad.enemyScreenK(g.h)
+    for _, p in ipairs(WorldRoad._props) do
+        local d = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
+        local tP = d and d.roadside and g.tOf(p.z - camZ)
+        if tP and tP > 0.3 then
+            local img = getSprite(p.kind, p.variant, p.bid)
+            if img then
+                local size = kindSize(p.kind, p.bid) * (p.big or 1) * (PropCut.sizeK[img] or 1)
+                local sc = g.scaleAt(size, tP, img:getHeight())
+                if PropCut.nearFade(sc, screenK, false) > 0 then
+                    local halfR = ROAD_HALF * w * (0.30 + 0.70 * (tP ^ 1.15))
+                    local px = g.cx + p.side * halfR * (1.05 + p.lane * 1.2)
+                    local py = g.latY(px - g.cx, tP)
+                    local n = WorldRoad._lumBoxN + 1
+                    local lbx = WorldRoad._lumBoxes[n] or {}
+                    WorldRoad._lumBoxes[n] = lbx
+                    lbx.x1, lbx.x2 = px - img:getWidth() * sc * 0.5, px + img:getWidth() * sc * 0.5
+                    lbx.y1, lbx.y2 = py - img:getHeight() * sc, py
+                    WorldRoad._lumBoxN = n
+                end
+            end
+        end
+    end
+end
+
 local function drawCastle(g, x, w, camZ)
+    LMG.lumPrepass(g, w, camZ)
     local bl = WorldRoad._blend
     if bl and WorldRoad._prevBiomeIndex then
         local t = math.min(1, bl.t / bl.duration)
@@ -3138,6 +3267,7 @@ local lumArg = {}
 
 local function drawProps(g, x, w, camZ)
     table.sort(WorldRoad._props, propZDesc)
+    WorldRoad._lumBoxN = 0
     WorldRoad._pools.shN, WorldRoad._pools.occN = 0, 0
 
     local farPass = WorldRoad._lists.far
@@ -4082,6 +4212,8 @@ function WorldRoad.resetRun()
     WorldRoad._enemyDraw = nil
     WorldRoad._enemyBaseY = nil
     WorldRoad._nextLumZ = nil
+    WorldRoad._castleShift, WorldRoad._castleShiftT = nil, nil
+    WorldRoad._lumMidZ = nil
     WorldRoad._timeOfDay = 1
     WorldRoad._timeOfDayTarget = 1
     WorldRoad._props = {}

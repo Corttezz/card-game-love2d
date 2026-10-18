@@ -242,11 +242,18 @@ function M.run()
                 end
             end
             local ctop = WorldRoad._castleTop
-            local cel = (require("src.data.biomes")[b] or {}).celestial or {}
-            local want = (cel.xr or 0.5) > 0.5 and -1 or 1
-            t:truthy(("bioma %d: castelo no meio da jornada fica do lado oposto ao sol (dx %.0f)")
-                :format(b, ctop and (ctop.cx - W / 2) or 0),
-                ctop ~= nil and (ctop.cx - W / 2) * want > W * 0.05)
+            local hit = 0
+            if ctop then
+                for i = 1, (WorldRoad._lumBoxN or 0) do
+                    local lb = WorldRoad._lumBoxes[i]
+                    local ox = math.min(ctop.cx + ctop.w / 2, lb.x2) - math.max(ctop.cx - ctop.w / 2, lb.x1)
+                    local oy = math.min(ctop.baseY, lb.y2) - math.max(ctop.baseY - ctop.h, lb.y1)
+                    if ox > 0 and oy > 0 then hit = hit + ox * oy end
+                end
+            end
+            t:truthy(("bioma %d: castelo no meio da jornada sai do centro e da frente das luminárias (dx %.0f, sobreposição %.0f px²)")
+                :format(b, ctop and (ctop.cx - W / 2) or 0, hit),
+                ctop ~= nil and math.abs(ctop.cx - W / 2) > W * 0.05 and hit < ctop.w * ctop.h * 0.05)
             t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
                 :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
         end
