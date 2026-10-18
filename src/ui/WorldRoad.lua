@@ -45,6 +45,15 @@ function PropCut.get(img, kind)
     end
     return q or nil, PropCut.vis[img]
 end
+function PropCut.mask(img, kind, x, y, rot, sx, sy, kx, t)
+    local q, ihv = PropCut.get(img, kind)
+    ShadowEngine.mask(img, q, x, y, rot, sx, sy, img:getWidth() / 2, ihv, kx or 0, t)
+end
+function PropCut.occlude(img, kind, x, y, sx, sy, t, occ)
+    local q, ihv = PropCut.get(img, kind)
+    ShadowEngine.occlude(img, q, x, y, sx, sy, img:getWidth() / 2, ihv, t,
+        occ.k, occ.down, occ.side)
+end
 function PropCut.draw(img, kind, x, y, rot, sx, sy, kx)
     local q, ihv = PropCut.get(img, kind)
     local iw = img:getWidth()
@@ -1312,10 +1321,6 @@ LMG.tint4 = { 1, 1, 1, 1 }
 LMG.LIGHT_SHOP_GLOW = { 1.00, 0.72, 0.38 }
 LMG.EMBERS = { color = { 1.00, 0.62, 0.22 }, count = 3 }
 LMG.SELF_LIGHT = { 1.00, 0.90, 0.74 }
-function LMG.guard(x0, y0, x1, y1)
-    ShadowEngine.guard(x0, y0, x1, y1)
-    Scene.Contact.guard(x0, y0, x1, y1)
-end
 function LMG.selfLight(lmk, px, py, iw, ih, s, rel, alphaK)
     if not lmk or not lmk.selfLight or lmk.selfLight <= 0 or alphaK <= 0.05 then return end
     local gx, gy = love.graphics.transformPoint(px, py - ih * s * 0.45)
@@ -2122,7 +2127,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
         local crest2 = g.crestYAt(cx)
         local ry = math.max(2, (3 + 7 * progress) * g.h / 768)
         Scene.Contact.queueDisc(cx, crest2 + ry, iw * s * 0.42, ry,
-            Scene.Grade.cfg("contact").alpha * 0.55)
+            Scene.Grade.cfg("contact").alpha * 0.55, 0.01)
     end
 
     local cc = Scene.Grade.color("castle", 0.35 + 0.65 * progress, LMG.c)
@@ -3006,10 +3011,6 @@ local function drawProps(g, x, w, camZ)
     local function flushGrassTo(relLow)
         if relLow < grassRel - 0.35 or relLow <= -1 then
             drawGrass(g, x, w, camZ, relLow, grassRel)
-            local tLo = g.tOf(grassRel) or -1
-            local tHi = (relLow <= -1) and 99 or (g.tOf(relLow) or -1)
-            ShadowEngine.flushBand(tLo, tHi)
-            Scene.Contact.flushBand(tLo, tHi)
             grassRel = relLow
             WeatherEngine.flushTo(relLow)
         end
@@ -3047,7 +3048,6 @@ local function drawProps(g, x, w, camZ)
     end
     local function drawChosenLandmark()
         local lm, rel, t = lmMark.lm, lmMark.rel, lmMark.t
-        LMG.guard(-1e9, -1e9, 1e9, 1e9)
         local img = getLandmark(lm.key)
         if not img then return end
         img = landmarkFrame(lm.key, lm.phase or lm.z) or img
@@ -3080,6 +3080,7 @@ local function drawProps(g, x, w, camZ)
         end
         WorldRoad._flagKx = kxF
         love.graphics.draw(img, math.floor(lx), math.floor(py), 0, s, s, iw / 2, ih, kxF, 0)
+        ShadowEngine.mask(img, nil, math.floor(lx), math.floor(py), 0, s, s, iw / 2, ih, kxF, t)
         love.graphics.setColor(1, 1, 1, 1)
         if not (lmk and lmk.smoke == "thin" and _G.gameSettings and _G.gameSettings.reducedMotion) then
             drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1, lmk and lmk.smoke == "thin")
@@ -3112,7 +3113,6 @@ local function drawProps(g, x, w, camZ)
     end
     local function drawForkPhysical()
         local f, relM, tM = fkMarks.f, fkMarks.rel, fkMarks.t
-        LMG.guard(-1e9, -1e9, 1e9, 1e9)
         f._geo = f._geo or {}
         for i = 1, f.n do
             local node = f.nodes[i]
@@ -3172,6 +3172,7 @@ local function drawProps(g, x, w, camZ)
                 end
                 WorldRoad._flagKx = kxF
                 love.graphics.draw(img, math.floor(px), math.floor(py), 0, s, s, iw / 2, ih, kxF, 0)
+                ShadowEngine.mask(img, nil, math.floor(px), math.floor(py), 0, s, s, iw / 2, ih, kxF, tM)
                 if not (lmk and lmk.smoke == "thin" and _G.gameSettings and _G.gameSettings.reducedMotion) then
                     drawLandmarkSmoke(key, px, py, iw, ih, s, aMul, lmk and lmk.smoke == "thin")
                 end
@@ -3344,15 +3345,16 @@ local function drawProps(g, x, w, camZ)
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
                                 shadowOpts(0.8 * fadeA, cflip,
                                     PropCut.cutOf(cimg, p.kind),
-                                    WorldRoad.SHADOW_PROFILE[p.kind]))
+                                    WorldRoad.SHADOW_PROFILE[p.kind]), t)
                             Scene.Contact.queue(cimg, cx2, cy2, cs, t, 0.8 * fadeA, cflip)
                             local cc = Scene.Grade.color(Scene.Grade.familyOf(p.kind), t, LMG.c)
                             love.graphics.setColor(math.min(1, cc[1] * 0.88 * cvv.tintR),
                                 math.min(1, cc[2] * 0.88 * cvv.tintG),
                                 math.min(1, cc[3] * 0.88 * cvv.tintB), fadeA)
-                            LMG.guard(cx2 - iw * cs, cy2 - ih * cs, cx2 + iw * cs, cy2 + 4)
                             PropCut.draw(cimg, p.kind, math.floor(cx2),
                                 math.floor(cy2), crot, cs * cflip, cs, ckx * cflip)
+                            PropCut.mask(cimg, p.kind, math.floor(cx2),
+                                math.floor(cy2), crot, cs * cflip, cs, ckx * cflip, t)
                         end
                     end
                 end
@@ -3368,13 +3370,14 @@ local function drawProps(g, x, w, camZ)
                             local fy = g.latY(fx - g.cx, ft)
                             local fs = g.scaleAt((KIND_SIZE.fence or 1) * (p.big or 1), ft, ih)
                             ShadowEngine.queue(img, fx, fy - 1, fs,
-                                shadowOpts(0.85 * fadeA))
+                                shadowOpts(0.85 * fadeA), ft)
                             Scene.Contact.queue(img, fx, fy, fs, ft, 0.85 * fadeA, 1)
                             local fc = Scene.Grade.color("prop", ft, LMG.c)
                             love.graphics.setColor(fc[1] * 0.94, fc[2] * 0.94, fc[3] * 0.94, fadeA)
-                            LMG.guard(fx - iw * fs, fy - ih * fs, fx + iw * fs, fy + 4)
                             love.graphics.draw(img, math.floor(fx), math.floor(fy),
                                 0, fs, fs, iw / 2, ih)
+                            ShadowEngine.mask(img, nil, math.floor(fx), math.floor(fy),
+                                0, fs, fs, iw / 2, ih, 0, ft)
                         end
                     end
                 end
@@ -3383,7 +3386,7 @@ local function drawProps(g, x, w, camZ)
                 if not ShadowEngine.queue(img, pxX, sy - 1, s,
                     shadowOpts(aFade * fadeA, lumFlip * vflip,
                         lumAnc and lumAnc.footPad or PropCut.cutOf(img, p.kind),
-                        WorldRoad.SHADOW_PROFILE[p.kind])) then
+                        WorldRoad.SHADOW_PROFILE[p.kind]), t) then
                     local shd = sunShadowDir(g, x, w, pxX)
                     love.graphics.setColor(0, 0, 0, 0.20 * aFade * fadeA)
                     love.graphics.ellipse("fill",
@@ -3407,9 +3410,17 @@ local function drawProps(g, x, w, camZ)
                 local pc = Scene.Grade.color(Scene.Grade.familyOf(p.kind, lumDef ~= nil), t, LMG.c)
                 love.graphics.setColor(math.min(1, pc[1] * vtR), math.min(1, pc[2] * vtG),
                     math.min(1, pc[3] * vtB), fadeA)
-                LMG.guard(pxX - iw * s, sy + sink2 - ih * s, pxX + iw * s, sy + sink2 + 4)
                 PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip)
+                PropCut.mask(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
+                    rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip, t)
+                if isTree and fadeA >= 0.5 then
+                    local occ = Scene.Grade.cfg("trees").selfShade
+                    if occ then
+                        PropCut.occlude(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
+                            s * lumFlip * vflip, s, t, occ)
+                    end
+                end
                 if p.kind ~= "tuft" and p.kind ~= "flowers" and p.kind ~= "fence"
                    and fadeA >= 0.5 then
                     local oc2 = Scene.Grade.cfg("occlusion")
@@ -3541,7 +3552,8 @@ local function drawProps(g, x, w, camZ)
         end
         drawList(behind)
         WeatherEngine.flushTo(WorldRoad.BATTLE_REL)
-        LMG.guard(-1e9, -1e9, 1e9, 1e9)
+        ShadowEngine.endFrame(Scene.Contact.drawAcc)
+        Scene.Contact.endFrame()
         enemyFn()
         WorldRoad._enemyDraw = nil
         drawList(front)
@@ -3559,7 +3571,7 @@ local function drawProps(g, x, w, camZ)
         lmMark.drawn = true
     end
     flushGrassTo(-1)
-    ShadowEngine.endFrame()
+    ShadowEngine.endFrame(Scene.Contact.drawAcc)
     Scene.Contact.endFrame()
 end
 
@@ -3706,7 +3718,6 @@ function WorldRoad.draw(x, y, w, h, actNumber)
         local k = (ex - ccx) / 1000
         local D = (g.bottomY - g.crestApexY) * k
         ShadowEngine.setClip(ccx, ccy, g.R * k, D)
-        Scene.Contact.setClip(ccx, ccy, g.R * k, D)
         local sr, sg, sb = Scene.Grade.shadowTint()
         ShadowEngine.setTint(sr * 0.3, sg * 0.3, sb * 0.3)
     end

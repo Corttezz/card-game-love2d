@@ -10,7 +10,6 @@ local frame = {
     alphaK = 1,
     tr = 0, tg = 0, tb = 0,
     cx = 0, cy = 0, R = 1, D = 1, clip = false,
-    bandUsed = false,
 }
 function ShadowEngine.setTint(r, g, b) frame.tr, frame.tg, frame.tb = r or 0, g or 0, b or 0 end
 function ShadowEngine.getClip() return frame.cx, frame.cy, frame.R, frame.D end
@@ -28,9 +27,7 @@ function ShadowEngine.setFrame(sunX, w, tod, luma)
     local l = math.max(0, math.min(1, luma or 1))
     frame.alpha = 0.15 + 0.15 * l
     frame.stamp = love.timer.getTime()
-    frame.clip = false
-    frame.bandUsed = false
-    ShadowEngine.stats.queued = 0
+        ShadowEngine.stats.queued = 0
     ShadowEngine.stats.bands = 0
 end
 
@@ -51,29 +48,46 @@ local SMEAR = { { -1, 0 }, { 0.7, -0.5 }, { 0.35, 0.55 } }
 local SCALE = 3
 local scratch, batching, batchPrev
 local soloAlphaK
-local SH = { cv = {}, quad = nil, vC = { 0, 0 }, vB = { 0, 0 }, vT = { 0, 0, 0, 0 }, yMin = 1e9, yMax = -1e9, xMin = 1e9, xMax = -1e9, pLo = nil, pHi = nil,
-            bx0 = {}, by0 = {}, bx1 = {}, by1 = {}, bn = 0 }
-ShadowEngine.FADE = 0.6
+local SH = { cv = {}, vT = { 0, 0, 0, 0 }, depth = 1, alpha = 1,
+             mq = {}, mn = 0, oq = {}, on = 0, done = {}, odone = {}, mdone = {} }
+ShadowEngine.FADE = 0.45
+ShadowEngine.MASK = true
 
 SH.FADE_SRC = [[
 uniform float fadeK;
 vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
-    vec4 c = Texel(tex, tc) * color;
-    float d = clamp(1.0 - tc.y, 0.0, 1.0);
-    float f = 1.0 - fadeK * d;
-    return vec4(c.rgb * f, c.a * f);
+    vec4 t = Texel(tex, tc);
+    float cov = t.a * color.a * (1.0 - fadeK * color.b * clamp(1.0 - tc.y, 0.0, 1.0));
+    float on = step(0.004, t.a);
+    if (color.g > 0.5) return vec4(0.0, cov, color.r * on, 0.0);
+    return vec4(color.r * on, 0.0, 0.0, cov);
+}
+]]
+SH.MASK_SRC = [[
+vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
+    if (Texel(tex, tc).a < 0.5) discard;
+    return vec4(color.r, 0.0, 0.0, 1.0);
 }
 ]]
 SH.COMP_SRC = [[
-uniform vec2 C;
-uniform float R;
-uniform float D;
-uniform vec2 band;
+uniform Image maskTex;
 uniform vec4 tint;
+uniform float useMask;
+uniform float eps;
+uniform vec2 px;
 vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
-    float t = (R - distance(sc, C)) / D;
-    if (t < band.x || t >= band.y) discard;
-    float a = Texel(tex, tc).a * tint.a;
+    vec4 s = Texel(tex, tc);
+    float pa = s.a * tint.a;
+    float oa = 0.0;
+    if (useMask > 0.5) {
+        float m = Texel(maskTex, tc).r;
+        float md = max(max(Texel(maskTex, tc + vec2(px.x, 0.0)).r, Texel(maskTex, tc - vec2(px.x, 0.0)).r),
+                       max(Texel(maskTex, tc + vec2(0.0, px.y)).r, Texel(maskTex, tc - vec2(0.0, px.y)).r));
+        if (max(m, md) > s.r + eps) pa = 0.0;
+        if (m > s.r + eps) pa = 0.0;
+        if (s.g > 0.0 && m > 0.0 && abs(m - s.b) <= eps) oa = s.g;
+    }
+    float a = 1.0 - (1.0 - pa) * (1.0 - oa);
     return vec4(tint.rgb * a, a);
 }
 ]]
@@ -82,29 +96,36 @@ local function shaders()
     if SH.ok == nil then
         local ok1, f = pcall(love.graphics.newShader, SH.FADE_SRC)
         local ok2, c = pcall(love.graphics.newShader, SH.COMP_SRC)
-        SH.ok = ok1 and ok2
+        local ok3, m = pcall(love.graphics.newShader, SH.MASK_SRC)
+        SH.ok = ok1 and ok2 and ok3
         if SH.ok then
-            SH.fade, SH.comp = f, c
+            SH.fade, SH.comp, SH.mask = f, c, m
         else
-            Debug.warn("[ShadowEngine] shader de sombra não compilou: " .. tostring(ok1 and c or f))
+            Debug.warn("[ShadowEngine] shader de sombra não compilou: "
+                .. tostring((not ok1 and f) or (not ok2 and c) or m))
         end
+        local fm = love.graphics.getCanvasFormats and love.graphics.getCanvasFormats()
+        SH.fmt = (fm and fm.rgba16f) and "rgba16f" or "rgba8"
+        SH.eps = (SH.fmt == "rgba16f") and 0.0015 or 0.006
     end
     return SH.ok
 end
 
 local function ensureCanvas(key)
+    shaders()
     local W, H = love.graphics.getDimensions()
     local cw, ch = math.ceil(W / SCALE), math.ceil(H / SCALE)
     local cv = SH.cv[key]
     if not cv or cv:getWidth() ~= cw or cv:getHeight() ~= ch then
-        cv = love.graphics.newCanvas(cw, ch, { format = "rgba8" })
+        local fmt = (key == "solo") and "rgba8" or SH.fmt
+        cv = love.graphics.newCanvas(cw, ch, { format = fmt })
         cv:setFilter("nearest", "nearest")
         SH.cv[key] = cv
     end
     return cv
 end
 
-local function openCanvas(key, clear)
+local function openCanvas(key, shader)
     local cv = ensureCanvas(key)
     scratch = cv
     batchPrev = love.graphics.getCanvas()
@@ -115,13 +136,12 @@ local function openCanvas(key, clear)
     love.graphics.origin()
     love.graphics.setScissor()
     love.graphics.setCanvas(cv)
-    if clear then love.graphics.clear(0, 0, 0, 0) end
+    love.graphics.clear(0, 0, 0, 0)
     love.graphics.setBlendMode("lighten", "premultiplied")
     love.graphics.scale(1 / SCALE)
-    if shaders() then
-        love.graphics.setShader(SH.fade)
-        SH.fade:send("fadeK", ShadowEngine.FADE)
-        SH.fadeK = ShadowEngine.FADE
+    if SH.ok then
+        love.graphics.setShader(shader or SH.fade)
+        if not shader then SH.fade:send("fadeK", ShadowEngine.FADE) end
     end
     batching = true
 end
@@ -139,47 +159,27 @@ local function closeCanvas()
     end
 end
 
-local function composite(cv, tLo, tHi, alphaK)
-    local a = math.min(0.75, frame.alpha * frame.alphaK * (alphaK or 1))
-    local W, H = love.graphics.getDimensions()
-    local y0, y1 = 0, H
-    if frame.clip and tLo > -1e8 then
-        local rLo = frame.R - frame.D * math.max(-1, tLo)
-        local rHi = frame.R - frame.D * math.min(4, tHi)
-        y0 = frame.cy - rLo
-        local half = math.max(frame.cx, W - frame.cx)
-        local under = rHi * rHi - half * half
-        y1 = under > 0 and (frame.cy - math.sqrt(under)) or H
-        y0 = math.max(0, math.floor(y0 / SCALE) * SCALE, math.floor(SH.yMin / SCALE) * SCALE)
-        y1 = math.min(H, math.ceil(y1 / SCALE + 1) * SCALE, math.ceil(SH.yMax / SCALE + 1) * SCALE)
-        if y1 <= y0 then return end
-    end
-    SH.quad = SH.quad or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
-    local cw, ch = cv:getDimensions()
-    SH.quad:setViewport(0, y0 / SCALE, cw, (y1 - y0) / SCALE, cw, ch)
+local function composite(cv, aMul, mask)
     love.graphics.push()
     love.graphics.origin()
     love.graphics.setBlendMode("alpha", "premultiplied")
     local prevShader = love.graphics.getShader()
-    if shaders() then
+    if SH.ok then
         love.graphics.setShader(SH.comp)
-        SH.vC[1], SH.vC[2] = frame.cx, frame.cy
-        SH.comp:send("C", SH.vC)
-        SH.comp:send("R", frame.R)
-        SH.comp:send("D", frame.D)
-        if frame.clip then
-            SH.vB[1], SH.vB[2] = tLo, tHi
-        else
-            SH.vB[1], SH.vB[2] = -1e9, 1e9
-        end
-        SH.comp:send("band", SH.vB)
-        SH.vT[1], SH.vT[2], SH.vT[3], SH.vT[4] = frame.tr, frame.tg, frame.tb, a
+        SH.vT[1], SH.vT[2], SH.vT[3], SH.vT[4] = frame.tr, frame.tg, frame.tb, aMul
         SH.comp:send("tint", SH.vT)
+        SH.comp:send("useMask", mask and 1 or 0)
+        SH.comp:send("eps", SH.eps)
+        SH.comp:send("maskTex", mask or cv)
+        local cw, ch = cv:getDimensions()
+        SH.vP = SH.vP or { 0, 0 }
+        SH.vP[1], SH.vP[2] = 1 / cw, 1 / ch
+        SH.comp:send("px", SH.vP)
         love.graphics.setColor(1, 1, 1, 1)
     else
-        love.graphics.setColor(0, 0, 0, a)
+        love.graphics.setColor(0, 0, 0, aMul)
     end
-    love.graphics.draw(cv, SH.quad, 0, y0, 0, SCALE, SCALE)
+    love.graphics.draw(cv, 0, 0, 0, SCALE, SCALE)
     love.graphics.setShader(prevShader)
     love.graphics.setBlendMode("alpha")
     love.graphics.setColor(1, 1, 1, 1)
@@ -188,33 +188,16 @@ end
 
 function ShadowEngine.beginBatch()
     if not ShadowEngine.isActive() or batching then return end
-    openCanvas("solo", true)
+    SH.depth, SH.alpha = 1, 1
+    openCanvas("solo")
 end
 
 function ShadowEngine.endBatch()
     if not batching then return end
     local cv = scratch
     closeCanvas()
-    local wasClip = frame.clip
-    frame.clip = false
-    composite(cv, -1e9, 1e9, soloAlphaK)
-    frame.clip = wasClip
+    composite(cv, math.min(0.75, frame.alpha * frame.alphaK * (soloAlphaK or 1)), nil)
     soloAlphaK = nil
-end
-
-local function fadeFor(feetY, lenPx, feetX, halfW)
-    if feetY < SH.yMin then SH.yMin = feetY end
-    if feetY + lenPx + 8 > SH.yMax then SH.yMax = feetY + lenPx + 8 end
-    if feetX then
-        local hw = (halfW or 0) + lenPx * 0.8 + 8
-        if feetX - hw < SH.xMin then SH.xMin = feetX - hw end
-        if feetX + hw > SH.xMax then SH.xMax = feetX + hw end
-    end
-    local want = feetX and ShadowEngine.FADE or 0
-    if batching and SH.ok and love.graphics.getShader() == SH.fade and SH.fadeK ~= want then
-        SH.fade:send("fadeK", want)
-        SH.fadeK = want
-    end
 end
 
 local NO_OPTS = {}
@@ -260,8 +243,7 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     if solo then ShadowEngine.beginBatch() end
     local shd = tipShift(feetX)
     if yCut then cutScissor(ay, yCut) end
-    fadeFor(ay, (ih - pad - baseH) * s * frame.len * lenK, feetX, iw * s * 0.6)
-    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setColor(SH.depth, 0, 1, SH.alpha)
     for pi = 1, #SMEAR do
         love.graphics.draw(img,
             math.floor(feetX + SMEAR[pi][1] * d),
@@ -276,7 +258,7 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     return true
 end
 
-local silTint = { 1, 1, 1, 1 }
+local silTint = { 1, 0, 0, 1 }
 function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
     if not ShadowEngine.isActive() then return false end
     opts = opts or NO_OPTS
@@ -293,7 +275,6 @@ function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
     local shd = tipShift(feetX)
     local wK = opts.widthK or 1
     if yCut then cutScissor(ay, yCut) end
-    fadeFor(ay, (opts.contentH or 0) * frame.len * lenK, nil, nil)
     for pi = 1, #SMEAR do
         love.graphics.push()
         love.graphics.translate(
@@ -312,97 +293,120 @@ function ShadowEngine.silhouette(feetX, feetY, opts, drawFn)
 end
 
 local squeue, squeueN = {}, 0
-function ShadowEngine.queue(img, feetX, feetY, s, opts)
+function ShadowEngine.queue(img, feetX, feetY, s, opts, t)
     if not img or not ShadowEngine.isActive() then return false end
     squeueN = squeueN + 1
     ShadowEngine.stats.queued = squeueN
     local q = squeue[squeueN]
     if not q then q = {}; squeue[squeueN] = q end
-    q.img, q.x, q.y, q.s, q.o = img, feetX, feetY, s, opts
-    local lenPx = img:getHeight() * s * frame.len * ((opts and opts.lenK) or 1)
-    local hw = img:getWidth() * s * 0.6 + 6
-    local tip = -tipShift(feetX) * 0.78 * lenPx
-    local n = SH.bn + 1
-    SH.bn = n
-    SH.bx0[n] = feetX - hw + math.min(0, tip)
-    SH.bx1[n] = feetX + hw + math.max(0, tip)
-    SH.by0[n], SH.by1[n] = feetY - 4, feetY + lenPx + 8
+    q.img, q.x, q.y, q.s, q.o, q.t = img, feetX, feetY, s, opts, t or 1
     return true
 end
 
-local sdone = 0
-
-local function drawPending()
-    if sdone >= squeueN then return end
-    openCanvas("acc", not frame.bandUsed)
-    frame.bandUsed = true
-    for i = sdone + 1, squeueN do
-        local q = squeue[i]
-        ShadowEngine.sprite(q.img, q.x, q.y, q.s, q.o)
-        q.img, q.o = nil, nil
-    end
-    sdone = squeueN
-    closeCanvas()
+function ShadowEngine.mask(img, quad, x, y, r, sx, sy, ox, oy, kx, t)
+    if not img or not ShadowEngine.isActive() then return end
+    local n = SH.mn + 1
+    SH.mn = n
+    local e = SH.mq[n]
+    if not e then e = {}; SH.mq[n] = e end
+    e.img, e.quad, e.x, e.y, e.r = img, quad, x, y, r or 0
+    e.sx, e.sy, e.ox, e.oy, e.kx, e.t = sx, sy, ox or 0, oy or 0, kx or 0, t or 1
 end
 
-function ShadowEngine.commit()
-    if not SH.pLo then return end
-    drawPending()
-    composite(SH.cv.acc, SH.pLo, SH.pHi)
-    ShadowEngine.stats.bands = (ShadowEngine.stats.bands or 0) + 1
-    SH.pLo, SH.pHi = nil, nil
-end
-
-function ShadowEngine.flushBand(tLo, tHi)
+function ShadowEngine.maskRect(x0, y0, x1, y1, t)
     if not ShadowEngine.isActive() then return end
-    if not frame.bandUsed and sdone >= squeueN then return end
-    if not SH.pLo then SH.pLo = tLo end
-    SH.pHi = tHi
+    local n = SH.mn + 1
+    SH.mn = n
+    local e = SH.mq[n]
+    if not e then e = {}; SH.mq[n] = e end
+    e.img, e.quad = nil, nil
+    e.x, e.y, e.sx, e.sy, e.t = x0, y0, x1 - x0, y1 - y0, t or 1
 end
 
-local function pendingStrip()
-    if not frame.clip then return -1e9, 1e9 end
-    local W = love.graphics.getDimensions()
-    local rLo = frame.R - frame.D * math.max(-1, SH.pLo)
-    local rHi = frame.R - frame.D * math.min(4, SH.pHi)
-    local half = math.max(frame.cx, W - frame.cx)
-    local under = rHi * rHi - half * half
-    return frame.cy - rLo, under > 0 and (frame.cy - math.sqrt(under)) or 1e9
+function ShadowEngine.occlude(img, quad, x, y, sx, sy, ox, oy, t, k, down, side)
+    if not img or not ShadowEngine.isActive() or (k or 0) <= 0 then return end
+    local n = SH.on + 1
+    SH.on = n
+    local e = SH.oq[n]
+    if not e then e = {}; SH.oq[n] = e end
+    local h = (quad and select(4, quad:getViewport()) or img:getHeight()) * math.abs(sy)
+    local w = img:getWidth() * math.abs(sx)
+    local away = tipShift(x)
+    e.img, e.quad = img, quad
+    e.x = x + (away >= 0 and 1 or -1) * math.min(1, math.abs(away) * 2) * (side or 0) * w
+    e.y = y + (down or 0) * h
+    e.sx, e.sy, e.ox, e.oy, e.t, e.k = sx, sy, ox, oy, t or 1, k
 end
 
-function ShadowEngine.guard(x0, y0, x1, y1)
-    if not SH.pLo then return end
-    local sy0, sy1 = pendingStrip()
-    if y0 < sy0 then y0 = sy0 end
-    if y1 > sy1 then y1 = sy1 end
-    if y1 < y0 then return end
-    for i = 1, SH.bn do
-        if x1 >= SH.bx0[i] and x0 <= SH.bx1[i] and y1 >= SH.by0[i] and y0 <= SH.by1[i] then
-            ShadowEngine.commit()
-            return
+local function drawMask(e)
+    love.graphics.setColor(e.t, 0, 0, 1)
+    if not e.img then
+        love.graphics.rectangle("fill", e.x, e.y, e.sx, e.sy)
+    elseif e.quad then
+        love.graphics.draw(e.img, e.quad, e.x, e.y, e.r, e.sx, e.sy, e.ox, e.oy, e.kx, 0)
+    else
+        love.graphics.draw(e.img, e.x, e.y, e.r, e.sx, e.sy, e.ox, e.oy, e.kx, 0)
+    end
+end
+
+local function drawOcc(e)
+    love.graphics.setColor(e.t, 1, 1, e.k)
+    if e.quad then
+        love.graphics.draw(e.img, e.quad, e.x, e.y, 0, e.sx, e.sy, e.ox, e.oy)
+    else
+        love.graphics.draw(e.img, e.x, e.y, 0, e.sx, e.sy, e.ox, e.oy)
+    end
+end
+
+local function grouped(list, n, done, key, fn)
+    for i = 1, n do done[i] = false end
+    for i = 1, n do
+        if not done[i] then
+            local k = list[i][key]
+            for j = i, n do
+                if not done[j] and list[j][key] == k then
+                    done[j] = true
+                    fn(list[j])
+                end
+            end
         end
     end
 end
 
-function ShadowEngine.endFrame()
-    ShadowEngine.commit()
-    SH.xMin, SH.xMax = 1e9, -1e9
-    SH.bn = 0
-    squeueN, sdone = 0, 0
-    frame.bandUsed = false
-    SH.yMin, SH.yMax = 1e9, -1e9
+local function drawQueued(q)
+    SH.depth = q.t
+    ShadowEngine.sprite(q.img, q.x, q.y, q.s, q.o)
+    q.img, q.o = nil, nil
+end
+
+function ShadowEngine.endFrame(extraFn)
+    local any = squeueN > 0 or SH.on > 0 or extraFn ~= nil
+    if any and ShadowEngine.isActive() then
+        openCanvas("acc")
+        SH.alpha = math.min(0.75, frame.alpha * frame.alphaK)
+        grouped(squeue, squeueN, SH.done, "img", drawQueued)
+        grouped(SH.oq, SH.on, SH.odone, "img", drawOcc)
+        if extraFn then extraFn() end
+        closeCanvas()
+        local mask = nil
+        if ShadowEngine.MASK and SH.mn > 0 and SH.ok then
+            openCanvas("mask", SH.mask)
+            grouped(SH.mq, SH.mn, SH.mdone, "img", drawMask)
+            closeCanvas()
+            mask = SH.cv.mask
+        end
+        composite(SH.cv.acc, 1, mask)
+        ShadowEngine.stats.bands = (ShadowEngine.stats.bands or 0) + 1
+    end
+    for i = 1, SH.on do SH.oq[i].img, SH.oq[i].quad = nil, nil end
+    for i = 1, SH.mn do SH.mq[i].img, SH.mq[i].quad = nil, nil end
+    for i = 1, squeueN do squeue[i].img, squeue[i].o = nil, nil end
+    squeueN, SH.mn, SH.on = 0, 0, 0
+    SH.depth, SH.alpha = 1, 1
 end
 
 function ShadowEngine.flush()
-    if squeueN == 0 then return end
-    local wasClip = frame.clip
-    frame.clip = false
-    frame.bandUsed = false
-    drawPending()
-    composite(SH.cv.acc, -1e9, 1e9)
-    frame.clip = wasClip
-    squeueN, sdone = 0, 0
-    frame.bandUsed = false
+    ShadowEngine.endFrame()
 end
 
 return ShadowEngine

@@ -158,6 +158,18 @@ aí; o código só lê.
   (não convencia).
 - Custo: 561 draw calls e 7,7 ms em 1080p (eram 4,3). Baratear = máscara num passe só.
 
+**Rodada de ajuste (17/Out, checklist em `tools/preview_out/integracao_terreno/08_ajuste/checklist.md`):**
+- Sombras em PASSE ÚNICO com máscara de profundidade: os objetos gravam o contorno com a sua
+  profundidade t (`ShadowEngine.mask/maskRect`, `PropCut.mask`); as sombras projetadas e de contato
+  são acumuladas com a profundidade de quem projeta (`queue(..., t)`, `ContactShadow.drawAcc`); a
+  composição só escurece onde o objeto não está mais perto. Agrupado por imagem.
+  Resultado: 390 draw calls e 4,4 a 5,2 ms em 1080p (a versão por fatia+guard fazia 561 e 7,7 ms).
+  Batalha: `endFrame` antes do inimigo.
+- Dia: `contrastFarDay 1.0` (o horizonte clareia e azula; só o pôr do sol escurece a distância).
+- Árvores perto: `treeNear` (verde) + `treeGain 0.7`, só até t = 0,6.
+- `ShadowEngine.occlude` (volume na copa) existe, mas está desligado (`selfShade.k = 0`): em intensidade
+  baixa o roxo do shadowTint deixava a copa acinzentada (saturação 131 → 104 no pôr do sol).
+
 **Números (1024×768, test_perf_budget isolado):** antes 427 draw calls /
 30,5 KB; depois 463 / 31,3 KB (o véu é ~40 draw calls). Locais do arquivo
 `WorldRoad.lua`: 198 → 188 (`python tools/count_locals.py src/ui/WorldRoad.lua`).

@@ -26,7 +26,7 @@ local S = {
     fr = 1, fg = 1, fb = 1, fogNear = 0, fogFar = 0, fogCurve = 1,
     ar = 1, ag = 1, ab = 1,
     liftRef = 0, maxLift = 1,
-    groundFar = 1, groundReach = 0.6, treeGain = 1,
+    groundFar = 1, groundReach = 0.6, treeGain = 1, tnr = 1, tng = 1, tnb = 1,
     depth = 1,
 }
 
@@ -44,7 +44,7 @@ local function resolve(g, tod, into)
     into.tb = lerp(g.day[3], g.dusk[3], tod)
     into.shr, into.shg, into.shb = g.shadowTint[1], g.shadowTint[2], g.shadowTint[3]
     into.satNear, into.satFar = g.satNear, g.satFar
-    into.contrastFar = g.contrastFar
+    into.contrastFar = lerp(g.contrastFarDay or g.contrastFar, g.contrastFar, tod)
     local fd = g.fogDusk or g.fog
     into.fr = math.min(1.6, lerp(g.fog[1], fd[1], tod) * 1.9)
     into.fg = math.min(1.6, lerp(g.fog[2], fd[2], tod) * 1.9)
@@ -53,13 +53,15 @@ local function resolve(g, tod, into)
     into.liftRef, into.maxLift = g.liftRef or 0, g.maxLift or 1
     into.groundFar, into.groundReach = g.groundFar or 1, g.groundReach or 0.6
     into.treeGain = g.treeGain or 1
+    local tn = g.treeNear
+    into.tnr, into.tng, into.tnb = tn and tn[1] or 1, tn and tn[2] or 1, tn and tn[3] or 1
     return into
 end
 
 local prevLine = {}
 local FIELDS = { "tr", "tg", "tb", "shr", "shg", "shb", "satNear", "satFar",
                  "contrastFar", "fr", "fg", "fb", "fogNear", "fogFar", "fogCurve",
-                 "liftRef", "maxLift", "groundFar", "groundReach", "treeGain" }
+                 "liftRef", "maxLift", "groundFar", "groundReach", "treeGain", "tnr", "tng", "tnb" }
 
 function SceneGrade.begin(bid, tod, fromBid, blendK, amb)
     tod = clamp01(tod or 1)
@@ -120,7 +122,11 @@ function SceneGrade.color(family, t, out)
     local l = 0.299 * r + 0.587 * g + 0.114 * b
     r, g, b = lerp(l, r, sat), lerp(l, g, sat), lerp(l, b, sat)
     local bright = lerp(S.contrastFar, 1, math.min(1, t / CONTRAST_REACH))
-    if family == "tree" then bright = bright * S.treeGain end
+    if family == "tree" then
+        local k = math.min(1, t / 0.6)
+        bright = bright * lerp(1, S.treeGain, k)
+        r, g, b = r * lerp(1, S.tnr, k), g * lerp(1, S.tng, k), b * lerp(1, S.tnb, k)
+    end
     out[1] = clamp01(r * bright)
     out[2] = clamp01(g * bright)
     out[3] = clamp01(b * bright)

@@ -11,32 +11,15 @@ local frame = { alpha = 0.55, height = 0.035, spread = 1.08, dither = true,
                 r = 0.2, g = 0.15, b = 0.25 }
 local queue, qn = {}, 0
 local discs, dn = {}, 0
-local clip = { on = false, cx = 0, cy = 0, R = 1, D = 1, vC = { 0, 0 }, vB = { 0, 0 }, pLo = nil, pHi = nil }
-local CLIP_SRC = [[
-uniform vec2 C;
-uniform float R;
-uniform float D;
-uniform vec2 band;
-vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
-    float t = (R - distance(sc, C)) / D;
-    if (t < band.x || t >= band.y) discard;
-    return Texel(tex, tc) * color;
-}
-]]
-local clipShader
+local acc = { on = false, t = 1 }
 
 local function rect(x, y, w, h, r, g, b, a)
-    love.graphics.setColor(r, g, b, a)
+    if acc.on then
+        love.graphics.setColor(acc.t, 0, 0, a)
+    else
+        love.graphics.setColor(r, g, b, a)
+    end
     love.graphics.rectangle("fill", x, y, w, h)
-end
-
-function ContactShadow.setClip(cx, cy, R, D)
-    clip.on, clip.cx, clip.cy, clip.R, clip.D = true, cx, cy, R, math.max(1, D)
-end
-
-local function tAt(x, y)
-    local dx, dy = x - clip.cx, y - clip.cy
-    return (clip.R - math.sqrt(dx * dx + dy * dy)) / clip.D
 end
 
 local function hash01(n)
@@ -126,12 +109,12 @@ local function unit()
     return math.max(1, math.floor(H / 250 + 0.5))
 end
 
-function ContactShadow.queueDisc(x, y, rx, ry, alpha)
+function ContactShadow.queueDisc(x, y, rx, ry, alpha, t)
     if rx ~= rx or ry ~= ry or rx < 1 or ry < 1 then return end
     dn = dn + 1
     local d = discs[dn]
     if not d then d = {}; discs[dn] = d end
-    d.x, d.y, d.rx, d.ry, d.a = x, y, rx, ry, alpha or 0.4
+    d.x, d.y, d.rx, d.ry, d.a, d.t = x, y, rx, ry, alpha or 0.4, t or 0
 end
 
 local function disc(d)
@@ -179,107 +162,38 @@ local function band(q, fp)
     end
 end
 
-local function drawAll(tLo, tHi)
-    local any = false
+local function drawAll()
     for i = 1, dn do
         local d = discs[i]
-        if not tLo or (tAt(d.x, d.y + d.ry) >= tLo and tAt(d.x, d.y - d.ry) < tHi) then
-            disc(d)
-            any = true
-        end
+        acc.t = d.t or 1
+        disc(d)
     end
     for i = 1, qn do
         local q = queue[i]
         local fp = foot[q.img]
         if fp then
-            local reach = frame.height * fp.w * q.s * 2 + 4
-            if not tLo or (tAt(q.x, q.y + reach) >= tLo and tAt(q.x, q.y) < tHi) then
-                band(q, fp)
-                any = true
-            end
+            acc.t = q.t
+            band(q, fp)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
-    return any
 end
 
-local function drawBand(tLo, tHi)
-    if (qn == 0 and dn == 0) or not clip.on then return end
-    if clipShader == nil then
-        local ok, sh = pcall(love.graphics.newShader, CLIP_SRC)
-        clipShader = ok and sh or false
-        if not ok then Debug.warn("[ContactShadow] shader de recorte não compilou: " .. tostring(sh)) end
-    end
-    if not clipShader then return end
-    local hit = false
-    for i = 1, dn do
-        local d = discs[i]
-        if tAt(d.x, d.y + d.ry) >= tLo and tAt(d.x, d.y - d.ry) < tHi then hit = true; break end
-    end
-    if not hit then
-        for i = 1, qn do
-            local q = queue[i]
-            local fp = foot[q.img]
-            if fp and tAt(q.x, q.y + frame.height * fp.w * q.s * 2 + 4) >= tLo and tAt(q.x, q.y) < tHi then
-                hit = true
-                break
-            end
-        end
-    end
-    if not hit then return end
-    local prev = love.graphics.getShader()
-    love.graphics.setShader(clipShader)
-    clip.vC[1], clip.vC[2] = clip.cx, clip.cy
-    clipShader:send("C", clip.vC)
-    clipShader:send("R", clip.R)
-    clipShader:send("D", clip.D)
-    clip.vB[1], clip.vB[2] = tLo, tHi
-    clipShader:send("band", clip.vB)
-    drawAll(tLo, tHi)
-    love.graphics.setShader(prev)
-end
-
-function ContactShadow.flushBand(tLo, tHi)
-    if not clip.on then return end
-    if not clip.pLo then clip.pLo = tLo end
-    clip.pHi = tHi
-end
-
-function ContactShadow.commit()
-    if not clip.pLo then return end
-    drawBand(clip.pLo, clip.pHi)
-    clip.pLo, clip.pHi = nil, nil
-end
-
-function ContactShadow.guard(x0, y0, x1, y1)
-    if not clip.pLo then return end
-    for i = 1, qn do
-        local q = queue[i]
-        if q.x >= x0 - 60 and q.x <= x1 + 60 and q.y >= y0 and q.y <= y1 + 30 then
-            ContactShadow.commit()
-            return
-        end
-    end
-    for i = 1, dn do
-        local d = discs[i]
-        if d.x + d.rx >= x0 and d.x - d.rx <= x1 and d.y + d.ry >= y0 and d.y - d.ry <= y1 then
-            ContactShadow.commit()
-            return
-        end
-    end
+function ContactShadow.drawAcc()
+    acc.on = true
+    drawAll()
+    acc.on = false
 end
 
 function ContactShadow.endFrame()
-    ContactShadow.commit()
     for i = 1, qn do queue[i].img = nil end
     qn, dn = 0, 0
-    clip.on = false
 end
 
 function ContactShadow.flush()
     if qn == 0 and dn == 0 then return end
     local n0 = qn
-    drawAll(nil, nil)
+    drawAll()
     for i = 1, qn do queue[i].img = nil end
     qn, dn = 0, 0
     ContactShadow.stats.quads = n0

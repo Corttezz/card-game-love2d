@@ -400,25 +400,18 @@ function M.run()
     do
         local img = loadImg("assets/sprites/world/fields_tree_0.png")
         local s = 2.5
-        local crestY, R = 120, W * 1.6
-        local cx, cy = W / 2, crestY + R
-        local D = H - crestY
-        local function tAtY(y) return (R - (cy - y)) / D end
         local cv = love.graphics.newCanvas(W, H)
         love.graphics.setCanvas(cv)
         love.graphics.clear(0.5, 0.5, 0.5, 1)
         ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
         ShadowEngine.setTint(0.30, 0.12, 0.24)
-        ShadowEngine.setClip(cx, cy, R, D)
         local footFar = math.floor(H * 0.45)
         local footPost = math.floor(H * 0.62)
         local px0, px1 = FX - 6, FX + 6
-        ShadowEngine.queue(img, FX, footFar, s, {})
-        ShadowEngine.flushBand(tAtY(crestY), tAtY(footPost))
-        ShadowEngine.guard(px0, footPost - 160, px1, footPost)
+        ShadowEngine.queue(img, FX, footFar, s, {}, 0.3)
         love.graphics.setColor(1, 1, 1, 1)
         love.graphics.rectangle("fill", px0, footPost - 160, px1 - px0, 160)
-        ShadowEngine.flushBand(tAtY(footPost), 99)
+        ShadowEngine.maskRect(px0, footPost - 160, px1, footPost, 0.6)
         ShadowEngine.endFrame()
         love.graphics.setCanvas()
         local id = cv:newImageData()
@@ -432,12 +425,10 @@ function M.run()
         t:eq("ordem de profundidade: sombra da árvore de trás não pinta o poste da frente (pixels escurecidos)", dark, 0)
         do
             ShadowEngine.setFrame(SUNX, FW, TOD, LUMA)
-            ShadowEngine.setClip(cx, cy, R, D)
-            ShadowEngine.queue(img, FX, footFar, s, {})
-            ShadowEngine.flushBand(5, 6)
+            ShadowEngine.queue(img, FX, footFar, s, {}, 0.3)
             ShadowEngine.endFrame()
             local bm, am = love.graphics.getBlendMode()
-            t:truthy("estado: blend mode restaurado mesmo com faixa vazia (" .. bm .. "/" .. am .. ")",
+            t:truthy("estado: blend mode restaurado depois do passe de sombras (" .. bm .. "/" .. am .. ")",
                 bm == "alpha" and am == "alphamultiply")
         end
         local shaded = 0
