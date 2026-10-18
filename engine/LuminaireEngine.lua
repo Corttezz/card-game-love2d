@@ -93,7 +93,7 @@ local CATALOG = {
     },
 
     dusk = {
-        lantern = { size = 5.8, face = 1, roadside = true,
+        lantern = { size = 6.1, face = 1, roadside = true,
             lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = { 1.00, 0.72, 0.30 }, radiusK = 1.40,

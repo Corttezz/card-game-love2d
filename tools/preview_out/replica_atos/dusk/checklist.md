@@ -21,7 +21,7 @@ Recortes antes|depois em `recortes/` (lado esquerdo = antes, direito = depois).
 |---|-------|--------|-----------|
 | 1 | Sombra natural, nascendo da base, sem sombra de trás pintando a frente | sim: sombra de árvore e de poste aparece agora (antes não existia), 3 degraus, cai para a câmera (sol atrás do castelo) | `arvores_dir_tod0.65.png`, `poste_meio_tod0.95.png` |
 | 2 | Árvore nunca mais clara/enevoada que o chão ao lado | sim: `treeDepth` do ato 1 (véu = curva do chão, sem filtro branco); copa do meio fica escura contra o sol, perto mais saturada | `arvores_esq_tod0.65.png` |
-| 3 | Escala pelo inimigo | sim: poste ~0,9x o inimigo na profundidade dele (tamanho 5,8 com a arte nova de 62 px de altura útil; antiga tinha 63 px e 5,6); árvore adulta acima do poste; fogueira menor que 0,6x | `objetos.md` |
+| 3 | Escala pelo inimigo | sim: poste ~0,9x o inimigo na profundidade dele (tamanho 6,1: mesma altura do poste do ato 1 em cada profundidade, 601 px contra 605 em t 0,85); árvore adulta acima do poste; fogueira menor que 0,6x | `objetos.md` |
 | 4 | Árvores variadas, sem repetir vizinha | sim: 3 → 7 variantes (choupo estreito, carmim de outono, meio pelada, chorona), `variants.dusk_tree = 7` liga o `makeWall` sem repetir | `recortes/candidatas_arvores.png`, `depois/b6_*_viagem.png` |
 | 5 | Lado iluminado para o sol | sim: arte nova pedida com contraluz (só aro quente no topo, lados iguais), por isso sem `lit` e espelho livre | `candidatas_arvores.png` |
 | 6 | Luminária apagada de dia, acesa no entardecer | sim: motor comum (`dayK`); o ato 6 vive em tod alto, então acende; a chama pintada fica, como no ato 1 | `poste_meio_tod0.65/0.95.png` |

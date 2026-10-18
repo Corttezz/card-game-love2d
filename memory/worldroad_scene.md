@@ -298,7 +298,7 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   `variants.dusk_tree = 7`), porque a parede era uma massa roxa única. Poste regenerado (madeira
   sem a faixa laranja pintada e sem a mão-francesa quadriculada) e cintilação refeita só no vidro em
   `anim/dusk_lantern_0/` (o `anim/` tem prioridade sobre o PNG solto: trocar só o PNG não muda nada);
-  tamanho 5,8 porque a arte nova é 1 px mais baixa.
+  tamanho 6,1 para o poste medir o mesmo que o do ato 1 em cada profundidade (601 x 605 px em t 0,85).
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

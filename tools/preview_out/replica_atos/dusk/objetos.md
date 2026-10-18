@@ -4,7 +4,7 @@ Régua: inimigo comum em 1080p = 279 px em t = 0,385 (`escala_humana r6v3:b6`).
 
 | Objeto | Escala para o inimigo | Contato | Oclusão | Sombra | Cor | Veredito | Arte |
 |--------|----------------------|---------|---------|--------|-----|----------|------|
-| Poste com lanterna (`dusk_lantern_0`) | ~0,9x na profundidade do inimigo (350 px em t 0,54 com tamanho 6,2; final 5,8) | faixa de contato na base | tufos do motor comum | projetada para a câmera, 3 degraus | madeira uniforme, vidro âmbar | ok | REGERADA (PixelLab `create_image_pro`, 9 candidatas, escolhida `lamp__0`); 9 quadros de cintilação refeitos só no vidro |
+| Poste com lanterna (`dusk_lantern_0`) | ~0,85x na profundidade do inimigo, igual ao ato 1 (tamanho 6,1: 601 px em t 0,85 contra 605 do poste dos campos) | faixa de contato na base | tufos do motor comum | projetada para a câmera, 3 degraus | madeira uniforme, vidro âmbar | ok | REGERADA (PixelLab `create_image_pro`, 9 candidatas, escolhida `lamp__0`); 9 quadros de cintilação refeitos só no vidro |
 | Árvore redonda (`dusk_tree_0`) | 0,9 a 1,3x | contato + disco de copa (perto) | tufos | sim | púrpura, grade do ato 1 | ok | mantida |
 | Árvore em patamares (`dusk_tree_1`) | idem | idem | idem | sim | idem | ok | mantida |
 | Árvore larga (`dusk_tree_2`) | idem (sizeK 0,9) | idem | idem | sim | idem | ok | mantida |
