@@ -50,6 +50,9 @@ WeatherEngine.PRESETS = {
 
 local LEAF_SHED = { kind = "leaf", fall = 0.07, fallVar = 0.4, size = 2,
                     windK = 0.24, land = 1.8, fg = 0, colors = { { 1, 1, 1 } } }
+local DUST = { kind = "ash", fall = -0.004, fallVar = 0.4, size = 1.2,
+               windK = 0.12, land = 0.3, fg = 0, colors = { { 1, 1, 1 } } }
+local MAX_DUST = 14
 local MAX_SHED = 20
 local RETIRE_FADE = 6
 local MAX_AGE = 75
@@ -150,6 +153,8 @@ local function spawn(p, pr, camZ, fresh, kindTag)
     local isRise, isFF = kindTag == "rise", kindTag == "ff"
     p.pr = pr
     p.tint = nil
+    p.alphaK = nil
+    p.dust = false
     p.rise = isRise
     p.ff = isFF
     p.st = 0
@@ -542,6 +547,7 @@ function WeatherEngine.beginFrame(f)
         local A = 1
         if behind then A = 0.5 elseif t < 0.25 then A = 0.62 + t * 1.5 end
         if (p.retire or 0) > 0 then A = A * max(0, 1 - p.retire / RETIRE_FADE) end
+        if p.alphaK then A = A * p.alphaK end
         local kind = p.ff and "ff" or (p.rise and "ember" or pr.kind)
         local wind = p.wind or 0
 
@@ -857,6 +863,8 @@ function WeatherEngine.emitLeaf(dxFrac, z, t, hFrac, color)
     P[nP] = p
     p.pr = LEAF_SHED
     p.shed = true
+    p.dust = false
+    p.alphaK = nil
     p.age, p.retire = 0, 0
     p.rise, p.ff = false, false
     p.st, p.lt = 0, 0
@@ -876,6 +884,45 @@ function WeatherEngine.emitLeaf(dxFrac, z, t, hFrac, color)
         j = j - 1
     end
     P[j + 1] = p
+end
+
+function WeatherEngine.emitDust(dxFrac, z, t, hFrac, color, alpha)
+    if WeatherEngine.disabled or reduced() or not geo then return end
+    local n = 0
+    for i = 1, nP do if P[i].dust then n = n + 1 end end
+    if n >= MAX_DUST then return end
+    nP = nP + 1
+    local p = P[nP] or {}
+    P[nP] = p
+    p.pr = DUST
+    p.shed = false
+    p.dust = true
+    p.age, p.retire = 0, 0
+    p.rise, p.ff = false, false
+    p.st, p.lt = 0, 0
+    p.fg = false
+    p.ph = rng:random() * 6.2832
+    p.ci = 1
+    p.z = z
+    p.lx = dxFrac / spread(t)
+    p.hg = hFrac
+    p.vf = DUST.fall * (0.7 + rng:random() * 0.6)
+    p.alphaK = alpha or 0.1
+    p.tint = p.tint or {}
+    p.tint[1], p.tint[2], p.tint[3] = color[1], color[2], color[3]
+    p.sortRel = p.z - (WeatherEngine._sortCamZ or 0)
+    local j = nP - 1
+    while j >= 1 and (P[j].sortRel or 0) < p.sortRel do
+        P[j + 1] = P[j]
+        j = j - 1
+    end
+    P[j + 1] = p
+end
+
+function WeatherEngine.dustCount()
+    local n = 0
+    for i = 1, nP do if P[i].dust then n = n + 1 end end
+    return n
 end
 
 function WeatherEngine.hasFireflies(bid)

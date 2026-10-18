@@ -226,9 +226,7 @@ local function hash01(n)
     return (math.sin(n * 127.1 + 311.7) * 43758.5453) % 1
 end
 
-function LuminaireEngine.drawEmbers(bid, kind, fx, fy, sh, seed)
-    local def = LuminaireEngine.def(bid, kind)
-    local em = def and def.embers
+function LuminaireEngine.drawEmbersSpec(em, fx, fy, sh, seed)
     if not em or sh < 14 then return end
     local time = love.timer.getTime()
     local c = em.color
@@ -249,6 +247,11 @@ function LuminaireEngine.drawEmbers(bid, kind, fx, fy, sh, seed)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+function LuminaireEngine.drawEmbers(bid, kind, fx, fy, sh, seed)
+    local def = LuminaireEngine.def(bid, kind)
+    return LuminaireEngine.drawEmbersSpec(def and def.embers, fx, fy, sh, seed)
 end
 
 return LuminaireEngine

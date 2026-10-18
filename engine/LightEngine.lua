@@ -130,6 +130,7 @@ function LightEngine.submit(spec)
         ditherAmt = spec.ditherAmt or 1.0,
         levels = spec.levels or 4,
         z = spec.z or -1,
+        sy = spec.sy or 1,
     }
     if #queue < MAX_LIGHTS then
         queue[#queue + 1] = entry
@@ -258,14 +259,14 @@ function LightEngine.composite(x, y, w, h)
                 love.graphics.setColor(e.color[1], e.color[2], e.color[3], 1)
                 local sc = (e.r * 2 / S) / ww
                 love.graphics.draw(whiteImg, math.floor(e.x / S),
-                    math.floor(e.y / S), 0, sc, sc, ww / 2, ww / 2)
+                    math.floor(e.y / S), 0, sc, sc * (e.sy or 1), ww / 2, ww / 2)
             else
                 love.graphics.setShader()
                 local sc = (e.r * 2 / S) / mw
                 love.graphics.setColor(e.color[1] * e.i, e.color[2] * e.i,
                     e.color[3] * e.i, 1)
                 love.graphics.draw(microImg, math.floor(e.x / S),
-                    math.floor(e.y / S), 0, sc, sc, mw / 2, mw / 2)
+                    math.floor(e.y / S), 0, sc, sc * (e.sy or 1), mw / 2, mw / 2)
             end
         end
     end
@@ -280,5 +281,9 @@ function LightEngine.composite(x, y, w, h)
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
 end
+
+function LightEngine._lastEntry() return queue[#queue] end
+function LightEngine._entryAt(i) return queue[i] end
+function LightEngine.queued() return #queue end
 
 return LightEngine

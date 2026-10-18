@@ -1,9 +1,9 @@
-local function landmarks(scorchR, scorchA)
+local function landmarks(scorchR, scorchA, glowA)
     return {
         rest   = { scorch = { radius = scorchR, alpha = scorchA }, embers = true,
                    smoke = "thin", pulse = 0.18 },
         battle = { flagWave = true, dust = { rate = 0.4, alpha = 0.10 } },
-        shop   = { windowGlow = { alpha = 0.22, spread = 1.4 }, smoke = "chimney" },
+        shop   = { windowGlow = { alpha = glowA or 0.22, spread = 1.4 }, smoke = "chimney" },
         event  = { lanternGlow = true },
         elite  = { runeFlicker = true },
         castle = { lowFog = true, hillShadow = true },
@@ -23,7 +23,7 @@ return {
         lowFog = { alpha = 0.18, height = 0.09, drift = 0.02 },
         trees = { tint = 0.05, scale = 0.08, flip = true, windPhase = true,
                   canopySway = 0.030, trunkSway = 0.010, bushSway = 0.040 },
-        landmarks = landmarks(1.7, 0.55),
+        landmarks = landmarks(1.7, 0.55, 0.32),
     },
     highlands = {
         grade = {

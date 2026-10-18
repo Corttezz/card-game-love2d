@@ -570,7 +570,7 @@ function M.run()
 
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
         local pm = src:find("drawMountains(g, x, w, WorldRoad._camZ)", 1, true)
-        local pf = src:find("WeatherEngine.drawLowFog(", 1, true)
+        local pf = pm and src:find("WeatherEngine.drawLowFog(", pm, true)
         local pmf = src:find("drawMountainsFront(g, x, w, WorldRoad._camZ)", 1, true)
         t:truthy("WorldRoad: névoa baixa entre o fundo e a frente das montanhas",
             pm ~= nil and pf ~= nil and pmf ~= nil and pm < pf and pf < pmf)

@@ -1307,23 +1307,35 @@ function LMG.refH(key, ih) return LMG.ORIG_H[key] or ih end
 LMG.c = {}
 LMG.fc = {}
 LMG.tint4 = { 1, 1, 1, 1 }
+LMG.castleShOpts = { baseK = 0.12, lenK = 0.30, alphaK = 0.8 }
+LMG.LIGHT_SHOP_GLOW = { 1.00, 0.72, 0.38 }
+LMG.EMBERS = { color = { 1.00, 0.62, 0.22 }, count = 3 }
 
-local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha)
+local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha, thin)
     local sm = lmCfg(LANDMARK_SMOKE, key)
-    if not sm or ih * s < 46 then return end
-    local mx = px + (sm.xf - 0.5) * iw * s
-    local my = py - ih * s + sm.yf * ih * s
-    local rise = ih * s * 0.52
+    local xf, yf, k0 = nil, nil, 1
+    if sm then
+        xf, yf = sm.xf, sm.yf
+    elseif thin then
+        local anc = LuminaireEngine.anchor("landmark", key, 0,
+            "assets/sprites/world/" .. key .. ".png")
+        xf, yf = (anc and anc.ax) or 0.5, (anc and anc.ay) or 0.4
+        k0 = 0.5
+    end
+    if not xf or ih * s < 46 * k0 then return end
+    local mx = px + (xf - 0.5) * iw * s
+    local my = py - ih * s + yf * ih * s
+    local rise = ih * s * 0.52 * (thin and 0.8 or 1)
     local cr, cg, cb = 0.80, 0.77, 0.72
-    if sm.color then cr, cg, cb = sm.color[1], sm.color[2], sm.color[3] end
+    if sm and sm.color then cr, cg, cb = sm.color[1], sm.color[2], sm.color[3] end
     for k = 0, 2 do
         local p = (WorldRoad._time * 0.30 + k * 0.333) % 1
-        local a = alpha * 0.40 * math.min(1, p * 5) * (1 - p)
+        local a = alpha * 0.40 * k0 * math.min(1, p * 5) * (1 - p)
         if a > 0.01 then
             local puffX = mx + math.sin(WorldRoad._time * 0.8 + k * 2.1 + p * 2.6)
                 * (0.8 + p * 3.2) * s + p * 2.5 * s
             local puffY = my - p * rise
-            local sz = math.max(2, (1.1 + p * 2.8) * s)
+            local sz = math.max(2, (1.1 + p * 2.8) * s * k0)
             love.graphics.setColor(cr, cg, cb, a)
             love.graphics.rectangle("fill", math.floor(puffX - sz / 2),
                 math.floor(puffY - sz / 2), sz, sz)
@@ -1337,11 +1349,20 @@ local function drawLandmarkSmoke(key, px, py, iw, ih, s, alpha)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local function submitLandmarkLight(key, px, py, iw, ih, s, rel, seed, alphaK)
+local function submitLandmarkLight(key, px, py, iw, ih, s, rel, seed, alphaK, lmk)
     local L = lmCfg(LANDMARK_LIGHT, key)
     if not L or not LightEngine.submitMicro then return end
     alphaK = alphaK or 1
     if alphaK <= 0.05 then return end
+    if lmk and (lmk.lanternGlow == false or lmk.runeFlicker == false) then return end
+    if lmk and lmk.windowGlow then
+        local gx, gy = love.graphics.transformPoint(px, py + 2)
+        LightEngine.submit({
+            x = gx, y = gy, radius = iw * s * 0.5 * lmk.windowGlow.spread, sy = 0.35,
+            color = LMG.LIGHT_SHOP_GLOW, intensity = lmk.windowGlow.alpha * alphaK,
+            dither = true, ditherAmt = 0.28, levels = 6, seed = seed, z = rel,
+        })
+    end
     local anc = LuminaireEngine.anchor("landmark", key, 0,
         "assets/sprites/world/" .. key .. ".png")
     local ax, ay = (anc and anc.ax) or 0.5, (anc and anc.ay) or 0.45
@@ -1351,8 +1372,15 @@ local function submitLandmarkLight(key, px, py, iw, ih, s, rel, seed, alphaK)
     local sd = (seed or 0) % 1000
     local n = love.math.noise(time * 1.4, sd) * 0.75
         + love.math.noise(time * 4.0, sd + 37.2) * 0.25
+    if lmk and lmk.runeFlicker then
+        n = love.math.noise(time * 0.7, sd) * 0.65
+            + love.math.noise(time * 2.1, sd + 53.7) * 0.35
+    end
     local fxT, fyT = love.graphics.transformPoint(fx, fy)
     local fi = 0.86 + 0.14 * n
+    if lmk and lmk.pulse and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
+        fi = fi * (1 + lmk.pulse * math.sin(time * 2.3 + sd))
+    end
     local fr = 0.88 + 0.18 * n
     local r = iw * s * L.radiusK
     LightEngine.submit({
@@ -2074,23 +2102,20 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
     local baseY = g.crestYAt(cx)
         + ih * s * (0.03 + 0.20 * (1 - progress) + sinkExtra)
-    if alpha >= 1 then
-        local ra = envColor("roadA")
+    local lmc = Scene.Grade.cfg("landmarks").castle
+    if alpha >= 1 and lmc and lmc.hillShadow then
         local crest2 = g.crestYAt(cx)
-        love.graphics.setColor(ra[1] * 0.92, ra[2] * 0.92, ra[3] * 0.92, 0.85)
-        love.graphics.ellipse("fill", cx, crest2 + 2,
-            iw * s * 0.34, 5 + 9 * progress)
-        local shd = sunShadowDir(g, x, w, cx)
-        love.graphics.setColor(0, 0, 0, 0.15)
-        love.graphics.ellipse("fill", cx + shd * iw * s * 0.20
-            + (shd == 0 and iw * s * 0.10 or 0), crest2 + 3,
-            iw * s * 0.28, 4 + 7 * progress)
+        ShadowEngine.queue(img, cx, crest2 + 2, s, LMG.castleShOpts)
     end
 
     local cc = Scene.Grade.color("castle", 0.6 + 0.4 * progress, LMG.c)
     love.graphics.setColor(cc[1], cc[2], cc[3], alpha)
     love.graphics.draw(img, math.floor(cx - iw * s / 2),
         math.floor(baseY - ih * s), 0, s, s)
+    if alpha >= 1 and lmc and lmc.lowFog and progress > 0.55 then
+        WeatherEngine.drawLowFog(cx - iw * s * 0.6, baseY - ih * s * 0.12, iw * s * 1.2,
+            ih * s * 0.12 + 4, Scene.Grade.cfg("lowFog"), (progress - 0.55) / 0.45 * 0.8)
+    end
 
     if alpha >= 1 then
         WorldRoad._castleTop = {
@@ -3013,10 +3038,33 @@ local function drawProps(g, x, w, camZ)
         Scene.Contact.queue(img, lx, shY, s, t, 1, 1)
         local lc = Scene.Grade.color("landmark", t, LMG.c)
         love.graphics.setColor(lc[1], lc[2], lc[3], 1)
-        love.graphics.draw(img, math.floor(lx - iw * s / 2), math.floor(py - ih * s), 0, s, s)
+        local kxF = 0
+        if lmk and lmk.flagWave and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
+            local wP = GrassField.PRESETS[rawBiome().id]
+            local gw = wP and GrassField.windAt((lx - x) / w, lm.z, WorldRoad._time, wP, 0) or 0
+            kxF = -gw * 0.035 + math.sin(WorldRoad._time * 2.4) * 0.02
+        end
+        WorldRoad._flagKx = kxF
+        love.graphics.draw(img, math.floor(lx), math.floor(py), 0, s, s, iw / 2, ih, kxF, 0)
         love.graphics.setColor(1, 1, 1, 1)
-        drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1)
-        submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z)
+        drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1, lmk and lmk.smoke == "thin")
+        submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z, 1, lmk)
+        if lmk and lmk.embers then
+            local anc = LuminaireEngine.anchor("landmark", lm.key, 0,
+                "assets/sprites/world/" .. lm.key .. ".png")
+            local ax, ay = (anc and anc.ax) or 0.5, (anc and anc.ay) or 0.45
+            LuminaireEngine.drawEmbersSpec(LMG.EMBERS, lx + (ax - 0.5) * iw * s,
+                py - ih * s * (1 - ay), ih * s, lm.z)
+        end
+        if lmk and lmk.dust and not (_G.gameSettings and _G.gameSettings.reducedMotion)
+           and love.math.random() < lmk.dust.rate / 60 then
+            local ra = envColor("roadA")
+            local halfF = ROAD_HALF * (0.30 + 0.70 * (t ^ 1.15))
+            WeatherEngine.emitDust((lx - g.cx) / w + (love.math.random() - 0.5) * halfF * 1.6,
+                lm.z, t, 0.01,
+                { math.min(1, ra[1] * 1.4), math.min(1, ra[2] * 1.35), math.min(1, ra[3] * 1.2) },
+                lmk.dust.alpha)
+        end
         submitLandmarkOccluder(img, lx, py, iw, ih, s, rel)
         local oc2 = Scene.Grade.cfg("occlusion")
         local th = oc2.baseCover * ih * s / GrassField.CELL_H
@@ -3078,11 +3126,33 @@ local function drawProps(g, x, w, camZ)
                 local lc = Scene.Grade.color("landmark", tM, LMG.c)
                 love.graphics.setColor(math.min(1, lc[1] * br), math.min(1, lc[2] * br),
                     math.min(1, lc[3] * br), aMul)
-                love.graphics.draw(img, math.floor(px - iw * s / 2),
-                    math.floor(py - ih * s), 0, s, s)
-                drawLandmarkSmoke(key, px, py, iw, ih, s, aMul)
+                local kxF = 0
+                if lmk and lmk.flagWave and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
+                    local wP = GrassField.PRESETS[rawBiome().id]
+                    local gw = wP and GrassField.windAt((px - x) / w, camZ + relM, WorldRoad._time, wP, 0) or 0
+                    kxF = -gw * 0.035 + math.sin(WorldRoad._time * 2.4 + i) * 0.02
+                end
+                WorldRoad._flagKx = kxF
+                love.graphics.draw(img, math.floor(px), math.floor(py), 0, s, s, iw / 2, ih, kxF, 0)
+                drawLandmarkSmoke(key, px, py, iw, ih, s, aMul, lmk and lmk.smoke == "thin")
                 submitLandmarkLight(key, px, py, iw, ih, s, relM,
-                    i * 31.7, aMul * (hovered and 1.4 or 1))
+                    i * 31.7, aMul * (hovered and 1.4 or 1), lmk)
+                if lmk and lmk.embers and aMul > 0.5 then
+                    local anc = LuminaireEngine.anchor("landmark", key, 0,
+                        "assets/sprites/world/" .. key .. ".png")
+                    local ax, ay = (anc and anc.ax) or 0.5, (anc and anc.ay) or 0.45
+                    LuminaireEngine.drawEmbersSpec(LMG.EMBERS, px + (ax - 0.5) * iw * s,
+                        py - ih * s * (1 - ay), ih * s, i * 7.7)
+                end
+                if lmk and lmk.dust and not (_G.gameSettings and _G.gameSettings.reducedMotion)
+                   and love.math.random() < lmk.dust.rate / 60 then
+                    local ra = envColor("roadA")
+                    local halfF = ROAD_HALF * (0.30 + 0.70 * (tM ^ 1.15))
+                    WeatherEngine.emitDust((px - g.cx) / w + (love.math.random() - 0.5) * halfF * 1.6,
+                        camZ + relM, tM, 0.01,
+                        { math.min(1, ra[1] * 1.4), math.min(1, ra[2] * 1.35), math.min(1, ra[3] * 1.2) },
+                        lmk.dust.alpha)
+                end
                 if aMul > 0.6 then
                     submitLandmarkOccluder(img, px, py, iw, ih, s, relM)
                 end

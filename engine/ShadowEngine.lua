@@ -8,6 +8,7 @@ local frame = {
     alpha = 0.26,
     stamp = -1,
 }
+ShadowEngine.stats = { queued = 0 }
 
 function ShadowEngine.setFrame(sunX, w, tod, luma)
     frame.sunX = sunX or 0
@@ -16,6 +17,7 @@ function ShadowEngine.setFrame(sunX, w, tod, luma)
     local l = math.max(0, math.min(1, luma or 1))
     frame.alpha = 0.15 + 0.15 * l
     frame.stamp = love.timer.getTime()
+    ShadowEngine.stats.queued = 0
 end
 
 function ShadowEngine.isActive()
@@ -169,6 +171,7 @@ local squeue, squeueN = {}, 0
 function ShadowEngine.queue(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
     squeueN = squeueN + 1
+    ShadowEngine.stats.queued = squeueN
     local q = squeue[squeueN]
     if not q then q = {}; squeue[squeueN] = q end
     q.img, q.x, q.y, q.s, q.o = img, feetX, feetY, s, opts
