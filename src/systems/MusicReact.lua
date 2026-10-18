@@ -21,6 +21,9 @@ local active = false
 local clock = 0
 local lastAt = { shake = -99, drop = -99, debris = -99, breath = -99 }
 local swell = { left = 0, rate = 0, style = nil, acc = 0 }
+local rain = { left = 0, total = 0, acc = 0, list = nil, power = 0, n = 0, i = 0 }
+local trickle = { next = 0 }
+local ambient = { acc = 0 }
 local stats = { hit = 0, swell = 0, drop = 0, shake = 0, debris = 0, light = 0, breath = 0 }
 
 local function settings() return _G.gameSettings or {} end
@@ -101,18 +104,95 @@ local function areaFor(h)
     return REACT.AREA[h or 1] or REACT.AREA[1]
 end
 
-local function spawnList(list, power)
+local function spawnEntry(e, count, area)
+    local style = REACT.STYLES[e[1]]
+    if not style or count <= 0 then return 0 end
+    if e[4] == "streak" then
+        return CeilingDebris.spawnStreak(style, count, area)
+    end
+    return CeilingDebris.spawn(style, count, area, (e[4] == "cluster") and 6 or nil)
+end
+
+local function entryCount(e, power)
+    return math.floor(e[2] + (e[3] - e[2]) * power + 0.5)
+end
+
+local function spawnList(list, power, fraction)
     if not list then return 0 end
     local n = 0
     local area = areaFor(hall)
     for _, e in ipairs(list) do
-        local style = REACT.STYLES[e[1]]
-        local count = math.floor(e[2] + (e[3] - e[2]) * power + 0.5)
-        if style and count > 0 then
-            n = n + CeilingDebris.spawn(style, count, area, (e[1] == "dust") and 6 or nil)
+        local count = entryCount(e, power)
+        if fraction then
+            count = (e[4] == "streak") and count or math.ceil(count * fraction)
         end
+        n = n + spawnEntry(e, count, area)
     end
     return n
+end
+
+local function startRain(list, power)
+    local R = REACT.RAIN or { now = 1, spread = 0 }
+    local n = spawnList(list, power, R.now)
+    rain.list, rain.power = list, power
+    rain.total = 0
+    for _, e in ipairs(list) do
+        if e[4] ~= "streak" then
+            rain.total = rain.total + math.max(0, entryCount(e, power) - math.ceil(entryCount(e, power) * R.now))
+        end
+    end
+    rain.left = (rain.total > 0) and (R.spread or 0) or 0
+    rain.acc, rain.n, rain.i = 0, 0, 0
+    return n
+end
+
+local function rainTick(dt)
+    if rain.left <= 0 or not rain.list then return 0 end
+    rain.left = rain.left - dt
+    rain.acc = rain.acc + dt * rain.total / math.max(0.05, REACT.RAIN.spread)
+    local n = 0
+    local area = areaFor(hall)
+    local list = rain.list
+    while rain.acc >= 1 and rain.n < rain.total do
+        rain.acc = rain.acc - 1
+        local pick
+        for _ = 1, #list do
+            rain.i = (rain.i % #list) + 1
+            if list[rain.i][4] ~= "streak" then pick = list[rain.i] break end
+        end
+        if not pick then break end
+        n = n + spawnEntry(pick, 1, area)
+        rain.n = rain.n + 1
+    end
+    if rain.n >= rain.total then rain.left = 0 end
+    return n
+end
+
+local function nextTrickle()
+    local T = REACT.TRICKLE or { min = 1.1, max = 2.4 }
+    return clock + T.min + love.math.random() * (T.max - T.min)
+end
+
+local function trickleTick(r)
+    if reduced() or not r.trickle then return 0 end
+    if clock < trickle.next then return 0 end
+    trickle.next = nextTrickle()
+    local e = r.trickle
+    local count = love.math.random(e[2], e[3])
+    return spawnEntry({ e[1], count, count, "streak" }, count, areaFor(hall))
+end
+
+local function ambientTick(dt, r)
+    if reduced() or not r.ambient then return 0 end
+    local a = r.ambient
+    if CeilingDebris.floatingCount() >= (a[2] or 8) then
+        ambient.acc = 0
+        return 0
+    end
+    ambient.acc = ambient.acc + dt
+    if ambient.acc < (a[3] or 0.6) then return 0 end
+    ambient.acc = ambient.acc - (a[3] or 0.6)
+    return CeilingDebris.spawnFloat(REACT.STYLES[a[1]], areaFor(hall))
 end
 
 local function doShake(i, d)
@@ -179,7 +259,10 @@ local function onCue(cue)
         lastAt.shake = -99
         doShake(r.shake.drop * (0.6 + 0.4 * p), r.shake.dropDur)
         doLight(r.light.drop * (0.6 + 0.4 * p), r.light.dropDur)
-        doDebris(r.drop, p, true)
+        if not reduced() then
+            lastAt.debris = clock
+            stats.debris = stats.debris + startRain(r.drop, p)
+        end
         doBreath(p)
     elseif cue.kind == "swell" then
         doLight(r.light.swell * p, math.max(0.5, cue.dur or 1))
@@ -196,6 +279,9 @@ function MusicReact.reset()
     tracker, trackerKey = nil, nil
     active = false
     swell.left, swell.acc = 0, 0
+    rain.left, rain.total, rain.acc, rain.list, rain.n = 0, 0, 0, nil, 0
+    trickle.next = 0
+    ambient.acc = 0
     lastAt.shake, lastAt.drop, lastAt.debris, lastAt.breath = -99, -99, -99, -99
     CeilingDebris.clear()
 end
@@ -220,6 +306,7 @@ function MusicReact.update(dt, ctx)
     if not data then
         active = false
         swell.left = 0
+        rain.left = 0
         if tracker then tracker:reset() end
         return
     end
@@ -228,8 +315,11 @@ function MusicReact.update(dt, ctx)
         tracker = MusicCues.new(data, loopPoints(code))
         trackerKey = key
     end
+    if not active then trickle.next = nextTrickle() end
     active = true
     tracker:update(position(code), onCue)
+    local r = reactionFor(bossId)
+    stats.debris = stats.debris + rainTick(dt) + trickleTick(r) + ambientTick(dt, r)
     if swell.left > 0 then
         swell.left = swell.left - dt
         swell.acc = swell.acc + dt * swell.rate
