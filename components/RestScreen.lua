@@ -144,7 +144,7 @@ function RestScreen:buildChooseButtons()
     local full = p and p.health >= p.maxHealth
     local heal = {
         x = leftX, y = cy, w = cw, h = chh,
-        icon = "heart", title = I18n.t("rest.heal_title"),
+        icon = "ui_health", title = I18n.t("rest.heal_title"),
         sub = I18n.t("rest.heal_sub", { n = math.floor(self:_healPct() * 100 + 0.5) }),
         detail = full and I18n.t("rest.heal_full") or healDetail,
         muted = full,
@@ -155,7 +155,7 @@ function RestScreen:buildChooseButtons()
 
     local forge = {
         x = rightX, y = cy, w = cw, h = chh,
-        icon = "rune", title = I18n.t("rest.forge_title"),
+        icon = "ui_forge", title = I18n.t("rest.forge_title"),
         sub = I18n.t("rest.forge_sub"),
         detail = I18n.t("rest.forge_detail"),
     }
@@ -1178,11 +1178,8 @@ local function drawChoiceCard(c)
         tint = hover and { 1.15, 1.1, 0.85, 1 } or nil,
     })
 
-    local icon = IconLoader.get(c.icon)
-    if icon and icon.size then
-        local s = 56 / icon.size.w
-        icon.draw(math.floor(c.x + c.w / 2 - icon.size.w * s / 2), y + 26, s)
-    end
+    love.graphics.setColor(1, 1, 1, 1)
+    IconLoader.drawFit(c.icon, c.x + c.w / 2, y + 26 + 28, 52)
 
     local tf = FontManager.getFont(16)
     love.graphics.setFont(tf)

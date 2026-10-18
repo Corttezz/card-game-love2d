@@ -111,3 +111,21 @@ Configurações: `U`/`S()` no módulo, setado no `rebuild`.
 Sem rodapé de dica nas duas (regra do projeto); as chaves `pause.hint`/
 `settings.hint` ficaram nos locales (o teste só confere existência).
 Capturas: `love . screenshot_pause [de]` agora inclui 2560×1440.
+
+## v5 (17/Out/2026): atalhos com ícone próprio e placa
+
+Queixa do dono: "esses ícones de deck, jokers, log, guide não fazem sentido...
+reutilizados de cartas. Isso não pode." A fileira usava `assets/icons/deck.png`
+(1024 px, lido como livro pequeno), `jester_hat`, `scroll` e `question` (arte
+de CARTA). Agora: `ui_deck` (maço de cartas viradas com verso do grimório),
+`ui_jokers` (máscara dourada de bobo), `ui_journal` (diário aberto com mapa a
+tinta e pena), `ui_guide` (tomo com "?" gravado). Cada atalho é uma PLACA
+(fundo escuro, filete ouro-escuro, sombra de 2 px; foco = fundo claro + filete
+ouro + ícone sobe 1 px), ícone no MESMO tamanho óptico (`IconLoader.drawFit`:
+bbox opaco do PNG no lado de `SHORTCUT_ICON = 30`), tecla num keycap no canto
+(sempre visível; antes o "[J]" sumia quando o rótulo não cabia) e o nome sem o
+"[X]" (`PauseMenu.shortcutName`, as chaves de locale continuam com a tecla).
+`SHORTCUT_H` 58 → 66. Capturas: `lovec . test_one screenshot_icones_pausa`
+(foco em Continuar e em Coringas, 1024x768/1920x1080, pt_BR/en) e
+`tools/preview_out/icones_pausa/{antes,depois}/`. Trava: `test_boss_mechanics`
+(`testUiIconsNotCardArt`).

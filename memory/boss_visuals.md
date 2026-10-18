@@ -298,9 +298,27 @@ cada, pranchas em `tools/preview_out/icones_proprios/<nome>/contact.png`:
   mais simples, porque o Menu a desenha a 14 px); TopBar ato →
   `ui_act_scroll` (mapa com castelo e estrada, lacre, cand 0);
 - rodapé de perfil do Menu → `ui_score_star`.
-Ficaram em arte de carta, fora do pedido: `scroll` no atalho do Roteiro da
-Pausa, na seleção de classe e no MapManager; `star` como fallback do chip de
-classe do `HudPlayerPanel`. Trava: `test_boss_mechanics` (`testOwnIcons`:
+Segunda leva (17/Out/2026, frente icones-pausa, `tools/pixellab_icones_pausa.py`,
+estilo = `ui_act_scroll.png` + referência `ui_score_star.png`, 16 candidatas
+cada, 10 gerações por chamada, pranchas em `tools/preview_out/icones_pausa/<nome>/`):
+- `ui_deck` (cand 13) → atalho Deck da Pausa, TopBar (no lugar de
+  `assets/icons/deck.png`) e contagem de cartas iniciais da seleção de classe
+  (era `scroll`);
+- `ui_jokers` (cand 0) → atalho Coringas da Pausa e chip de coringa da prévia
+  de dano (eram `jester_hat`);
+- `ui_journal` (cand 3) → atalho Roteiro da Pausa (era `scroll`);
+- `ui_guide` (cand 8) → atalho Guia da Pausa (era `question`);
+- `ui_health` (cand 3) → vida na seleção de classe e Descansar (eram `heart`);
+- `ui_mana` (cand 6) → mana na seleção de classe (era `crystal`);
+- `ui_forge` (cand 11) → Forjar no descanso (era `rune`);
+- chip de passiva do `HudPlayerPanel`: emblema da classe (`ClassEmblem`) no
+  lugar de `sword_great`/`orb`/`dagger`/`star`; sem emblema, `seal_grimoire`.
+Ainda arte de carta: `coin` no botão de cash out e no `CoinBurst`
+(RoundEvalScreen) e o `NODE_META.icon` do MapManager (dado morto, ninguém
+desenha). Trava ampliada: `testUiIconsNotCardArt` lê Pausa, seleção de
+classe, descanso, TopBar, Menu, prévia de dano e HudPlayerPanel e falha se
+qualquer `IconLoader.get`/`drawFit`/`icon = "..."`/`setIcon` pedir ícone de
+carta; confere os 4 atalhos reais da pausa. Trava: `test_boss_mechanics` (`testOwnIcons`:
 nome e bytes ≠ de qualquer ícone de carta, 64x64, e TopBar/Menu não pedem mais
 `star`/`scroll`). Provas: `hud_foco_eclipse.png`
 (`PREVIEW_HUD_ECLIPSE=1 lovec . preview_battle_hud`), `topbar_3x.png`,

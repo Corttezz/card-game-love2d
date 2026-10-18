@@ -16,7 +16,6 @@ function TopBar:new()
     instance.height = 52
 
     instance.coinIcon = ImageCache.get("assets/icons/coin.png")
-    instance.deckIcon = ImageCache.get("assets/icons/deck.png")
 
     instance.gearIcon = IconLoader.get("gear")
 
@@ -240,7 +239,6 @@ function TopBar:drawGameInfo()
 
     if self.game and self.game.deck and L.deck then
         local deckX = L.deck.x
-        local deckY = centerY - 22
 
         self:_hoverZone(deckX - 6, L.deck.w, "topbar_deck", {
             deck = #self.game.deck,
@@ -248,7 +246,7 @@ function TopBar:drawGameInfo()
         })
 
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(self.deckIcon, deckX, deckY, 0, iconScale, iconScale)
+        IconLoader.drawFit("ui_deck", deckX + 22, centerY, 40)
 
         Palette.set(Palette.PARCHMENT_LIGHT)
         love.graphics.setFont(FontManager.getFont(14))

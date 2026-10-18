@@ -178,11 +178,9 @@ function HudPlayerPanel:draw(player)
 end
 
 local StatusTooltip = require("src.ui.StatusTooltip")
-local CLASS_CHIP_ICONS = { warrior = "sword_great", mage = "orb", rogue = "dagger" }
 
 function HudPlayerPanel:drawPassiveChip(game)
     if not game or not game.selectedClass then return end
-    local icon = IconLoader.get(CLASS_CHIP_ICONS[game.selectedClass] or "star")
     local chip = 30
     local cx = self.x + self.width + 8
     local cy = self.y + self.height - chip
@@ -205,11 +203,15 @@ function HudPlayerPanel:drawPassiveChip(game)
     love.graphics.setLineWidth(glow > 0 and 2 or 1)
     love.graphics.rectangle("line", cx, cy, chip, chip, 5, 5)
 
-    if icon and icon.draw and icon.size then
-        local s = 24 / icon.size.w
-        love.graphics.setColor(1, 1, 1, 1)
-        icon.draw(math.floor(cx + (chip - icon.size.w * s) / 2),
-            math.floor(cy + (chip - (icon.size.h or icon.size.w) * s) / 2), s)
+    love.graphics.setColor(1, 1, 1, 1)
+    local m = require("src.ui.ClassEmblem").get(game.selectedClass)
+    if m then
+        local cw, ch = m.right - m.left + 1, m.bottom - m.top + 1
+        local s = 24 / math.max(cw, ch)
+        love.graphics.draw(m.img, math.floor(cx + chip / 2 - (m.left + cw / 2) * s),
+            math.floor(cy + chip / 2 - (m.top + ch / 2) * s), 0, s, s)
+    else
+        IconLoader.drawFit("seal_grimoire", cx + chip / 2, cy + chip / 2, 24)
     end
 
     require("src.ui.NavCursor").target("hud:passive", cx, cy, chip, chip)

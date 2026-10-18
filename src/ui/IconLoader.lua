@@ -50,6 +50,41 @@ function IconLoader.get(name)
     return h
 end
 
+function IconLoader.bounds(name)
+    local h = IconLoader.get(name)
+    if h.bounds then return h.bounds end
+    local b = { x = 0, y = 0, w = h.size.w, h = h.size.h }
+    if h.kind == "image" then
+        local ok, data = pcall(love.image.newImageData, h.path)
+        if ok and data then
+            local w, hh = data:getDimensions()
+            local x0, y0, x1, y1 = w, hh, -1, -1
+            for y = 0, hh - 1 do
+                for x = 0, w - 1 do
+                    local _, _, _, a = data:getPixel(x, y)
+                    if a > 0.08 then
+                        if x < x0 then x0 = x end
+                        if x > x1 then x1 = x end
+                        if y < y0 then y0 = y end
+                        if y > y1 then y1 = y end
+                    end
+                end
+            end
+            if x1 >= x0 then b = { x = x0, y = y0, w = x1 - x0 + 1, h = y1 - y0 + 1 } end
+        end
+    end
+    h.bounds = b
+    return b
+end
+
+function IconLoader.drawFit(name, cx, cy, box)
+    local h = IconLoader.get(name)
+    local b = IconLoader.bounds(name)
+    local s = box / math.max(b.w, b.h)
+    h.draw(cx - (b.x + b.w / 2) * s, cy - (b.y + b.h / 2) * s, s)
+    return s
+end
+
 function IconLoader.clearCache()
     handleCache = {}
 end

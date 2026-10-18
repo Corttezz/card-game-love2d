@@ -1,0 +1,23 @@
+{
+  "ui_deck": {
+    "job": "068e7fdf-4cfb-4f74-aa81-4c1d3fefb01b"
+  },
+  "ui_jokers": {
+    "job": "f73ca68b-4768-4ca5-9b57-cc8d95843e71"
+  },
+  "ui_journal": {
+    "job": "ba65b112-f851-48f2-ba9d-cb042ace654c"
+  },
+  "ui_guide": {
+    "job": "453ae4b9-7bec-4cf5-a319-0b60e4108dc2"
+  },
+  "ui_health": {
+    "job": "61d0e34c-3c3f-47e2-a600-9a3cf0d67838"
+  },
+  "ui_mana": {
+    "job": "5b9aa099-4431-45ec-836f-286ceab5d54d"
+  },
+  "ui_forge": {
+    "job": "f51d41be-d765-4710-a3ae-f7b1f73b71ac"
+  }
+}

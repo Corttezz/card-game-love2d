@@ -718,20 +718,17 @@ function ClassSelectionScreen:_drawSummaryPage(p, r, y, a)
     y = y + paragraph(short, r.x, y, r.w, body, 3) + lh
 
     local items = {
-        { icon = "heart", n = (Config.Game.CLASS_MAX_HEALTH or {})[p.classId] or Config.Game.PLAYER_MAX_HEALTH },
-        { icon = "crystal", n = Config.Game.PLAYER_MAX_MANA },
-        { icon = "scroll", n = #self.cardRegistry:getStarterDeckForClass(p.classId) },
+        { icon = "ui_health", n = (Config.Game.CLASS_MAX_HEALTH or {})[p.classId] or Config.Game.PLAYER_MAX_HEALTH },
+        { icon = "ui_mana", n = Config.Game.PLAYER_MAX_MANA },
+        { icon = "ui_deck", n = #self.cardRegistry:getStarterDeckForClass(p.classId) },
     }
     local iconPx = math.floor(fb:getHeight() * 1.8)
     local sy = y
     local x = r.x
     love.graphics.setFont(fb)
     for _, it in ipairs(items) do
-        local icon = IconLoader.get(it.icon)
-        if icon and icon.size then
-            love.graphics.setColor(1, 1, 1, a)
-            icon.draw(x, sy, iconPx / icon.size.h)
-        end
+        love.graphics.setColor(1, 1, 1, a)
+        IconLoader.drawFit(it.icon, x + iconPx / 2, sy + iconPx / 2, iconPx)
         ink(Palette.INK, a)
         local txt = tostring(it.n)
         love.graphics.print(txt, x + iconPx + 4, sy + math.floor((iconPx - fb:getHeight()) / 2))

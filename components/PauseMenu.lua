@@ -20,7 +20,8 @@ local INFO_H       = 36
 local INFO_H_LINE  = 20
 local ROW_GAP      = 8
 local ZONE_GAP     = 14
-local SHORTCUT_H   = 58
+local SHORTCUT_H   = 66
+local SHORTCUT_ICON = 30
 local SHORTCUT_MAX_W = 120
 local DANGER_H     = 24
 local CONFIRM_BTN_H = 28
@@ -151,13 +152,13 @@ local function shortcutDefs(self)
         end
     end
     return {
-        { key = "deck",    hotkey = "d", icon = "deck", label = I18n.t("pause.shortcut_deck"),
+        { key = "deck",    hotkey = "d", icon = "ui_deck", label = I18n.t("pause.shortcut_deck"),
           action = open(self.callbacks.onOpenDeck) },
-        { key = "jokers",  hotkey = "j", icon = "jester_hat", label = I18n.t("pause.shortcut_jokers"),
+        { key = "jokers",  hotkey = "j", icon = "ui_jokers", label = I18n.t("pause.shortcut_jokers"),
           action = open(self.callbacks.onOpenJokers) },
-        { key = "journal", hotkey = "m", icon = "scroll", label = I18n.t("pause.shortcut_journal"),
+        { key = "journal", hotkey = "m", icon = "ui_journal", label = I18n.t("pause.shortcut_journal"),
           action = open(self.callbacks.onOpenJournal) },
-        { key = "guide",   hotkey = "g", icon = "question", label = I18n.t("tutorial.guide.pause_shortcut"),
+        { key = "guide",   hotkey = "g", icon = "ui_guide", label = I18n.t("tutorial.guide.pause_shortcut"),
           action = open(self.callbacks.onOpenGuide) },
     }
 end
@@ -521,34 +522,46 @@ function PauseMenu:_drawInfo(z)
     end
 end
 
+function PauseMenu.shortcutName(label)
+    return (tostring(label or ""):gsub("%s*%[[^%]]*%]%s*$", ""))
+end
+
 function PauseMenu:_drawShortcut(s, focused)
-    if focused then
-        Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.45))
-        love.graphics.rectangle("fill", s.x, s.y, s.w, s.h, 4, 4)
-        Palette.set(Palette.AGED_GOLD)
-        love.graphics.rectangle("line", s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1, 4, 4)
-    end
-    local size = S(self, 32)
-    local icon
-    if s.icon == "deck" then
-        local img = require("src.ui.ImageCache").get("assets/icons/deck.png")
-        local sc = size / math.max(img:getWidth(), img:getHeight())
-        icon = function(ix, iy) love.graphics.draw(img, ix, iy, 0, sc, sc) end
-    else
-        local ic = require("src.ui.IconLoader").get(s.icon)
-        icon = function(ix, iy) ic.draw(ix, iy, size / 64) end
-    end
-    local ix = math.floor(s.x + (s.w - size) / 2)
-    local iy = s.y + S(self, 6) + (focused and -1 or 0)
-    love.graphics.setColor(1, 1, 1, focused and 1 or 0.78)
-    icon(ix, iy)
-    Palette.set(focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
-    local label = s.label
-    local lf = FontManager.getFont(S(self, 8))
-    if lf:getWidth(label) > s.w - 4 then
-        label = label:gsub("%s*%[[^%]]*%]%s*$", "")
-    end
-    TextFit.print(label, s.x + 2, s.y + s.h - S(self, 15), { size = S(self, 8), maxW = s.w - 4, align = "center" })
+    local x, y, w, h = s.x, s.y, s.w, s.h
+    Palette.set(Palette.INK, 0.55)
+    love.graphics.rectangle("fill", x + 2, y + 2, w, h, 3, 3)
+    Palette.set(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, focused and 0.5 or 0.2))
+    love.graphics.rectangle("fill", x, y, w, h, 3, 3)
+    love.graphics.setColor(1, 1, 1, focused and 0.10 or 0.05)
+    love.graphics.rectangle("fill", x + 2, y + 1, w - 4, 2)
+    Palette.set(focused and Palette.AGED_GOLD or Palette.AGED_GOLD_DARK)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1, 3, 3)
+
+    local box = S(self, SHORTCUT_ICON)
+    local labelH = S(self, 16)
+    local cx = math.floor(x + w / 2)
+    local cy = math.floor(y + (h - labelH) / 2 + S(self, 3)) + (focused and -1 or 0)
+    love.graphics.setColor(1, 1, 1, 1)
+    require("src.ui.IconLoader").drawFit(s.icon, cx, cy, box)
+
+    local kf = FontManager.getFont(S(self, 8))
+    local key = string.upper(s.hotkey or "")
+    local kw = math.max(S(self, 12), kf:getWidth(key) + S(self, 5))
+    local kh = S(self, 12)
+    local kx, ky = x + w - kw - S(self, 4), y + S(self, 4)
+    Palette.set(Palette.INK, 0.7)
+    love.graphics.rectangle("fill", kx + 1, ky + 1, kw, kh, 2, 2)
+    Palette.set(focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_DARK)
+    love.graphics.rectangle("fill", kx, ky, kw, kh, 2, 2)
+    Palette.set(Palette.INK)
+    love.graphics.setFont(kf)
+    love.graphics.print(key, math.floor(kx + (kw - kf:getWidth(key)) / 2 + 0.5),
+        math.floor(ky + (kh - kf:getHeight()) / 2 + 1))
+
+    Palette.set(focused and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_LIGHT)
+    TextFit.print(PauseMenu.shortcutName(s.label), x + 3, y + h - labelH + S(self, 3),
+        { size = S(self, 8), maxW = w - 6, align = "center" })
 end
 
 function PauseMenu:_drawRow(row, focused, t)

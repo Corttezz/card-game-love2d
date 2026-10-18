@@ -399,7 +399,7 @@ local function summaryChips(R)
         for _, st in ipairs(e.steps or {}) do
             if st.kind == "joker" and st.joker and not seenJ[st.joker] then
                 seenJ[st.joker] = true
-                chips[#chips + 1] = { icon = "jester_hat",
+                chips[#chips + 1] = { icon = "ui_jokers",
                     text = (st.op == "mult" and "×" or "+") .. fmtNum(st.value),
                     color = COL_JOKER, joker = st.joker, name = I18n.cardName(st.joker) }
             end

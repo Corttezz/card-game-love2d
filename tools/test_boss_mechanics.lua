@@ -735,6 +735,51 @@ local function testOwnIcons(t)
     for _, name in ipairs(menu) do ownIcon(t, "Menu " .. name, name) end
 end
 
+local UI_ICON_FILES = {
+    "components/PauseMenu.lua", "components/ClassSelectionScreen.lua",
+    "components/RestScreen.lua", "components/TopBar.lua", "components/Menu.lua",
+    "src/ui/DamagePreviewPanel.lua", "src/ui/HudPlayerPanel.lua",
+}
+
+local function testUiIconsNotCardArt(t)
+    local cardIcons = {}
+    for _, art in pairs(require("src.data.card_art")) do
+        if type(art) == "table" and art.icon then cardIcons[art.icon] = true end
+    end
+    local seen = {}
+    for _, path in ipairs(UI_ICON_FILES) do
+        local src = love.filesystem.read(path) or ""
+        t:truthy(path .. " lido", src ~= "")
+        local names = {}
+        for _, pat in ipairs({ 'IconLoader%.get%("([%w_]+)"%)', 'drawFit%("([%w_]+)"',
+                               'icon%s*=%s*"([%w_]+)"', 'setIcon%("([%w_]+)"' }) do
+            for n in src:gmatch(pat) do names[#names + 1] = n end
+        end
+        for _, n in ipairs(names) do
+            t:falsy(path .. ": não desenha arte de carta como ícone (" .. n .. ")", cardIcons[n])
+            if n:match("^ui_") and not seen[n] then
+                seen[n] = true
+                ownIcon(t, path .. " " .. n, n)
+            end
+        end
+    end
+    for _, n in ipairs({ "ui_deck", "ui_jokers", "ui_journal", "ui_guide",
+                         "ui_health", "ui_mana", "ui_forge" }) do
+        t:truthy("ícone próprio em uso: " .. n, seen[n])
+    end
+
+    local game = TK.newRunGame("warrior")
+    local pause = require("components.PauseMenu"):new()
+    pause:show(game, {}, { quiet = true })
+    local want = { deck = "ui_deck", jokers = "ui_jokers", journal = "ui_journal", guide = "ui_guide" }
+    t:eq("pausa: 4 atalhos", #pause.shortcuts, 4)
+    for _, s in ipairs(pause.shortcuts) do
+        t:eq("pausa: atalho " .. s.key .. " com ícone próprio", s.icon, want[s.key])
+        ownIcon(t, "pausa " .. s.key, s.icon)
+    end
+    pause.visible = false
+end
+
 function M.run()
     local t = TK.new("chefes: mecânica-assinatura, contador, visual, golpe")
     TK.bootstrap()
@@ -746,6 +791,7 @@ function M.run()
     testColossus(t)
     testQueen(t)
     testOwnIcons(t)
+    testUiIconsNotCardArt(t)
     return t:done()
 end
 
