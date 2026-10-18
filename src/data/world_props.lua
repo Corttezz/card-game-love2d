@@ -31,6 +31,12 @@ return {
         dusk_tree_2 = 7,
     },
 
+    lit = {
+        fields_tree_0 = 1,
+        fields_tree_2 = -1,
+        fields_bush_0 = 1,
+    },
+
     sizeK = {
         frost_pine_1 = 0.72,
         frost_pine_2 = 0.80,

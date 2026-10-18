@@ -22,8 +22,14 @@ local PropCut = {
     quad = setmetatable({}, { __mode = "k" }),
     vis = setmetatable({}, { __mode = "k" }),
     sizeK = setmetatable({}, { __mode = "k" }),
+    lit = setmetatable({}, { __mode = "k" }),
     kinds = { tree = true, pine = true, deadtree = true, bush = true },
 }
+function PropCut.flipToSun(img, sunRight, fallback)
+    local lit = PropCut.lit[img]
+    if not lit then return fallback end
+    return (lit == (sunRight and 1 or -1)) and 1 or -1
+end
 function PropCut.cutOf(img, kind)
     if not PropCut.kinds[kind] then return 0 end
     local ih = img:getHeight()
@@ -285,6 +291,7 @@ local function tryLoadPng(name)
     Scene.Contact.scan(img, data)
     PropCut.px[img] = PropCut.data.sink[name]
     PropCut.sizeK[img] = PropCut.data.sizeK[name]
+    PropCut.lit[img] = PropCut.data.lit and PropCut.data.lit[name] or nil
     return img
 end
 
@@ -3284,6 +3291,7 @@ local function drawProps(g, x, w, camZ)
                     pv = Scene.Var.of(p.z, p.kind, Scene.Grade.cfg("trees"))
                     s = s * pv.scale
                     vflip, vtR, vtG, vtB = pv.flip, pv.tintR, pv.tintG, pv.tintB
+                    vflip = PropCut.flipToSun(img, sunShadowDir(g, x, w, g.cx) < 0, vflip)
                     local pvc = LMG.pvCopy
                     pvc.windPhase, pvc.canopy, pvc.trunk = pv.windPhase, pv.canopy, pv.trunk
                     pv = pvc
@@ -3341,7 +3349,7 @@ local function drawProps(g, x, w, camZ)
                         if cimg then
                             local cvv = Scene.Var.of(p.z + ci * 17.3, p.kind, Scene.Grade.cfg("trees"))
                             local cs = s * (0.5 + 0.13 * ci) * cvv.scale
-                            local cflip = cvv.flip
+                            local cflip = PropCut.flipToSun(cimg, sunShadowDir(g, x, w, g.cx) < 0, cvv.flip)
                             local crot, ckx = Scene.Var.sway(cvv, WorldRoad._time, gw, stiff, reduced)
                             local tsh = Scene.Grade.cfg("shadow").tree
                             ShadowEngine.queue(cimg, cx2, cy2 - 1, cs,
