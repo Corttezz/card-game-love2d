@@ -241,6 +241,12 @@ function M.run()
                     if he.s > worst then worst = he.s end
                 end
             end
+            local ctop = WorldRoad._castleTop
+            local cel = (require("src.data.biomes")[b] or {}).celestial or {}
+            local want = (cel.xr or 0.5) > 0.5 and -1 or 1
+            t:truthy(("bioma %d: castelo no meio da jornada fica do lado oposto ao sol (dx %.0f)")
+                :format(b, ctop and (ctop.cx - W / 2) or 0),
+                ctop ~= nil and (ctop.cx - W / 2) * want > W * 0.05)
             t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
                 :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
         end

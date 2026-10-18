@@ -2228,6 +2228,7 @@ local CASTLE_APPROACH = {
     fields = 2.9, highlands = 2.9, abyss = 3.1,
     frost = 2.3, marsh = 2.9, dusk = 2.7,
     far = 1.3,
+    side = 0.17, sidePow = 1.5,
 }
 local CASTLE_SINK_EXTRA = {
     fields = 0.06, frost = 0.07, marsh = 0.06, dusk = 0.06,
@@ -2252,7 +2253,8 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local baseScale = (refW * 0.155) / 218
     local growth = CASTLE_APPROACH[bid] or 2.9
     local s = baseScale * (CASTLE_APPROACH.far + (progress ^ 1.4) * growth)
-    local cx = g.cx
+    local cx = g.cx + w * CASTLE_APPROACH.side * (1 - progress) ^ CASTLE_APPROACH.sidePow
+        * ((((BIOME_BY_ID[bid] or rawBiome()).celestial or PropCut.EMPTY).xr or 0.5) > 0.5 and -1 or 1)
     local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
     local baseY = g.crestYAt(cx)
         + ih * s * (0.03 + 0.20 * (1 - progress) + sinkExtra)
@@ -2782,6 +2784,7 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
             forkActive = WorldRoad._fork ~= nil,
             forkRel = FORK_REL,
             castleGapHalf = WorldRoad._castleBaseHalf,
+            castleGapX = WorldRoad._castleTop and WorldRoad._castleTop.cx,
         }
     end
     _grassCtx.relFrom = relFrom
@@ -3396,6 +3399,11 @@ local function drawProps(g, x, w, camZ)
                 fadeA = fadeA * PropCut.nearFade(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1)
                     * (PropCut.sizeK[img] or 1) * PropCut.crestK(p.kind, t), t, img:getHeight()),
                     WorldRoad.enemyScreenK(g.h), WorldRoad._travel ~= nil)
+                local ct = WorldRoad._castleTop
+                if ct and t < 0.36 and math.abs(pxX - ct.cx) < ct.w * 0.62 then
+                    fadeA = fadeA * (WorldRoad._travel and math.min(1, math.max(0, (t - 0.24) / 0.12))
+                        or (t >= 0.3 and 1 or 0))
+                end
             end
             if fadeA <= 0.01 then img = nil end
 

@@ -349,7 +349,7 @@ local function fillKey(k, ctx)
     k[12], k[13], k[14] = c.mid[1], c.mid[2], c.mid[3]
     k[15], k[16], k[17] = c.accent[1], c.accent[2], c.accent[3]
     k[18] = ctx.biomeId
-    k[19] = ctx.castleGapHalf or 0
+    k[19] = (ctx.castleGapHalf or 0) + math.floor(ctx.castleGapX or 0) * 4096
     k[20] = ctx.forkSig or 0
     k[21] = ctx.roadCenters and 1 or 0
     k[22] = GF_DEBUG and 1 or 0
@@ -609,7 +609,7 @@ function GrassField.draw(ctx)
             local hk = hash(k * 13 + 7, 91)
             local px = ctx.x + k * stepC + (hk - 0.5) * stepC
             if math.abs(px - roadC) > halfC + 4
-               and math.abs(px - g.cx) > cgap then
+               and math.abs(px - (ctx.castleGapX or g.cx)) > cgap then
                 local cy = g.crestYAt(px)
                 if cy < g.bottomY - 6 then
                     local ht = hash(k * 29 + 3, 57)

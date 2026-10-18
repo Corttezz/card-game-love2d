@@ -325,6 +325,15 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   fica em t 0,6 a 0,8 com tronco e raiz à vista; o poste perto da câmera sai, os da profundidade do
   inimigo ficam. Pior escala nos seis atos: 5,7 a 6,2. Trava em `test_world_props` (seis biomas, com a
   variação de escala por instância). `escala_humana` imprime `s=` por prop.
+- **Castelo fora da coluna do HUD (18/Out/2026, frente replica-6, folha
+  `tools/preview_out/replica_atos/seis_atos_castelo.png`):** em todos os atos o castelo da crista ficava
+  exatamente atrás da intenção e da barra de vida do inimigo (e do corpo dele). Baixar o HUD não
+  resolvia: o próprio inimigo cobre a base do castelo. Agora o castelo nasce deslocado na crista
+  (`CASTLE_APPROACH.side` 0,17 da largura × `(1 - progress)^1,5`), no lado OPOSTO ao sol/lua do bioma
+  (`celestial.xr`), e volta ao centro conforme a jornada avança: no fim do ato está de frente para a
+  estrada, como a cena do portão pede. A clareira da grama segue o castelo (`castleGapX`) e prop da
+  crista na frente dele some (t < 0,3; na viagem esmaece de 0,24 a 0,36). Castelo / maior árvore da
+  crista vizinha: 2,3 a 3,7 nos seis atos (o ato 6 passou de 1,8 para 2,4 sem mudar tamanho).
 - **Ato 6 / dusk (18/Out/2026, frente replica-6, `tools/preview_out/replica_atos/dusk/`):** entrada
   `dusk` copiada do modelo `fields` (treeDepth, sombra de árvore e disco de copa, contato 0,65, chão
   mais escuro no horizonte); temperatura virou só matiz (o `dusk` 0,78/0,56/0,70 apagava as copas
@@ -344,22 +353,13 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   A "lanterna de mão" (caixinha de pedra de 36 px, 0,24× o inimigo, lia como lixeira) virou poste de
   ferro nevado com braço de volutas (PixelLab `create_image_pro`, ref. de forma `fields_lantern_0`, de
   paleta a antiga): size 5,6, `face` 1, 0,86 a 0,88× o inimigo; chama tremulando por script em
-  `anim/frost_lantern_0/`. Fogueira `selfLight` 0,20. 2º passe (adendo diorama): `light.pool` 0,80/0,80
-  no poste e 3 pinheiros novos pedidos como diorama (`frost_pine_3..5`, `variants.frost_pine = 6`).
+  `anim/frost_lantern_0/`. Fogueira `selfLight` 0,20.
 - **Ato 2 highlands (18/Out/2026, frente replica-23, `tools/preview_out/replica_atos/highlands/`):**
   entrada do ato 1 replicada (treeDepth, treeNear, sombra 2,2 com árvore/copa e cor fria, contato
   0,65, chão perto claro/longe escuro); braseiro regerado como pilar de 2,5 m (0,87x o inimigo,
   era um cubo de 0,30x) com `light.pool` (poça no chão, genérico no LuminaireEngine) porque a chama
   no topo deixava o círculo de luz no ar; 3 pinheiros novos (`variants` 6); chama da fogueira
   recolorida de salmão pastel para laranja vivo (a lua a acinzentava e o fogo não lia como fogo).
-  Passe diorama: os 6 pinheiros e o arbusto (era carvalho verde fora do bioma) regerados com luz da
-  lua à direita (`lit = 1`); pilar 4,9 em `lane` 0,12-0,22 (perto da câmera cobria a estrada).
-- **Ato 3 abyss (18/Out/2026, frente replica-23, `tools/preview_out/replica_atos/abyss/`):** entrada
-  do ato 1 com pôr do sol só matiz quente (o `dusk` antigo escurecia e roxeava), sombra 2,2 em cor
-  de multiplicação marrom (galhos aparecem no chão), disco de copa 0,20 (árvore sem folha); tocha
-  regerada como poste de ferro de 2,5 m (0,87x, era 0,29x) e pilar-braseiro (0,8x, `lane` afastada),
-  ambos com `light.pool`; fissura azul (fora da paleta) virou fenda de lava; 6 árvores mortas e 3
-  arbustos novos (diorama, luz à direita); `grassA/B` com mais contraste (chão chapado).
 - **Ato 5 / marsh (18/Out/2026, frente replica-45, `tools/preview_out/replica_atos/marsh/`):** entrada
   `marsh` no modelo `fields` (grade só matiz, treeDepth lift 0,25, sombras alphaK 2,0 com cor de
   multiplicação verde-musgo 0,34/0,40/0,32, árvore ×1,35, copa 0,50, chão mais escuro no horizonte,
