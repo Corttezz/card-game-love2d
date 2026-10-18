@@ -268,6 +268,37 @@ function M.run()
             t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
                 :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
         end
+        for _, b in ipairs({ 5, 6 }) do
+            WorldRoad.restoreProgress(b, 3)
+            for _ = 1, 400 do
+                if WorldRoad.isPrewarmed(b) then break end
+                WorldRoad.prewarmTick(0.05, b)
+            end
+            for _ = 1, 30 do WorldRoad.update(1 / 30) end
+            WorldRoad._blend = nil
+            WorldRoad._prevBiomeIndex = nil
+            local relE = WorldRoad.BATTLE_REL
+            local lum
+            for _, p in ipairs(WorldRoad._props) do
+                local LE = require("engine.LuminaireEngine")
+                local d = not p.ghost and LE.def(p.bid, p.kind)
+                if d and d.roadside then lum = p; break end
+            end
+            t:truthy(("bioma %d: há luminária de beira de estrada para o teste de afastamento"):format(b), lum ~= nil)
+            if lum then
+                lum.z = WorldRoad._camZ + relE - 2.0
+                lum.lane, lum._recuo = 0, true
+                WorldRoad._lumMidZ = nil
+                WorldRoad.setBattleEnemyDraw(function() end, nil)
+                love.graphics.setCanvas(cv)
+                WorldRoad.draw(0, 52, W, H - 52, b)
+                love.graphics.setCanvas()
+                local G = WorldRoad.GLUE
+                local gap = lum._glueGap
+                t:truthy(("bioma %d: luminária posta colada no inimigo se afasta (folga %.0f px, mín %.0f)")
+                    :format(b, gap or -1, G.gap * W * 0.85), gap ~= nil and gap >= G.gap * W * 0.85)
+            end
+        end
         WorldRoad.resetRun()
         WorldRoad.setBiome(1)
         WorldRoad._camZ = 5.51

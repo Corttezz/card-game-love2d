@@ -2377,6 +2377,39 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     return true
 end
 
+LMG.GLUE = { dRel = 5.0, gap = 0.07, halfW = 86, laneMax = 2.4 }
+WorldRoad.GLUE = LMG.GLUE
+function LMG.unglue(g, w, camZ)
+    local G = LMG.GLUE
+    local relE = WorldRoad.BATTLE_REL
+    local tE = g.tOf(relE)
+    if not tE then return end
+    local ehw = G.halfW * WorldRoad.enemyScreenK(g.h) * WorldRoad.battleSizeK(relE)
+    local ecx = g.cx + roadWobble(camZ + relE, tE, w)
+    local eb = g.latY(0, tE)
+    local eTop = eb - ehw * 2.6
+    local gap = G.gap * w
+    for _, p in ipairs(WorldRoad._props) do
+        local d = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
+        local tP = d and d.roadside and math.abs(p.z - camZ - relE) < G.dRel and g.tOf(p.z - camZ)
+        local img = tP and getSprite(p.kind, p.variant, p.bid)
+        if img then
+            local s = g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1) * (PropCut.sizeK[img] or 1),
+                tP, img:getHeight())
+            local lhw = img:getWidth() * s * 0.5
+            local halfR = ROAD_HALF * w * (0.30 + 0.70 * (tP ^ 1.15))
+            local px = g.cx + p.side * halfR * (1.05 + p.lane * 1.2)
+            local py = g.latY(px - g.cx, tP)
+            if py - img:getHeight() * s < eb and py > eTop
+               and math.abs(px - ecx) - lhw - ehw < gap then
+                local off = math.abs(ecx + p.side * (ehw + gap + lhw) - g.cx)
+                p.lane = math.min(G.laneMax, math.max(p.lane, (off / halfR - 1.05) / 1.2))
+                p._glueGap = math.abs(g.cx + p.side * halfR * (1.05 + p.lane * 1.2) - ecx) - lhw - ehw
+            end
+        end
+    end
+end
+
 function LMG.lumPrepass(g, w, camZ)
     if not WorldRoad._travel then
         local screenK = WorldRoad.enemyScreenK(g.h)
@@ -2422,6 +2455,7 @@ function LMG.lumPrepass(g, w, camZ)
                 best.z = camZ + REL_CREST * (1 - 0.52 ^ (1 / T_POW))
                 best._recuo = true
             end
+            if WorldRoad._enemyDraw then LMG.unglue(g, w, camZ) end
         end
     end
     WorldRoad._lumBoxN = 0
