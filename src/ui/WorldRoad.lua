@@ -2108,9 +2108,20 @@ local function gradTex()
     return _gradV, _gradH
 end
 
+function PropCut.sunXr(bid)
+    local b = (bid and BIOME_BY_ID[bid]) or rawBiome()
+    local cel = b.celestial
+    if not cel then return nil end
+    if not (cel.painted and cel.drift) then return cel.xr end
+    local base = (b.id == rawBiome().id) and WorldRoad._segBase or WorldRoad._segBasePrev
+    local p = ((WorldRoad._camZ or 0) - (base or 0)) / (SEGMENT_LEN - WorldRoad.TRAVEL_DISTANCE)
+    return cel.xr + cel.drift * (1 - 2 * math.max(0, math.min(1, p)))
+end
+WorldRoad.sunXr = PropCut.sunXr
+
 local function sunShadowDir(g, x, w, px)
-    local cel = rawBiome().celestial
-    local sunX = cel and (x + cel.xr * w) or g.cx
+    local xr = PropCut.sunXr()
+    local sunX = xr and (x + xr * w) or g.cx
     return math.max(-1, math.min(1, (px - sunX) / (w * 0.5)))
 end
 
@@ -2119,11 +2130,12 @@ local function ridge(seed, i)
          + math.sin(i * 1.7 + seed * 0.7) * 0.15
 end
 
-local function stripTransform(g, x, w, camZ, iw, ih, cel)
+local function stripTransform(g, x, w, camZ, iw, ih, bid)
+    local cel = bid and (BIOME_BY_ID[bid] or PropCut.EMPTY).celestial
     local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
     local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
     local tileW = iw * sx
-    local off = (cel and cel.painted) and (cel.painted * tileW - cel.xr * w)
+    local off = (cel and cel.painted) and (cel.painted * tileW - PropCut.sunXr(bid) * w)
         or (camZ * 2.5 * sx) % (tileW * 2)
     return sx, yTop, tileW, off
 end
@@ -2168,8 +2180,7 @@ local function drawMountainsOf(g, x, w, camZ, bid, alpha)
     local img = getSprite("mountains", 0, bid)
     if img then
         local iw, ih = img:getWidth(), img:getHeight()
-        local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih,
-            (BIOME_BY_ID[bid] or PropCut.EMPTY).celestial)
+        local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih, bid)
         local c = Scene.Grade.color("mountain", 0, LMG.c)
         love.graphics.setColor(c[1], c[2], c[3], alpha)
         drawStripTiles(img, x, sx, yTop, tileW, off)
@@ -2217,8 +2228,7 @@ local function drawMountainsFrontOf(g, x, w, camZ, bid, alpha)
     if _G.WR_DEBUG then require("src.core.Debug").trace("[WR] frontOf bid=" .. tostring(bid) .. " a=" .. alpha .. " img=" .. tostring(img ~= nil and img ~= false)) end
     if not img then return false end
     local iw, ih = img:getWidth(), img:getHeight()
-    local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih,
-        (BIOME_BY_ID[bid] or PropCut.EMPTY).celestial)
+    local sx, yTop, tileW, off = stripTransform(g, x, w, camZ, iw, ih, bid)
     local c = Scene.Grade.color("mountain", 0, LMG.c)
     love.graphics.setColor(c[1], c[2], c[3], alpha)
     drawStripTiles(img, x, sx, yTop, tileW, off)
@@ -4099,8 +4109,8 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     Scene.Grade.setDepth(g.tOf(WorldRoad.BATTLE_REL) or 1)
 
     do
-        local cel = rawBiome().celestial
-        local sunX = cel and (x + cel.xr * w) or g.cx
+        local xr = PropCut.sunXr()
+        local sunX = xr and (x + xr * w) or g.cx
         ShadowEngine.setFrame(sunX, w, WorldRoad._timeOfDay,
             LightEngine.ambientLuma())
         LuminaireEngine.setTimeOfDay(WorldRoad._timeOfDay)

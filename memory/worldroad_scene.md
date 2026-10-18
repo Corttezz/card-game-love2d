@@ -460,6 +460,15 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   de volta → 6 falham. O `pick` do castelo ganhou duas posições em ±2,4 × deslocamento (só se cabem na tela)
   e a luminária pesa 4 como marcos e landmark: o ato 2 saía do centro ainda sobre o pilar (63 %).
 
+- **Sol pintado com deriva limitada (18/Out/2026, rodada 4, `tools/preview_out/rodada4/item1/`):** com a faixa
+  ancorada no `xr` os atos 3 e 6 ficaram sem horizonte andando na viagem. `celestial.drift` (≤ 0,04) faz a faixa
+  (base e `_front` juntas, pelo `stripTransform`) ir de `xr + drift` no andar 1 a `xr - drift` no andar 8, linear em
+  `(camZ - segBase) / (SEGMENT_LEN - TRAVEL_DISTANCE)`, parada depois do fim do ato. A LUZ lê `PropCut.sunXr(bid)`
+  (= `WorldRoad.sunXr`), fonte única do sol real: `sunShadowDir`, `ShadowEngine.setFrame`, `flipToSun`. Ler
+  `celestial.xr` direto para luz é bug agora. A `_front` do dusk não ganhou paralaxe própria: é a mesma colina do
+  fundo recortada, e andar diferente dobraria a colina. Trava `test_sky_strip`; captura
+  `lovec . test_one screenshot_rodada4 <rótulo>:andares`.
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica
