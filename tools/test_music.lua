@@ -295,6 +295,7 @@ function M.run()
     end
 
     M.sectionsOff(t)
+    M.loopPoints(t)
 
     return t:done()
 end
@@ -311,6 +312,179 @@ function M.sectionsOff(t)
     t:eq("chefe sem faixa propria cai na generica", MD.pick("playing",
         { actNumber = 1, currentNode = { type = "boss", enemyId = "chefe_inexistente" } }, "boss", true),
         MD.GENERIC_BOSS)
+end
+
+M.LOOP_BOSSES = {
+    tower_lich = "musicBossTowerLich",
+    winter_monarch = "musicBossWinterMonarch",
+    abyss_tyrant = "musicBossAbyssTyrant",
+}
+
+function M.loopPoints(t)
+    local FA = require("tools.fake_audio")
+    local LOOPS = require("src.data.music_loops")
+    for id, code in pairs(M.LOOP_BOSSES) do
+        t:eq("faixa de " .. id .. " no codigo do MusicDirector", MD.BOSS_TRACKS[id], code)
+        t:truthy("audio/music/" .. MD.bossFile(id) .. " instalada",
+            love.filesystem.getInfo("audio/music/" .. MD.bossFile(id)) ~= nil)
+        local lp = LOOPS[code]
+        t:truthy(code .. " tem ponto de loop", lp ~= nil)
+        if lp then
+            t:truthy(code .. ": loopStart > 1 s (nunca volta ao comeco)", lp.loopStart > 1)
+            t:truthy(code .. ": loop de pelo menos 40 s", lp.loopEnd - lp.loopStart >= 40)
+        end
+    end
+    t:falsy("colosso sem faixa propria instalada",
+        love.filesystem.getInfo("audio/music/" .. MD.bossFile("rot_colossus")) ~= nil)
+    t:falsy("rainha sem boss-eclipse_queen.mp3 (fica com a dela)",
+        love.filesystem.getInfo("audio/music/" .. MD.bossFile("eclipse_queen")) ~= nil)
+    t:eq("rainha usa music-boss-eclipse", MD.TRACKS[MD.BOSS_TRACKS.eclipse_queen], "music-boss-eclipse.mp3")
+    t:eq("rei-carnica sem ponto de loop (arquivo aprovado intocado)", LOOPS.musicBossCarrionKing, nil)
+    for code in pairs(LOOPS) do
+        t:truthy("ponto de loop de " .. code .. " e de uma faixa que o diretor conhece",
+            MD.TRACKS[code] ~= nil or MD.isBossCode(code))
+    end
+
+    local prevAudio = _G.audioSystem
+    FA.install()
+    local ok, err = pcall(function()
+        local AM = require("engine.AudioManager")
+        local audio = AM:new()
+        _G.audioSystem = audio
+        MD.registerTracks(audio)
+        audio:loadSound("menuMusic", "audio/music.mp3", {
+            volume = 0.6, group = "music", stream = true, loop = true })
+
+        local function audiveis()
+            local n, quais = 0, {}
+            for code, e in pairs(audio.sources) do
+                if e.group == "music" then
+                    for _, s in ipairs(e.instances) do
+                        if s.playing and s.vol > 0.002 then n = n + 1; quais[#quais + 1] = code end
+                    end
+                end
+            end
+            table.sort(quais)
+            return n, table.concat(quais, "+")
+        end
+        local function pump(secs, each)
+            local el = 0
+            while el < secs do
+                audio:update(1 / 60)
+                FA.advance(1 / 60)
+                el = el + 1 / 60
+                if each then each() end
+            end
+        end
+
+        for _, code in pairs(M.LOOP_BOSSES) do
+            local e = audio.sources[code]
+            t:truthy(code .. " carregada", e ~= nil)
+            if e then
+                local ls, le = audio:getLoopPoints(code)
+                local src = e.template
+                t:near(code .. ": loopStart vem dos dados", ls, LOOPS[code].loopStart, 1e-9)
+                t:near(code .. ": loopEnd vem dos dados", le, LOOPS[code].loopEnd, 1e-9)
+                t:truthy(code .. ": arquivo vai alem do loopEnd (sobra para o atraso do quadro)",
+                    src:getDuration() >= le + 1.0)
+
+                audio:playMusic("musicAct1")
+                pump(0.5)
+                audio:playMusic(code, { fadeDuration = 1.2 })
+                local okPar = true
+                pump(2.0, function()
+                    if audiveis() > 2 then okPar = false end
+                end)
+                t:truthy(code .. ": no maximo duas faixas durante o crossfade de entrada", okPar)
+                t:eq(code .. ": assentou sozinha", select(2, audiveis()), code)
+                t:falsy(code .. ": fonte com ponto de loop toca SEM loop nativo", src.looping)
+                t:truthy(code .. ": comeca do inicio natural (posicao baixa)", src.pos < 3.0)
+
+                local plays0, stops0, inst0 = src.plays, src.stops, #e.instances
+                src.pos = le - 0.25
+                local voltou, minPos, sempreSo = false, math.huge, true
+                local lastPos = src.pos
+                pump(1.0, function()
+                    if src.pos < lastPos then
+                        voltou = true
+                        minPos = math.min(minPos, src.pos)
+                    end
+                    lastPos = src.pos
+                    local n, quais = audiveis()
+                    if n ~= 1 or quais ~= code then sempreSo = false end
+                end)
+                t:truthy(code .. ": ao passar do loopEnd volta", voltou)
+                t:truthy(code .. ": volta para o loopStart, nunca para o 0 ("
+                    .. string.format("%.3f", minPos) .. ")",
+                    minPos >= ls - 1e-6 and minPos <= ls + 0.1)
+                t:truthy(code .. ": segue tocando", src.playing)
+                t:eq(code .. ": mesma fonte, sem play novo", src.plays, plays0)
+                t:eq(code .. ": sem stop", src.stops, stops0)
+                t:eq(code .. ": nenhuma instancia nova", #e.instances, inst0)
+                t:truthy(code .. ": uma faixa so audivel na volta do loop", sempreSo)
+
+                src.pos = le + 0.4
+                audio:update(1 / 60)
+                t:near(code .. ": atraso de quadro preserva a fase (loopStart + atraso)",
+                    src.pos, ls + 0.4, 1e-6)
+
+                audio:setFocused(false)
+                pump(0.5)
+                src.pos = le - 0.05
+                pump(0.3)
+                t:truthy(code .. ": fora da janela (mudo) o loop tambem volta", src.pos < le and src.pos >= ls)
+                t:truthy(code .. ": fora da janela segue tocando", src.playing)
+                audio:setFocused(true)
+                pump(0.5)
+
+                src.pos = le - 0.3
+                audio:playMusic("musicAct2", { fadeDuration = 1.0 })
+                local okCf = true
+                pump(1.5, function()
+                    if audiveis() > 2 then okCf = false end
+                end)
+                t:truthy(code .. ": crossfade de saida cruzando o loopEnd sem terceira faixa", okCf)
+                t:eq(code .. ": saiu de vez", select(2, audiveis()), "musicAct2")
+                t:falsy(code .. ": fonte do chefe parada", src.playing)
+
+                audio:playMusic(code, { fadeDuration = 1.2 })
+                pump(1.5)
+                t:truthy(code .. ": voltar ao chefe recomeca do inicio natural", src.pos < 3.0)
+                audio:fadeOutMusic(1.0)
+                pump(1.5)
+                t:eq(code .. ": silencio do chefe apaga a faixa", (audiveis()), 0)
+                audio:stopMusic()
+            end
+        end
+
+        local semLoop = audio.sources["musicAct1"]
+        t:falsy("faixa sem dados de loop segue sem ponto de loop", audio:getLoopPoints("musicAct1"))
+        audio:playMusic("musicAct1")
+        pump(0.2)
+        t:truthy("faixa sem dados de loop segue com loop nativo", semLoop.template.looping)
+        audio:stopMusic()
+
+        local rot = MD.BOSS_TRACKS.rot_colossus
+        t:falsy("colosso: codigo dele nao carregado", audio.sources[rot] ~= nil)
+        local prevHall, prevIntro = MD.hallProbe, MD.introProbe
+        MD.hallProbe = function() return true end
+        MD.introProbe = function() return false end
+        MD._current, MD._lastWanted = nil, nil
+        MD.apply("playing", { actNumber = 5, currentNode = { type = "boss", enemyId = "rot_colossus" } }, "boss")
+        t:eq("colosso cai na faixa generica de chefe", audio.currentMusic, MD.GENERIC_BOSS)
+        audio:stopMusic()
+        MD.apply("playing", { actNumber = 6, currentNode = { type = "boss", enemyId = "eclipse_queen" } }, "boss")
+        t:eq("rainha mantem a faixa dela", audio.currentMusic, "musicBossEclipse")
+        audio:stopMusic()
+        MD.apply("playing", { actNumber = 1, currentNode = { type = "boss", enemyId = "carrion_king" } }, "boss")
+        t:eq("rei-carnica mantem a faixa dele", audio.currentMusic, "musicBossCarrionKing")
+        audio:stopMusic()
+        MD.hallProbe, MD.introProbe = prevHall, prevIntro
+        MD._current, MD._lastWanted = nil, nil
+    end)
+    FA.uninstall()
+    _G.audioSystem = prevAudio
+    t:truthy("pontos de loop sem erro" .. (ok and "" or (": " .. tostring(err))), ok)
 end
 
 return M

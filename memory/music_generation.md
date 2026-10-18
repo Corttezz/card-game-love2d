@@ -611,3 +611,89 @@ triplicado e devolve a cópia do meio (o loop continua sem emenda; o
 `check_loop` acusa DESNIVEL). Resultado: -16,2 LUFS, pico -1,6 dBTP, 192k,
 `check_loop` sem aviso.
 
+### Lich, Monarca e Tirano: introdução + ponto de loop (17/Out/2026, frente trilha-chefes-instala)
+
+**Escolhas do dono (ouvidas nas amostras `audio/_amostras_chefe/<Nome> - 1.mp3`):**
+Lich da Torre = candidata 1, "começando a partir do segundo 10"; Monarca do
+Inverno = candidata 1; Tirano do Abismo = candidata 1; Colosso Podre = nenhuma
+(segue em `musicBoss`); Rainha do Eclipse = fica com `music-boss-eclipse.mp3`;
+Rei-Carniça = intocado ("perfeito").
+
+**A queixa:** "parece que o começo delas é uma parte do final". Correta. O
+`make_loop.py` (fora do repo) monta o arquivo como `crossfade(cabeça, cauda) +
+miolo`: o primeiro compasso do arquivo é a CAUDA da peça (o fim) sumindo por
+cima da cabeça. O arquivo começa, literalmente, no final da música.
+
+**A solução: introdução tocada uma vez + ponto de loop.** O arquivo começa no
+começo NATURAL da geração bruta, toca até `loopEnd` e o `AudioManager` volta
+para `loopStart` (um início de batida mais adiante na peça, nunca o 0) na MESMA
+fonte, sem fonte nova e sem fade:
+
+- dados em `src/data/music_loops.lua` (`{ [código] = { loopStart, loopEnd } }`,
+  segundos do ARQUIVO com 6 casas: uma casa a menos já desalinha 1 amostra e o
+  degrau no seek dobra no tirano). `MusicDirector.registerTracks` passa os dois
+  ao `loadSound`.
+- a fonte com ponto de loop toca com `setLooping(false)`; no `update`, se
+  `tell("seconds") >= loopEnd`, `seek(loopStart + (pos - loopEnd))`: o atraso do
+  quadro é preservado. Faixa sem dados continua com loop nativo.
+- **por que o atraso não estala:** o arquivo vai 6 s ALÉM do `loopEnd`, e esses
+  6 s são a cópia do que vem depois de `loopStart` (com a última 1 s em fade, só
+  se o jogo travar mais de 5 s). O último tempo (1 batida) antes de `loopEnd` é
+  um crossfade de potência constante da continuação natural para o que vem antes
+  de `loopStart`. Então o que toca em `loopEnd + d` é o mesmo que em
+  `loopStart + d`, qualquer que seja o atraso `d`. O atraso de encoder do mp3 não
+  importa: desloca as duas pontas igual (o decoder da LÖVE e o ffmpeg deram o
+  mesmo número no `check_loop`).
+- loudness: ganho único medido no arquivo montado, aplicado com limitador
+  (`alimiter latency=1`) na geração bruta INTEIRA antes de montar, para as duas
+  cópias saírem idênticas; mp3 192k 44,1 kHz (igual ao Rei-Carniça).
+
+**Como os pontos foram escolhidos** (scripts em
+`E:\dev\tools\ace-step\loop_points\`, fora do repo): grade de batidas pelo
+fluxo espectral; matriz de auto-semelhança por batida (40 bandas mel + croma);
+custo do par (fim, volta) = distância média ao longo da diagonal ±8 batidas,
+distância perto da emenda e salto de nível; o par final foi decidido pela
+"novidade" da emenda (espectro da batida antes do crossfade × batida depois)
+comparada com a novidade natural da própria peça no mesmo ponto. `loopEnd` e
+`loopStart` diferem por múltiplo de 4 batidas.
+
+| faixa | início natural (bruto) | loopStart (arquivo / bruto) | loopEnd (arquivo / bruto) | loop | dur. arquivo | LUFS / pico | BPM |
+|---|---|---|---|---|---|---|---|
+| `boss-tower_lich.mp3` | 7,95 s | 40,068 / 48,018 s | 103,732 / 111,682 s | 63,7 s | 109,7 s | -16,0 / -1,67 dBTP | 90,5 |
+| `boss-winter_monarch.mp3` | 0,00 s | 57,660 / 57,660 s | 108,066 / 108,066 s | 50,4 s | 114,1 s | -16,0 / -3,47 dBTP | 100 |
+| `boss-abyss_tyrant.mp3` | 23,75 s | 24,801 / 48,551 s | 75,089 / 98,839 s | 50,3 s | 81,1 s | -16,0 / -1,72 dBTP | 105 |
+
+- **Lich:** os 10 s da versão que o dono ouviu caem nos 10 s do bruto (aquele
+  corte começava no 0). Ali não há começo de frase: a frase nasce num vale quase
+  mudo em 7,9 s (-43 dB), sobe e tem a barra seguinte em ~10,6 s. Começar em 10 s
+  cortaria essa frase no meio, que é a mesma queixa. Por isso o início é 7,95 s:
+  pula o gesto de abertura (0 a 7,9 s), que é o que o dono pediu para tirar.
+  Emenda: novidade 6,15 contra 6,08 da própria peça em 111,68 s (o ponto é uma
+  virada natural), nível sobe +3 dB (a peça sobe +6,5 ali), corr. de ataques 0,43.
+- **Monarca:** a geração já abre no tempo forte (-12 dB no 1º compasso), início 0.
+  Emenda: novidade 3,31 contra 3,18 natural (percentil 49 das viradas de batida
+  da faixa), nível +2 dB, corr. de ataques 0,72.
+- **Tirano:** os primeiros 23 s do bruto são quase silêncio (-46 a -52 dB) e o
+  golpe que abre a peça cai em ~26,0 s. O início é 1 compasso antes (23,75 s): o
+  inchaço de -43 dB até o golpe. Emenda: novidade 3,78 contra 4,25 natural
+  (percentil 36), nível 0 dB (razão 0,96), corr. de ataques 0,92.
+- **Degrau no seek** (pior caso em 0,1 s de atraso, decoder da LÖVE): lich 0,0245,
+  monarca 0,0639, tirano 0,0534. Os três ficam abaixo do passo normal p99 entre
+  amostras da própria faixa (0,050 / 0,0997 / 0,0676). O resto é ruído do mp3.
+
+**Rei-Carniça (medido, arquivo NÃO trocado):** tem o mesmo defeito. Os primeiros
+1,25 s do `boss-carrion_king.mp3` são o FIM da peça (correlação 0,95 a 0,99 com o
+bruto em 105,5 a 106,5 s; peso da cauda 100% em 0 s, 50% em 1,25 s, 10% em 2 s);
+só a partir de 2 s ele é o começo do loop (correlação 0,96 a 1,00 com 22,5 s em
+diante). O bruto tem 18 s de introdução baixa (-31 a -40 dB) antes do tema
+em 18,0 s. Se o dono quiser, o mesmo tratamento cabe nele sem regerar.
+
+**Travas:** `test_music` (`loopPoints`: os 3 voltam para `loopStart` e nunca
+para o 0, mesma fonte sem play/stop/instância nova, fase do atraso preservada,
+mudo fora da janela, crossfade de saída cruzando o `loopEnd`, uma faixa só,
+colosso na genérica, rainha e Rei-Carniça intocados); `test_music_flow` cenário
+`bossloop` (luta, volta do loop, Continuar no meio da luta, matar na luta, cash
+out, matar durante a entrada; atenção: o `UnlockShowcase` aberto no menu congela
+o combate retomado, por isso o cenário fecha os overlays antes do Continuar, como
+o jogador faria); `love . check_loop` mede a emenda `loopEnd → loopStart`
+(0 avisos; as colisões de brilho entre faixas são outra medida e já existiam).

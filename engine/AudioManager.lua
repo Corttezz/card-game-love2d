@@ -16,6 +16,15 @@ end
 
 AudioManager.FOCUS_FADE = 0.25
 
+local function nativeLoop(entry)
+    return entry.loop and not entry.loopEnd
+end
+
+local function validLoopPoints(loopStart, loopEnd)
+    return type(loopStart) == "number" and type(loopEnd) == "number"
+        and loopStart >= 0 and loopEnd > loopStart
+end
+
 local function computeFinalVolume(self, entry)
     local groupVol = self.groups[entry.group] or 1
     return (entry.baseVolume or 1) * groupVol * (self.groups.master or 1) * (self.focusGain or 1)
@@ -90,16 +99,44 @@ function AudioManager:loadSound(code, path, opts)
         basePitch      = opts.pitch or 1.0,
         pitchVariation = opts.pitchVariation or 0,
         loop           = opts.loop or false,
+        loopStart      = validLoopPoints(opts.loopStart, opts.loopEnd) and opts.loopStart or nil,
+        loopEnd        = validLoopPoints(opts.loopStart, opts.loopEnd) and opts.loopEnd or nil,
         instances      = { template },
         instGain       = setmetatable({}, { __mode = "k" }),
     }
 
     template:setVolume(computeFinalVolume(self, entry))
     template:setPitch(entry.basePitch)
-    template:setLooping(entry.loop)
+    template:setLooping(nativeLoop(entry))
 
     self.sources[code] = entry
     return entry
+end
+
+function AudioManager:setLoopPoints(code, loopStart, loopEnd)
+    local entry = self.sources[code]
+    if not entry then return false end
+    if validLoopPoints(loopStart, loopEnd) then
+        entry.loopStart, entry.loopEnd = loopStart, loopEnd
+    else
+        entry.loopStart, entry.loopEnd = nil, nil
+    end
+    for _, src in ipairs(entry.instances) do src:setLooping(nativeLoop(entry)) end
+    return entry.loopEnd ~= nil
+end
+
+function AudioManager:getLoopPoints(code)
+    local entry = self.sources[code]
+    if not entry or not entry.loopEnd then return nil end
+    return entry.loopStart, entry.loopEnd
+end
+
+local function wrapLoopPoints(entry, src)
+    local pos = src:tell("seconds")
+    if type(pos) ~= "number" or pos < entry.loopEnd then return false end
+    local span = entry.loopEnd - entry.loopStart
+    src:seek(entry.loopStart + ((pos - entry.loopEnd) % span), "seconds")
+    return true
 end
 
 local function acquireInstance(self, entry)
@@ -119,7 +156,7 @@ local function acquireInstance(self, entry)
     end
 
     local clone = entry.template:clone()
-    clone:setLooping(entry.loop)
+    clone:setLooping(nativeLoop(entry))
     table.insert(entry.instances, clone)
     return clone
 end
@@ -151,7 +188,7 @@ function AudioManager:play(code, opts)
     src:setVolume(computeFinalVolume(self, entry) * (opts.gain or 1))
     entry.baseVolume = saved
 
-    if opts.loop ~= nil then src:setLooping(opts.loop) end
+    if opts.loop ~= nil then src:setLooping(opts.loop and not entry.loopEnd) end
 
     local ok = pcall(function() src:play() end)
     if not ok then
@@ -198,7 +235,8 @@ function AudioManager:playMusic(code, opts)
     if self.currentMusic == code then
         local entry = self.sources[code]
         if entry and entry.template and not entry.template:isPlaying() then
-            entry.template:setLooping(true)
+            entry.loop = true
+            entry.template:setLooping(nativeLoop(entry))
             entry.template:play()
         end
         return true
@@ -211,7 +249,7 @@ function AudioManager:playMusic(code, opts)
     end
 
     entry.loop = true
-    entry.template:setLooping(true)
+    entry.template:setLooping(nativeLoop(entry))
 
     local fadeDuration = opts.fadeDuration or 0
     local cf0 = self.musicCrossfade
@@ -373,6 +411,7 @@ function AudioManager:update(dt)
         while i <= #entry.instances do
             local src = entry.instances[i]
             if src:isPlaying() then
+                if entry.loopEnd then wrapLoopPoints(entry, src) end
                 if not (self.musicCrossfade and (code == self.musicCrossfade.from or code == self.musicCrossfade.to)) then
                     src:setVolume(final * (entry.instGain[src] or 1))
                 end

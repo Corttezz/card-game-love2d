@@ -34,8 +34,15 @@ decide a faixa é o `MusicDirector`, que OBSERVA o estado a cada quadro
 - **Ponto de plugar a trilha do chefe:** `MusicDirector.bossTrack(run)` devolve o
   código; a tabela é `MusicDirector.BOSS_TRACKS` (id → código), arquivo
   `audio/music/boss-<id>.mp3`. Ausente → `musicBoss` com aviso.
-  Instalada (17/Out/2026): só `boss-carrion_king.mp3` (ACE-Step, candidata B
-  aprovada pelo dono); os outros cinco chefes ainda caem em `musicBoss`.
+  Instaladas (17/Out/2026): `boss-carrion_king.mp3`, `boss-tower_lich.mp3`,
+  `boss-winter_monarch.mp3`, `boss-abyss_tyrant.mp3` (ACE-Step, escolhidas pelo
+  dono); a rainha fica com `music-boss-eclipse.mp3` e o colosso cai em `musicBoss`.
+- **Introdução + ponto de loop** (17/Out/2026): faixa com dados em
+  `src/data/music_loops.lua` toca a introdução uma vez e o `AudioManager` faz
+  `seek(loopStart + atraso)` na mesma fonte ao passar de `loopEnd`
+  (`setLooping(false)`). Sair e voltar ao chefe (`stop` rebobina) recomeça pela
+  introdução; crossfade, silêncio e mudo fora da janela não mudam. Lich, monarca
+  e tirano usam; as outras faixas seguem com loop nativo.
 - **Chefe em seções** (`MusicSections`, 15/Out/2026): com `audio/music/boss/<id>/`
   o chefe toca seções `a/b/c/f1/f2`, cada uma uma faixa comum do AudioManager com
   código `<faixa do chefe>:<seção>`. Enquanto toca, `currentMusic` e

@@ -192,10 +192,12 @@ local function expectContinuous(label, code, secs, action)
     local stops0 = src and src.stops or 0
     local lastPos = src and src.pos or 0
     local okPos, okAud = true, true
+    local ls, le = audio():getLoopPoints(code)
     if action then action() end
     pump(secs, nil, function()
         if not (src and src.playing) then okAud = false return end
-        if src.pos + 1e-6 < lastPos and lastPos < src.dur - 1 then okPos = false end
+        local wrapped = le and lastPos >= le - 0.2 and src.pos >= ls and src.pos <= ls + 0.2
+        if src.pos + 1e-6 < lastPos and lastPos < src.dur - 1 and not wrapped then okPos = false end
         lastPos = src.pos
         if not snapshot().music[code] then okAud = false end
     end)
@@ -568,6 +570,87 @@ local function scenarioBossEdge()
     t:eq(scene .. ": loops da entrada parados", #loops, 0)
 end
 
+local LOOP_BOSSES = {
+    { act = 2, id = "tower_lich", code = "musicBossTowerLich" },
+    { act = 3, id = "abyss_tyrant", code = "musicBossAbyssTyrant" },
+    { act = 4, id = "winter_monarch", code = "musicBossWinterMonarch" },
+}
+
+local function checkLoopWrap(code)
+    local src = trackSource(code)
+    local ls, le = audio():getLoopPoints(code)
+    t:truthy(scene .. ": " .. code .. " tem ponto de loop carregado", ls ~= nil and le ~= nil)
+    if not (src and ls) then return end
+    local plays0, stops0 = src.plays, src.stops
+    src.pos = le - 0.3
+    local wrappedTo, sole = nil, true
+    local lastPos = src.pos
+    pump(1.0, nil, function()
+        if src.pos < lastPos and not wrappedTo then wrappedTo = src.pos end
+        lastPos = src.pos
+        if describe(audibleCodes()) ~= code then sole = false end
+    end)
+    t:truthy(scene .. ": passou do loopEnd e voltou ao loopStart ("
+        .. tostring(wrappedTo and ("%.3f"):format(wrappedTo)) .. "), nunca ao 0",
+        wrappedTo and wrappedTo >= ls - 1e-6 and wrappedTo <= ls + 0.2)
+    t:truthy(scene .. ": a mesma fonte segue tocando, sem play nem stop",
+        src.playing and src.plays == plays0 and src.stops == stops0)
+    t:truthy(scene .. ": so a faixa do chefe audivel na volta do loop", sole)
+end
+
+local function scenarioBossLoops()
+    local BC = require("src.ui.BossCinematic")
+    for _, b in ipairs(LOOP_BOSSES) do
+        setScene("chefe com ponto de loop A" .. b.act .. " (" .. b.id .. ")")
+        ensureRun()
+        CM().goToAct(b.act, true)
+        t:truthy(scene .. ": luta pronta", waitReady(60))
+        local id = run().currentNode.enemyId
+        t:eq(scene .. ": chefe do ato", id, b.id)
+        t:eq(scene .. ": faixa propria instalada (nao a generica)", bossCode(id), b.code)
+        expectTrack("faixa do chefe", b.code, 2.0)
+        local src = trackSource(b.code)
+        t:truthy(scene .. ": comecou pelo inicio natural (posicao " .. ("%.2f"):format(src and src.pos or -1) .. ")",
+            src and src.pos < 8)
+        t:falsy(scene .. ": sem loop nativo (o AudioManager faz a volta)", src and src.looping)
+        checkLoopWrap(b.code)
+
+        setScene("Continuar no meio da luta A" .. b.act .. " (" .. b.id .. ")")
+        toMenu()
+        expectTrack("volta ao menu", "menuMusic", 3.0)
+        noRunSoundsInMenu("menu depois de sair da luta do chefe")
+        require("src.ui.InputFocus").hideAll()
+        continueRun()
+        pump(4, function() return state() == "playing" end)
+        t:eq(scene .. ": retoma na luta", state(), "playing")
+        expectTrack("depois do Continuar", b.code, 3.5)
+        t:falsy(scene .. ": a faixa do menu nao sobra", trackSource("menuMusic") and trackSource("menuMusic").playing)
+        checkLoopWrap(b.code)
+
+        setScene("morte do chefe A" .. b.act .. " (" .. b.id .. ")")
+        t:truthy(scene .. ": luta pronta depois do Continuar", waitReady(40))
+        expectContinuous("matar o chefe na luta", b.code, 3, function() CM().kill() end)
+        waitState("roundEval", 30)
+        t:eq(scene .. ": cash out depois do chefe", state(), "roundEval")
+        expectContinuous("cash out do chefe", b.code, 1.5)
+
+        setScene("matar " .. b.id .. " durante a entrada")
+        CM().goToAct(b.act, true)
+        pump(60, function() return BC.phase() == "intro" end)
+        pump(0.3)
+        t:eq(scene .. ": silencio na entrada", describe(audibleCodes()), SILENCE)
+        CM().winInstant()
+        pump(0.2)
+        CM().leaveCurrent()
+        CM().jumpTo("battle")
+        waitState("playing", 20)
+        expectTrack("batalha seguinte", "musicAct" .. run().actNumber, 3.5)
+        local bs = trackSource(b.code)
+        t:falsy(scene .. ": a faixa do chefe nao ficou tocando", bs and bs.playing)
+        t:eq(scene .. ": loops da entrada parados", #snapshot().loops, 0)
+    end
+end
+
 local function scenarioSettings()
     setScene("volume")
     local a = audio()
@@ -852,7 +935,7 @@ function M.run()
         local steps = {
             { "boot", scenarioBootMenu }, { "act1", scenarioRunAct1 }, { "rapid", scenarioRapid },
             { "settings", scenarioSettings }, { "focus", scenarioFocus },
-            { "boss", scenarioBossFlow }, { "bossedge", scenarioBossEdge },
+            { "boss", scenarioBossFlow }, { "bossedge", scenarioBossEdge }, { "bossloop", scenarioBossLoops },
             { "continue", scenarioContinue }, { "end", scenarioEnd }, { "cheat", scenarioCheatKeys },
             { "menurun", scenarioMenuRunMenu },
         }

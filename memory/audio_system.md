@@ -15,7 +15,7 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 - **Streaming auto**: `path:find("music")` ou `find("ambient")` → `Source(_, "stream")`.
 
 **API pública (instance):**
-- `loadSound(code, path, opts)` — opts: `{volume=1, group="sfx", stream=auto, pitch=1, pitchVariation=0, loop=false}`. Aceita `volume` numérico legacy.
+- `loadSound(code, path, opts)` — opts: `{volume=1, group="sfx", stream=auto, pitch=1, pitchVariation=0, loop=false, loopStart=nil, loopEnd=nil}`. Aceita `volume` numérico legacy. Com `loopStart`/`loopEnd` (segundos) a fonte toca com `setLooping(false)` e o `update` faz `seek(loopStart + atraso)` ao passar de `loopEnd`: introdução uma vez + loop na mesma fonte. `setLoopPoints(code, s, e)` / `getLoopPoints(code)`. Dados das músicas em `src/data/music_loops.lua` ([[music_generation]]).
 - `play(code, opts)` — opts override por-call: `{volume, pitch, loop}`. Retorna a Source ou nil.
 - `playSound(name)` — alias compat.
 - `playMusic(code, opts)` / `stopMusic()` / `fadeOutMusic(d)` (silêncio com fade: `currentMusic` vira nil na hora, a faixa morre pelo crossfade com `to = nil`; ver [[music_generation]]).

@@ -26,6 +26,8 @@ MusicDirector.BOSS_TRACKS = {
     eclipse_queen = "musicBossEclipse",
 }
 
+MusicDirector.LOOPS = require("src.data.music_loops")
+
 MusicDirector.GENERIC_BOSS = "musicBoss"
 MusicDirector.SILENCE = "silence"
 
@@ -36,10 +38,13 @@ end
 function MusicDirector.registerTracks(audioSystem)
     if not audioSystem then return 0 end
     local loaded = 0
+    local loops = MusicDirector.LOOPS
     local function load(code, path)
         if love.filesystem.getInfo(path) then
+            local lp = loops[code]
             audioSystem:loadSound(code, path, {
                 volume = 0.6, group = "music", stream = true, loop = true,
+                loopStart = lp and lp.loopStart, loopEnd = lp and lp.loopEnd,
             })
             loaded = loaded + 1
         end
