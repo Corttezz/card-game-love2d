@@ -2,7 +2,7 @@ local TK = require("tools.testkit")
 local M = {}
 
 function M.run()
-    local t = TK.new("Faixa de montanha: sol pintado com deriva limitada e luz no sol real")
+    local t = TK.new("Faixa de montanha: sol pintado com deriva limitada, luz no sol real, ladrilho sem espelho")
     local biomes = require("src.data.biomes")
     local WorldRoad = require("src.ui.WorldRoad")
     local saved = { WorldRoad._camZ, WorldRoad._segBase, WorldRoad._biomeIndex, WorldRoad._segBasePrev }
@@ -34,6 +34,21 @@ function M.run()
             local fixed = true
             for f = 1, 8 do fixed = fixed and xs[f] == cel.xr end
             t:truthy(b.id .. ": sem astro pintado a luz segue xr", fixed)
+        end
+    end
+
+    for _, b in ipairs(biomes) do
+        local base = "assets/sprites/world/" .. b.id .. "_mountains.png"
+        local front = "assets/sprites/world/" .. b.id .. "_mountains_front.png"
+        if love.filesystem.getInfo(base) then
+            local d = love.image.newImageData(base)
+            t:truthy(b.id .. ": faixa cabe na largura de referência (escala não muda)",
+                d:getWidth() <= 400 and d:getWidth() >= 320)
+            if love.filesystem.getInfo(front) then
+                local f = love.image.newImageData(front)
+                t:truthy(b.id .. ": _front com o mesmo tamanho da faixa (ladrilho alinhado)",
+                    f:getWidth() == d:getWidth() and f:getHeight() == d:getHeight())
+            end
         end
     end
 

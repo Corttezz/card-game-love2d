@@ -29,6 +29,7 @@ local PropCut = {
     nv = {}, EMPTY = {},
     anim = { fps = 5, pingpong = true }, frames = {},
     v4 = { 0, 1, 0, 0 }, v3 = { 0, 0, 0 }, td = {},
+    STRIP_W = 400,
 }
 function PropCut.flipToSun(img, sunRight, fallback)
     local lit = PropCut.lit[img]
@@ -2132,22 +2133,17 @@ end
 
 local function stripTransform(g, x, w, camZ, iw, ih, bid)
     local cel = bid and (BIOME_BY_ID[bid] or PropCut.EMPTY).celestial
-    local sx = math.max(w / iw, (g.crestApexY - g.y + 70) / ih)
+    local sx = math.max(w / math.max(iw, PropCut.STRIP_W), (g.crestApexY - g.y + 70) / ih)
     local yTop = math.floor(g.crestApexY - ih * sx + math.min(70, ih * sx * 0.22))
     local tileW = iw * sx
     local off = (cel and cel.painted) and (cel.painted * tileW - PropCut.sunXr(bid) * w)
-        or (camZ * 2.5 * sx) % (tileW * 2)
+        or (camZ * 2.5 * sx) % tileW
     return sx, yTop, tileW, off
 end
 
 local function drawStripTiles(img, x, sx, yTop, tileW, off)
     for k = -1, 2 do
-        local tx = x - off + k * tileW
-        if (k % 2 == 0) then
-            love.graphics.draw(img, math.floor(tx), yTop, 0, sx, sx)
-        else
-            love.graphics.draw(img, math.floor(tx + tileW), yTop, 0, -sx, sx)
-        end
+        love.graphics.draw(img, math.floor(x - off + k * tileW), yTop, 0, sx, sx)
     end
 end
 
@@ -2160,13 +2156,11 @@ local function drawStripMirrorBelow(img, x, sx, yTop, tileW, off, bottomY)
     while yb < bottomY and b < 6 do
         local flipped = (b % 2 == 0)
         for k = -1, 2 do
-            local tx = x - off + k * tileW
-            local dx = (k % 2 == 0) and math.floor(tx) or math.floor(tx + tileW)
-            local sxx = (k % 2 == 0) and sx or -sx
+            local dx = math.floor(x - off + k * tileW)
             if flipped then
-                love.graphics.draw(img, dx, yb + stripH, 0, sxx, -sx)
+                love.graphics.draw(img, dx, yb + stripH, 0, sx, -sx)
             else
-                love.graphics.draw(img, dx, yb, 0, sxx, sx)
+                love.graphics.draw(img, dx, yb, 0, sx, sx)
             end
         end
         yb = yb + stripH

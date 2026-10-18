@@ -73,7 +73,7 @@ local biomes = {
 
     {
         id = "abyss",
-        celestial = { kind = "sun",  xr = 0.655, yr = 0.47, r = 26, painted = 0.505, drift = 0.035, color = { 0.82, 0.32, 0.16 } },
+        celestial = { kind = "sun",  xr = 0.655, yr = 0.47, r = 26, painted = 0.5534, drift = 0.035, color = { 0.82, 0.32, 0.16 } },
         ambient = { style = "ember", rate = 0.35, color = { 0.95, 0.45, 0.15 } },
         name = "Estrada do Abismo",
         skyTop = { 0.10, 0.05, 0.08 },
@@ -187,7 +187,7 @@ local biomes = {
 
     {
         id = "dusk",
-        celestial = { kind = "sun",  xr = 0.40, yr = 0.37, r = 30, painted = 0.505, drift = 0.04, color = { 0.98, 0.80, 0.42 } },
+        celestial = { kind = "sun",  xr = 0.40, yr = 0.37, r = 30, painted = 0.5714, drift = 0.04, color = { 0.98, 0.80, 0.42 } },
         ambient = { style = "leaf",  rate = 0.28, color = { 0.88, 0.66, 0.25 } },
         name = "Campos do Crepúsculo",
         skyTop = { 0.16, 0.10, 0.14 },

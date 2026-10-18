@@ -469,6 +469,16 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   fundo recortada, e andar diferente dobraria a colina. Trava `test_sky_strip`; captura
   `lovec . test_one screenshot_rodada4 <rótulo>:andares`.
 
+- **Faixa de montanha sem espelho (18/Out/2026, rodada 4, `tools/preview_out/rodada4/item2/`):** o ladrilho
+  alternava cópias espelhadas e a luz pintada nas encostas trocava de lado entre cópias. Agora `drawStripTiles`
+  e `drawStripMirrorBelow` só repetem (o reflexo vertical de baixo continua). Faixa cuja emenda não é contínua
+  ganhou costura de erro mínimo na PRÓPRIA PNG (`tools/mountain_strip_seam.py`: caminho por linha na janela de
+  sobreposição, sem cor nova, base e `_front` com o mesmo caminho): fields, abyss, frost (24 px), marsh (40),
+  dusk (48); highlands já era contínua. A escala é medida contra `PropCut.STRIP_W` (400), então a PNG mais
+  estreita não cresce. Faixa nova: rode o `measure`, olhe `costura/` a 3x, aplique; se tiver astro pintado,
+  recalcule `painted` (coluna menos corte, sobre a largura nova). Dissolve com Bayer foi tentado e rejeitado
+  (coluna pontilhada e silhueta fantasma).
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica
