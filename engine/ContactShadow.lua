@@ -63,9 +63,72 @@ function ContactShadow.scan(img, data)
         end
     end
     if a then spans[#spans + 1] = { a, w - 1 } end
-    local fp = { spans = spans, bottom = maxRow, w = w, h = h }
+    local fp = { spans = spans, bottom = maxRow, w = w, h = h, low = low }
+    fp.pivot, fp.top, fp.footPivot, fp.baseW = ContactShadow.measurePivot(data, px, w, h, maxRow)
     foot[img] = fp
     return fp
+end
+
+ContactShadow.PIVOT = { band = 0.30, grow = 0.03, stop = 0.85,
+    column = 0.6, wide = 1.6, minW = 6, flat = 0.5 }
+
+function ContactShadow.measurePivot(data, px, w, h, maxRow)
+    local function rowWidth(y)
+        local x0, x1 = nil, nil
+        for x = 0, w - 1 do
+            local opaque
+            if px then
+                opaque = px[(y * w + x) * 4 + 3] >= 153
+            else
+                local _, _, _, a = data:getPixel(x, y)
+                opaque = a >= 0.6
+            end
+            if opaque then
+                if not x0 then x0 = x end
+                x1 = x
+            end
+        end
+        return x0 and (x1 - x0 + 1) or 0
+    end
+    local top = 0
+    while top < maxRow and rowWidth(top) == 0 do top = top + 1 end
+    local P = ContactShadow.PIVOT
+    local limit = math.max(top, maxRow - math.floor((maxRow - top + 1) * P.band))
+    local best, pivot = rowWidth(maxRow), maxRow
+    for y = maxRow - 1, limit, -1 do
+        local wd = rowWidth(y)
+        if wd > best + math.max(1, best * P.grow) then
+            best, pivot = wd, y
+        elseif wd < best * P.stop then
+            break
+        end
+    end
+    local maxW, colW, foot = rowWidth(maxRow), nil, pivot
+    for y = maxRow - 1, limit, -1 do
+        local wd = rowWidth(y)
+        if wd > maxW then maxW = wd end
+        if wd < maxW * P.column then colW = wd; break end
+    end
+    if colW and maxW >= P.minW and maxW >= colW * P.wide then
+        local mound = maxRow - math.floor(maxW * P.flat * 0.5 + 0.5)
+        foot = math.min(pivot, math.max(limit, mound))
+    else
+        maxW = nil
+    end
+    return pivot, top, foot, maxW
+end
+
+function ContactShadow.setFootRows(img, rows)
+    local f = foot[img]
+    if not f or not rows then return end
+    f.pivot = math.max(0, f.bottom - rows)
+    f.footPivot = f.pivot
+end
+
+function ContactShadow.padOf(img)
+    local f = foot[img]
+    if not f then return nil end
+    return f.h - 1 - f.bottom
 end
 
 function ContactShadow.footprint(img)

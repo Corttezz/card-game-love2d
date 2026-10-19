@@ -100,6 +100,30 @@ aí; o código só lê.
    Terra queimada da fogueira = disco cheio com alpha caindo e franja irregular.
    **Nada de dither em área** (o primeiro scorch pontilhava linhas inteiras e
    virou bloco quadriculado; trava `maxRowTransitions`).
+   **Pegada medida da sombra projetada (18/Out/2026, frente sombras-item, dono:
+   "a sombra nasce depois do fim da arte")**: o `scan` também mede o PIVÔ da
+   pegada (`ContactShadow.measurePivot`: subindo do pixel mais baixo, a linha
+   onde a largura para de crescer = centro do losango de base quadrada na
+   diagonal ou da elipse de base redonda; teto 30% da altura). Base mais
+   larga EMBAIXO (monte de neve do poste do ato 4, pedestal, flores do
+   oratório) não cresce subindo: aí a pegada vem da largura (base ≥ 1,6x a
+   coluna, elipse com fundo = metade da largura, `PIVOT.flat`). Sem perfil
+   (`baseK/riseK`), o `ShadowEngine.sprite` espelha a silhueta NESSE pivô e
+   corta o que sobe acima dele: a metade de trás da base espelhada cobre a da
+   frente e a sombra sai pelas arestas da frente, em vez de pendurar o losango
+   abaixo da ponta. Com perfil, o pivô só sobe a origem se cair dentro de
+   `baseK` (árvore não é afetada). O motor também acha o pixel mais baixo real
+   (o `footPad` do chamador vira só convenção de coordenada), alinha a origem à
+   grade do canvas 1/2 e a sombra nunca escurece o próprio sprite (`SELF_BIAS`,
+   sem a dilatação da máscara). Landmark usa a borda medida (`Contact.padOf`;
+   `LANDMARK_SHADOW_PAD` ficou só de reserva: a arte nova tem pad 0 e a tabela
+   dizia 2 a 11). Quando a parte mais larga NÃO é a pegada (aro sobre pedras,
+   deck de palafita), declare `footRows` em `src/data/world_props.lua`.
+   Bancada `lovec . test_one bancada_sombras <rotulo>[:bioma]`, trava
+   `test_sombras_item` (vão ≤ 1 px, pegada da frente coberta, base larga com
+   fundo ≥ 20% da largura), julgamento em
+   `tools/preview_out/sombras_item/julgamento.md`. Antes: 28 sprites
+   reprovados nos 6 biomas, depois 0. Árvores não mudaram (perfil `tree`).
 3. `GrassField.requireTufts(rel, x, w, n, scale)`: lâminas na fatia logo à
    frente da base, no mesmo lote e vento; assinatura por fatia mantém o replay
    da grama com a câmera parada. O landmark escolhido virou pseudo-prop dentro

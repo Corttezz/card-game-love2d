@@ -368,6 +368,7 @@ local function tryLoadPng(name)
     img:setFilter("nearest", "nearest")
     scanContentRect(img, path, data)
     Scene.Contact.scan(img, data)
+    Scene.Contact.setFootRows(img, PropCut.data.footRows[name])
     PropCut.px[img] = PropCut.data.sink[name]
     PropCut.sizeK[img] = PropCut.data.sizeK[name]
     PropCut.lit[img] = PropCut.data.lit and PropCut.data.lit[name] or nil
@@ -397,6 +398,7 @@ local function readAnimFrames(key, light)
                 if not light then
                     scanContentRect(im, path, data)
                     Scene.Contact.scan(im, data)
+                    Scene.Contact.setFootRows(im, PropCut.data.footRows[key])
                 end
                 frames[#frames + 1] = im
             end
@@ -1329,6 +1331,7 @@ local LANDMARK_SHADOW_PAD = {
     marsh_landmark_elite      = 1, dusk_landmark_elite  = 1,
     abyss_landmark_elite      = 2, landmark_elite        = 2,
 }
+WorldRoad.LANDMARK_SHADOW_PAD, WorldRoad.LANDMARK_SIZE = LANDMARK_SHADOW_PAD, LANDMARK_SIZE
 local LANDMARK_LIGHT = {
     landmark_rest  = { color = { 1.00, 0.62, 0.28 }, radiusK = 0.95, intensity = 0.85 },
     landmark_elite = { color = { 0.72, 0.38, 1.00 }, radiusK = 0.45, intensity = 0.50 },
@@ -3344,7 +3347,7 @@ local function drawProps(g, x, w, camZ)
         local py = g.latY(0, t)
         local lx = g.cx + roadWobble(lm.z, t, w)
         lmMark.h, lmMark.w, lmMark.py, lmMark.px = ih * s, iw * s, py, lx
-        local shPad = lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
+        local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
         local shY = py - 1 - shPad * s
         if not ShadowEngine.sprite(img, lx, shY, s,
             shadowOpts(nil, nil, shPad, lmCfg(WorldRoad.SHADOW_PROFILE, lm.key))) then
@@ -3433,7 +3436,7 @@ local function drawProps(g, x, w, camZ)
                     s = s * (1 + f.chosenPulse * 0.25)
                 end
                 local hovered = (f.hover == i and not f.converge)
-                local shPad = lmCfg(LANDMARK_SHADOW_PAD, key) or 0
+                local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, key) or 0
                 local shY = py - 1 - shPad * s
                 if not ShadowEngine.sprite(img, px, shY, s,
                     shadowOpts(aMul, nil, shPad,

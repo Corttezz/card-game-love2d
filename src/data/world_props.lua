@@ -2,6 +2,11 @@ return {
     SINK_DEFAULT_FRAC = 0.04,
     SINK_MAX_FRAC = 0.15,
 
+    footRows = {
+        frost_brazier_0 = 4,
+        marsh_landmark_shop = 4,
+    },
+
     sink = {
         fields_tree_0 = 12,
         fields_tree_1 = 9,

@@ -1,4 +1,5 @@
 local Debug = require("src.core.Debug")
+local Contact = require("engine.ContactShadow")
 
 local ShadowEngine = {}
 
@@ -53,6 +54,7 @@ local soloAlphaK
 local SH = { cv = {}, vT = { 0, 0, 0, 0 }, depth = 1, alpha = 1,
              mq = {}, mn = 0, oq = {}, on = 0, done = {}, odone = {}, mdone = {} }
 ShadowEngine.FADE = 0.45
+ShadowEngine.SELF_BIAS = 2.5
 ShadowEngine.MASK = true
 
 SH.FADE_SRC = [[
@@ -78,6 +80,7 @@ uniform Image maskTex;
 uniform vec4 tint;
 uniform float useMask;
 uniform float eps;
+uniform float selfBias;
 uniform vec2 px;
 vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
     vec4 s = Texel(tex, tc);
@@ -87,7 +90,7 @@ vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
         float m = Texel(maskTex, tc).r;
         float md = max(max(Texel(maskTex, tc + vec2(px.x, 0.0)).r, Texel(maskTex, tc - vec2(px.x, 0.0)).r),
                        max(Texel(maskTex, tc + vec2(0.0, px.y)).r, Texel(maskTex, tc - vec2(0.0, px.y)).r));
-        if (max(m, md) > s.r + eps) pa = 0.0;
+        if (max(m, md) > s.r + eps + selfBias) pa = 0.0;
         if (m > s.r + eps) pa = 0.0;
         if (s.g > 0.0 && m > 0.0 && abs(m - s.b) <= eps) oa = s.g;
     }
@@ -177,6 +180,7 @@ local function composite(cv, aMul, mask)
         SH.comp:send("tint", SH.vT)
         SH.comp:send("useMask", mask and 1 or 0)
         SH.comp:send("eps", SH.eps)
+        SH.comp:send("selfBias", ShadowEngine.SELF_BIAS * SH.eps)
         SH.comp:send("maskTex", mask or cv)
         local cw, ch = cv:getDimensions()
         SH.vP = SH.vP or { 0, 0 }
@@ -237,6 +241,19 @@ local function cutScissor(ay, yCut)
         math.max(1, math.ceil(yCut / SCALE) - y0))
 end
 
+local function measuredFoot(img, ih, pad, opts)
+    local fp = Contact.footprint(img)
+    if not fp or fp.h ~= ih then return ih - pad, nil end
+    local rb = math.min(ih - pad, fp.bottom + 1)
+    if opts.measure == false then return rb, nil end
+    local prof = opts.baseK or opts.riseK
+    local pv = math.min(rb, (prof and fp.pivot or fp.footPivot or fp.pivot) + 0.5)
+    if rb - pv < 1 then return rb, nil end
+    if prof then return rb, nil, pv end
+    return rb, pv
+end
+ShadowEngine.measuredFoot = measuredFoot
+
 function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     if not img or not ShadowEngine.isActive() then return false end
     opts = opts or NO_OPTS
@@ -244,9 +261,26 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     local pad = opts.footPad or 0
     local lenK = opts.lenK or 1
     local d = math.max(1.5, iw * s * 0.035)
-    local ay, baseH, yCut = footprint(opts, feetY, ih - pad, s,
-        frame.len * lenK, d)
+    local rb, pv, pvP = measuredFoot(img, ih, pad, opts)
+    feetY = feetY + (rb - (ih - pad)) * s
+    local ay, baseH, yCut
+    if pv then
+        ay, baseH, yCut = feetY - (rb - pv) * s, rb - pv, 1e9
+    else
+        ay, baseH, yCut = footprint(opts, feetY, ih - pad, s,
+            frame.len * lenK, d)
+        if ay and pvP and yCut and baseH > 0 and rb - pvP <= baseH then
+            local up = ay - (feetY - (rb - pvP) * s)
+            if up > 0 then ay, yCut, baseH = ay - up, yCut - up, rb - pvP end
+        end
+    end
     if not ay then return true end
+    if Contact.footprint(img) then
+        local snap = ay - math.floor(ay / SCALE) * SCALE
+        ay = ay - snap
+        if yCut then yCut = yCut - snap end
+    end
+    pad = ih - rb
     local solo = not batching
     if solo then ShadowEngine.beginBatch() end
     local shd = tipShift(feetX)
@@ -382,7 +416,7 @@ local function grouped(list, n, done, key, fn)
 end
 
 local function drawQueued(q)
-    SH.depth = q.t
+    SH.depth = q.t - ShadowEngine.SELF_BIAS * (SH.eps or 0.006)
     SH.alpha = math.min(0.75, frame.alpha * frame.alphaK * ((q.o and q.o.alphaK) or 1))
     ShadowEngine.sprite(q.img, q.x, q.y, q.s, q.o)
     q.img, q.o = nil, nil
