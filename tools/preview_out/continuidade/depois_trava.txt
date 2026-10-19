@@ -1,0 +1,79 @@
+[ok] a1/path1/12648430 luminarias=8 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path2/12648430 luminarias=13 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path3/12648430 luminarias=13 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/castle/12648430 luminarias=9 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path1/7331 luminarias=10 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path2/7331 luminarias=11 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path3/7331 luminarias=10 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/castle/7331 luminarias=6 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path1/90210 luminarias=8 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path2/90210 luminarias=10 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/path3/90210 luminarias=8 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a1/castle/90210 luminarias=8 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+TOTAL 12 cenas, 0 com descontinuidade
+[ok] a2/path1/12648430 luminarias=8 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path2/12648430 luminarias=11 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path3/12648430 luminarias=12 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/castle/12648430 luminarias=5 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path1/7331 luminarias=12 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path2/7331 luminarias=11 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path3/7331 luminarias=11 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/castle/7331 luminarias=6 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path1/90210 luminarias=9 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path2/90210 luminarias=13 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/path3/90210 luminarias=11 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a2/castle/90210 luminarias=6 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+TOTAL 12 cenas, 0 com descontinuidade
+[ok] a3/path1/12648430 luminarias=15 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path2/12648430 luminarias=18 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path3/12648430 luminarias=14 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/castle/12648430 luminarias=10 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path1/7331 luminarias=15 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path2/7331 luminarias=20 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path3/7331 luminarias=15 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/castle/7331 luminarias=13 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path1/90210 luminarias=15 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path2/90210 luminarias=17 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/path3/90210 luminarias=16 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a3/castle/90210 luminarias=13 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+TOTAL 12 cenas, 0 com descontinuidade
+[ok] a4/path1/12648430 luminarias=12 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path2/12648430 luminarias=17 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path3/12648430 luminarias=13 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/castle/12648430 luminarias=10 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path1/7331 luminarias=11 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path2/7331 luminarias=16 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path3/7331 luminarias=10 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/castle/7331 luminarias=9 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path1/90210 luminarias=17 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path2/90210 luminarias=18 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/path3/90210 luminarias=24 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a4/castle/90210 luminarias=14 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+TOTAL 12 cenas, 0 com descontinuidade
+[ok] a5/path1/12648430 luminarias=16 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path2/12648430 luminarias=16 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path3/12648430 luminarias=16 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/castle/12648430 luminarias=13 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path1/7331 luminarias=17 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path2/7331 luminarias=19 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path3/7331 luminarias=27 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/castle/7331 luminarias=14 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path1/90210 luminarias=16 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path2/90210 luminarias=19 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/path3/90210 luminarias=17 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a5/castle/90210 luminarias=12 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+TOTAL 12 cenas, 0 com descontinuidade
+[ok] a6/path1/12648430 luminarias=8 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path2/12648430 luminarias=12 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path3/12648430 luminarias=14 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/castle/12648430 luminarias=7 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path1/7331 luminarias=8 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path2/7331 luminarias=18 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path3/7331 luminarias=8 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/castle/7331 luminarias=5 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path1/90210 luminarias=10 quadros=624 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path2/90210 luminarias=12 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/path3/90210 luminarias=14 quadros=751 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+[ok] a6/castle/90210 luminarias=6 quadros=226 saltos=0 pops=0 sombra=0 folga_estrada=0.050..0.050
+TOTAL 12 cenas, 0 com descontinuidade
+FIM

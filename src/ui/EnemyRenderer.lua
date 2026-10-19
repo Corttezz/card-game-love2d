@@ -115,10 +115,20 @@ end
 EnemyRenderer._idleSpec = idleSpec
 
 local clipFps = {}
+EnemyRenderer._handoff = nil
+
+local function adoptHandoff(enemyId)
+    local h = EnemyRenderer._handoff
+    if not h or h.enemyId ~= enemyId or not currentAnim or currentAnimName ~= "idle" then return end
+    EnemyRenderer._handoff = nil
+    if #currentAnim.frames ~= #h.frames then return end
+    currentAnim.currentFrame, currentAnim.elapsed, currentAnim._dir = h.currentFrame, h.elapsed, h._dir
+end
 
 local function ensureAnim(enemyId, animName)
     if currentAnim and currentEnemyId == enemyId and currentAnimName == animName
        and not currentAnim:isFinished() then
+        adoptHandoff(enemyId)
         return currentAnim
     end
 
@@ -148,6 +158,7 @@ local function ensureAnim(enemyId, animName)
         currentAnim = anim
         currentEnemyId = enemyId
         currentAnimName = animName
+        adoptHandoff(enemyId)
     end
     return anim
 end
@@ -195,8 +206,9 @@ function EnemyRenderer.debugState()
 end
 
 local arrivalT = 0
-function EnemyRenderer.triggerArrival()
+function EnemyRenderer.triggerArrival(handoffAnim)
     arrivalT = 0.55
+    if handoffAnim then EnemyRenderer._handoff = handoffAnim end
 end
 
 function EnemyRenderer.getArrivalOffset()
@@ -675,6 +687,20 @@ local function tickAmbientSpawn(cx, cy, dt_hint)
     end
 end
 
+EnemyRenderer.SHADOW_LEN = 0.75
+
+function EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA)
+    local P = math.max(1, math.floor(scale + 0.5))
+    local a = 0.26 * (sceneShadowA or 1)
+    local yBase = math.floor(shY - P)
+    for i, k in ipairs({ 0.62, 1.0, 0.80 }) do
+        local wk = math.floor(footW * 1.06 * k / P + 0.5) * P
+        love.graphics.setColor(0, 0, 0, a * ((i == 2) and 1 or 0.7))
+        love.graphics.rectangle("fill", math.floor(footCx - wk / 2),
+            yBase + (i - 1) * P - P, wk, P)
+    end
+end
+
 function EnemyRenderer.shadowProfile(pose, animName, frameH, idleH)
     local baseK = (pose and pose.shadowBaseK) or 0
     local riseK = pose and pose.shadowRiseK or nil
@@ -703,6 +729,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         and enemyAlive
     if currentEnemyId ~= id or currentAnim == nil or stuckOnDeath then
         ensureAnim(id, "idle")
+    elseif EnemyRenderer._handoff then
+        adoptHandoff(id)
     end
 
     local iw, ih
@@ -863,7 +891,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         local drawn = ShadowEngine.silhouette(shX, shY,
             { smear = iw * scale * 0.035 * smearK,
               widthK = shK,
-              lenK = shK * pLenK * 0.75,
+              lenK = shK * pLenK * EnemyRenderer.SHADOW_LEN,
               baseK = pBaseK, riseK = pRiseK,
               contentH = frameH * scale,
               alphaK = shA * sceneShadowA },
@@ -887,15 +915,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 + jitter * 0.5
         end
         if drawn and footW and not floating then
-            local P = math.max(1, math.floor(scale + 0.5))
-            local a = 0.26 * sceneShadowA
-            local yBase = math.floor(shY - P)
-            for i, k in ipairs({ 0.62, 1.0, 0.80 }) do
-                local wk = math.floor(footW * 1.06 * k / P + 0.5) * P
-                love.graphics.setColor(0, 0, 0, a * ((i == 2) and 1 or 0.7))
-                love.graphics.rectangle("fill", math.floor(footCx - wk / 2),
-                    yBase + (i - 1) * P - P, wk, P)
-            end
+            EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA)
         end
         if not drawn then
             local baseW = footW or (((curM.cw > 0) and curM.cw or iw) * scale)
@@ -1130,6 +1150,20 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     }
 end
 
+function EnemyRenderer.idleShadow(id)
+    local pose = EnemyPoses.get(id)
+    local m = clipMetrics(id, "idle")
+    local baseK, riseK, lenK = EnemyRenderer.shadowProfile(pose, "idle")
+    local floating = EnemyPoses.isFloating(id)
+    return {
+        widthK = pose.shadowK, alphaK = pose.shadowA,
+        lenK = pose.shadowK * lenK * EnemyRenderer.SHADOW_LEN,
+        baseK = baseK, riseK = riseK,
+        smearK = floating and 2.4 or 1, floating = floating,
+        footL = m.footL, footR = m.footR, mw = m.w,
+    }
+end
+
 function EnemyRenderer.getEncounterBillboard(enemy)
     if not enemy or not enemy.spriteId then return nil end
     local bfps, bopts = idleSpec(enemy.spriteId)
@@ -1165,6 +1199,7 @@ function EnemyRenderer.getEncounterBillboard(enemy)
         shadowBaseK = EnemyPoses.get(enemy.spriteId).shadowBaseK,
         shadowRiseK = EnemyPoses.get(enemy.spriteId).shadowRiseK,
         contentH = clipMetrics(enemy.spriteId, "idle").frameHeights[1],
+        shadow = EnemyRenderer.idleShadow(enemy.spriteId),
     }
 end
 

@@ -1,0 +1,860 @@
+[FAIL] a1/path1/12648430 luminarias=10 quadros=624 saltos=2 pops=9 sombra=2
+  salto  a1/path1/12648430 uid=109 lantern  f=196 d=167px (ref 0) travel z 76.76->76.76 lane 0.04->1.13
+  salto  a1/path1/12648430 uid=180 lantern  f=564 d=200px (ref 0) travel z 99.34->99.34 lane 0.02->0.90
+  alpha  a1/path1/12648430 uid=109 lantern  f=196 a 0.06->1.00 travel t=0.25 x=654 y=643
+  some   a1/path1/12648430 uid=109 lantern  f=277 a 1.00->0.00 fork t=0.25 x=654 y=643
+  surge  a1/path1/12648430 uid=109 lantern  f=324 a 0.00->1.00 converge t=0.34 x=613 y=701
+  some   a1/path1/12648430 uid=109 lantern  f=332 a 1.00->0.00 converge t=0.43 x=569 y=762
+  surge  a1/path1/12648430 uid=130 lantern  f=333 a 0.00->1.00 converge t=0.20 x=1296 y=618
+  some   a1/path1/12648430 uid=130 lantern  f=348 a 1.00->0.00 converge t=0.33 x=1367 y=707
+  surge  a1/path1/12648430 uid=130 lantern  f=368 a 0.00->1.00 converge t=0.37 x=1389 y=734
+  surge  a1/path1/12648430 uid=38 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path1/12648430 uid=38 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  sombra a1/path1/12648430 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path1/12648430 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/path2/12648430 luminarias=12 quadros=751 saltos=1 pops=12 sombra=2
+  salto  a1/path2/12648430 uid=357 lantern  f=196 d=173px (ref 0) travel z 76.18->76.18 lane 0.01->1.10
+  surge  a1/path2/12648430 uid=378 lantern  f=331 a 0.00->1.00 converge t=0.20 x=1290 y=618
+  some   a1/path2/12648430 uid=378 lantern  f=342 a 1.00->0.00 converge t=0.32 x=1353 y=699
+  surge  a1/path2/12648430 uid=378 lantern  f=368 a 0.00->1.00 converge t=0.41 x=1400 y=758
+  some   a1/path2/12648430 uid=378 lantern  f=430 a 1.00->0.00 converge t=0.41 x=1401 y=758
+  surge  a1/path2/12648430 uid=378 lantern  f=495 a 0.00->1.00 converge t=0.54 x=1474 y=849
+  alpha  a1/path2/12648430 uid=357 lantern  f=196 a 0.24->1.00 travel t=0.27 x=649 y=656
+  some   a1/path2/12648430 uid=357 lantern  f=278 a 1.00->0.00 fork t=0.27 x=649 y=656
+  surge  a1/path2/12648430 uid=357 lantern  f=328 a 0.00->1.00 converge t=0.41 x=585 y=747
+  some   a1/path2/12648430 uid=357 lantern  f=330 a 1.00->0.00 converge t=0.42 x=579 y=757
+  surge  a1/path2/12648430 uid=449 lantern  f=691 a 0.00->1.00 travel t=0.59 x=504 y=872
+  surge  a1/path2/12648430 uid=286 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path2/12648430 uid=286 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  sombra a1/path2/12648430 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path2/12648430 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/path3/12648430 luminarias=11 quadros=751 saltos=2 pops=13 sombra=2
+  salto  a1/path3/12648430 uid=634 lantern  f=196 d=168px (ref 0) travel z 76.86->76.86 lane 0.03->1.14
+  salto  a1/path3/12648430 uid=743 lantern  f=691 d=160px (ref 0) travel z 113.41->113.41 lane 0.08->0.95
+  surge  a1/path3/12648430 uid=703 shrine   f=465 a 0.00->1.00 converge t=0.08 x=1589 y=594
+  alpha  a1/path3/12648430 uid=634 lantern  f=196 a 0.03->1.00 travel t=0.24 x=655 y=641
+  some   a1/path3/12648430 uid=634 lantern  f=277 a 1.00->0.00 fork t=0.24 x=655 y=641
+  surge  a1/path3/12648430 uid=634 lantern  f=330 a 0.00->1.00 converge t=0.41 x=578 y=749
+  some   a1/path3/12648430 uid=634 lantern  f=332 a 1.00->0.00 converge t=0.42 x=570 y=759
+  surge  a1/path3/12648430 uid=726 lantern  f=691 a 0.00->1.00 travel t=0.59 x=504 y=872
+  surge  a1/path3/12648430 uid=659 lantern  f=333 a 0.00->1.00 converge t=0.21 x=1298 y=624
+  some   a1/path3/12648430 uid=659 lantern  f=442 a 1.00->0.00 converge t=0.41 x=1406 y=759
+  surge  a1/path3/12648430 uid=563 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path3/12648430 uid=563 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a1/path3/12648430 uid=678 lantern  f=458 a 0.00->1.00 converge t=0.26 x=619 y=652
+  some   a1/path3/12648430 uid=678 lantern  f=475 a 1.00->0.00 converge t=0.43 x=528 y=769
+  surge  a1/path3/12648430 uid=678 lantern  f=495 a 0.00->1.00 converge t=0.47 x=505 y=798
+  sombra a1/path3/12648430 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path3/12648430 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/castle/12648430 luminarias=6 quadros=226 saltos=0 pops=2 sombra=0
+  alpha  a1/castle/12648430 uid=807 lantern  f=11 a 1.00->0.38 travel t=0.59 x=497 y=873
+  surge  a1/castle/12648430 uid=840 lantern  f=206 a 0.00->1.00 travel t=0.59 x=1380 y=866
+[FAIL] a1/path1/7331 luminarias=11 quadros=624 saltos=1 pops=6 sombra=2
+  salto  a1/path1/7331 uid=1006 lantern  f=196 d=171px (ref 0) travel z 73.54->73.54 lane 0.05->1.00
+  surge  a1/path1/7331 uid=997 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path1/7331 uid=997 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  some   a1/path1/7331 uid=1006 lantern  f=321 a 1.00->0.00 converge t=0.43 x=594 y=761
+  surge  a1/path1/7331 uid=1128 lantern  f=564 a 0.00->1.00 travel t=0.59 x=1377 y=866
+  surge  a1/path1/7331 uid=1082 lantern  f=328 a 0.00->1.00 converge t=0.25 x=1302 y=646
+  some   a1/path1/7331 uid=1082 lantern  f=330 a 1.00->0.00 converge t=0.26 x=1308 y=654
+  sombra a1/path1/7331 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path1/7331 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/path2/7331 luminarias=12 quadros=751 saltos=2 pops=8 sombra=2
+  salto  a1/path2/7331 uid=1249 lantern  f=196 d=171px (ref 0) travel z 73.54->73.54 lane 0.05->1.00
+  salto  a1/path2/7331 uid=1418 lantern  f=691 d=182px (ref 0) travel z 111.46->111.46 lane 0.00->0.90
+  surge  a1/path2/7331 uid=1403 lantern  f=691 a 0.00->1.00 travel t=0.59 x=504 y=872
+  surge  a1/path2/7331 uid=1325 lantern  f=327 a 0.00->1.00 converge t=0.23 x=1295 y=634
+  some   a1/path2/7331 uid=1325 lantern  f=331 a 1.00->0.00 converge t=0.26 x=1313 y=658
+  some   a1/path2/7331 uid=1249 lantern  f=321 a 1.00->0.00 converge t=0.43 x=594 y=761
+  surge  a1/path2/7331 uid=1240 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path2/7331 uid=1240 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a1/path2/7331 uid=1354 lantern  f=456 a 0.00->1.00 converge t=0.29 x=612 y=673
+  some   a1/path2/7331 uid=1354 lantern  f=465 a 1.00->0.00 converge t=0.41 x=552 y=752
+  sombra a1/path2/7331 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path2/7331 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/path3/7331 luminarias=12 quadros=751 saltos=1 pops=12 sombra=2
+  salto  a1/path3/7331 uid=1523 lantern  f=196 d=171px (ref 0) travel z 73.54->73.54 lane 0.05->1.00
+  some   a1/path3/7331 uid=1523 lantern  f=321 a 1.00->0.00 converge t=0.43 x=594 y=761
+  surge  a1/path3/7331 uid=1599 lantern  f=331 a 0.00->1.00 converge t=0.24 x=1303 y=645
+  some   a1/path3/7331 uid=1599 lantern  f=351 a 1.00->0.00 converge t=0.43 x=1402 y=772
+  surge  a1/path3/7331 uid=1599 lantern  f=368 a 0.00->1.00 converge t=0.46 x=1417 y=790
+  some   a1/path3/7331 uid=1599 lantern  f=399 a 1.00->0.00 landmark t=0.46 x=1417 y=790
+  surge  a1/path3/7331 uid=1514 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path3/7331 uid=1514 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a1/path3/7331 uid=1669 lantern  f=691 a 0.00->1.00 travel t=0.59 x=504 y=872
+  surge  a1/path3/7331 uid=1619 lantern  f=455 a 0.00->1.00 converge t=0.31 x=610 y=689
+  some   a1/path3/7331 uid=1619 lantern  f=460 a 1.00->0.00 converge t=0.37 x=581 y=728
+  surge  a1/path3/7331 uid=1619 lantern  f=495 a 0.00->1.00 converge t=0.59 x=470 y=875
+  alpha  a1/path3/7331 uid=1619 lantern  f=496 a 1.00->0.49 travel t=0.59 x=470 y=875
+  sombra a1/path3/7331 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path3/7331 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/castle/7331 luminarias=6 quadros=226 saltos=1 pops=2 sombra=0
+  salto  a1/castle/7331 uid=1795 lantern  f=206 d=199px (ref 0) travel z 173.54->173.54 lane 0.05->1.15
+  alpha  a1/castle/7331 uid=1758 lantern  f=11 a 1.00->0.38 travel t=0.59 x=497 y=873
+  surge  a1/castle/7331 uid=1786 lantern  f=206 a 0.00->1.00 travel t=0.59 x=1380 y=866
+[FAIL] a1/path1/90210 luminarias=10 quadros=624 saltos=0 pops=8 sombra=2
+  surge  a1/path1/90210 uid=2032 lantern  f=332 a 0.00->1.00 converge t=0.20 x=1293 y=620
+  some   a1/path1/90210 uid=2032 lantern  f=344 a 1.00->0.00 converge t=0.33 x=1358 y=702
+  surge  a1/path1/90210 uid=2032 lantern  f=368 a 0.00->1.00 converge t=0.39 x=1395 y=748
+  surge  a1/path1/90210 uid=2086 lantern  f=564 a 0.00->1.00 travel t=0.59 x=1377 y=866
+  surge  a1/path1/90210 uid=1943 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path1/90210 uid=1943 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a1/path1/90210 uid=1943 lantern  f=368 a 0.00->1.00 converge t=0.60 x=1443 y=885
+  alpha  a1/path1/90210 uid=1943 lantern  f=369 a 1.00->0.10 travel t=0.60 x=1443 y=885
+  sombra a1/path1/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path1/90210 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/path2/90210 luminarias=12 quadros=751 saltos=0 pops=11 sombra=2
+  surge  a1/path2/90210 uid=2338 lantern  f=691 a 0.00->1.00 travel t=0.59 x=1369 y=865
+  surge  a1/path2/90210 uid=2193 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path2/90210 uid=2193 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a1/path2/90210 uid=2193 lantern  f=368 a 0.00->1.00 converge t=0.60 x=1443 y=885
+  some   a1/path2/90210 uid=2193 lantern  f=399 a 1.00->0.00 landmark t=0.60 x=1443 y=885
+  surge  a1/path2/90210 uid=2289 lantern  f=335 a 0.00->1.00 converge t=0.20 x=1302 y=621
+  some   a1/path2/90210 uid=2289 lantern  f=356 a 1.00->0.00 converge t=0.34 x=1375 y=711
+  surge  a1/path2/90210 uid=2289 lantern  f=368 a 0.00->1.00 converge t=0.35 x=1381 y=718
+  some   a1/path2/90210 uid=2289 lantern  f=446 a 1.00->0.00 converge t=0.39 x=1407 y=750
+  surge  a1/path2/90210 uid=2289 lantern  f=495 a 0.00->1.00 converge t=0.61 x=1541 y=911
+  some   a1/path2/90210 uid=2289 lantern  f=496 a 1.00->0.00 converge t=0.61 x=1541 y=911
+  sombra a1/path2/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path2/90210 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/path3/90210 luminarias=11 quadros=751 saltos=0 pops=11 sombra=2
+  surge  a1/path3/90210 uid=2623 lantern  f=691 a 0.00->1.00 travel t=0.59 x=1369 y=865
+  surge  a1/path3/90210 uid=2478 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a1/path3/90210 uid=2478 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a1/path3/90210 uid=2567 lantern  f=332 a 0.00->1.00 converge t=0.20 x=1292 y=616
+  some   a1/path3/90210 uid=2567 lantern  f=446 a 1.00->0.00 converge t=0.43 x=1420 y=776
+  surge  a1/path3/90210 uid=2551 lantern  f=196 a 0.00->1.00 travel t=0.23 x=659 y=631
+  some   a1/path3/90210 uid=2551 lantern  f=277 a 1.00->0.00 fork t=0.23 x=659 y=631
+  surge  a1/path3/90210 uid=2551 lantern  f=332 a 0.00->1.00 converge t=0.42 x=567 y=759
+  some   a1/path3/90210 uid=2551 lantern  f=333 a 1.00->0.00 converge t=0.42 x=567 y=759
+  surge  a1/path3/90210 uid=2551 lantern  f=368 a 0.00->1.00 converge t=0.61 x=467 y=893
+  some   a1/path3/90210 uid=2551 lantern  f=399 a 1.00->0.00 landmark t=0.61 x=467 y=893
+  sombra a1/path3/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a1/path3/90210 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a1/castle/90210 luminarias=7 quadros=226 saltos=0 pops=2 sombra=0
+  alpha  a1/castle/90210 uid=2731 lantern  f=11 a 1.00->0.38 travel t=0.59 x=497 y=873
+  surge  a1/castle/90210 uid=2761 lantern  f=206 a 0.00->1.00 travel t=0.59 x=1380 y=866
+TOTAL 12 cenas, 12 com descontinuidade
+[FAIL] a2/path1/12648430 luminarias=11 quadros=624 saltos=0 pops=4 sombra=2
+  surge  a2/path1/12648430 uid=119 brazier  f=196 a 0.00->1.00 travel t=0.52 x=1266 y=808
+  some   a2/path1/12648430 uid=119 brazier  f=272 a 1.00->0.00 battle t=0.52 x=1266 y=808
+  surge  a2/path1/12648430 uid=119 brazier  f=368 a 0.00->1.00 converge t=0.54 x=1288 y=820
+  alpha  a2/path1/12648430 uid=24 brazier  f=196 a 0.14->1.00 travel t=1.00 x=514 y=1139
+  sombra a2/path1/12648430 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path1/12648430 f=564 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a2/path2/12648430 luminarias=12 quadros=751 saltos=1 pops=11 sombra=2
+  salto  a2/path2/12648430 uid=406 brazier  f=691 d=569px (ref 0) travel z 99.06->109.98 lane 0.37->0.37
+  surge  a2/path2/12648430 uid=357 brazier  f=196 a 0.00->1.00 travel t=0.52 x=1266 y=808
+  some   a2/path2/12648430 uid=357 brazier  f=272 a 1.00->0.00 battle t=0.52 x=1266 y=808
+  surge  a2/path2/12648430 uid=357 brazier  f=368 a 0.00->1.00 converge t=0.54 x=1288 y=820
+  some   a2/path2/12648430 uid=357 brazier  f=399 a 1.00->0.00 landmark t=0.54 x=1288 y=820
+  surge  a2/path2/12648430 uid=357 brazier  f=495 a 0.00->1.00 converge t=0.70 x=1349 y=925
+  alpha  a2/path2/12648430 uid=406 brazier  f=691 a 0.14->1.00 travel t=0.52 x=1230 y=804
+  surge  a2/path2/12648430 uid=384 brazier  f=466 a 0.00->1.00 converge t=0.31 x=653 y=679
+  some   a2/path2/12648430 uid=384 brazier  f=476 a 1.00->0.00 converge t=0.38 x=622 y=725
+  surge  a2/path2/12648430 uid=384 brazier  f=495 a 0.00->1.00 converge t=0.55 x=541 y=843
+  alpha  a2/path2/12648430 uid=258 brazier  f=196 a 0.14->1.00 travel t=1.00 x=514 y=1139
+  surge  a2/path2/12648430 uid=446 runestone f=613 a 0.00->1.00 travel t=0.14 x=1316 y=584
+  sombra a2/path2/12648430 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path2/12648430 f=691 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a2/path3/12648430 luminarias=11 quadros=751 saltos=1 pops=10 sombra=2
+  salto  a2/path3/12648430 uid=713 brazier  f=691 d=183px (ref 0) travel z 116.44->109.98 lane 0.40->0.40
+  alpha  a2/path3/12648430 uid=523 brazier  f=196 a 0.14->1.00 travel t=1.00 x=514 y=1139
+  alpha  a2/path3/12648430 uid=713 brazier  f=691 a 0.16->1.00 travel t=0.52 x=1237 y=805
+  surge  a2/path3/12648430 uid=618 brazier  f=196 a 0.00->1.00 travel t=0.52 x=1266 y=808
+  some   a2/path3/12648430 uid=618 brazier  f=272 a 1.00->0.00 battle t=0.52 x=1266 y=808
+  surge  a2/path3/12648430 uid=618 brazier  f=368 a 0.00->1.00 converge t=0.54 x=1288 y=820
+  some   a2/path3/12648430 uid=618 brazier  f=399 a 1.00->0.00 landmark t=0.54 x=1288 y=820
+  surge  a2/path3/12648430 uid=618 brazier  f=495 a 0.00->1.00 converge t=0.70 x=1349 y=925
+  surge  a2/path3/12648430 uid=649 brazier  f=464 a 0.00->1.00 converge t=0.31 x=651 y=679
+  some   a2/path3/12648430 uid=649 brazier  f=476 a 1.00->0.00 converge t=0.40 x=611 y=739
+  surge  a2/path3/12648430 uid=649 brazier  f=495 a 0.00->1.00 converge t=0.55 x=539 y=843
+  sombra a2/path3/12648430 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path3/12648430 f=691 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a2/castle/12648430 luminarias=7 quadros=226 saltos=1 pops=3 sombra=0
+  salto  a2/castle/12648430 uid=788 brazier  f=206 d=361px (ref 0) travel z 159.86->169.98 lane 0.34->0.51
+  alpha  a2/castle/12648430 uid=796 runestone f=114 a 0.41->1.00 travel t=0.30 x=1485 y=706
+  alpha  a2/castle/12648430 uid=788 brazier  f=206 a 0.14->1.00 travel t=0.52 x=658 y=808
+  surge  a2/castle/12648430 uid=806 runestone f=130 a 0.00->1.00 travel t=0.14 x=421 y=612
+[FAIL] a2/path1/7331 luminarias=10 quadros=624 saltos=1 pops=4 sombra=2
+  salto  a2/path1/7331 uid=1085 brazier  f=564 d=16px (ref 0) travel z 102.10->102.10 lane 0.39->0.47
+  some   a2/path1/7331 uid=947 brazier  f=272 a 1.00->0.00 battle t=0.61 x=1267 y=865
+  surge  a2/path1/7331 uid=947 brazier  f=368 a 0.00->1.00 converge t=0.64 x=1330 y=888
+  surge  a2/path1/7331 uid=1039 runestone f=325 a 0.00->1.00 converge t=0.07 x=1274 y=537
+  some   a2/path1/7331 uid=940 brazier  f=272 a 1.00->0.00 battle t=0.91 x=576 y=1054
+  sombra a2/path1/7331 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path1/7331 f=564 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a2/path2/7331 luminarias=12 quadros=751 saltos=1 pops=15 sombra=2
+  salto  a2/path2/7331 uid=1356 brazier  f=691 d=175px (ref 0) travel z 116.15->109.98 lane 0.37->0.37
+  alpha  a2/path2/7331 uid=1356 brazier  f=691 a 0.25->1.00 travel t=0.52 x=1231 y=804
+  surge  a2/path2/7331 uid=1268 brazier  f=337 a 0.00->1.00 converge t=0.20 x=1252 y=612
+  some   a2/path2/7331 uid=1268 brazier  f=408 a 1.00->0.00 fork t=0.31 x=1306 y=688
+  surge  a2/path2/7331 uid=1268 brazier  f=448 a 0.00->1.00 converge t=0.38 x=1338 y=733
+  some   a2/path2/7331 uid=1268 brazier  f=454 a 1.00->0.00 converge t=0.43 x=1364 y=767
+  surge  a2/path2/7331 uid=1268 brazier  f=495 a 0.00->1.00 converge t=0.60 x=1454 y=887
+  some   a2/path2/7331 uid=1169 brazier  f=272 a 1.00->0.00 battle t=0.91 x=576 y=1054
+  alpha  a2/path2/7331 uid=1309 brazier  f=691 a 0.35->1.00 travel t=0.99 x=1369 y=1105
+  some   a2/path2/7331 uid=1176 brazier  f=272 a 1.00->0.00 battle t=0.61 x=1267 y=865
+  surge  a2/path2/7331 uid=1176 brazier  f=368 a 0.00->1.00 converge t=0.64 x=1330 y=888
+  some   a2/path2/7331 uid=1176 brazier  f=399 a 1.00->0.00 landmark t=0.64 x=1330 y=888
+  surge  a2/path2/7331 uid=1176 brazier  f=495 a 0.00->1.00 converge t=0.97 x=1465 y=1116
+  surge  a2/path2/7331 uid=1290 brazier  f=464 a 0.00->1.00 converge t=0.31 x=651 y=682
+  some   a2/path2/7331 uid=1290 brazier  f=485 a 1.00->0.00 converge t=0.43 x=597 y=762
+  surge  a2/path2/7331 uid=1290 brazier  f=495 a 0.00->1.00 converge t=0.44 x=594 y=766
+  sombra a2/path2/7331 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path2/7331 f=691 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a2/path3/7331 luminarias=12 quadros=751 saltos=0 pops=13 sombra=2
+  some   a2/path3/7331 uid=1549 runestone f=407 a 1.00->0.00 fork t=0.08 x=607 y=548
+  surge  a2/path3/7331 uid=1549 runestone f=451 a 0.00->1.00 converge t=0.15 x=557 y=597
+  surge  a2/path3/7331 uid=1527 brazier  f=338 a 0.00->1.00 converge t=0.20 x=1253 y=613
+  some   a2/path3/7331 uid=1527 brazier  f=408 a 1.00->0.00 fork t=0.31 x=1302 y=682
+  surge  a2/path3/7331 uid=1527 brazier  f=450 a 0.00->1.00 converge t=0.39 x=1343 y=738
+  some   a2/path3/7331 uid=1527 brazier  f=454 a 1.00->0.00 converge t=0.42 x=1359 y=760
+  surge  a2/path3/7331 uid=1527 brazier  f=495 a 0.00->1.00 converge t=0.59 x=1449 y=880
+  alpha  a2/path3/7331 uid=1568 brazier  f=691 a 0.14->1.00 travel t=1.00 x=1526 y=1254
+  some   a2/path3/7331 uid=1428 brazier  f=272 a 1.00->0.00 battle t=0.91 x=576 y=1054
+  some   a2/path3/7331 uid=1435 brazier  f=272 a 1.00->0.00 battle t=0.61 x=1267 y=865
+  surge  a2/path3/7331 uid=1435 brazier  f=368 a 0.00->1.00 converge t=0.64 x=1338 y=889
+  some   a2/path3/7331 uid=1435 brazier  f=399 a 1.00->0.00 landmark t=0.64 x=1338 y=889
+  surge  a2/path3/7331 uid=1435 brazier  f=495 a 0.00->1.00 converge t=0.97 x=1465 y=1116
+  sombra a2/path3/7331 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path3/7331 f=691 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[ok] a2/castle/7331 luminarias=7 quadros=226 saltos=0 pops=0 sombra=0
+[FAIL] a2/path1/90210 luminarias=10 quadros=624 saltos=1 pops=8 sombra=2
+  salto  a2/path1/90210 uid=1841 brazier  f=196 d=31px (ref 0) travel z 69.77->69.77 lane 0.38->0.52
+  some   a2/path1/90210 uid=1832 brazier  f=272 a 1.00->0.00 battle t=0.91 x=565 y=1060
+  surge  a2/path1/90210 uid=1915 brazier  f=329 a 0.00->1.00 converge t=0.38 x=660 y=720
+  some   a2/path1/90210 uid=1915 brazier  f=333 a 1.00->0.00 converge t=0.42 x=641 y=750
+  surge  a2/path1/90210 uid=1915 brazier  f=368 a 0.00->1.00 converge t=0.64 x=549 y=896
+  some   a2/path1/90210 uid=1841 brazier  f=272 a 1.00->0.00 battle t=0.53 x=1267 y=814
+  surge  a2/path1/90210 uid=1841 brazier  f=368 a 0.00->1.00 converge t=0.85 x=1386 y=1028
+  surge  a2/path1/90210 uid=1932 brazier  f=339 a 0.00->1.00 converge t=0.21 x=1254 y=617
+  surge  a2/path1/90210 uid=2003 brazier  f=564 a 0.00->1.00 travel t=0.52 x=654 y=808
+  sombra a2/path1/90210 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path1/90210 f=564 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a2/path2/90210 luminarias=11 quadros=751 saltos=2 pops=11 sombra=2
+  salto  a2/path2/90210 uid=2065 brazier  f=196 d=31px (ref 0) travel z 69.77->69.77 lane 0.38->0.52
+  salto  a2/path2/90210 uid=2225 brazier  f=691 d=48px (ref 0) travel z 109.55->109.55 lane 0.33->0.54
+  surge  a2/path2/90210 uid=2139 brazier  f=368 a 0.00->1.00 converge t=0.55 x=571 y=838
+  some   a2/path2/90210 uid=2139 brazier  f=399 a 1.00->0.00 landmark t=0.55 x=571 y=838
+  alpha  a2/path2/90210 uid=2139 brazier  f=496 a 1.00->0.14 travel t=1.00 x=235 y=1287
+  surge  a2/path2/90210 uid=2156 brazier  f=340 a 0.00->1.00 converge t=0.20 x=1254 y=615
+  some   a2/path2/90210 uid=2156 brazier  f=406 a 1.00->0.00 fork t=0.29 x=1293 y=670
+  surge  a2/path2/90210 uid=2156 brazier  f=495 a 0.00->1.00 converge t=0.56 x=1432 y=859
+  some   a2/path2/90210 uid=2065 brazier  f=272 a 1.00->0.00 battle t=0.53 x=1267 y=814
+  surge  a2/path2/90210 uid=2065 brazier  f=368 a 0.00->1.00 converge t=0.85 x=1386 y=1028
+  some   a2/path2/90210 uid=2065 brazier  f=399 a 1.00->0.00 landmark t=0.85 x=1386 y=1028
+  surge  a2/path2/90210 uid=2182 brazier  f=474 a 0.00->1.00 converge t=0.30 x=648 y=676
+  some   a2/path2/90210 uid=2056 brazier  f=272 a 1.00->0.00 battle t=0.91 x=565 y=1060
+  sombra a2/path2/90210 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path2/90210 f=691 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a2/path3/90210 luminarias=11 quadros=751 saltos=2 pops=12 sombra=2
+  salto  a2/path3/90210 uid=2490 brazier  f=691 d=170px (ref 0) travel z 115.90->109.98 lane 0.41->0.41
+  salto  a2/path3/90210 uid=2317 brazier  f=196 d=31px (ref 0) travel z 69.77->69.77 lane 0.38->0.52
+  alpha  a2/path3/90210 uid=2490 brazier  f=691 a 0.33->1.00 travel t=0.52 x=1241 y=805
+  some   a2/path3/90210 uid=2317 brazier  f=272 a 1.00->0.00 battle t=0.53 x=1267 y=814
+  surge  a2/path3/90210 uid=2317 brazier  f=368 a 0.00->1.00 converge t=0.55 x=1292 y=831
+  some   a2/path3/90210 uid=2317 brazier  f=399 a 1.00->0.00 landmark t=0.55 x=1292 y=831
+  alpha  a2/path3/90210 uid=2317 brazier  f=496 a 1.00->0.14 travel t=1.00 x=1598 y=1262
+  some   a2/path3/90210 uid=2308 brazier  f=272 a 1.00->0.00 battle t=0.91 x=565 y=1060
+  surge  a2/path3/90210 uid=2429 brazier  f=467 a 0.00->1.00 converge t=0.30 x=654 y=678
+  surge  a2/path3/90210 uid=2408 brazier  f=337 a 0.00->1.00 converge t=0.21 x=1252 y=616
+  some   a2/path3/90210 uid=2408 brazier  f=409 a 1.00->0.00 fork t=0.32 x=1307 y=693
+  surge  a2/path3/90210 uid=2408 brazier  f=447 a 0.00->1.00 converge t=0.38 x=1335 y=733
+  some   a2/path3/90210 uid=2408 brazier  f=453 a 1.00->0.00 converge t=0.43 x=1358 y=764
+  surge  a2/path3/90210 uid=2408 brazier  f=495 a 0.00->1.00 converge t=0.61 x=1454 y=894
+  sombra a2/path3/90210 f=196 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+  sombra a2/path3/90210 f=691 encounter->battle len 40% wid 0% alpha 0.00 pos 1px travel
+[ok] a2/castle/90210 luminarias=7 quadros=226 saltos=0 pops=0 sombra=0
+TOTAL 12 cenas, 10 com descontinuidade
+[FAIL] a3/path1/12648430 luminarias=10 quadros=624 saltos=2 pops=10 sombra=2
+  salto  a3/path1/12648430 uid=34 brazier  f=196 d=112px (ref 0) travel z 66.09->69.98 lane 0.14->0.56
+  salto  a3/path1/12648430 uid=166 brazier  f=564 d=51px (ref 0) travel z 98.80->98.80 lane 0.16->0.38
+  some   a3/path1/12648430 uid=34 brazier  f=272 a 1.00->0.00 battle t=0.52 x=1273 y=809
+  surge  a3/path1/12648430 uid=34 brazier  f=368 a 0.00->1.00 converge t=0.84 x=1393 y=1020
+  alpha  a3/path1/12648430 uid=34 brazier  f=369 a 1.00->0.11 travel t=0.84 x=1393 y=1020
+  some   a3/path1/12648430 uid=123 fissure  f=322 a 1.00->0.00 converge t=0.10 x=1543 y=595
+  surge  a3/path1/12648430 uid=123 fissure  f=345 a 0.00->1.00 converge t=0.34 x=1720 y=786
+  surge  a3/path1/12648430 uid=24 torch    f=196 a 0.00->1.00 travel t=0.94 x=659 y=1060
+  some   a3/path1/12648430 uid=24 torch    f=272 a 1.00->0.00 battle t=0.94 x=659 y=1060
+  surge  a3/path1/12648430 uid=103 torch    f=329 a 0.00->1.00 converge t=0.39 x=675 y=727
+  some   a3/path1/12648430 uid=103 torch    f=332 a 1.00->0.00 converge t=0.42 x=664 y=746
+  surge  a3/path1/12648430 uid=103 torch    f=368 a 0.00->1.00 converge t=0.66 x=571 y=903
+  sombra a3/path1/12648430 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path1/12648430 f=564 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/path2/12648430 luminarias=11 quadros=751 saltos=2 pops=17 sombra=2
+  salto  a3/path2/12648430 uid=269 brazier  f=196 d=112px (ref 0) travel z 66.09->69.98 lane 0.14->0.56
+  salto  a3/path2/12648430 uid=431 torch    f=691 d=78px (ref 0) travel z 108.45->108.45 lane 0.04->0.37
+  surge  a3/path2/12648430 uid=410 brazier  f=691 a 0.00->1.00 travel t=0.82 x=1274 y=992
+  surge  a3/path2/12648430 uid=358 torch    f=339 a 0.00->1.00 converge t=0.26 x=1258 y=650
+  some   a3/path2/12648430 uid=358 torch    f=357 a 1.00->0.00 converge t=0.35 x=1299 y=711
+  surge  a3/path2/12648430 uid=358 torch    f=368 a 0.00->1.00 converge t=0.36 x=1303 y=716
+  some   a3/path2/12648430 uid=358 torch    f=412 a 1.00->0.00 fork t=0.36 x=1303 y=716
+  surge  a3/path2/12648430 uid=358 torch    f=435 a 0.00->1.00 converge t=0.37 x=1306 y=720
+  some   a3/path2/12648430 uid=358 torch    f=440 a 1.00->0.00 converge t=0.38 x=1311 y=727
+  surge  a3/path2/12648430 uid=358 torch    f=495 a 0.00->1.00 converge t=0.65 x=1443 y=913
+  some   a3/path2/12648430 uid=384 fissure  f=412 a 1.00->0.00 fork t=0.07 x=524 y=550
+  surge  a3/path2/12648430 uid=384 fissure  f=437 a 0.00->1.00 converge t=0.07 x=519 y=555
+  some   a3/path2/12648430 uid=269 brazier  f=272 a 1.00->0.00 battle t=0.52 x=1273 y=809
+  surge  a3/path2/12648430 uid=269 brazier  f=368 a 0.00->1.00 converge t=0.84 x=1393 y=1020
+  some   a3/path2/12648430 uid=269 brazier  f=399 a 1.00->0.00 landmark t=0.84 x=1393 y=1020
+  surge  a3/path2/12648430 uid=338 brazier  f=368 a 0.00->1.00 converge t=0.64 x=544 y=894
+  some   a3/path2/12648430 uid=338 brazier  f=399 a 1.00->0.00 landmark t=0.64 x=544 y=894
+  surge  a3/path2/12648430 uid=259 torch    f=196 a 0.00->1.00 travel t=0.94 x=659 y=1060
+  some   a3/path2/12648430 uid=259 torch    f=272 a 1.00->0.00 battle t=0.94 x=659 y=1060
+  sombra a3/path2/12648430 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path2/12648430 f=691 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/path3/12648430 luminarias=12 quadros=751 saltos=2 pops=13 sombra=2
+  salto  a3/path3/12648430 uid=530 brazier  f=196 d=112px (ref 0) travel z 66.09->69.98 lane 0.14->0.56
+  salto  a3/path3/12648430 uid=701 torch    f=691 d=110px (ref 0) travel z 113.37->109.98 lane 0.10->0.23
+  some   a3/path3/12648430 uid=530 brazier  f=272 a 1.00->0.00 battle t=0.52 x=1273 y=809
+  surge  a3/path3/12648430 uid=530 brazier  f=368 a 0.00->1.00 converge t=0.68 x=1352 y=916
+  some   a3/path3/12648430 uid=530 brazier  f=399 a 1.00->0.00 landmark t=0.68 x=1352 y=916
+  surge  a3/path3/12648430 uid=520 torch    f=196 a 0.00->1.00 travel t=0.94 x=659 y=1060
+  some   a3/path3/12648430 uid=520 torch    f=272 a 1.00->0.00 battle t=0.94 x=659 y=1060
+  surge  a3/path3/12648430 uid=615 brazier  f=335 a 0.00->1.00 converge t=0.25 x=1261 y=644
+  some   a3/path3/12648430 uid=615 brazier  f=353 a 1.00->0.00 converge t=0.38 x=1321 y=730
+  surge  a3/path3/12648430 uid=615 brazier  f=368 a 0.00->1.00 converge t=0.54 x=1397 y=836
+  some   a3/path3/12648430 uid=615 brazier  f=399 a 1.00->0.00 landmark t=0.54 x=1397 y=836
+  surge  a3/path3/12648430 uid=615 brazier  f=495 a 0.00->1.00 converge t=0.70 x=1479 y=948
+  surge  a3/path3/12648430 uid=640 brazier  f=459 a 0.00->1.00 converge t=0.32 x=652 y=689
+  some   a3/path3/12648430 uid=640 brazier  f=468 a 1.00->0.00 converge t=0.43 x=606 y=759
+  surge  a3/path3/12648430 uid=640 brazier  f=495 a 0.00->1.00 converge t=0.53 x=560 y=826
+  sombra a3/path3/12648430 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path3/12648430 f=691 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/castle/12648430 luminarias=7 quadros=226 saltos=1 pops=1 sombra=0
+  salto  a3/castle/12648430 uid=792 brazier  f=206 d=107px (ref 0) travel z 166.09->169.98 lane 0.14->0.43
+  surge  a3/castle/12648430 uid=782 torch    f=206 a 0.00->1.00 travel t=0.94 x=659 y=1060
+[FAIL] a3/path1/7331 luminarias=10 quadros=624 saltos=2 pops=8 sombra=2
+  salto  a3/path1/7331 uid=1081 brazier  f=564 d=60px (ref 0) travel z 100.73->100.73 lane 0.16->0.45
+  salto  a3/path1/7331 uid=944 brazier  f=196 d=94px (ref 0) travel z 69.58->69.58 lane 0.12->0.55
+  alpha  a3/path1/7331 uid=932 torch    f=196 a 0.12->1.00 travel t=0.95 x=650 y=1071
+  some   a3/path1/7331 uid=932 torch    f=272 a 1.00->0.00 battle t=0.95 x=650 y=1071
+  surge  a3/path1/7331 uid=1037 torch    f=339 a 0.00->1.00 converge t=0.26 x=1258 y=647
+  some   a3/path1/7331 uid=1037 torch    f=362 a 1.00->0.00 converge t=0.35 x=1302 y=712
+  surge  a3/path1/7331 uid=1037 torch    f=368 a 0.00->1.00 converge t=0.36 x=1303 y=713
+  surge  a3/path1/7331 uid=1055 brazier  f=564 a 0.00->1.00 travel t=0.82 x=659 y=991
+  some   a3/path1/7331 uid=944 brazier  f=272 a 1.00->0.00 battle t=0.54 x=1276 y=820
+  surge  a3/path1/7331 uid=1014 torch    f=368 a 0.00->1.00 converge t=0.55 x=626 y=831
+  sombra a3/path1/7331 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path1/7331 f=564 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/path2/7331 luminarias=12 quadros=751 saltos=3 pops=14 sombra=2
+  salto  a3/path2/7331 uid=1356 torch    f=691 d=69px (ref 0) travel z 114.91->114.91 lane 0.07->0.48
+  salto  a3/path2/7331 uid=1342 brazier  f=691 d=87px (ref 0) travel z 108.24->108.24 lane 0.16->0.52
+  salto  a3/path2/7331 uid=1180 brazier  f=196 d=94px (ref 0) travel z 69.58->69.58 lane 0.12->0.55
+  some   a3/path2/7331 uid=1273 fissure  f=320 a 1.00->0.00 converge t=0.04 x=1508 y=551
+  surge  a3/path2/7331 uid=1273 fissure  f=368 a 0.00->1.00 converge t=0.32 x=1709 y=767
+  surge  a3/path2/7331 uid=1317 brazier  f=691 a 0.00->1.00 travel t=0.82 x=1271 y=992
+  surge  a3/path2/7331 uid=1250 brazier  f=368 a 0.00->1.00 converge t=0.65 x=543 y=900
+  some   a3/path2/7331 uid=1250 brazier  f=399 a 1.00->0.00 landmark t=0.65 x=543 y=900
+  surge  a3/path2/7331 uid=1250 brazier  f=495 a 0.00->1.00 converge t=0.66 x=535 y=912
+  some   a3/path2/7331 uid=1180 brazier  f=272 a 1.00->0.00 battle t=0.54 x=1276 y=820
+  surge  a3/path2/7331 uid=1180 brazier  f=368 a 0.00->1.00 converge t=0.85 x=1394 y=1029
+  some   a3/path2/7331 uid=1180 brazier  f=399 a 1.00->0.00 landmark t=0.85 x=1394 y=1029
+  alpha  a3/path2/7331 uid=1168 torch    f=196 a 0.12->1.00 travel t=0.95 x=650 y=1071
+  some   a3/path2/7331 uid=1168 torch    f=272 a 1.00->0.00 battle t=0.95 x=650 y=1071
+  surge  a3/path2/7331 uid=1291 brazier  f=465 a 0.00->1.00 converge t=0.30 x=648 y=677
+  some   a3/path2/7331 uid=1291 brazier  f=486 a 1.00->0.00 converge t=0.41 x=598 y=750
+  surge  a3/path2/7331 uid=1291 brazier  f=495 a 0.00->1.00 converge t=0.52 x=546 y=824
+  sombra a3/path2/7331 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path2/7331 f=691 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/path3/7331 luminarias=11 quadros=751 saltos=2 pops=14 sombra=2
+  salto  a3/path3/7331 uid=1444 brazier  f=196 d=94px (ref 0) travel z 69.58->69.58 lane 0.12->0.55
+  salto  a3/path3/7331 uid=1627 brazier  f=691 d=204px (ref 0) travel z 116.45->109.98 lane 0.13->0.38
+  some   a3/path3/7331 uid=1444 brazier  f=272 a 1.00->0.00 battle t=0.54 x=1276 y=820
+  alpha  a3/path3/7331 uid=1627 brazier  f=691 a 0.16->1.00 travel t=0.52 x=1234 y=805
+  surge  a3/path3/7331 uid=1581 torch    f=691 a 0.00->1.00 travel t=0.97 x=1260 y=1080
+  surge  a3/path3/7331 uid=1514 brazier  f=368 a 0.00->1.00 converge t=0.55 x=600 y=834
+  some   a3/path3/7331 uid=1514 brazier  f=399 a 1.00->0.00 landmark t=0.55 x=600 y=834
+  surge  a3/path3/7331 uid=1607 fissure  f=589 a 0.00->1.00 travel t=0.15 x=599 y=588
+  surge  a3/path3/7331 uid=1562 torch    f=466 a 0.00->1.00 converge t=0.30 x=667 y=675
+  alpha  a3/path3/7331 uid=1432 torch    f=196 a 0.12->1.00 travel t=0.95 x=650 y=1071
+  some   a3/path3/7331 uid=1432 torch    f=272 a 1.00->0.00 battle t=0.95 x=650 y=1071
+  surge  a3/path3/7331 uid=1537 torch    f=344 a 0.00->1.00 converge t=0.25 x=1263 y=646
+  some   a3/path3/7331 uid=1537 torch    f=407 a 1.00->0.00 fork t=0.31 x=1288 y=682
+  surge  a3/path3/7331 uid=1537 torch    f=450 a 0.00->1.00 converge t=0.39 x=1327 y=738
+  some   a3/path3/7331 uid=1537 torch    f=452 a 1.00->0.00 converge t=0.40 x=1332 y=744
+  surge  a3/path3/7331 uid=1537 torch    f=495 a 0.00->1.00 converge t=0.56 x=1411 y=855
+  sombra a3/path3/7331 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path3/7331 f=691 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/castle/7331 luminarias=7 quadros=226 saltos=1 pops=1 sombra=0
+  salto  a3/castle/7331 uid=1708 brazier  f=206 d=66px (ref 0) travel z 169.58->169.58 lane 0.12->0.42
+  alpha  a3/castle/7331 uid=1696 torch    f=206 a 0.12->1.00 travel t=0.95 x=650 y=1071
+[FAIL] a3/path1/90210 luminarias=10 quadros=624 saltos=1 pops=7 sombra=2
+  salto  a3/path1/90210 uid=2017 torch    f=564 d=162px (ref 0) travel z 105.01->99.98 lane 0.04->0.26
+  some   a3/path1/90210 uid=1857 torch    f=272 a 1.00->0.00 battle t=0.62 x=1178 y=858
+  surge  a3/path1/90210 uid=1857 torch    f=368 a 0.00->1.00 converge t=0.95 x=1381 y=1085
+  alpha  a3/path1/90210 uid=1857 torch    f=369 a 1.00->0.16 travel t=0.95 x=1381 y=1085
+  surge  a3/path1/90210 uid=1929 brazier  f=328 a 0.00->1.00 converge t=0.38 x=659 y=721
+  some   a3/path1/90210 uid=1929 brazier  f=330 a 1.00->0.00 converge t=0.39 x=654 y=730
+  surge  a3/path1/90210 uid=1929 brazier  f=368 a 0.00->1.00 converge t=0.64 x=552 y=893
+  alpha  a3/path1/90210 uid=1960 torch    f=415 a 0.25->1.00 travel t=0.27 x=1268 y=659
+  sombra a3/path1/90210 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path1/90210 f=564 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/path2/90210 luminarias=12 quadros=751 saltos=0 pops=9 sombra=2
+  some   a3/path2/90210 uid=2192 fissure  f=324 a 1.00->0.00 converge t=0.07 x=1571 y=584
+  surge  a3/path2/90210 uid=2192 fissure  f=368 a 0.00->1.00 converge t=0.34 x=1764 y=795
+  surge  a3/path2/90210 uid=2214 brazier  f=460 a 0.00->1.00 converge t=0.30 x=654 y=677
+  some   a3/path2/90210 uid=2214 brazier  f=472 a 1.00->0.00 converge t=0.43 x=599 y=759
+  surge  a3/path2/90210 uid=2214 brazier  f=495 a 0.00->1.00 converge t=0.49 x=570 y=801
+  some   a3/path2/90210 uid=2100 torch    f=272 a 1.00->0.00 battle t=0.62 x=1178 y=858
+  surge  a3/path2/90210 uid=2100 torch    f=368 a 0.00->1.00 converge t=0.64 x=1300 y=884
+  some   a3/path2/90210 uid=2100 torch    f=399 a 1.00->0.00 landmark t=0.64 x=1300 y=884
+  surge  a3/path2/90210 uid=2100 torch    f=495 a 0.00->1.00 converge t=0.65 x=1305 y=892
+  sombra a3/path2/90210 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path2/90210 f=691 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/path3/90210 luminarias=11 quadros=751 saltos=1 pops=12 sombra=2
+  salto  a3/path3/90210 uid=2557 brazier  f=691 d=203px (ref 0) travel z 114.76->109.98 lane 0.11->0.60
+  surge  a3/path3/90210 uid=2467 brazier  f=337 a 0.00->1.00 converge t=0.21 x=1259 y=622
+  some   a3/path3/90210 uid=2467 brazier  f=410 a 1.00->0.00 fork t=0.33 x=1315 y=700
+  surge  a3/path3/90210 uid=2467 brazier  f=443 a 0.00->1.00 converge t=0.37 x=1331 y=723
+  some   a3/path3/90210 uid=2467 brazier  f=450 a 1.00->0.00 converge t=0.41 x=1352 y=751
+  surge  a3/path3/90210 uid=2467 brazier  f=495 a 0.00->1.00 converge t=0.59 x=1444 y=874
+  surge  a3/path3/90210 uid=2447 brazier  f=368 a 0.00->1.00 converge t=0.57 x=598 y=846
+  some   a3/path3/90210 uid=2447 brazier  f=399 a 1.00->0.00 landmark t=0.57 x=598 y=846
+  surge  a3/path3/90210 uid=2521 brazier  f=691 a 0.00->1.00 travel t=0.82 x=1271 y=992
+  surge  a3/path3/90210 uid=2495 torch    f=470 a 0.00->1.00 converge t=0.30 x=664 y=677
+  some   a3/path3/90210 uid=2375 torch    f=272 a 1.00->0.00 battle t=0.62 x=1178 y=858
+  surge  a3/path3/90210 uid=2375 torch    f=368 a 0.00->1.00 converge t=0.95 x=1381 y=1085
+  some   a3/path3/90210 uid=2375 torch    f=399 a 1.00->0.00 landmark t=0.95 x=1381 y=1085
+  sombra a3/path3/90210 f=196 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+  sombra a3/path3/90210 f=691 encounter->battle len 43% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a3/castle/90210 luminarias=6 quadros=226 saltos=0 pops=1 sombra=0
+  alpha  a3/castle/90210 uid=2641 fissure  f=86 a 0.18->1.00 travel t=0.27 x=424 y=689
+TOTAL 12 cenas, 12 com descontinuidade
+[FAIL] a4/path1/12648430 luminarias=11 quadros=624 saltos=2 pops=6 sombra=2
+  salto  a4/path1/12648430 uid=162 lantern  f=564 d=193px (ref 0) travel z 98.39->98.39 lane 0.08->0.89
+  salto  a4/path1/12648430 uid=38 lantern  f=196 d=241px (ref 0) travel z 72.69->69.98 lane 0.00->0.91
+  alpha  a4/path1/12648430 uid=162 lantern  f=564 a 0.37->1.00 travel t=0.59 x=1377 y=866
+  surge  a4/path1/12648430 uid=137 brazier  f=564 a 0.00->1.00 travel t=0.88 x=667 y=1025
+  some   a4/path1/12648430 uid=108 crystal  f=281 a 1.00->0.00 fork t=0.16 x=1328 y=595
+  surge  a4/path1/12648430 uid=108 crystal  f=335 a 0.00->1.00 converge t=0.38 x=1492 y=758
+  some   a4/path1/12648430 uid=38 lantern  f=272 a 1.00->0.00 battle t=0.52 x=571 y=819
+  surge  a4/path1/12648430 uid=38 lantern  f=368 a 0.00->1.00 converge t=0.54 x=558 y=830
+  sombra a4/path1/12648430 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path1/12648430 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/path2/12648430 luminarias=13 quadros=751 saltos=1 pops=14 sombra=2
+  salto  a4/path2/12648430 uid=272 lantern  f=196 d=241px (ref 0) travel z 72.69->69.98 lane 0.00->0.91
+  surge  a4/path2/12648430 uid=345 brazier  f=326 a 0.00->1.00 converge t=0.23 x=1238 y=628
+  some   a4/path2/12648430 uid=345 brazier  f=332 a 1.00->0.00 converge t=0.29 x=1265 y=668
+  surge  a4/path2/12648430 uid=345 brazier  f=368 a 0.00->1.00 converge t=0.51 x=1365 y=815
+  some   a4/path2/12648430 uid=345 brazier  f=399 a 1.00->0.00 landmark t=0.51 x=1365 y=815
+  surge  a4/path2/12648430 uid=345 brazier  f=495 a 0.00->1.00 converge t=0.82 x=1519 y=1035
+  surge  a4/path2/12648430 uid=371 lantern  f=363 a 0.00->1.00 converge t=0.21 x=668 y=617
+  some   a4/path2/12648430 uid=371 lantern  f=404 a 1.00->0.00 fork t=0.21 x=668 y=617
+  surge  a4/path2/12648430 uid=371 lantern  f=454 a 0.00->1.00 converge t=0.32 x=610 y=695
+  some   a4/path2/12648430 uid=371 lantern  f=462 a 1.00->0.00 converge t=0.43 x=559 y=765
+  surge  a4/path2/12648430 uid=371 lantern  f=495 a 0.00->1.00 converge t=0.61 x=463 y=893
+  some   a4/path2/12648430 uid=371 lantern  f=496 a 1.00->0.00 converge t=0.61 x=463 y=893
+  alpha  a4/path2/12648430 uid=396 lantern  f=549 a 0.39->1.00 travel t=0.29 x=1278 y=670
+  surge  a4/path2/12648430 uid=396 lantern  f=691 a 0.00->1.00 travel t=0.59 x=1422 y=873
+  some   a4/path2/12648430 uid=272 lantern  f=272 a 1.00->0.00 battle t=0.52 x=571 y=819
+  sombra a4/path2/12648430 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path2/12648430 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/path3/12648430 luminarias=12 quadros=751 saltos=1 pops=10 sombra=2
+  salto  a4/path3/12648430 uid=534 lantern  f=196 d=241px (ref 0) travel z 72.69->69.98 lane 0.00->0.91
+  surge  a4/path3/12648430 uid=607 brazier  f=331 a 0.00->1.00 converge t=0.33 x=1284 y=693
+  some   a4/path3/12648430 uid=607 brazier  f=336 a 1.00->0.00 converge t=0.39 x=1312 y=733
+  surge  a4/path3/12648430 uid=607 brazier  f=368 a 0.00->1.00 converge t=0.54 x=1381 y=833
+  some   a4/path3/12648430 uid=607 brazier  f=399 a 1.00->0.00 landmark t=0.54 x=1381 y=833
+  surge  a4/path3/12648430 uid=607 brazier  f=495 a 0.00->1.00 converge t=0.55 x=1389 y=844
+  alpha  a4/path3/12648430 uid=658 lantern  f=531 a 0.26->1.00 travel t=0.27 x=1275 y=659
+  surge  a4/path3/12648430 uid=658 lantern  f=691 a 0.00->1.00 travel t=0.59 x=1430 y=875
+  surge  a4/path3/12648430 uid=624 crystal  f=331 a 0.00->1.00 converge t=0.08 x=516 y=558
+  some   a4/path3/12648430 uid=534 lantern  f=272 a 1.00->0.00 battle t=0.52 x=571 y=819
+  surge  a4/path3/12648430 uid=701 crystal  f=589 a 0.00->1.00 travel t=0.04 x=1297 y=521
+  sombra a4/path3/12648430 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path3/12648430 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/castle/12648430 luminarias=7 quadros=226 saltos=1 pops=2 sombra=0
+  salto  a4/castle/12648430 uid=795 lantern  f=206 d=269px (ref 0) travel z 172.69->169.98 lane 0.00->1.04
+  surge  a4/castle/12648430 uid=865 crystal  f=133 a 0.00->1.00 travel t=0.06 x=1470 y=555
+  surge  a4/castle/12648430 uid=786 crystal  f=57 a 0.00->1.00 travel t=0.05 x=1427 y=541
+[FAIL] a4/path1/7331 luminarias=10 quadros=624 saltos=1 pops=11 sombra=2
+  salto  a4/path1/7331 uid=1069 brazier  f=564 d=72px (ref 0) travel z 100.25->100.25 lane 0.06->0.39
+  surge  a4/path1/7331 uid=927 brazier  f=196 a 0.00->1.00 travel t=0.88 x=655 y=1026
+  some   a4/path1/7331 uid=927 brazier  f=272 a 1.00->0.00 battle t=0.88 x=655 y=1026
+  surge  a4/path1/7331 uid=1027 crystal  f=332 a 0.00->1.00 converge t=0.12 x=1439 y=587
+  surge  a4/path1/7331 uid=935 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a4/path1/7331 uid=935 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a4/path1/7331 uid=1004 lantern  f=196 a 0.00->1.00 travel t=0.21 x=663 y=619
+  some   a4/path1/7331 uid=1004 lantern  f=277 a 1.00->0.00 fork t=0.21 x=663 y=619
+  surge  a4/path1/7331 uid=1004 lantern  f=326 a 0.00->1.00 converge t=0.32 x=613 y=689
+  some   a4/path1/7331 uid=1004 lantern  f=332 a 1.00->0.00 converge t=0.38 x=580 y=734
+  surge  a4/path1/7331 uid=1004 lantern  f=368 a 0.00->1.00 converge t=0.60 x=465 y=887
+  alpha  a4/path1/7331 uid=1004 lantern  f=369 a 1.00->0.10 travel t=0.60 x=465 y=887
+  sombra a4/path1/7331 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path1/7331 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/path2/7331 luminarias=11 quadros=751 saltos=0 pops=12 sombra=2
+  surge  a4/path2/7331 uid=1287 brazier  f=691 a 0.00->1.00 travel t=0.88 x=1246 y=1024
+  surge  a4/path2/7331 uid=1153 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a4/path2/7331 uid=1153 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  some   a4/path2/7331 uid=1265 crystal  f=411 a 1.00->0.00 fork t=0.08 x=542 y=553
+  surge  a4/path2/7331 uid=1265 crystal  f=442 a 0.00->1.00 converge t=0.10 x=527 y=567
+  surge  a4/path2/7331 uid=1303 lantern  f=691 a 0.00->1.00 travel t=0.59 x=504 y=872
+  surge  a4/path2/7331 uid=1245 crystal  f=327 a 0.00->1.00 converge t=0.06 x=1314 y=532
+  surge  a4/path2/7331 uid=1222 brazier  f=368 a 0.00->1.00 converge t=0.55 x=608 y=830
+  some   a4/path2/7331 uid=1222 brazier  f=399 a 1.00->0.00 landmark t=0.55 x=608 y=830
+  surge  a4/path2/7331 uid=1222 brazier  f=495 a 0.00->1.00 converge t=0.56 x=601 y=841
+  surge  a4/path2/7331 uid=1145 brazier  f=196 a 0.00->1.00 travel t=0.88 x=655 y=1026
+  some   a4/path2/7331 uid=1145 brazier  f=272 a 1.00->0.00 battle t=0.88 x=655 y=1026
+  sombra a4/path2/7331 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path2/7331 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/path3/7331 luminarias=11 quadros=751 saltos=1 pops=14 sombra=2
+  salto  a4/path3/7331 uid=1578 brazier  f=691 d=204px (ref 0) travel z 116.52->109.98 lane 0.10->0.34
+  surge  a4/path3/7331 uid=1400 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a4/path3/7331 uid=1400 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  alpha  a4/path3/7331 uid=1578 brazier  f=691 a 0.14->1.00 travel t=0.52 x=1225 y=804
+  some   a4/path3/7331 uid=1512 crystal  f=406 a 1.00->0.00 fork t=0.07 x=639 y=538
+  surge  a4/path3/7331 uid=1512 crystal  f=453 a 0.00->1.00 converge t=0.16 x=577 y=597
+  surge  a4/path3/7331 uid=1492 lantern  f=339 a 0.00->1.00 converge t=0.20 x=1307 y=620
+  some   a4/path3/7331 uid=1492 lantern  f=411 a 1.00->0.00 fork t=0.30 x=1359 y=685
+  surge  a4/path3/7331 uid=1492 lantern  f=445 a 0.00->1.00 converge t=0.34 x=1384 y=715
+  some   a4/path3/7331 uid=1492 lantern  f=455 a 1.00->0.00 converge t=0.42 x=1433 y=773
+  surge  a4/path3/7331 uid=1492 lantern  f=495 a 0.00->1.00 converge t=0.55 x=1511 y=867
+  surge  a4/path3/7331 uid=1469 brazier  f=368 a 0.00->1.00 converge t=0.52 x=608 y=814
+  some   a4/path3/7331 uid=1469 brazier  f=399 a 1.00->0.00 landmark t=0.52 x=608 y=814
+  surge  a4/path3/7331 uid=1392 brazier  f=196 a 0.00->1.00 travel t=0.88 x=655 y=1026
+  some   a4/path3/7331 uid=1392 brazier  f=272 a 1.00->0.00 battle t=0.88 x=655 y=1026
+  sombra a4/path3/7331 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path3/7331 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/castle/7331 luminarias=6 quadros=226 saltos=0 pops=3 sombra=0
+  surge  a4/castle/7331 uid=1644 lantern  f=206 a 0.00->1.00 travel t=0.59 x=1380 y=866
+  alpha  a4/castle/7331 uid=1622 lantern  f=11 a 1.00->0.38 travel t=0.59 x=497 y=873
+  surge  a4/castle/7331 uid=1636 brazier  f=206 a 0.00->1.00 travel t=0.88 x=655 y=1026
+[FAIL] a4/path1/90210 luminarias=10 quadros=624 saltos=0 pops=10 sombra=2
+  surge  a4/path1/90210 uid=1898 lantern  f=564 a 0.00->1.00 travel t=0.59 x=512 y=871
+  some   a4/path1/90210 uid=1785 brazier  f=272 a 1.00->0.00 battle t=0.64 x=1183 y=872
+  surge  a4/path1/90210 uid=1920 crystal  f=461 a 0.00->1.00 travel t=0.07 x=1272 y=534
+  surge  a4/path1/90210 uid=1851 brazier  f=328 a 0.00->1.00 converge t=0.37 x=665 y=719
+  some   a4/path1/90210 uid=1851 brazier  f=329 a 1.00->0.00 converge t=0.37 x=665 y=719
+  surge  a4/path1/90210 uid=1851 brazier  f=368 a 0.00->1.00 converge t=0.65 x=552 y=901
+  some   a4/path1/90210 uid=1868 crystal  f=279 a 1.00->0.00 fork t=0.04 x=1284 y=522
+  surge  a4/path1/90210 uid=1868 crystal  f=330 a 0.00->1.00 converge t=0.16 x=1371 y=604
+  some   a4/path1/90210 uid=1868 crystal  f=342 a 1.00->0.00 converge t=0.29 x=1465 y=698
+  surge  a4/path1/90210 uid=1868 crystal  f=368 a 0.00->1.00 converge t=0.37 x=1525 y=760
+  sombra a4/path1/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path1/90210 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/path2/90210 luminarias=12 quadros=751 saltos=2 pops=12 sombra=2
+  salto  a4/path2/90210 uid=2156 brazier  f=691 d=91px (ref 0) travel z 108.63->108.63 lane 0.11->0.50
+  salto  a4/path2/90210 uid=2069 lantern  f=196 d=166px (ref 0) travel z 76.15->76.15 lane 0.05->1.10
+  alpha  a4/path2/90210 uid=2069 lantern  f=196 a 0.25->1.00 travel t=0.27 x=649 y=657
+  some   a4/path2/90210 uid=2069 lantern  f=278 a 1.00->0.00 fork t=0.27 x=649 y=657
+  surge  a4/path2/90210 uid=2069 lantern  f=328 a 0.00->1.00 converge t=0.41 x=585 y=748
+  some   a4/path2/90210 uid=2069 lantern  f=330 a 1.00->0.00 converge t=0.42 x=578 y=758
+  surge  a4/path2/90210 uid=2069 lantern  f=368 a 0.00->1.00 converge t=0.53 x=527 y=829
+  some   a4/path2/90210 uid=2069 lantern  f=399 a 1.00->0.00 landmark t=0.53 x=527 y=829
+  surge  a4/path2/90210 uid=2069 lantern  f=495 a 0.00->1.00 converge t=0.54 x=510 y=838
+  some   a4/path2/90210 uid=2086 crystal  f=280 a 1.00->0.00 fork t=0.05 x=1302 y=527
+  surge  a4/path2/90210 uid=2086 crystal  f=331 a 0.00->1.00 converge t=0.18 x=1400 y=621
+  some   a4/path2/90210 uid=2086 crystal  f=340 a 1.00->0.00 converge t=0.28 x=1472 y=693
+  surge  a4/path2/90210 uid=2086 crystal  f=368 a 0.00->1.00 converge t=0.38 x=1546 y=770
+  some   a4/path2/90210 uid=2003 brazier  f=272 a 1.00->0.00 battle t=0.64 x=1183 y=872
+  sombra a4/path2/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path2/90210 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/path3/90210 luminarias=12 quadros=751 saltos=1 pops=7 sombra=2
+  salto  a4/path3/90210 uid=2405 lantern  f=691 d=243px (ref 0) travel z 108.82->108.82 lane 0.02->1.07
+  some   a4/path3/90210 uid=2252 brazier  f=272 a 1.00->0.00 battle t=0.64 x=1183 y=872
+  some   a4/path3/90210 uid=2335 crystal  f=278 a 1.00->0.00 fork t=0.05 x=1256 y=524
+  surge  a4/path3/90210 uid=2335 crystal  f=328 a 0.00->1.00 converge t=0.15 x=1328 y=592
+  surge  a4/path3/90210 uid=2318 brazier  f=368 a 0.00->1.00 converge t=0.65 x=551 y=901
+  some   a4/path3/90210 uid=2318 brazier  f=399 a 1.00->0.00 landmark t=0.65 x=551 y=901
+  surge  a4/path3/90210 uid=2318 brazier  f=495 a 0.00->1.00 converge t=0.66 x=545 y=911
+  surge  a4/path3/90210 uid=2359 brazier  f=464 a 0.00->1.00 converge t=0.30 x=657 y=676
+  sombra a4/path3/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a4/path3/90210 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a4/castle/90210 luminarias=7 quadros=226 saltos=0 pops=1 sombra=0
+  alpha  a4/castle/90210 uid=2476 lantern  f=11 a 1.00->0.38 travel t=0.59 x=497 y=873
+TOTAL 12 cenas, 12 com descontinuidade
+[FAIL] a5/path1/12648430 luminarias=11 quadros=624 saltos=0 pops=7 sombra=2
+  surge  a5/path1/12648430 uid=150 lantern  f=564 a 0.00->1.00 travel t=0.59 x=512 y=871
+  surge  a5/path1/12648430 uid=122 lantern  f=327 a 0.00->1.00 converge t=0.22 x=1290 y=628
+  some   a5/path1/12648430 uid=122 lantern  f=333 a 1.00->0.00 converge t=0.28 x=1324 y=672
+  surge  a5/path1/12648430 uid=122 lantern  f=368 a 0.00->1.00 converge t=0.60 x=1501 y=896
+  alpha  a5/path1/12648430 uid=122 lantern  f=369 a 1.00->0.10 travel t=0.60 x=1501 y=896
+  surge  a5/path1/12648430 uid=36 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a5/path1/12648430 uid=36 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  sombra a5/path1/12648430 f=196 encounter->battle len 29% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path1/12648430 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/path2/12648430 luminarias=12 quadros=751 saltos=1 pops=12 sombra=2
+  salto  a5/path2/12648430 uid=470 lantern  f=691 d=138px (ref 0) travel z 109.88->109.88 lane 0.25->0.88
+  some   a5/path2/12648430 uid=376 mushroom f=324 a 1.00->0.00 converge t=0.22 x=1585 y=677
+  surge  a5/path2/12648430 uid=376 mushroom f=330 a 0.00->1.00 converge t=0.29 x=1641 y=737
+  surge  a5/path2/12648430 uid=406 mushroom f=338 a 0.00->1.00 converge t=0.09 x=324 y=598
+  surge  a5/path2/12648430 uid=290 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a5/path2/12648430 uid=290 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a5/path2/12648430 uid=290 lantern  f=368 a 0.00->1.00 converge t=0.60 x=1443 y=885
+  some   a5/path2/12648430 uid=290 lantern  f=399 a 1.00->0.00 landmark t=0.60 x=1443 y=885
+  surge  a5/path2/12648430 uid=290 lantern  f=495 a 0.00->1.00 converge t=0.61 x=1448 y=892
+  some   a5/path2/12648430 uid=290 lantern  f=496 a 1.00->0.00 converge t=0.61 x=1448 y=892
+  surge  a5/path2/12648430 uid=426 mushroom f=464 a 0.00->1.00 converge t=0.21 x=1551 y=662
+  some   a5/path2/12648430 uid=426 mushroom f=472 a 1.00->0.00 converge t=0.27 x=1596 y=709
+  surge  a5/path2/12648430 uid=426 mushroom f=495 a 0.00->1.00 converge t=0.32 x=1637 y=753
+  sombra a5/path2/12648430 f=196 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path2/12648430 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/path3/12648430 luminarias=12 quadros=751 saltos=1 pops=9 sombra=2
+  salto  a5/path3/12648430 uid=576 lantern  f=369 d=16px (ref 0) landmark z 78.10->78.10 lane 1.14->1.14
+  surge  a5/path3/12648430 uid=692 mushroom f=338 a 0.00->1.00 converge t=0.09 x=324 y=598
+  surge  a5/path3/12648430 uid=739 lantern  f=691 a 0.00->1.00 travel t=0.59 x=504 y=872
+  surge  a5/path3/12648430 uid=789 mushroom f=647 a 0.00->1.00 travel t=0.07 x=568 y=545
+  surge  a5/path3/12648430 uid=576 lantern  f=196 a 0.00->1.00 travel t=0.59 x=1408 y=871
+  some   a5/path3/12648430 uid=576 lantern  f=272 a 1.00->0.00 battle t=0.59 x=1408 y=871
+  surge  a5/path3/12648430 uid=576 lantern  f=368 a 0.00->1.00 converge t=0.60 x=1443 y=885
+  some   a5/path3/12648430 uid=576 lantern  f=399 a 1.00->0.00 landmark t=0.60 x=1459 y=888
+  surge  a5/path3/12648430 uid=576 lantern  f=495 a 0.00->1.00 converge t=0.61 x=1463 y=895
+  some   a5/path3/12648430 uid=576 lantern  f=496 a 1.00->0.00 converge t=0.61 x=1463 y=895
+  sombra a5/path3/12648430 f=196 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path3/12648430 f=691 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/castle/12648430 luminarias=7 quadros=226 saltos=0 pops=1 sombra=0
+  surge  a5/castle/12648430 uid=862 lantern  f=206 a 0.00->1.00 travel t=0.59 x=1380 y=866
+[FAIL] a5/path1/7331 luminarias=11 quadros=624 saltos=0 pops=8 sombra=2
+  surge  a5/path1/7331 uid=1022 lantern  f=196 a 0.00->1.00 travel t=0.59 x=544 y=866
+  some   a5/path1/7331 uid=1022 lantern  f=272 a 1.00->0.00 battle t=0.59 x=544 y=866
+  surge  a5/path1/7331 uid=1022 lantern  f=368 a 0.00->1.00 converge t=0.60 x=526 y=877
+  alpha  a5/path1/7331 uid=1022 lantern  f=369 a 1.00->0.10 travel t=0.60 x=526 y=877
+  surge  a5/path1/7331 uid=1130 lantern  f=331 a 0.00->1.00 converge t=0.20 x=1290 y=618
+  some   a5/path1/7331 uid=1130 lantern  f=342 a 1.00->0.00 converge t=0.32 x=1353 y=699
+  surge  a5/path1/7331 uid=1130 lantern  f=368 a 0.00->1.00 converge t=0.41 x=1400 y=757
+  surge  a5/path1/7331 uid=1170 lantern  f=564 a 0.00->1.00 travel t=0.59 x=1377 y=866
+  sombra a5/path1/7331 f=196 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path1/7331 f=564 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/path2/7331 luminarias=12 quadros=751 saltos=0 pops=13 sombra=2
+  surge  a5/path2/7331 uid=1409 totem    f=457 a 0.00->1.00 converge t=0.32 x=640 y=688
+  some   a5/path2/7331 uid=1409 totem    f=461 a 1.00->0.00 converge t=0.37 x=619 y=719
+  surge  a5/path2/7331 uid=1409 totem    f=495 a 0.00->1.00 converge t=0.56 x=525 y=852
+  surge  a5/path2/7331 uid=1283 lantern  f=196 a 0.00->1.00 travel t=0.59 x=544 y=866
+  some   a5/path2/7331 uid=1283 lantern  f=272 a 1.00->0.00 battle t=0.59 x=544 y=866
+  surge  a5/path2/7331 uid=1283 lantern  f=368 a 0.00->1.00 converge t=0.60 x=526 y=877
+  some   a5/path2/7331 uid=1283 lantern  f=399 a 1.00->0.00 landmark t=0.60 x=526 y=877
+  surge  a5/path2/7331 uid=1521 lantern  f=691 a 0.00->1.00 travel t=0.52 x=532 y=824
+  surge  a5/path2/7331 uid=1385 totem    f=331 a 0.00->1.00 converge t=0.20 x=1258 y=615
+  some   a5/path2/7331 uid=1385 totem    f=343 a 1.00->0.00 converge t=0.33 x=1319 y=700
+  surge  a5/path2/7331 uid=1385 totem    f=368 a 0.00->1.00 converge t=0.41 x=1357 y=751
+  some   a5/path2/7331 uid=1385 totem    f=442 a 1.00->0.00 converge t=0.43 x=1371 y=769
+  surge  a5/path2/7331 uid=1482 mushroom f=594 a 0.00->1.00 travel t=0.05 x=1330 y=533
+  sombra a5/path2/7331 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path2/7331 f=691 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/path3/7331 luminarias=11 quadros=751 saltos=1 pops=11 sombra=2
+  salto  a5/path3/7331 uid=1576 lantern  f=369 d=24px (ref 0) landmark z 78.10->78.10 lane 0.94->0.94
+  surge  a5/path3/7331 uid=1684 lantern  f=332 a 0.00->1.00 converge t=0.21 x=1294 y=623
+  some   a5/path3/7331 uid=1684 lantern  f=443 a 1.00->0.00 converge t=0.43 x=1414 y=773
+  surge  a5/path3/7331 uid=1702 mushroom f=340 a 0.00->1.00 converge t=0.09 x=654 y=549
+  some   a5/path3/7331 uid=1702 mushroom f=407 a 1.00->0.00 fork t=0.16 x=602 y=598
+  surge  a5/path3/7331 uid=1702 mushroom f=450 a 0.00->1.00 converge t=0.24 x=549 y=649
+  surge  a5/path3/7331 uid=1576 lantern  f=196 a 0.00->1.00 travel t=0.59 x=544 y=866
+  some   a5/path3/7331 uid=1576 lantern  f=272 a 1.00->0.00 battle t=0.59 x=544 y=866
+  surge  a5/path3/7331 uid=1576 lantern  f=368 a 0.00->1.00 converge t=0.60 x=526 y=877
+  some   a5/path3/7331 uid=1576 lantern  f=399 a 1.00->0.00 landmark t=0.60 x=503 y=881
+  surge  a5/path3/7331 uid=1806 mushroom f=643 a 0.00->1.00 travel t=0.06 x=569 y=538
+  surge  a5/path3/7331 uid=1730 lantern  f=691 a 0.00->1.00 travel t=0.59 x=1369 y=865
+  sombra a5/path3/7331 f=196 encounter->battle len 29% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path3/7331 f=691 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/castle/7331 luminarias=7 quadros=226 saltos=0 pops=2 sombra=0
+  surge  a5/castle/7331 uid=1870 lantern  f=206 a 0.00->1.00 travel t=0.59 x=515 y=870
+  alpha  a5/castle/7331 uid=1849 totem    f=11 a 1.00->0.38 travel t=0.64 x=736 y=871
+[FAIL] a5/path1/90210 luminarias=10 quadros=624 saltos=1 pops=7 sombra=2
+  salto  a5/path1/90210 uid=2199 lantern  f=564 d=140px (ref 0) travel z 102.86->102.86 lane 0.23->0.98
+  surge  a5/path1/90210 uid=2121 lantern  f=328 a 0.00->1.00 converge t=0.30 x=613 y=683
+  some   a5/path1/90210 uid=2121 lantern  f=337 a 1.00->0.00 converge t=0.42 x=553 y=763
+  surge  a5/path1/90210 uid=2121 lantern  f=368 a 0.00->1.00 converge t=0.58 x=473 y=869
+  surge  a5/path1/90210 uid=2144 totem    f=342 a 0.00->1.00 converge t=0.20 x=1274 y=616
+  surge  a5/path1/90210 uid=2169 totem    f=564 a 0.00->1.00 travel t=0.64 x=725 y=872
+  surge  a5/path1/90210 uid=2046 lantern  f=196 a 0.00->1.00 travel t=0.62 x=1210 y=860
+  some   a5/path1/90210 uid=2046 lantern  f=272 a 1.00->0.00 battle t=0.62 x=1210 y=860
+  sombra a5/path1/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path1/90210 f=564 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/path2/90210 luminarias=11 quadros=751 saltos=1 pops=13 sombra=2
+  salto  a5/path2/90210 uid=2477 lantern  f=691 d=140px (ref 0) travel z 114.57->114.57 lane 0.18->0.99
+  some   a5/path2/90210 uid=2365 mushroom f=284 a 1.00->0.00 fork t=0.23 x=504 y=651
+  surge  a5/path2/90210 uid=2365 mushroom f=325 a 0.00->1.00 converge t=0.33 x=433 y=723
+  surge  a5/path2/90210 uid=2295 lantern  f=196 a 0.00->1.00 travel t=0.62 x=1210 y=860
+  some   a5/path2/90210 uid=2295 lantern  f=272 a 1.00->0.00 battle t=0.62 x=1210 y=860
+  surge  a5/path2/90210 uid=2295 lantern  f=368 a 0.00->1.00 converge t=0.60 x=1443 y=885
+  some   a5/path2/90210 uid=2295 lantern  f=399 a 1.00->0.00 landmark t=0.60 x=1443 y=885
+  surge  a5/path2/90210 uid=2412 mushroom f=456 a 0.00->1.00 converge t=0.19 x=600 y=614
+  alpha  a5/path2/90210 uid=2458 totem    f=691 a 0.42->1.00 travel t=0.64 x=698 y=874
+  surge  a5/path2/90210 uid=2384 totem    f=334 a 0.00->1.00 converge t=0.21 x=1268 y=618
+  some   a5/path2/90210 uid=2384 totem    f=352 a 1.00->0.00 converge t=0.34 x=1335 y=709
+  surge  a5/path2/90210 uid=2384 totem    f=368 a 0.00->1.00 converge t=0.36 x=1346 y=723
+  some   a5/path2/90210 uid=2384 totem    f=446 a 1.00->0.00 converge t=0.41 x=1370 y=754
+  surge  a5/path2/90210 uid=2384 totem    f=495 a 0.00->1.00 converge t=0.61 x=1481 y=899
+  sombra a5/path2/90210 f=196 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path2/90210 f=691 encounter->battle len 29% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/path3/90210 luminarias=12 quadros=751 saltos=2 pops=13 sombra=2
+  salto  a5/path3/90210 uid=2578 lantern  f=369 d=16px (ref 0) landmark z 78.10->78.10 lane 1.14->1.14
+  salto  a5/path3/90210 uid=2756 totem    f=691 d=96px (ref 0) travel z 113.00->113.00 lane 0.15->0.66
+  surge  a5/path3/90210 uid=2578 lantern  f=196 a 0.00->1.00 travel t=0.62 x=1210 y=860
+  some   a5/path3/90210 uid=2578 lantern  f=272 a 1.00->0.00 battle t=0.62 x=1210 y=860
+  surge  a5/path3/90210 uid=2578 lantern  f=368 a 0.00->1.00 converge t=0.60 x=1443 y=885
+  some   a5/path3/90210 uid=2578 lantern  f=399 a 1.00->0.00 landmark t=0.60 x=1459 y=888
+  surge  a5/path3/90210 uid=2578 lantern  f=495 a 0.00->1.00 converge t=0.61 x=1463 y=895
+  some   a5/path3/90210 uid=2578 lantern  f=496 a 1.00->0.00 converge t=0.61 x=1463 y=895
+  surge  a5/path3/90210 uid=2695 totem    f=462 a 0.00->1.00 converge t=0.29 x=633 y=672
+  some   a5/path3/90210 uid=2695 totem    f=481 a 1.00->0.00 converge t=0.43 x=566 y=765
+  surge  a5/path3/90210 uid=2695 totem    f=495 a 0.00->1.00 converge t=0.45 x=559 y=776
+  surge  a5/path3/90210 uid=2648 mushroom f=120 a 0.00->1.00 travel t=0.08 x=683 y=541
+  some   a5/path3/90210 uid=2648 mushroom f=281 a 1.00->0.00 fork t=0.23 x=577 y=640
+  surge  a5/path3/90210 uid=2648 mushroom f=328 a 0.00->1.00 converge t=0.36 x=481 y=735
+  surge  a5/path3/90210 uid=2741 totem    f=691 a 0.00->1.00 travel t=0.64 x=719 y=873
+  sombra a5/path3/90210 f=196 encounter->battle len 28% wid 0% alpha 0.00 pos 1px travel
+  sombra a5/path3/90210 f=691 encounter->battle len 27% wid 0% alpha 0.00 pos 1px travel
+[FAIL] a5/castle/90210 luminarias=7 quadros=226 saltos=0 pops=1 sombra=0
+  surge  a5/castle/90210 uid=2859 lantern  f=206 a 0.00->1.00 travel t=0.62 x=1210 y=860
+TOTAL 12 cenas, 12 com descontinuidade
+[FAIL] a6/path1/12648430 luminarias=10 quadros=624 saltos=1 pops=8 sombra=4
+  salto  a6/path1/12648430 uid=201 lantern  f=564 d=209px (ref 0) travel z 103.83->103.83 lane 0.07->1.24
+  surge  a6/path1/12648430 uid=178 lantern  f=564 a 0.00->1.00 travel t=0.55 x=1377 y=840
+  surge  a6/path1/12648430 uid=26 lantern  f=196 a 0.00->1.00 travel t=0.55 x=544 y=840
+  some   a6/path1/12648430 uid=26 lantern  f=272 a 1.00->0.00 battle t=0.55 x=544 y=840
+  surge  a6/path1/12648430 uid=131 lantern  f=329 a 0.00->1.00 converge t=0.21 x=1293 y=621
+  some   a6/path1/12648430 uid=131 lantern  f=337 a 1.00->0.00 converge t=0.30 x=1343 y=685
+  surge  a6/path1/12648430 uid=131 lantern  f=368 a 0.00->1.00 converge t=0.56 x=1492 y=870
+  alpha  a6/path1/12648430 uid=131 lantern  f=369 a 1.00->0.07 travel t=0.56 x=1492 y=870
+  alpha  a6/path1/12648430 uid=148 lantern  f=417 a 0.15->1.00 travel t=0.26 x=637 y=653
+  sombra a6/path1/12648430 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 4px travel
+  sombra a6/path1/12648430 f=564 encounter->battle len 57% wid 39% alpha 0.52 pos 4px travel
+  sombra a6/path1/12648430 f=196 corpo encounter(875,442)->battle(875,419) len 0% wid 0% alpha 0.00 pos 23px travel
+  sombra a6/path1/12648430 f=564 corpo encounter(844,442)->battle(844,419) len 0% wid 0% alpha 0.00 pos 23px travel
+[FAIL] a6/path2/12648430 luminarias=11 quadros=751 saltos=0 pops=11 sombra=4
+  surge  a6/path2/12648430 uid=439 shrine   f=495 a 0.00->1.00 converge t=0.17 x=1816 y=704
+  surge  a6/path2/12648430 uid=283 lantern  f=196 a 0.00->1.00 travel t=0.55 x=544 y=840
+  some   a6/path2/12648430 uid=283 lantern  f=272 a 1.00->0.00 battle t=0.55 x=544 y=840
+  surge  a6/path2/12648430 uid=515 lantern  f=691 a 0.00->1.00 travel t=0.52 x=516 y=827
+  surge  a6/path2/12648430 uid=388 lantern  f=330 a 0.00->1.00 converge t=0.21 x=1295 y=621
+  some   a6/path2/12648430 uid=388 lantern  f=339 a 1.00->0.00 converge t=0.31 x=1351 y=693
+  surge  a6/path2/12648430 uid=388 lantern  f=368 a 0.00->1.00 converge t=0.56 x=1496 y=871
+  some   a6/path2/12648430 uid=388 lantern  f=399 a 1.00->0.00 landmark t=0.56 x=1496 y=871
+  surge  a6/path2/12648430 uid=416 lantern  f=457 a 0.00->1.00 converge t=0.27 x=607 y=662
+  some   a6/path2/12648430 uid=416 lantern  f=471 a 1.00->0.00 converge t=0.43 x=520 y=773
+  surge  a6/path2/12648430 uid=416 lantern  f=495 a 0.00->1.00 converge t=0.50 x=480 y=823
+  sombra a6/path2/12648430 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path2/12648430 f=691 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path2/12648430 f=196 corpo encounter(875,442)->battle(875,422) len 0% wid 0% alpha 0.00 pos 20px travel
+  sombra a6/path2/12648430 f=691 corpo encounter(836,442)->battle(836,422) len 0% wid 0% alpha 0.00 pos 20px travel
+[FAIL] a6/path3/12648430 luminarias=12 quadros=751 saltos=1 pops=7 sombra=4
+  salto  a6/path3/12648430 uid=773 lantern  f=691 d=250px (ref 0) travel z 113.26->109.98 lane 0.06->0.95
+  surge  a6/path3/12648430 uid=676 lantern  f=331 a 0.00->1.00 converge t=0.24 x=1309 y=641
+  some   a6/path3/12648430 uid=676 lantern  f=347 a 1.00->0.00 converge t=0.40 x=1398 y=753
+  surge  a6/path3/12648430 uid=676 lantern  f=368 a 0.00->1.00 converge t=0.56 x=1493 y=870
+  some   a6/path3/12648430 uid=676 lantern  f=399 a 1.00->0.00 landmark t=0.56 x=1493 y=870
+  surge  a6/path3/12648430 uid=704 shrine   f=342 a 0.00->1.00 converge t=0.07 x=250 y=603
+  surge  a6/path3/12648430 uid=571 lantern  f=196 a 0.00->1.00 travel t=0.55 x=544 y=840
+  some   a6/path3/12648430 uid=571 lantern  f=272 a 1.00->0.00 battle t=0.55 x=544 y=840
+  sombra a6/path3/12648430 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path3/12648430 f=691 encounter->battle len 57% wid 39% alpha 0.52 pos 5px travel
+  sombra a6/path3/12648430 f=196 corpo encounter(875,442)->battle(875,422) len 0% wid 0% alpha 0.00 pos 20px travel
+  sombra a6/path3/12648430 f=691 corpo encounter(836,442)->battle(836,412) len 0% wid 0% alpha 0.00 pos 30px travel
+[FAIL] a6/castle/12648430 luminarias=7 quadros=226 saltos=0 pops=3 sombra=0
+  alpha  a6/castle/12648430 uid=848 lantern  f=11 a 1.00->0.49 travel t=0.54 x=1360 y=835
+  surge  a6/castle/12648430 uid=858 lantern  f=206 a 0.00->1.00 travel t=0.55 x=515 y=845
+  surge  a6/castle/12648430 uid=869 shrine   f=77 a 0.00->1.00 travel t=0.08 x=1498 y=574
+[FAIL] a6/path1/7331 luminarias=11 quadros=624 saltos=1 pops=6 sombra=4
+  salto  a6/path1/7331 uid=1191 lantern  f=564 d=312px (ref 0) travel z 104.11->99.98 lane 0.00->1.13
+  surge  a6/path1/7331 uid=1033 lantern  f=196 a 0.00->1.00 travel t=0.55 x=1408 y=845
+  some   a6/path1/7331 uid=1033 lantern  f=272 a 1.00->0.00 battle t=0.55 x=1408 y=845
+  surge  a6/path1/7331 uid=1119 lantern  f=329 a 0.00->1.00 converge t=0.20 x=1291 y=617
+  some   a6/path1/7331 uid=1119 lantern  f=338 a 1.00->0.00 converge t=0.31 x=1348 y=689
+  surge  a6/path1/7331 uid=1119 lantern  f=368 a 0.00->1.00 converge t=0.56 x=1496 y=871
+  alpha  a6/path1/7331 uid=1119 lantern  f=369 a 1.00->0.07 travel t=0.56 x=1496 y=871
+  sombra a6/path1/7331 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path1/7331 f=564 encounter->battle len 57% wid 39% alpha 0.52 pos 5px travel
+  sombra a6/path1/7331 f=196 corpo encounter(875,442)->battle(875,420) len 0% wid 0% alpha 0.00 pos 22px travel
+  sombra a6/path1/7331 f=564 corpo encounter(844,442)->battle(844,413) len 0% wid 0% alpha 0.00 pos 29px travel
+[FAIL] a6/path2/7331 luminarias=12 quadros=751 saltos=1 pops=11 sombra=4
+  salto  a6/path2/7331 uid=1456 lantern  f=691 d=254px (ref 0) travel z 113.38->109.98 lane 0.04->0.95
+  surge  a6/path2/7331 uid=1276 lantern  f=196 a 0.00->1.00 travel t=0.55 x=1408 y=845
+  some   a6/path2/7331 uid=1276 lantern  f=272 a 1.00->0.00 battle t=0.55 x=1408 y=845
+  surge  a6/path2/7331 uid=1388 lantern  f=456 a 0.00->1.00 converge t=0.28 x=607 y=666
+  some   a6/path2/7331 uid=1388 lantern  f=468 a 1.00->0.00 converge t=0.43 x=528 y=768
+  surge  a6/path2/7331 uid=1388 lantern  f=495 a 0.00->1.00 converge t=0.53 x=472 y=839
+  surge  a6/path2/7331 uid=1362 lantern  f=328 a 0.00->1.00 converge t=0.23 x=1303 y=637
+  some   a6/path2/7331 uid=1362 lantern  f=332 a 1.00->0.00 converge t=0.27 x=1324 y=663
+  surge  a6/path2/7331 uid=1362 lantern  f=343 a 0.00->1.00 converge t=0.42 x=1404 y=763
+  some   a6/path2/7331 uid=1362 lantern  f=346 a 1.00->0.00 converge t=0.43 x=1413 y=774
+  surge  a6/path2/7331 uid=1362 lantern  f=368 a 0.00->1.00 converge t=0.49 x=1444 y=813
+  some   a6/path2/7331 uid=1362 lantern  f=399 a 1.00->0.00 landmark t=0.49 x=1444 y=813
+  sombra a6/path2/7331 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path2/7331 f=691 encounter->battle len 57% wid 39% alpha 0.52 pos 5px travel
+  sombra a6/path2/7331 f=196 corpo encounter(875,442)->battle(875,421) len 0% wid 0% alpha 0.00 pos 21px travel
+  sombra a6/path2/7331 f=691 corpo encounter(836,442)->battle(836,411) len 0% wid 0% alpha 0.00 pos 31px travel
+[FAIL] a6/path3/7331 luminarias=11 quadros=751 saltos=2 pops=9 sombra=4
+  salto  a6/path3/7331 uid=1549 lantern  f=369 d=37px (ref 0) landmark z 78.99->78.99 lane 1.19->1.19
+  salto  a6/path3/7331 uid=1730 lantern  f=691 d=188px (ref 0) travel z 112.47->112.47 lane 0.01->0.99
+  surge  a6/path3/7331 uid=1549 lantern  f=196 a 0.00->1.00 travel t=0.55 x=1408 y=845
+  some   a6/path3/7331 uid=1549 lantern  f=272 a 1.00->0.00 battle t=0.55 x=1408 y=845
+  surge  a6/path3/7331 uid=1549 lantern  f=368 a 0.00->1.00 converge t=0.56 x=1433 y=859
+  some   a6/path3/7331 uid=1549 lantern  f=399 a 1.00->0.00 landmark t=0.56 x=1470 y=865
+  surge  a6/path3/7331 uid=1707 lantern  f=691 a 0.00->1.00 travel t=0.55 x=504 y=847
+  surge  a6/path3/7331 uid=1661 lantern  f=456 a 0.00->1.00 converge t=0.30 x=602 y=679
+  some   a6/path3/7331 uid=1661 lantern  f=466 a 1.00->0.00 converge t=0.43 x=534 y=767
+  surge  a6/path3/7331 uid=1661 lantern  f=495 a 0.00->1.00 converge t=0.55 x=466 y=855
+  alpha  a6/path3/7331 uid=1661 lantern  f=496 a 1.00->0.31 travel t=0.55 x=466 y=855
+  sombra a6/path3/7331 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path3/7331 f=691 encounter->battle len 57% wid 39% alpha 0.52 pos 5px travel
+  sombra a6/path3/7331 f=196 corpo encounter(875,442)->battle(875,421) len 0% wid 0% alpha 0.00 pos 21px travel
+  sombra a6/path3/7331 f=691 corpo encounter(836,442)->battle(836,414) len 0% wid 0% alpha 0.00 pos 28px travel
+[FAIL] a6/castle/7331 luminarias=7 quadros=226 saltos=0 pops=3 sombra=0
+  surge  a6/castle/7331 uid=1831 shrine   f=123 a 0.00->1.00 travel t=0.12 x=385 y=605
+  alpha  a6/castle/7331 uid=1793 lantern  f=11 a 1.00->0.38 travel t=0.55 x=497 y=848
+  surge  a6/castle/7331 uid=1821 lantern  f=206 a 0.00->1.00 travel t=0.55 x=1380 y=841
+[FAIL] a6/path1/90210 luminarias=11 quadros=624 saltos=2 pops=8 sombra=4
+  salto  a6/path1/90210 uid=2136 lantern  f=564 d=217px (ref 0) travel z 104.46->104.46 lane 0.02->1.27
+  salto  a6/path1/90210 uid=1989 lantern  f=196 d=183px (ref 0) travel z 74.21->74.21 lane 0.03->1.08
+  surge  a6/path1/90210 uid=2118 lantern  f=564 a 0.00->1.00 travel t=0.55 x=1377 y=840
+  surge  a6/path1/90210 uid=1979 lantern  f=196 a 0.00->1.00 travel t=0.55 x=1408 y=845
+  some   a6/path1/90210 uid=1979 lantern  f=272 a 1.00->0.00 battle t=0.55 x=1408 y=845
+  some   a6/path1/90210 uid=1989 lantern  f=283 a 1.00->0.00 fork t=0.34 x=619 y=705
+  surge  a6/path1/90210 uid=1989 lantern  f=311 a 0.00->1.00 converge t=0.36 x=612 y=715
+  some   a6/path1/90210 uid=1989 lantern  f=324 a 1.00->0.00 converge t=0.43 x=579 y=762
+  surge  a6/path1/90210 uid=2068 lantern  f=328 a 0.00->1.00 converge t=0.20 x=1290 y=617
+  some   a6/path1/90210 uid=2068 lantern  f=336 a 1.00->0.00 converge t=0.30 x=1340 y=681
+  sombra a6/path1/90210 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 5px travel
+  sombra a6/path1/90210 f=564 encounter->battle len 57% wid 39% alpha 0.52 pos 5px travel
+  sombra a6/path1/90210 f=196 corpo encounter(875,442)->battle(875,411) len 0% wid 0% alpha 0.00 pos 31px travel
+  sombra a6/path1/90210 f=564 corpo encounter(844,442)->battle(844,412) len 0% wid 0% alpha 0.00 pos 30px travel
+[FAIL] a6/path2/90210 luminarias=11 quadros=751 saltos=1 pops=16 sombra=4
+  salto  a6/path2/90210 uid=2239 lantern  f=196 d=183px (ref 0) travel z 74.21->74.21 lane 0.03->1.08
+  surge  a6/path2/90210 uid=2339 lantern  f=456 a 0.00->1.00 converge t=0.28 x=605 y=671
+  some   a6/path2/90210 uid=2339 lantern  f=467 a 1.00->0.00 converge t=0.42 x=532 y=766
+  surge  a6/path2/90210 uid=2339 lantern  f=495 a 0.00->1.00 converge t=0.54 x=470 y=845
+  surge  a6/path2/90210 uid=2318 lantern  f=329 a 0.00->1.00 converge t=0.20 x=1292 y=619
+  some   a6/path2/90210 uid=2318 lantern  f=338 a 1.00->0.00 converge t=0.31 x=1349 y=691
+  surge  a6/path2/90210 uid=2318 lantern  f=351 a 0.00->1.00 converge t=0.42 x=1408 y=764
+  some   a6/path2/90210 uid=2318 lantern  f=358 a 1.00->0.00 converge t=0.43 x=1417 y=776
+  surge  a6/path2/90210 uid=2318 lantern  f=368 a 0.00->1.00 converge t=0.44 x=1421 y=780
+  some   a6/path2/90210 uid=2318 lantern  f=399 a 1.00->0.00 landmark t=0.44 x=1421 y=780
+  surge  a6/path2/90210 uid=2393 lantern  f=691 a 0.00->1.00 travel t=0.55 x=504 y=847
+  some   a6/path2/90210 uid=2239 lantern  f=283 a 1.00->0.00 fork t=0.34 x=619 y=705
+  surge  a6/path2/90210 uid=2239 lantern  f=316 a 0.00->1.00 converge t=0.38 x=603 y=728
+  some   a6/path2/90210 uid=2239 lantern  f=324 a 1.00->0.00 converge t=0.43 x=579 y=762
+  surge  a6/path2/90210 uid=2229 lantern  f=196 a 0.00->1.00 travel t=0.55 x=1408 y=845
+  some   a6/path2/90210 uid=2229 lantern  f=272 a 1.00->0.00 battle t=0.55 x=1408 y=845
+  surge  a6/path2/90210 uid=2368 shrine   f=461 a 0.00->1.00 converge t=0.07 x=1501 y=571
+  sombra a6/path2/90210 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path2/90210 f=691 encounter->battle len 57% wid 39% alpha 0.52 pos 5px travel
+  sombra a6/path2/90210 f=196 corpo encounter(875,442)->battle(875,422) len 0% wid 0% alpha 0.00 pos 20px travel
+  sombra a6/path2/90210 f=691 corpo encounter(836,442)->battle(836,412) len 0% wid 0% alpha 0.00 pos 29px travel
+[FAIL] a6/path3/90210 luminarias=12 quadros=751 saltos=2 pops=13 sombra=4
+  salto  a6/path3/90210 uid=2686 lantern  f=691 d=194px (ref 0) travel z 111.33->111.33 lane 0.02->0.97
+  salto  a6/path3/90210 uid=2519 lantern  f=196 d=183px (ref 0) travel z 74.21->74.21 lane 0.03->1.08
+  surge  a6/path3/90210 uid=2598 lantern  f=331 a 0.00->1.00 converge t=0.23 x=1305 y=634
+  some   a6/path3/90210 uid=2598 lantern  f=362 a 1.00->0.00 converge t=0.43 x=1419 y=776
+  surge  a6/path3/90210 uid=2598 lantern  f=368 a 0.00->1.00 converge t=0.43 x=1420 y=777
+  some   a6/path3/90210 uid=2598 lantern  f=399 a 1.00->0.00 landmark t=0.43 x=1420 y=777
+  surge  a6/path3/90210 uid=2619 lantern  f=456 a 0.00->1.00 converge t=0.29 x=604 y=673
+  some   a6/path3/90210 uid=2619 lantern  f=462 a 1.00->0.00 converge t=0.36 x=565 y=724
+  surge  a6/path3/90210 uid=2619 lantern  f=495 a 0.00->1.00 converge t=0.55 x=462 y=856
+  alpha  a6/path3/90210 uid=2619 lantern  f=496 a 1.00->0.29 travel t=0.55 x=462 y=856
+  some   a6/path3/90210 uid=2519 lantern  f=283 a 1.00->0.00 fork t=0.34 x=619 y=705
+  surge  a6/path3/90210 uid=2519 lantern  f=316 a 0.00->1.00 converge t=0.38 x=603 y=728
+  some   a6/path3/90210 uid=2519 lantern  f=324 a 1.00->0.00 converge t=0.43 x=579 y=762
+  surge  a6/path3/90210 uid=2509 lantern  f=196 a 0.00->1.00 travel t=0.55 x=1408 y=845
+  some   a6/path3/90210 uid=2509 lantern  f=272 a 1.00->0.00 battle t=0.55 x=1408 y=845
+  sombra a6/path3/90210 f=196 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path3/90210 f=691 encounter->battle len 57% wid 39% alpha 0.52 pos 3px travel
+  sombra a6/path3/90210 f=196 corpo encounter(875,442)->battle(875,421) len 0% wid 0% alpha 0.00 pos 21px travel
+  sombra a6/path3/90210 f=691 corpo encounter(836,442)->battle(836,420) len 0% wid 0% alpha 0.00 pos 22px travel
+[FAIL] a6/castle/90210 luminarias=7 quadros=226 saltos=1 pops=1 sombra=0
+  salto  a6/castle/90210 uid=2801 lantern  f=206 d=212px (ref 0) travel z 174.21->174.21 lane 0.03->1.24
+  surge  a6/castle/90210 uid=2791 lantern  f=206 a 0.00->1.00 travel t=0.55 x=1380 y=841
+TOTAL 12 cenas, 12 com descontinuidade
+FIM

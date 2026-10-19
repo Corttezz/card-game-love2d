@@ -22,7 +22,7 @@ local FIRE_AMBER  = { 1.00, 0.62, 0.25 }
 local CATALOG = {
     fields = {
         lantern = { size = 5.6, face = 1, roadside = true,
-            lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
+            anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = FIRE_AMBER, radiusK = 1.50, coreK = 0.40,
                       intensity = 1.00, flicker = "fire",
@@ -34,7 +34,7 @@ local CATALOG = {
     },
 
     highlands = {
-        brazier = { size = 4.90, roadside = true, lane = { 0.32, 0.42 }, anchor = { 0.50, 0.08 },
+        brazier = { size = 4.90, roadside = true, anchor = { 0.50, 0.08 },
             weight = 0.9,
             light = { color = { 0.55, 0.70, 1.00 }, radiusK = 0.95,
                       coreK = 0.50, intensity = 0.85, flicker = "fire",
@@ -47,13 +47,13 @@ local CATALOG = {
     },
 
     abyss = {
-        brazier = { size = 5.00, roadside = true, lane = { 0.10, 0.20 }, anchor = { 0.50, 0.10 },
+        brazier = { size = 5.00, lane = { 0.45, 0.80 }, anchor = { 0.50, 0.10 },
             weight = 1.0,
             light = { color = { 1.00, 0.45, 0.12 }, radiusK = 1.15,
                       coreK = 0.60, intensity = 0.95, flicker = "fire",
                       pool = { radiusK = 1.10, intensity = 1.10, sy = 0.35 } },
             embers = { color = { 1.00, 0.55, 0.18 }, count = 4 } },
-        torch = { size = 5.30, roadside = true, lane = { 0.0, 0.10 }, anchor = { 0.50, 0.08 },
+        torch = { size = 5.30, roadside = true, anchor = { 0.50, 0.08 },
             weight = 0.8,
             light = { color = { 1.00, 0.55, 0.20 }, radiusK = 0.85,
                       coreK = 0.45, intensity = 0.85, flicker = "fire",
@@ -66,7 +66,7 @@ local CATALOG = {
     },
 
     frost = {
-        brazier = { size = 2.70, roadside = true, lane = { 0.01, 0.12 }, anchor = { 0.50, 0.20 },
+        brazier = { size = 2.70, lane = { 0.45, 0.80 }, anchor = { 0.50, 0.20 },
             weight = 0.8,
             light = { color = { 1.00, 0.58, 0.22 }, radiusK = 1.60,
                       coreK = 0.50, intensity = 0.90, flicker = "fire",
@@ -77,7 +77,7 @@ local CATALOG = {
             light = { color = { 0.62, 0.85, 1.00 }, radiusK = 1.10,
                       coreK = 0.35, intensity = 0.70, flicker = "shimmer" } },
         lantern = { size = 5.6, face = 1, roadside = true,
-            lane = { 0.0, 0.08 }, anchor = { 0.80, 0.40 },
+            anchor = { 0.80, 0.40 },
             weight = 0.9,
             light = { color = { 1.00, 0.68, 0.32 }, radiusK = 1.50,
                       coreK = 0.40, intensity = 0.95, flicker = "fire",
@@ -86,7 +86,7 @@ local CATALOG = {
 
     marsh = {
         lantern = { size = 5.6, face = 1, roadside = true,
-            lane = { 0.15, 0.30 }, anchor = { 0.78, 0.46 },
+            anchor = { 0.78, 0.46 },
             weight = 0.9,
             light = { color = { 0.55, 0.95, 0.45 }, radiusK = 1.60,
                       coreK = 0.45, intensity = 1.00, flicker = "wisp",
@@ -95,7 +95,7 @@ local CATALOG = {
             weight = 1.0,
             light = { color = { 0.45, 0.90, 0.60 }, radiusK = 0.80,
                       coreK = 0.30, intensity = 0.60, flicker = "pulse" } },
-        totem = { size = 3.4, roadside = true, lane = { 0.02, 0.20 }, anchor = { 0.50, 0.18 },
+        totem = { size = 3.4, lane = { 0.45, 0.80 }, anchor = { 0.50, 0.18 },
             weight = 0.6,
             light = { color = { 0.62, 0.88, 0.50 }, radiusK = 1.20,
                       coreK = 0.40, intensity = 0.75, flicker = "wisp" } },
@@ -103,7 +103,7 @@ local CATALOG = {
 
     dusk = {
         lantern = { size = 6.1, face = 1, roadside = true,
-            lane = { 0.0, 0.08 }, anchor = { 0.78, 0.46 },
+            anchor = { 0.78, 0.46 },
             weight = 1.1,
             light = { color = { 1.00, 0.72, 0.30 }, radiusK = 1.40,
                       coreK = 0.40, intensity = 0.85, flicker = "fire",
@@ -115,10 +115,22 @@ local CATALOG = {
     },
 }
 
+LuminaireEngine.ROAD_LANE = 0.04
+
 local KIND_SET = {}
-for _, kinds in pairs(CATALOG) do
-    for kind in pairs(kinds) do KIND_SET[kind] = true end
+local ROAD_KIND = {}
+for bid, kinds in pairs(CATALOG) do
+    for kind, d in pairs(kinds) do
+        KIND_SET[kind] = true
+        if d.roadside then
+            if ROAD_KIND[bid] then
+                Debug.warn("[LuminaireEngine] bioma " .. bid .. " com mais de uma luminaria de beira de estrada")
+            end
+            ROAD_KIND[bid] = kind
+        end
+    end
 end
+function LuminaireEngine.roadKind(bid) return ROAD_KIND[bid] end
 
 function LuminaireEngine.catalog(bid) return CATALOG[bid] or {} end
 function LuminaireEngine.def(bid, kind)

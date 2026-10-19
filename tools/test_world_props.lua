@@ -230,7 +230,6 @@ function M.run()
             for _ = 1, 90 do WorldRoad.update(1 / 30) end
             WorldRoad._blend = nil
             WorldRoad._prevBiomeIndex = nil
-            WorldRoad._lumMidZ = nil
             WorldRoad.setHandZone(W * 0.36, W * 0.64, H * 0.8)
             WorldRoad.setBattleEnemyDraw(function() end, nil)
             love.graphics.setCanvas(cv)
@@ -247,7 +246,8 @@ function M.run()
                 cs.roadGap > -W * 0.02)
             local worst, nS = 0, 0
             for _, he in ipairs(WorldRoad._hitScene) do
-                if he.s then
+                local hd = he.ref and require("engine.LuminaireEngine").def(he.ref.bid, he.ref.kind)
+                if he.s and not (hd and hd.roadside) then
                     nS = nS + 1
                     if he.s > worst then worst = he.s end
                 end
@@ -256,7 +256,7 @@ function M.run()
             t:truthy(("bioma %d: castelo sempre no centro da crista (dx %.1f)")
                 :format(b, ctop and (ctop.cx - W / 2) or 999),
                 ctop ~= nil and math.abs(ctop.cx - W / 2) <= 1)
-            t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
+            t:truthy(("bioma %d: nenhum prop (fora o poste, que segue a lei de continuidade) passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
                 :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
         end
         do
@@ -278,7 +278,7 @@ function M.run()
             end
             t:truthy(("castelo parado no centro durante a cena (deslocamento máximo %.1f px)"):format(moved), moved <= 1)
         end
-        for _, b in ipairs({ 5, 6 }) do
+        for _, b in ipairs({ 1, 2, 3, 4, 5, 6 }) do
             WorldRoad.restoreProgress(b, 3)
             for _ = 1, 400 do
                 if WorldRoad.isPrewarmed(b) then break end
@@ -287,7 +287,6 @@ function M.run()
             for _ = 1, 30 do WorldRoad.update(1 / 30) end
             WorldRoad._blend = nil
             WorldRoad._prevBiomeIndex = nil
-            local relE = WorldRoad.BATTLE_REL
             local lum
             for _, p in ipairs(WorldRoad._props) do
                 local LE = require("engine.LuminaireEngine")
@@ -296,17 +295,18 @@ function M.run()
             end
             t:truthy(("bioma %d: há luminária de beira de estrada para o teste de afastamento"):format(b), lum ~= nil)
             if lum then
-                lum.z = WorldRoad._camZ + relE - 2.0
-                lum.lane, lum._recuo = 0, true
-                WorldRoad._lumMidZ = nil
-                WorldRoad.setBattleEnemyDraw(function() end, nil)
-                love.graphics.setCanvas(cv)
-                WorldRoad.draw(0, 52, W, H - 52, b)
-                love.graphics.setCanvas()
-                local G = WorldRoad.GLUE
-                local gap = lum._glueGap
-                t:truthy(("bioma %d: luminária posta colada no inimigo se afasta (folga %.0f px, mín %.0f)")
-                    :format(b, gap or -1, G.gap * W * 0.85), gap ~= nil and gap >= G.gap * W * 0.85)
+                local LE = require("engine.LuminaireEngine")
+                local nRoad = 0
+                for _, d in pairs(LE.catalog(lum.bid)) do
+                    if d.roadside then nRoad = nRoad + 1 end
+                end
+                t:eq(("bioma %d: um único tipo de poste de beira de estrada"):format(b), nRoad, 1)
+                local far = 0
+                for _, p in ipairs(WorldRoad._props) do
+                    local d = not p.ghost and LE.def(p.bid, p.kind)
+                    if d and d.roadside and math.abs(p.lane - LE.ROAD_LANE) > 1e-9 then far = far + 1 end
+                end
+                t:eq(("bioma %d: todo poste colado à estrada na mesma faixa"):format(b), far, 0)
             end
         end
         WorldRoad.resetRun()
