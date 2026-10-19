@@ -34,12 +34,11 @@ local CATALOG = {
     },
 
     highlands = {
-        brazier = { size = 4.90, roadside = true, anchor = { 0.50, 0.08 },
+        brazier = { size = 5.20, face = 1, roadside = true, anchor = { 0.80, 0.30 },
             weight = 0.9,
-            light = { color = { 0.55, 0.70, 1.00 }, radiusK = 0.95,
-                      coreK = 0.50, intensity = 0.85, flicker = "fire",
-                      pool = { radiusK = 0.90, intensity = 0.85, sy = 0.35 } },
-            embers = { color = { 0.65, 0.80, 1.00 }, count = 2 } },
+            light = { color = { 0.55, 0.70, 1.00 }, radiusK = 1.40,
+                      coreK = 0.45, intensity = 0.90, flicker = "fire",
+                      pool = { radiusK = 1.25, intensity = 0.95, emit = 2.2, sy = 0.35 } } },
         runestone = { size = 1.5, lane = { 0.05, 0.35 }, anchor = { 0.50, 0.45 },
             weight = 0.7,
             light = { color = { 0.45, 0.62, 1.00 }, radiusK = 1.10,
@@ -90,7 +89,7 @@ local CATALOG = {
             weight = 0.9,
             light = { color = { 0.55, 0.95, 0.45 }, radiusK = 1.60,
                       coreK = 0.45, intensity = 1.00, flicker = "wisp",
-                      pool = { radiusK = 0.80, intensity = 0.80, sy = 0.35 } } },
+                      pool = { radiusK = 1.15, intensity = 0.95, emit = 2.0, sy = 0.35 } } },
         mushroom = { size = 0.8, lane = { 0.0, 0.60 }, anchor = { 0.50, 0.40 },
             weight = 1.0,
             light = { color = { 0.45, 0.90, 0.60 }, radiusK = 0.80,
@@ -131,6 +130,16 @@ for bid, kinds in pairs(CATALOG) do
     end
 end
 function LuminaireEngine.roadKind(bid) return ROAD_KIND[bid] end
+LuminaireEngine.EDGE_GAP = 0.0
+LuminaireEngine.ROAD_STEP = 18
+function LuminaireEngine.edgeGap(bid)
+    local d = CATALOG[bid] and ROAD_KIND[bid] and CATALOG[bid][ROAD_KIND[bid]]
+    return (d and d.edgeGap) or LuminaireEngine.EDGE_GAP
+end
+function LuminaireEngine.roadStep(bid)
+    local d = CATALOG[bid] and ROAD_KIND[bid] and CATALOG[bid][ROAD_KIND[bid]]
+    return (d and d.step) or LuminaireEngine.ROAD_STEP
+end
 
 function LuminaireEngine.catalog(bid) return CATALOG[bid] or {} end
 function LuminaireEngine.def(bid, kind)
@@ -192,6 +201,8 @@ local function scanImage(path, data)
     local res = {
         offX = math.floor((minX + maxX) / 2 - w / 2 + 0.5),
         footPad = h - 1 - maxY,
+        cL = minX - w / 2,
+        cR = maxX + 1 - w / 2,
     }
     if sumW > 0 then
         res.ax = (sumX / sumW) / w

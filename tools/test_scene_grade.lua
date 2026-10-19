@@ -11,7 +11,7 @@ local function sat(c)
 end
 
 local function fnBody(src, name)
-    local s = src:find("local function " .. name .. "%(")
+    local s = src:find("local function " .. name .. "%(") or src:find("function LMG%." .. name .. "%(")
     if not s then return nil end
     local depth, i, n = 0, s, #src
     while i <= n do

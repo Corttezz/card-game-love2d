@@ -1,7 +1,7 @@
 local M = {}
 
 local VW, VH = 1920, 1080
-M.ROAD_GAP_MAX = 0.15
+M.ROAD_GAP_TOL = 0.03
 local DT = 1 / 30
 
 local function patchDims(w, h)
@@ -80,7 +80,31 @@ function M.capture(act, seed, scenario, saveDir)
     GameplayScene.draw()
     love.graphics.setCanvas()
 
-    local log = { lums = {}, shadow = {}, body = {}, frames = 0, phase = {} }
+    local log = { lums = {}, shadow = {}, body = {}, frames = 0, phase = {}, cover = {} }
+    local LEc = require("engine.LuminaireEngine")
+    local font13 = require("src.ui.FontManager").getFont(13)
+    local function checkCover(frame, phase)
+        local f = WorldRoad._fork
+        if not f or not f._geo then return end
+        local relM = f.markZ - WorldRoad._camZ
+        for i = 1, f.n do
+            local geo = f._geo[i]
+            if geo and geo.aMul > 0.5 and not f.converge then
+                local label = WorldRoad.forkLabel(f.nodes[i]) or ""
+                local hw = math.max(geo.iw * geo.s * 0.5, (font13:getWidth(label) + 16) * 0.5)
+                local top = geo.py - geo.ih * geo.s - 26
+                for _, he in ipairs(WorldRoad._hitScene) do
+                    local q = he.ref
+                    local d = q and LEc.def(q.bid, q.kind)
+                    if d and d.roadside and q.z - WorldRoad._camZ < relM
+                       and he.x1 < geo.px + hw and he.x2 > geo.px - hw and he.y1 < geo.py and he.y2 > top then
+                        log.cover[#log.cover + 1] = { uid = q.uid or 0, kind = q.kind, frame = frame, mark = i,
+                            phase = phase, rel = q.z - WorldRoad._camZ, x = he.x1, y = he.y1 }
+                    end
+                end
+            end
+        end
+    end
     local frame, phase = 0, "battle"
     local inEnemy = false
     local origDraw = EnemyRenderer.draw
@@ -133,6 +157,7 @@ function M.capture(act, seed, scenario, saveDir)
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.draw()
         love.graphics.setCanvas()
+        checkCover(frame, phase)
         love.graphics.present()
         if frame % 30 == 0 then collectgarbage() end
         if saveDir and saveDir.png and (frame % 6 == 0) then
@@ -236,10 +261,11 @@ function M.analyze(log)
                 pops[#pops + 1] = { uid = uid, kind = L.kind, frame = k, how = "esmaece",
                     a0 = p and p.a or 0, a1 = c.a, phase = c.phase, at = c }
             end
-            if L.road and c and c.gap and (c.gap < -0.02 or c.gap > M.ROAD_GAP_MAX) and c.a > 0.02 and not L._far then
+            local want = LE.edgeGap(L.bid)
+            if L.road and c and c.gap and math.abs(c.gap - want) > M.ROAD_GAP_TOL and c.a > 0.02 and not L._far then
                 L._far = true
                 pops[#pops + 1] = { uid = uid, kind = L.kind, frame = k, how = "longe",
-                    a0 = c.gap, a1 = M.ROAD_GAP_MAX, phase = c.phase, at = c }
+                    a0 = c.gap, a1 = want, phase = c.phase, at = c }
             end
             if L.road and c and math.abs((c.lane or 0) - LE.ROAD_LANE) > 1e-6 and not L._far then
                 L._far = true
@@ -281,6 +307,14 @@ function M.analyze(log)
                         phase = at.phase, at = at }
                 end
             end
+        end
+    end
+    local seenCover = {}
+    for _, c in ipairs(log.cover or {}) do
+        if not seenCover[c.uid] then
+            seenCover[c.uid] = true
+            pops[#pops + 1] = { uid = c.uid, kind = c.kind, frame = c.frame, how = "cobre",
+                a0 = c.mark, a1 = c.rel, phase = c.phase, at = { t = c.rel, x = c.x, y = c.y } }
         end
     end
     local shadowJumps = {}

@@ -160,8 +160,8 @@ local UNIT_PX       = 0.115
 local BLEND_DURATION = 2.2
 
 WorldRoad.ROAD_EDGE = 0.80
-function WorldRoad.postLateral(halfR)
-    return halfR * (WorldRoad.ROAD_EDGE + 2 * LuminaireEngine.ROAD_LANE)
+function WorldRoad.postLateral(halfR, bid)
+    return halfR * WorldRoad.ROAD_EDGE * (1 + 2 * LuminaireEngine.edgeGap(bid))
 end
 WorldRoad.BATTLE_REL      = 9
 WorldRoad.BATTLE_REL_NEAR = 9
@@ -471,6 +471,23 @@ local function luminairePath(bid, kind, variant)
     end
     lumPathCache[key] = found
     return found or nil
+end
+
+function WorldRoad.postCenter(bid, kind, side, s, halfR, variant)
+    local d = LuminaireEngine.def(bid, kind)
+    local anc = LuminaireEngine.anchor(bid, kind, variant or 0, luminairePath(bid, kind, variant or 0))
+    local flip = 1
+    if d and d.face and d.face ~= 0 then
+        flip = ((side < 0 and 1 or -1) == d.face) and 1 or -1
+    end
+    local inner
+    if anc.cL then
+        if side < 0 then inner = flip == 1 and anc.cR or -anc.cL
+        else inner = flip == 1 and anc.cL or -anc.cR end
+    else
+        inner = (anc.offX or 0) * flip
+    end
+    return side * WorldRoad.postLateral(halfR, bid) - inner * s, flip, inner * s
 end
 
 local function px(data, x, y, c, w, h)
@@ -913,7 +930,7 @@ local function rollProp(p, z, forcedSide, noLum)
         p.side = rng:random() < pLeft and -1 or 1
         WorldRoad._sideBal = bal + p.side * (SIDE_W[p.kind] or 0.35)
     end
-    local LUM_STEP = 13
+    local LUM_STEP = LuminaireEngine.roadStep(b.id)
     local LUM_JIT  = 2.5
     WorldRoad._nextLumZ = WorldRoad._nextLumZ or {
         [-1] = z + LUM_STEP * (0.15 + rng:random() * 0.20),
@@ -2331,7 +2348,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     return true
 end
 
-LMG.GLUE = { dRel = 5.0, gap = 0.07, halfW = 86, laneMax = 2.4 }
+LMG.GLUE = { dRel = 5.0, gap = 0.025, halfW = 86, laneMax = 2.4, behind = 1.5 }
 WorldRoad.GLUE = LMG.GLUE
 
 function LMG.lumPrepass(g, w, camZ)
@@ -2347,7 +2364,8 @@ function LMG.lumPrepass(g, w, camZ)
                 local sc = g.scaleAt(size, tP, img:getHeight())
                 if PropCut.nearFade(sc, screenK, true) > 0 then
                     local halfR = ROAD_HALF * w * (0.30 + 0.70 * (tP ^ 1.15))
-                    local px = g.cx + p.side * WorldRoad.postLateral(halfR) + roadWobble(p.z, tP, w)
+                    local px = g.cx + WorldRoad.postCenter(p.bid, p.kind, p.side, sc, halfR, p.variant)
+                        + roadWobble(p.z, tP, w)
                     local py = g.latY(px - g.cx, tP)
                     local n = WorldRoad._lumBoxN + 1
                     local lbx = WorldRoad._lumBoxes[n] or {}
@@ -2425,7 +2443,7 @@ local function drawPropsBehind(g, x, w, camZ)
             local pxX = g.cx + p.side * w * (0.11 + p.lane * 0.38)
             local edef = LuminaireEngine.def(p.bid, p.kind)
             if edef and edef.roadside then
-                pxX = g.cx + p.side * WorldRoad.postLateral(ROAD_HALF * w * 0.30) + roadWobble(p.z, 0, w)
+                pxX = g.cx + p.side * WorldRoad.postLateral(ROAD_HALF * w * 0.30, p.bid) + roadWobble(p.z, 0, w)
             end
             local crest = g.crestYAt(pxX)
             local img = getSprite(p.kind, p.variant, p.bid)
@@ -2450,11 +2468,16 @@ local function drawPropsBehind(g, x, w, camZ)
                 if ct and not roadLum then
                     fadeA = fadeA * math.min(1, math.max(0, (math.abs(pxX - ct.cx) - ct.w * 0.5) / (ct.w * 0.24)))
                 end
-                local px2 = pxX - (lumAnc.offX or 0) * s * lumFlip
+                local px2, pin = pxX - (lumAnc.offX or 0) * s * lumFlip, (lumAnc.offX or 0) * s * lumFlip
+                if edef.roadside then
+                    local pcx
+                    pcx, lumFlip, pin = WorldRoad.postCenter(p.bid, p.kind, p.side, s, ROAD_HALF * w * 0.30, p.variant)
+                    px2 = g.cx + pcx + roadWobble(p.z, 0, w)
+                end
                 local sink = (1 - em) * ih * s
                 local baseY = crest + sink
                 if WorldRoad._trace then
-                    WorldRoad._trace(p, pxX, baseY, fadeA, 0, "behind", ih * s, iw * s,
+                    WorldRoad._trace(p, px2 + pin, baseY, fadeA, 0, "behind", ih * s, iw * s,
                         g.cx + roadWobble(p.z, 0, w), ROAD_HALF * w * 0.30 * WorldRoad.ROAD_EDGE)
                 end
                 local cb = Scene.Grade.color(Scene.Grade.familyOf(p.kind, true), 0, LMG.c)
@@ -2756,7 +2779,8 @@ local ARRIVE_REL  = 7.5
 local FORK_SPREAD = 0.15
 
 LMG.PLAN = { midLo = 6.9, midHi = 12.3, midPick = 9.0, sameGap = 5, oppGap = 2.5,
-             skipLo = FORK_REL + 3, skipHi = MARK_REL + 2, pushLo = FORK_REL - 1.5 }
+             skipLo = FORK_REL + 3, skipHi = MARK_REL + 2, pushLo = FORK_REL - 1.5,
+             nearLo = -3, nearHi = 3.5 }
 WorldRoad.LUM_PLAN = LMG.PLAN
 
 function WorldRoad.planStop(stopZ, battle)
@@ -2777,22 +2801,18 @@ function LMG.lumFits(p, z, kind, pl, bid)
     if not img then return true end
     local size = kindSize(kind, bid)
     local rel = z - pl.stop
-    if pl.battle and math.abs(rel - WorldRoad.BATTLE_REL) < G.dRel then
-        local t = g.tOf(rel)
+    if pl.battle and rel < WorldRoad.BATTLE_REL + G.dRel then
         local relE = WorldRoad.BATTLE_REL
         local tE = g.tOf(relE)
-        if t and tE then
-            local s = g.scaleAt(size, t, img:getHeight())
-            local halfR = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-            local lat = WorldRoad.postLateral(halfR) + roadWobble(z, t, w) * p.side
+        local box = tE and WorldRoad.postBox(bid, kind, p.side, z, pl.stop, g, w, LMG.glueBox)
+        if box then
+            LMG.glueBox = box
             local ehw = G.halfW * WorldRoad.enemyScreenK(g.h) * WorldRoad.battleSizeK(relE)
-            local eoff = roadWobble(pl.stop + relE, tE, w) * p.side
-            local py = g.latY(lat, t)
+            local ex = g.cx + roadWobble(pl.stop + relE, tE, w)
             local eb = g.latY(0, tE)
-            if py - img:getHeight() * s < eb and py > eb - ehw * 2.6
-               and lat - eoff - ehw - img:getWidth() * s * 0.5 < G.gap * w then
-                return false
-            end
+            local m = G.gap * w
+            local touch = box.x1 < ex + ehw + m and box.x2 > ex - ehw - m and box.y1 < eb and box.y2 > eb - ehw * 2.6
+            if touch and rel < relE + G.behind then return false end
         end
     end
     for fi = 0, 1 do
@@ -2803,13 +2823,43 @@ function LMG.lumFits(p, z, kind, pl, bid)
             k = k * k * (3 - 2 * k)
             local hf = ROAD_HALF * w * (0.30 + 0.70 * (tf ^ 1.15))
             local wob = roadWobble(z, tf, w) * p.side
-            local lat = WorldRoad.postLateral(hf) + wob
             local sf = g.scaleAt(size, tf, img:getHeight())
+            local lat = WorldRoad.postCenter(bid, kind, p.side, sf, hf) * p.side + wob
             local reach = hf * 0.78 + hf * 0.15 + img:getWidth() * sf * 0.5
             if math.abs(lat - FORK_SPREAD * w * k - wob * 0.5) < reach then return false end
         end
     end
     return true
+end
+
+function WorldRoad.postBox(bid, kind, side, z, camZ, g, w, out)
+    local img = getSprite(kind, 0, bid)
+    if not img then return nil end
+    local rel = z - camZ
+    local t = g.tOf(rel)
+    if not t or t < 0 then return nil end
+    local over = math.max(0, -rel)
+    local iw, ih = img:getWidth(), img:getHeight()
+    local s = g.scaleAt(kindSize(kind, bid) * (PropCut.sizeK[img] or 1) * PropCut.crestK(kind, t), t, ih)
+    local halfR = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+    local wob = roadWobble(z, t, w)
+    local sy = g.latY(side * WorldRoad.postLateral(halfR, bid) + wob, t) + over * g.h * 0.13
+    local pcx, flip = WorldRoad.postCenter(bid, kind, side, s, halfR, 0)
+    local px = g.cx + pcx + wob
+    local anc = LuminaireEngine.anchor(bid, kind, 0, luminairePath(bid, kind, 0))
+    local base = sy + (anc.footPad or 0) * s
+    local _, ihv = PropCut.get(img, kind)
+    local cr = contentRect[img]
+    out = out or {}
+    if cr then
+        local rx0, rx1 = (cr.x0 - iw * 0.5) * s * flip, (cr.x1 + 1 - iw * 0.5) * s * flip
+        out.x1, out.x2 = px + math.min(rx0, rx1), px + math.max(rx0, rx1)
+        out.y1, out.y2 = base + (cr.y0 - ihv) * s, base + (math.min(cr.y1 + 1, ihv) - ihv) * s
+    else
+        out.x1, out.x2, out.y1, out.y2 = px - iw * s * 0.5, px + iw * s * 0.5, base - ihv * s, base
+    end
+    out.rel, out.t = rel, t
+    return out
 end
 
 function WorldRoad.lumPlanVerdict(p, z, kind, bid)
@@ -2818,7 +2868,8 @@ function WorldRoad.lumPlanVerdict(p, z, kind, bid)
     local P = LMG.PLAN
     local rel = z - pl.stop
     local relN = rel - (MARK_REL - ARRIVE_REL)
-    if (rel > P.skipLo and rel < P.skipHi) or (relN > P.skipLo and relN < P.skipHi) then
+    if (rel > P.skipLo and rel < P.skipHi) or (relN > P.skipLo and relN < P.skipHi)
+       or (rel > P.nearLo and rel < P.nearHi) or (relN > P.nearLo and relN < P.nearHi) then
         return "skip"
     end
     if not LMG.lumFits(p, z, kind, pl, bid) then return "skip" end
@@ -2846,18 +2897,99 @@ function WorldRoad.showFork(nodes, onChosen)
         markZ = WorldRoad._camZ + MARK_REL,
         markBoxes = {},
     }
+    LMG.layoutMarks(WorldRoad._fork)
     return true
+end
+
+LMG.MARK_FIT = { step = 0.004, reach = 0.12, sideMin = 0.08, centerMax = 0.07, margin = 5, label = 26,
+                 samples = { 0 } }
+function LMG.layoutMarks(f)
+    local g, w = LMG.planGeom()
+    if not g.tOf(MARK_REL) then return end
+    local F = LMG.MARK_FIT
+    local camZ = WorldRoad._camZ
+    local dist = MARK_REL - ARRIVE_REL
+    local postsAt = {}
+    for si, c in ipairs(F.samples) do
+        local cam = camZ + dist * c
+        local list = {}
+        for _, p in ipairs(WorldRoad._props) do
+            local d = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
+            local rel = p.z - cam
+            if d and d.roadside and rel < MARK_REL - dist * c and rel > -7 then
+                list[#list + 1] = WorldRoad.postBox(p.bid, p.kind, p.side, p.z, cam, g, w, {})
+            end
+        end
+        postsAt[si] = list
+    end
+    local font = require("src.ui.FontManager").getFont(13)
+    local placed, offK = {}, {}
+    local function boxAt(i, k, c)
+        local node = f.nodes[i]
+        local key = node and landmarkKeyFor(node.type) or "landmark_battle"
+        local img = getLandmark(key or "landmark_battle")
+        if not img then return nil end
+        local relM = MARK_REL - dist * c
+        local tM = g.tOf(relM)
+        if not tM then return nil end
+        local s = g.scaleAt(lmCfg(LANDMARK_SIZE, key) or 2.0, tM, LMG.refH(key, img:getHeight()))
+        local label = WorldRoad.forkLabel(node) or ""
+        local hw = math.max(img:getWidth() * s, font:getWidth(label) + 16) * 0.5 + F.margin
+        local kk = math.min(1, math.max(0, (relM - FORK_REL) / (MARK_REL - FORK_REL)))
+        kk = kk * kk * (3 - 2 * kk)
+        local off = k * w * kk * (1 - c) + roadWobble(camZ + MARK_REL, tM, w) * 0.5
+        local py = g.latY(off, tM)
+        return { x1 = g.cx + off - hw, x2 = g.cx + off + hw,
+                 y1 = py - img:getHeight() * s - F.label - F.margin, y2 = py + F.margin }
+    end
+    local function hits(b, list)
+        for _, q in ipairs(list) do
+            if q.x1 < b.x2 and q.x2 > b.x1 and q.y1 < b.y2 and q.y2 > b.y1 then return true end
+        end
+        return false
+    end
+    local function fits(i, k)
+        local b = boxAt(i, k, 0)
+        if not b or hits(b, postsAt[1]) then return nil end
+        for _, q in ipairs(placed) do
+            if q.x1 < b.x2 and q.x2 > b.x1 then return nil end
+        end
+        for si = 2, #F.samples do
+            local bc = boxAt(i, k, F.samples[si])
+            if bc and hits(bc, postsAt[si]) then return nil end
+        end
+        return b
+    end
+    local order = {}
+    for i = 1, f.n do if f.dirs[i] == 0 then order[#order + 1] = i end end
+    for i = 1, f.n do if f.dirs[i] ~= 0 then order[#order + 1] = i end end
+    local n = math.floor(F.reach / F.step + 0.5)
+    for _, i in ipairs(order) do
+        local d = f.dirs[i]
+        local k0 = d * FORK_SPREAD
+        local best, bestBox = k0, nil
+        for j = 0, 2 * n do
+            local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
+            if (d == 0 and math.abs(k) <= F.centerMax) or (d ~= 0 and k * d >= F.sideMin) then
+                local b = fits(i, k)
+                if b then best, bestBox = k, b; break end
+            end
+        end
+        offK[i] = best
+        placed[#placed + 1] = bestBox or boxAt(i, best, 0)
+    end
+    f.offK = offK
 end
 
 function WorldRoad.isForkActive()
     return WorldRoad._fork ~= nil
 end
 
-local function forkOffset(f, i, rel, w)
+local function forkOffset(f, i, rel, w, settled)
     local k = (rel - FORK_REL) / (MARK_REL - FORK_REL)
     k = math.min(1, math.max(0, k))
     k = k * k * (3 - 2 * k)
-    local off = f.dirs[i] * FORK_SPREAD * w * k * f.animIn
+    local off = (f.offK and f.offK[i] or f.dirs[i] * FORK_SPREAD) * w * k * (settled and 1 or f.animIn)
     if f.converge then
         local c = f.converge.k or 0
         if i == f.chosen then off = off * (1 - c)
@@ -3351,6 +3483,23 @@ local function drawProps(g, x, w, camZ)
             end
         end
     end
+    local encMark = nil
+    do
+        local e = WorldRoad._encounter
+        if e and WorldRoad._travel and e.z - camZ <= REL_CREST and g.tOf(e.z - camZ) then
+            encMark = LMG.encMark or {}
+            LMG.encMark = encMark
+            encMark.rel, encMark.drawn = e.z - camZ, false
+        end
+    end
+    local function drawEncounterNow()
+        encMark.drawn = true
+        flushGrassTo(encMark.rel)
+        WeatherEngine.flushTo(encMark.rel)
+        ShadowEngine.endFrame(Scene.Contact.drawAcc)
+        Scene.Contact.endFrame()
+        LMG.drawEncounterFront(g, x, w, camZ)
+    end
     local function drawChosenLandmark()
         local lm, rel, t = lmMark.lm, lmMark.rel, lmMark.t
         local img = getLandmark(lm.key)
@@ -3438,7 +3587,7 @@ local function drawProps(g, x, w, camZ)
                         img = hfr[1 + math.floor(hoverK * (#hfr - 1) + 0.5)]
                     end
                 end
-                local offX = forkOffset(f, i, relM, w)
+                local offX = forkOffset(f, i, relM, w, true)
                     + roadWobble(camZ + relM, tM, w) * 0.5
                 local px = g.cx + offX
                 local py = g.latY(offX, tM)
@@ -3541,6 +3690,7 @@ local function drawProps(g, x, w, camZ)
                 drawChosenLandmark()
                 lmMark.drawn = true
             end
+            if encMark and not encMark.drawn and rel < encMark.rel then drawEncounterNow() end
             flushGrassTo(rel)
             local over = math.max(0, -rel)
             local inner = 0.11 + 0.38 * t + over * 0.09
@@ -3549,7 +3699,7 @@ local function drawProps(g, x, w, camZ)
             local roadHalf = nil
             if rdef and rdef.roadside then
                 roadHalf = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-                lateral = p.side * WorldRoad.postLateral(roadHalf) + roadWobble(p.z, t, w)
+                lateral = p.side * WorldRoad.postLateral(roadHalf, p.bid) + roadWobble(p.z, t, w)
             end
             local pxX = g.cx + lateral
             local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.13
@@ -3615,14 +3765,22 @@ local function drawProps(g, x, w, camZ)
                 if lumDef then
                     lumAnc = LuminaireEngine.anchor(p.bid, p.kind, p.variant,
                         luminairePath(p.bid, p.kind, p.variant))
-                    if lumDef.face and lumDef.face ~= 0 then
-                        local want = p.side < 0 and 1 or -1
-                        lumFlip = (want == lumDef.face) and 1 or -1
+                    local pin = 0
+                    if roadHalf then
+                        local pcx
+                        pcx, lumFlip, pin = WorldRoad.postCenter(p.bid, p.kind, p.side, s, roadHalf, p.variant)
+                        pxX = g.cx + pcx + roadWobble(p.z, t, w)
+                    else
+                        if lumDef.face and lumDef.face ~= 0 then
+                            local want = p.side < 0 and 1 or -1
+                            lumFlip = (want == lumDef.face) and 1 or -1
+                        end
+                        pxX = pxX - (lumAnc.offX or 0) * s * lumFlip
+                        pin = (lumAnc.offX or 0) * s * lumFlip
                     end
-                    pxX = pxX - (lumAnc.offX or 0) * s * lumFlip
                     lumSink = (lumAnc.footPad or 0) * s
                     if WorldRoad._trace then
-                        WorldRoad._trace(p, pxX + (lumAnc.offX or 0) * s * lumFlip, sy, fadeA, t, "front", ih * s, iw * s,
+                        WorldRoad._trace(p, pxX + pin, sy, fadeA, t, "front", ih * s, iw * s,
                             g.cx + roadWobble(p.z, t, w), roadHalf and roadHalf * WorldRoad.ROAD_EDGE)
                     end
                     local fr = luminaireFrames(p.bid, p.kind, p.variant)
@@ -3888,14 +4046,20 @@ local function drawProps(g, x, w, camZ)
     end
 
     drawCrestFog(g, x, w)
-    drawList(farPass)
     local enemyFn = WorldRoad._enemyDraw
+    if not enemyFn then drawList(farPass) end
     if enemyFn then
         local et = g.tOf(WorldRoad.BATTLE_REL)
         local baseY = (et and g.latY(0, et)) or WorldRoad._enemyBaseY or 1e9
         local behind, front = WorldRoad._lists.behind, WorldRoad._lists.front
         clearList(behind)
         clearList(front)
+        for _, p in ipairs(farPass) do
+            local pt = g.tOf(p.z - camZ)
+            local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
+            if py >= baseY - 2 then front[#front + 1] = p
+            else behind[#behind + 1] = p end
+        end
         for _, p in ipairs(nearPass) do
             local pt = g.tOf(p.z - camZ)
             local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
@@ -3931,12 +4095,13 @@ local function drawProps(g, x, w, camZ)
         drawChosenLandmark()
         lmMark.drawn = true
     end
+    if encMark and not encMark.drawn then drawEncounterNow() end
     flushGrassTo(-1)
     ShadowEngine.endFrame(Scene.Contact.drawAcc)
     Scene.Contact.endFrame()
 end
 
-local function drawEncounterFront(g, x, w, camZ)
+function LMG.drawEncounterFront(g, x, w, camZ)
     local e = WorldRoad._encounter
     if not e or not WorldRoad._travel then return end
     local rel = e.z - camZ
@@ -4219,7 +4384,6 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     _profMark('props')
     love.graphics.pop()
 
-    drawEncounterFront(g, x, w, WorldRoad._camZ)
 
     if WorldRoad._travel then
         local enc = WorldRoad._encounter
