@@ -253,32 +253,9 @@ function M.run()
                 end
             end
             local ctop = WorldRoad._castleTop
-            local function lumOverlap(cx)
-                local sum = 0
-                for i = 1, (WorldRoad._lumBoxN or 0) do
-                    local lb = WorldRoad._lumBoxes[i]
-                    local ox = math.min(cx + ctop.w / 2, lb.x2) - math.max(cx - ctop.w / 2, lb.x1)
-                    local oy = math.min(ctop.baseY, lb.y2) - math.max(ctop.baseY - ctop.h, lb.y1)
-                    if ox > 0 and oy > 0 then sum = sum + ox * oy end
-                end
-                return sum
-            end
-            local nLum = WorldRoad._lumBoxN or 0
-            t:truthy(("bioma %d: caixas das luminárias de beira de estrada medidas no quadro desenhado (%d)")
-                :format(b, nLum), nLum > 0)
-            local hit, onTop = 1, 0
-            if ctop then
-                for i = 1, nLum do
-                    local lb = WorldRoad._lumBoxes[i]
-                    onTop = math.max(onTop, lumOverlap((lb.x1 + lb.x2) / 2))
-                end
-                if onTop > 0 then hit = lumOverlap(ctop.cx) / onTop end
-            end
-            t:truthy(("bioma %d: a trava enxerga o castelo posto em cima de uma luminária (%.0f px²)")
-                :format(b, onTop), onTop > 0)
-            t:truthy(("bioma %d: castelo no meio da jornada sai do centro e da frente das luminárias (dx %.0f, %.0f%% da sobreposição de quando está em cima de uma)")
-                :format(b, ctop and (ctop.cx - W / 2) or 0, hit * 100),
-                ctop ~= nil and math.abs(ctop.cx - W / 2) > W * 0.05 and hit < 0.5)
+            t:truthy(("bioma %d: castelo sempre no centro da crista (dx %.1f)")
+                :format(b, ctop and (ctop.cx - W / 2) or 999),
+                ctop ~= nil and math.abs(ctop.cx - W / 2) <= 1)
             t:truthy(("bioma %d: nenhum prop passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
                 :format(b, worst, capPix, nS), nS > 0 and worst <= capPix)
         end
@@ -291,21 +268,15 @@ function M.run()
             WorldRoad.draw(0, 52, W, H - 52, 1)
             love.graphics.setCanvas()
             local cx0 = WorldRoad._castleTop.cx
-            local target = WorldRoad._castleShift
-            WorldRoad._castleShift = target + W * 0.3
-            local mids = 0
+            local moved = 0
             for _ = 1, 20 do
                 WorldRoad.update(1 / 60)
                 love.graphics.setCanvas(cv)
                 WorldRoad.draw(0, 52, W, H - 52, 1)
                 love.graphics.setCanvas()
-                local cx = WorldRoad._castleTop.cx
-                if math.abs(cx - cx0) > 2 and math.abs(cx - (cx0 + W * 0.3)) > 2 then mids = mids + 1 end
+                moved = math.max(moved, math.abs(WorldRoad._castleTop.cx - cx0))
             end
-            t:truthy("o castelo pulou de lado com fade (origem gravada)",
-                math.abs((WorldRoad._castleFade.from or 0) - (target + W * 0.3)) < 1)
-            t:eq("castelo troca de lado longe por fade, sem posição intermediária na crista", mids, 0)
-            t:truthy("o fade do castelo dura 0,3 s", math.abs(WorldRoad._castleFade.dur - 0.3) < 1e-6)
+            t:truthy(("castelo parado no centro durante a cena (deslocamento máximo %.1f px)"):format(moved), moved <= 1)
         end
         for _, b in ipairs({ 5, 6 }) do
             WorldRoad.restoreProgress(b, 3)

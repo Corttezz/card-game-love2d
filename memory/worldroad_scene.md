@@ -269,6 +269,8 @@ animação mínima feita pelo PixelLab... só para dar um efeito mais detalhado"
   Poste novo rejeitado (viga de 7 px e lanterna enorme no 1080p). Animação refeita: só `fields_tree_0` e `_2`
   passaram o portão; `test_tree_anim` exige ao menos 2.
 
+**CASTELO SEMPRE NO CENTRO (18/Out/2026, decisão do dono, REVOGA as entradas abaixo sobre deslocar o castelo):** o dono reprovou o castelo deslocado para os lados da crista (commits c836e88d, 3fb78d46, d6406956, d63b5507: `CASTLE_APPROACH.side/pick/overlap`, fade de troca de lado): "o castelo é o foco de tudo" e o vai-e-vem "tá estranho". O código de deslocamento e fade foi APAGADO; `drawCastleOf` usa `cx = g.cx` sempre. A barra de vida/intenção do inimigo pode cobrir parte do castelo na batalha: aceito pelo dono. Não reintroduzir deslocamento, troca de lado nem fade do castelo. Trava: `test_world_props` (castelo com dx ≤ 1 px nos seis biomas e parado durante a cena).
+
 **Escala humana do quadro de batalha (18/Out/2026, frente cenario-escala; entregas em
 `tools/preview_out/escala_humana/`: `medidas.md`, `checklist.md`, recortes antes|depois):**
 o dono reprovou o quadro de batalha do ato 1 (poste menor que o inimigo, árvores do meio
@@ -438,7 +440,7 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   `lumPrepass` e valem até o próximo quadro (o zeramento no `drawProps` saiu, ver sol coerente). (3) Castelo: troca
   de posição maior que 12 % da largura dele vira fade cruzado de 0,3 s (`CASTLE_APPROACH.fade`,
   `WorldRoad._castleFade`); o resto (deriva do `progress`) segue suave. Ferramenta:
-  `lovec . test_one screenshot_castelo_fade <rótulo>` (batalha, encruzilhada abrindo, landmark nos seis
+  (ferramenta `screenshot_castelo_fade` removida com o fade) (batalha, encruzilhada abrindo, landmark nos seis
   atos; imprime o maior passo sem fade, hoje ≤ 1,7 px por quadro).
 
 - **Sol coerente com o astro que se vê (18/Out/2026, frente sol-coerente, `tools/preview_out/sol_coerente/`):**
