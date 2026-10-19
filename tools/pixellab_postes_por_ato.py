@@ -32,6 +32,16 @@ L.SPECS = {
         "wrought iron pole with a small curled iron arm at the top, and hanging from the arm a SMALL iron "
         "lantern with a cold blue flame behind the glass. Very thin and tall, the iron pole is two or "
         "three pixels wide, a few lichen spots on the stones." + POST),
+    "hi_post3": ("highlands_landmark_shop.png", 40, 96, "moon_r",
+        "a sturdy roadside lamp post of a cold moonlit highland road. At the bottom a carved square "
+        "pedestal of grey-blue cut stone with visible thickness: a pale moonlit top face, a lit right "
+        "face and a darker left face, chiselled block seams and a moulded cap, about one quarter of the "
+        "height. Rising from it a clearly readable wrought iron pole four to five pixels thick, its "
+        "right edge catching pale blue moonlight and its left edge dark. Near the top a bold iron "
+        "bracket arm with a curled scroll and a diagonal brace sticks out to the right, and from its "
+        "tip a short chain holds a small iron lantern whose glass is filled with a bright cold BLUE "
+        "flame, the brightest pixels of the sprite. The arm, chain and lantern are clearly connected, "
+        "nothing floats." + POST),
 }
 
 if __name__ == "__main__":

@@ -487,7 +487,13 @@ function WorldRoad.postCenter(bid, kind, side, s, halfR, variant)
     else
         inner = (anc.offX or 0) * flip
     end
-    return side * WorldRoad.postLateral(halfR, bid) - inner * s, flip, inner * s
+    local foot = inner
+    if anc.fL then
+        if side < 0 then foot = flip == 1 and anc.fR or -anc.fL
+        else foot = flip == 1 and anc.fL or -anc.fR end
+    end
+    local cx = side * WorldRoad.postLateral(halfR, bid) - inner * s
+    return cx, flip, inner * s, cx + foot * s
 end
 
 local function px(data, x, y, c, w, h)
@@ -1118,6 +1124,7 @@ local function populate()
         end
         zt = zt + 0.95 + WorldRoad._rng:random() * 0.4
     end
+    if WorldRoad._plan then WorldRoad._reservePosts(WorldRoad._plan, true) end
     WorldRoad._clouds = {}
     for _ = 1, 4 do
         table.insert(WorldRoad._clouds, {
@@ -1823,6 +1830,10 @@ function WorldRoad.update(dt)
         end
     end
 
+    for i = #WorldRoad._props, 1, -1 do
+        local p = WorldRoad._props[i]
+        if p.reserved and p.z - WorldRoad._camZ < -7 then table.remove(WorldRoad._props, i) end
+    end
     for _, p in ipairs(WorldRoad._props) do
         local rd = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
         if not p.ghost and p.z - WorldRoad._camZ < ((rd and rd.roadside) and -7 or -3.5) then
@@ -2348,7 +2359,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     return true
 end
 
-LMG.GLUE = { dRel = 5.0, gap = 0.025, halfW = 86, laneMax = 2.4, behind = 1.5 }
+LMG.GLUE = { dRel = 5.0, gap = 0.008, halfW = 86, laneMax = 2.4, behind = 1.5 }
 WorldRoad.GLUE = LMG.GLUE
 
 function LMG.lumPrepass(g, w, camZ)
@@ -2780,11 +2791,51 @@ local FORK_SPREAD = 0.15
 
 LMG.PLAN = { midLo = 6.9, midHi = 12.3, midPick = 9.0, sameGap = 5, oppGap = 2.5,
              skipLo = FORK_REL + 3, skipHi = MARK_REL + 2, pushLo = FORK_REL - 1.5,
-             nearLo = -3, nearHi = 3.5 }
+             nearLo = -3, nearHi = 3.5, battleNext = MARK_REL - ARRIVE_REL + 20,
+             bands = { { lo = 3.6, hi = 9.0, battle = true, haveLo = 3.5, haveHi = 9.5 },
+                       { lo = 19.6, hi = 21.0, haveLo = 19.5, haveHi = 21.5 } } }
 WorldRoad.LUM_PLAN = LMG.PLAN
 
 function WorldRoad.planStop(stopZ, battle)
     WorldRoad._plan = { stop = stopZ, battle = battle and true or false }
+    WorldRoad._reservePosts(WorldRoad._plan)
+end
+
+LMG.RESERVE = { spawnRel = REL_CREST + EMERGE_BAND, step = 0.4 }
+function WorldRoad._reservePosts(pl, free)
+    local b = rawBiome()
+    local kind = LuminaireEngine.roadKind(b.id)
+    if not kind or not WorldRoad._props or #WorldRoad._props == 0 or not WorldRoad._rng then return end
+    for _, band in ipairs(LMG.PLAN.bands) do
+        if pl.battle or not band.battle then
+            local have = false
+            for _, q in ipairs(WorldRoad._props) do
+                local qd = not q.ghost and LuminaireEngine.def(q.bid, q.kind)
+                local qr = q.z - pl.stop
+                if qd and qd.roadside and qr >= band.haveLo and qr <= band.haveHi then have = true end
+            end
+            local zLo = free and pl.stop + band.lo or math.max(pl.stop + band.lo, WorldRoad._camZ + LMG.RESERVE.spawnRel + 0.05)
+            if not have and zLo <= pl.stop + band.hi then
+                local first = WorldRoad._rng:random() < 0.5 and -1 or 1
+                local placed = false
+                for _, side in ipairs({ first, -first }) do
+                    local z = zLo
+                    while not placed and z <= pl.stop + band.hi do
+                        local p = { kind = kind, bid = b.id, side = side, z = z, lane = LuminaireEngine.ROAD_LANE,
+                                    variant = 0, big = 1, jitter = 0, reserved = true }
+                        if WorldRoad.lumPlanVerdict(p, z, kind, b.id) ~= "skip" then
+                            WorldRoad._uid = (WorldRoad._uid or 0) + 1
+                            p.uid = WorldRoad._uid
+                            WorldRoad._props[#WorldRoad._props + 1] = p
+                            placed = true
+                        end
+                        z = z + LMG.RESERVE.step
+                    end
+                    if placed then break end
+                end
+            end
+        end
+    end
 end
 
 function LMG.planGeom()
@@ -2824,8 +2875,9 @@ function LMG.lumFits(p, z, kind, pl, bid)
             local hf = ROAD_HALF * w * (0.30 + 0.70 * (tf ^ 1.15))
             local wob = roadWobble(z, tf, w) * p.side
             local sf = g.scaleAt(size, tf, img:getHeight())
-            local lat = WorldRoad.postCenter(bid, kind, p.side, sf, hf) * p.side + wob
-            local reach = hf * 0.78 + hf * 0.15 + img:getWidth() * sf * 0.5
+            local _, _, _, footX = WorldRoad.postCenter(bid, kind, p.side, sf, hf)
+            local lat = footX * p.side + wob
+            local reach = hf * 0.78 + math.max(hf * 0.15, w * 0.05)
             if math.abs(lat - FORK_SPREAD * w * k - wob * 0.5) < reach then return false end
         end
     end
@@ -2862,6 +2914,25 @@ function WorldRoad.postBox(bid, kind, side, z, camZ, g, w, out)
     return out
 end
 
+LMG.MARK_SLOT = { halfW = 105, top = 34 }
+function LMG.markSlotOk(p, z, kind, bid, cam)
+    local rel = z - cam
+    if rel >= MARK_REL or rel <= -7 then return true end
+    local g, w = LMG.planGeom()
+    local box = WorldRoad.postBox(bid, kind, p.side, z, cam, g, w, LMG.slotBox)
+    local tM = g.tOf(MARK_REL)
+    if not box or not tM then return true end
+    LMG.slotBox = box
+    local F, S = LMG.MARK_FIT, LMG.MARK_SLOT
+    local my = g.latY(p.side * FORK_SPREAD * w, tM)
+    if box.y1 >= my + F.margin then return true end
+    local cx = g.cx + roadWobble(cam + MARK_REL, tM, w) * 0.5
+    local a = math.min((box.x1 - cx) * p.side, (box.x2 - cx) * p.side)
+    local b = math.max((box.x1 - cx) * p.side, (box.x2 - cx) * p.side)
+    local cMin, cMax = F.sideMin * w, (FORK_SPREAD + F.reach) * w
+    return cMin + S.halfW < a or cMax - S.halfW > b
+end
+
 function WorldRoad.lumPlanVerdict(p, z, kind, bid)
     local pl = WorldRoad._plan
     if not pl then return nil end
@@ -2869,20 +2940,29 @@ function WorldRoad.lumPlanVerdict(p, z, kind, bid)
     local rel = z - pl.stop
     local relN = rel - (MARK_REL - ARRIVE_REL)
     if (rel > P.skipLo and rel < P.skipHi) or (relN > P.skipLo and relN < P.skipHi)
-       or (rel > P.nearLo and rel < P.nearHi) or (relN > P.nearLo and relN < P.nearHi) then
+       or (rel > P.nearLo and rel < P.nearHi) or (relN > P.nearLo and relN < P.nearHi)
+       or (rel - P.battleNext > P.nearLo and rel - P.battleNext < P.nearHi) then
         return "skip"
     end
     if not LMG.lumFits(p, z, kind, pl, bid) then return "skip" end
-    if not pl.battle or rel < P.midPick or rel > P.midHi then return nil end
-    for _, q in ipairs(WorldRoad._props) do
-        local qd = q ~= p and not q.ghost and LuminaireEngine.def(q.bid, q.kind)
-        if qd and qd.roadside then
-            local qr = q.z - pl.stop
-            if qr >= P.midLo and qr <= P.midHi then return nil end
-            if math.abs(q.z - z) < (q.side == p.side and P.sameGap or P.oppGap) then return nil end
+    if not LMG.markSlotOk(p, z, kind, bid, pl.stop) or not LMG.markSlotOk(p, z, kind, bid, pl.stop + MARK_REL - ARRIVE_REL)
+       or not LMG.markSlotOk(p, z, kind, bid, pl.stop + P.battleNext) then
+        return "skip"
+    end
+    for _, b in ipairs(P.bands) do
+        if rel >= b.lo and rel <= b.hi and (pl.battle or not b.battle) then
+            for _, q in ipairs(WorldRoad._props) do
+                local qd = q ~= p and not q.ghost and LuminaireEngine.def(q.bid, q.kind)
+                if qd and qd.roadside then
+                    local qr = q.z - pl.stop
+                    if qr >= b.haveLo and qr <= b.haveHi then return nil end
+                    if math.abs(q.z - z) < (q.side == p.side and P.sameGap or P.oppGap) then return nil end
+                end
+            end
+            return "force"
         end
     end
-    return "force"
+    return nil
 end
 
 function WorldRoad.showFork(nodes, onChosen)

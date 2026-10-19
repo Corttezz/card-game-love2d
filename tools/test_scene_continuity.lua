@@ -66,6 +66,7 @@ function M.capture(act, seed, scenario, saveDir)
         playButton = Button:new(VW * 0.8, VH * 0.8, 150, 46, "Jogar") })
     if game.messageSystem then game.messageSystem.messages = {} end
 
+    WorldRoad._lastRect = nil
     WorldRoad.restoreProgress(act, floor)
     WorldRoad._rng:setSeed(seed)
     WorldRoad._props = {}
@@ -83,8 +84,30 @@ function M.capture(act, seed, scenario, saveDir)
     local log = { lums = {}, shadow = {}, body = {}, frames = 0, phase = {}, cover = {} }
     local LEc = require("engine.LuminaireEngine")
     local font13 = require("src.ui.FontManager").getFont(13)
+    M.NEAR_BAND = { -3, 13 }
+    log.presence = {}
+    local function nearPosts()
+        local n = 0
+        for _, he in ipairs(WorldRoad._hitScene) do
+            local q = he.ref
+            local d = q and LEc.def(q.bid, q.kind)
+            local rel = q and q.z and q.z - WorldRoad._camZ
+            if d and d.roadside and rel and rel >= M.NEAR_BAND[1] and rel <= M.NEAR_BAND[2]
+               and he.x2 > 0 and he.x1 < VW and he.y2 > 0 and he.y1 < VH then n = n + 1 end
+        end
+        return n
+    end
     local function checkCover(frame, phase)
         local f = WorldRoad._fork
+        if f and not f.converge and phase == "fork" then
+            local key = "fork@" .. string.format("%.1f", f.markZ)
+            log.presence[key] = math.max(log.presence[key] or 0, nearPosts())
+        elseif not f and phase == "battle" then
+            log.presence.battle = math.max(log.presence.battle or 0, nearPosts())
+        elseif not f and phase == "arrival" and not WorldRoad._travel then
+            local key = "arrival@" .. string.format("%.1f", WorldRoad._camZ)
+            log.presence[key] = math.max(log.presence[key] or 0, nearPosts())
+        end
         if not f or not f._geo then return end
         local relM = f.markZ - WorldRoad._camZ
         for i = 1, f.n do
@@ -219,6 +242,9 @@ function M.capture(act, seed, scenario, saveDir)
             end
             chooseFork({ "battle", "rest", "shop" }, 1, function() end)
             travelBattle()
+            phase = "fork"
+            WorldRoad.showFork(nodesFor({ "battle", "rest", "shop" }), function() end)
+            step(25)
         end
     end)
 
@@ -307,6 +333,12 @@ function M.analyze(log)
                         phase = at.phase, at = at }
                 end
             end
+        end
+    end
+    for key, n in pairs(log.presence or {}) do
+        if n < 1 then
+            pops[#pops + 1] = { uid = 0, kind = key, frame = 0, how = "sem_poste",
+                a0 = 0, a1 = 1, phase = key, at = { t = 0, x = 0, y = 0 } }
         end
     end
     local seenCover = {}

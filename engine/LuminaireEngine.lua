@@ -186,6 +186,25 @@ local function scanImage(path, data)
         end
     end
     if maxX < 0 then return nil end
+    local minY = 0
+    for y = 0, maxY do
+        local hit = false
+        for x = 0, w - 1 do
+            local _, _, _, a = rgba(x, y)
+            if a > 0.5 then hit = true; break end
+        end
+        if hit then minY = y; break end
+    end
+    local fL, fR = w, -1
+    for y = maxY - math.max(1, math.floor((maxY - minY + 1) * 0.12)), maxY do
+        for x = 0, w - 1 do
+            local _, _, _, a = rgba(x, y)
+            if a > 0.5 then
+                if x < fL then fL = x end
+                if x > fR then fR = x end
+            end
+        end
+    end
     local cut = peak * 0.88
     for y = 0, h - 1 do
         for x = 0, w - 1 do
@@ -203,6 +222,8 @@ local function scanImage(path, data)
         footPad = h - 1 - maxY,
         cL = minX - w / 2,
         cR = maxX + 1 - w / 2,
+        fL = fL - w / 2,
+        fR = fR + 1 - w / 2,
     }
     if sumW > 0 then
         res.ax = (sumX / sumW) / w
