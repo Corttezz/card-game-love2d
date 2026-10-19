@@ -28,3 +28,11 @@ Escala medida com `lovec . test_one escala_humana postes:bN` (inimigo de referê
 - O layout dos marcos pode não achar lugar se dois postes flanquearem a estrada muito perto do centro (aconteceu antes da janela perto da câmera); nesse caso o marco fica no padrão e a trava acusa. Na matriz atual não aconteceu.
 - A luz da lanterna azul do ato 2 e da verde do ato 5 é discreta no chão (poça fria e pequena); está natural, mas quem espera "fogo" vai achar fraca.
 - A arte nova do ato 2 perde a chama azul grande do pilar, que era a assinatura do bioma; ganha proporção de poste. Se o dono sentir falta, o pilar antigo está no histórico (be8fe749).
+
+## Rodada 2 (revisão do lead)
+
+- Encruzilhada e batalha com poste GARANTIDO: o plano da parada reserva, no nascimento (além da crista, sem surgir na tela), um poste na faixa perto/meio da parada (rel 3,6 a 9) e outro que vira a faixa média da encruzilhada seguinte (rel 19,6 a 21 da parada = 9,6 a 11 na parada + 10). Todo nascimento recusa o poste que não deixaria vaga de marco (`LMG.markSlotOk`) na parada, na parada + 10 e na parada + 30, e a janela colada na câmera vale também para a parada + 30.
+- Trava: `test_scene_continuity` agora falha com `sem_poste` (encruzilhada aberta, batalha ou fim de chegada sem nenhum poste com rel -3 a 13 na tela) e ganhou a encruzilhada depois da segunda batalha. Matriz 6 atos x 3 sementes x 4 cenários: 72 de 72 limpas.
+- Ato 2, terceira arte (`hi_post3_a__1`, `create_image_pro`, 8 candidatas): pedestal entalhado com face de cima e faces de luz e sombra, haste de ferro de 4 a 5 px com borda iluminada para a lua à direita, braço com voluta e escora, lanterna pendurada com chama azul. Escala 243/279 = 0,87 do inimigo. Folhas: `rodada2/ato2_candidatas_no_cenario.png` e `rodada2/ato2_candidatas_4x.png` (primeira coluna = arte da rodada 1).
+- Provas em `rodada2/`: encruzilhada e batalha 1080p (tod 0,85) dos seis atos, grades, sequência do clique até a chegada dos atos 1 e 5.
+- Ainda sem garantia: encruzilhada na parada + 20 (duas paradas de landmark seguidas) e a primeira cena depois do Continuar. Quando a encruzilhada abre, os marcos crescem no lugar (não deslizam mais).

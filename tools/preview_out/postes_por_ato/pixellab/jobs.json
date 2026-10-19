@@ -10,5 +10,13 @@
  "hi_post2_a": {
   "job": "fadce4b0-0e29-443b-84c8-8c612a27e113",
   "spec": "hi_post2"
+ },
+ "hi_post3_a": {
+  "job": "5f087e10-786a-4a68-93dd-28f4436b0f43",
+  "spec": "hi_post3"
+ },
+ "hi_post3_b": {
+  "job": "3ead84e7-815f-4883-91fa-43c01904db56",
+  "spec": "hi_post3"
  }
 }
