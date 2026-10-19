@@ -253,7 +253,7 @@ function M.run()
                 end
             end
             local ctop = WorldRoad._castleTop
-            t:truthy(("bioma %d: castelo sempre no centro da crista (dx %.1f)")
+            t:truthy(("bioma %d: castelo no centro da crista ao retomar a run (dx %.1f)")
                 :format(b, ctop and (ctop.cx - W / 2) or 999),
                 ctop ~= nil and math.abs(ctop.cx - W / 2) <= 1)
             t:truthy(("bioma %d: nenhum prop (fora o poste, que segue a lei de continuidade) passa de 2x o pixel do inimigo, com a variação de escala por instância (pior %.2f, teto %.2f, %d props)")
@@ -276,7 +276,67 @@ function M.run()
                 love.graphics.setCanvas()
                 moved = math.max(moved, math.abs(WorldRoad._castleTop.cx - cx0))
             end
-            t:truthy(("castelo parado no centro durante a cena (deslocamento máximo %.1f px)"):format(moved), moved <= 1)
+            t:truthy(("castelo parado durante a cena parada (deslocamento máximo %.1f px)"):format(moved), moved <= 1)
+        end
+        do
+            local CD = require("src.ui.CastleDrift")
+            local MM = require("src.systems.MapManager")
+            local function frame(dt)
+                WorldRoad.update(dt)
+                love.graphics.setCanvas(cv)
+                WorldRoad.draw(0, 52, W, H - 52, 1)
+                love.graphics.setCanvas()
+                return WorldRoad._castleTop.cx - W / 2
+            end
+            local function pick(types, idx)
+                local nodes = {}
+                for i, ty in ipairs(types) do nodes[i] = { type = ty, label = MM.labelFor(ty) } end
+                WorldRoad.showFork(nodes, function() end)
+                local before
+                for _ = 1, 25 do before = frame(1 / 30) end
+                local b = WorldRoad._fork.markBoxes[idx]
+                WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
+                local jump = math.abs(frame(1 / 30) - before)
+                for _ = 1, 400 do
+                    if not WorldRoad._fork then break end
+                    frame(1 / 30)
+                end
+                WorldRoad._landmark = nil
+                return jump
+            end
+            WorldRoad.restoreProgress(1, 2)
+            WorldRoad._blend = nil
+            WorldRoad._prevBiomeIndex = nil
+            local dx0 = frame(1 / 30)
+            t:truthy(("castelo centrado no início do ato (dx %.1f)"):format(dx0), math.abs(dx0) <= 1)
+            local jump = pick({ "battle", "rest", "shop" }, 1)
+            t:truthy(("castelo não salta no clique do ramo (%.2f px)"):format(jump), jump <= 2)
+            WorldRoad.travel({})
+            for _ = 1, 400 do
+                if not WorldRoad.isTraveling() then break end
+                frame(1 / 30)
+            end
+            local dxL = frame(1 / 30)
+            t:truthy(("ramo da esquerda puxa o castelo um pouco para o lado do ramo (dx %.1f)"):format(dxL),
+                dxL * CD.SIGN < -W * 0.01 and math.abs(dxL) <= W * CD.MAX + 1)
+            local moved = 0
+            for _ = 1, 30 do moved = math.max(moved, math.abs(frame(1 / 60) - dxL)) end
+            t:truthy(("castelo parado na batalha com o desvio (%.2f px)"):format(moved), moved <= 1)
+            pick({ "battle", "shop", "rest" }, 1)
+            pick({ "battle", "shop", "rest" }, 1)
+            local dxM = frame(1 / 30)
+            t:truthy(("desvio acumulado respeita o teto (dx %.1f, teto %.1f)"):format(dxM, W * CD.MAX),
+                math.abs(dxM) <= W * CD.MAX + 1)
+            pick({ "boss" }, 1)
+            WorldRoad.travel({})
+            for _ = 1, 400 do
+                if not WorldRoad.isTraveling() then break end
+                frame(1 / 30)
+            end
+            local dxB = frame(1 / 30)
+            t:truthy(("castelo centrado na porta do chefe (dx %.1f)"):format(dxB), math.abs(dxB) <= 1)
+            WorldRoad._fork = nil
+            WorldRoad.restoreProgress(1, 3)
         end
         for _, b in ipairs({ 1, 2, 3, 4, 5, 6 }) do
             WorldRoad.restoreProgress(b, 3)

@@ -1159,6 +1159,7 @@ function WorldRoad.setBiome(n)
         WorldRoad._blend = { from = from, t = 0, duration = BLEND_DURATION }
         WorldRoad._segBasePrev = WorldRoad._segBase
         WorldRoad._segBase = WorldRoad._camZ
+        require("src.ui.CastleDrift").reset()
         swapPropsToBiome(WorldRoad._camZ)
     end
 end
@@ -2300,6 +2301,9 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local s = baseScale * (CASTLE_APPROACH.far + (progress ^ 1.4) * growth)
     local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
     local cx = g.cx
+    if segBase == WorldRoad._segBase then
+        cx = cx + require("src.ui.CastleDrift").offset(camZ, progress, w)
+    end
     local baseY = g.crestYAt(cx)
         + ih * s * (0.03 + 0.20 * (1 - progress) + sinkExtra)
     local lmc = Scene.Grade.cfg("landmarks").castle
@@ -3171,6 +3175,8 @@ function WorldRoad.forkMousePressed(mx, my)
         local fights = nt == "battle" or nt == "elite" or nt == "mini_boss"
         WorldRoad.planStop(WorldRoad._camZ + MARK_REL - ARRIVE_REL
             + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), fights)
+        require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL
+            + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), nt == "boss")
         if node then
             local key = landmarkKeyFor(node.type)
             local img = key and getLandmark(key)
@@ -4520,6 +4526,7 @@ function WorldRoad.resetRun()
     WorldRoad._enemyDraw = nil
     WorldRoad._enemyBaseY = nil
     WorldRoad._nextLumZ = nil
+    require("src.ui.CastleDrift").reset()
     WorldRoad.planStop(WorldRoad.TRAVEL_DISTANCE, true)
     WorldRoad._timeOfDay = 1
     WorldRoad._timeOfDayTarget = 1
