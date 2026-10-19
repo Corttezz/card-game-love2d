@@ -1,0 +1,14 @@
+{
+ "ma_post_a": {
+  "job": "5e1d0f40-512e-4d62-b119-cc71b247a433",
+  "spec": "ma_post"
+ },
+ "hi_post_a": {
+  "job": "870b7475-c7b2-450a-82dc-b23a88fd5d56",
+  "spec": "hi_post"
+ },
+ "hi_post2_a": {
+  "job": "fadce4b0-0e29-443b-84c8-8c612a27e113",
+  "spec": "hi_post2"
+ }
+}
