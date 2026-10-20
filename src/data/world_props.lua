@@ -125,11 +125,11 @@ return {
     },
 
     animStatic = {
-        highlands_grass_0 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
-        highlands_grass_1 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
-        marsh_deadtree_2 = "galho nu: em 7 tentativas o pouco que o modelo mexe cai fora da silhueta, que precisa ficar idêntica",
-        frost_deadtree_0 = "galho nu: em 7 tentativas sobre a arte nova o movimento cai fora da silhueta, que precisa ficar idêntica",
-        frost_deadtree_1 = "galho nu: em 8 tentativas o movimento cai fora da silhueta, que precisa ficar idêntica",
+        highlands_grass_0 = "8 tentativas com textura suja; o chao ja balanca pelo GroundClutter",
+        highlands_grass_1 = "8 tentativas com textura suja; o chao ja balanca pelo GroundClutter",
+        marsh_deadtree_2 = "galho nu: em 7 tentativas o pouco que o modelo mexe cai fora da silhueta, que precisa ficar identica",
+        frost_deadtree_0 = "galho nu: em 7 tentativas sobre a arte nova o movimento cai fora da silhueta, que precisa ficar identica",
+        frost_deadtree_1 = "galho nu: em 8 tentativas o movimento cai fora da silhueta, que precisa ficar identica",
     },
 
     variants = {
