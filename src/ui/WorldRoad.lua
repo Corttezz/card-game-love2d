@@ -1020,6 +1020,7 @@ local function rollProp(p, z, forcedSide, noLum)
             + p.side * 0.55 * p.cluster
     end
     p.flown = nil
+    p.forkHide = nil
     p.perched = nil
     if p.kind == "fence" and rng:random() < 0.55 then
         p.perched = rng:random(1, 2)
@@ -2507,7 +2508,7 @@ end
 local function drawPropsBehind(g, x, w, camZ)
     for _, p in ipairs(WorldRoad._props) do
         local rel = p.z - camZ
-        local fadeA = propFadeK(p)
+        local fadeA = propFadeK(p) * PropCut.hideK(p)
         local roadLum = LuminaireEngine.def(p.bid, p.kind)
         roadLum = roadLum and roadLum.roadside
         if WorldRoad._fork and not roadLum and not PropCut.kinds[p.kind] then fadeA = 0 end
@@ -2852,19 +2853,8 @@ local MARK_REL    = 17.5
 local ARRIVE_REL  = 7.5
 local FORK_SPREAD = 0.15
 
-PropCut.KEEP = { off = 0.20, margin = 0.012, castleT = 0.36, castleFoot = 0.45, castleCore = 0.12,
-                 markOff = 0.25, markHalf = 0.36, markTop = 0.92, varMax = 1.1, step = 0.75,
-                 span = 40, camStep = 2, jit = 0.05 }
-function PropCut.forkNeed(z, cam, off, need)
-    local rel = z - cam
-    if rel <= FORK_REL - 1.5 or rel > REL_CREST + EMERGE_BAND then return need end
-    local t = math.max(0, math.min(1, 1 - rel / REL_CREST)) ^ T_POW
-    local k = math.min(1, math.max(0, (rel - FORK_REL) / (MARK_REL - FORK_REL)))
-    k = k * k * (3 - 2 * k)
-    local hf = ROAD_HALF * (0.30 + 0.70 * (t ^ 1.15))
-    local e = off * k + hf * 0.78 + math.max(hf * 0.15, 0.05) + PropCut.KEEP.margin
-    return math.max(need, (e - 0.11 - 0.38 * t) / 0.38)
-end
+PropCut.KEEP = { margin = 0.012, castleT = 0.36, castleFoot = 0.02, castleCore = 0.07,
+                 markHalf = 0.36, markTop = 0.92, varMax = 1.1, step = 0.75, jit = 0.05 }
 function PropCut.castleNeed(p, kind, variant, big)
     local K = PropCut.KEEP
     local g, w = LMG.planGeom()
@@ -2914,49 +2904,15 @@ function PropCut.vegBox(p, camZ, g, w, out)
     out.y1, out.y2 = y - ihv * s * K.markTop, y
     return out
 end
-function PropCut.markNeed(p, cam, need)
-    local rel = p.z - cam
-    if rel >= MARK_REL or rel <= -3 then return need end
-    local g, w = LMG.planGeom()
-    local E = LMG.markExtent(g, p.bid, w)
-    local img = getSprite(p.kind, p.variant, p.bid)
-    if not E or not img then return need end
-    local K = PropCut.KEEP
-    local t = g.tOf(rel) or 1
-    local _, ihv = PropCut.get(img, p.kind)
-    local s = PropCut.capS(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1) * (PropCut.sizeK[img] or 1)
-        * PropCut.crestK(p.kind, t), t, img:getHeight()), WorldRoad.enemyScreenK(g.h)) * K.varMax
-    local over = math.max(0, -rel)
-    local inner = 0.11 + 0.38 * t + over * 0.09
-    local top = g.latY(0, t) + over * g.h * 0.13 - ihv * s * K.markTop
-    local edge = K.markOff * w + roadWobble(cam + MARK_REL, E.t, w) * 0.5
-    if top >= g.latY(edge, E.t) + LMG.MARK_SLOT.margin then return need end
-    local reach = edge + E.hw + LMG.MARK_SLOT.margin + img:getWidth() * s * K.markHalf
-    return math.max(need, (reach / w - inner) / 0.38)
-end
 function PropCut.clearLane(p)
     if p.ghost or not PropCut.kinds[p.kind] then return end
-    local K = PropCut.KEEP
     local need = PropCut.castleNeed(p, p.kind, p.variant, p.big or 1)
-    local pl, f = WorldRoad._plan, WorldRoad._fork
-    if pl then
-        local segEnd = (WorldRoad._segBase or 0) + SEGMENT_LEN - 1
-        for d = 0, K.span, K.camStep do
-            if pl.stop + d < segEnd then need = PropCut.forkNeed(p.z, pl.stop + d, K.off, need) end
-        end
-        for _, dk in ipairs(LMG.FORK_CAMS) do
-            if pl.stop + dk < segEnd then need = PropCut.markNeed(p, pl.stop + dk, need) end
-        end
+    if p.lane < need then p.lane = need + WorldRoad._rng:random() * PropCut.KEEP.jit end
+    local f = WorldRoad._fork
+    if f and f.offK and not f.converge and p.z - (WorldRoad._camZ or 0) > REL_CREST then
+        local g, w = LMG.planGeom()
+        PropCut.forkHideOne(p, f, g, w, WorldRoad._camZ, true)
     end
-    if f then
-        local off = K.off
-        for i = 1, f.n do
-            if f.dirs[i] ~= 0 and f.offK and f.offK[i] then off = math.max(off, math.abs(f.offK[i])) end
-        end
-        local c0 = f.converge and f.converge.z0 or WorldRoad._camZ or 0
-        for d = 0, MARK_REL - ARRIVE_REL, 1 do need = PropCut.forkNeed(p.z, c0 + d, off, need) end
-    end
-    if p.lane < need then p.lane = need + WorldRoad._rng:random() * K.jit end
 end
 
 LMG.PLAN = { midLo = 6.9, midHi = 12.3, midPick = 9.0, sameGap = 5, oppGap = 2.5,
@@ -3295,6 +3251,7 @@ function WorldRoad.showFork(nodes, onChosen)
     }
     LMG.layoutMarks(WorldRoad._fork)
     LMG.clearFreshCover(WorldRoad._fork)
+    PropCut.forkHideAll(WorldRoad._fork, false)
     return true
 end
 
@@ -3304,7 +3261,7 @@ function LMG.clearFreshCover(f)
     if (WorldRoad._drawFrame or 0) - (WorldRoad._populateFrame or 0) > 20 then return end
     local g, w = LMG.planGeom()
     local camZ = WorldRoad._camZ
-    PropCut.clearFreshVeg(placed, g, w, camZ)
+    PropCut.forkHideAll(f, true)
     local box = LMG.freshBox or {}
     LMG.freshBox = box
     local function covers(q, z)
@@ -3332,31 +3289,6 @@ function LMG.clearFreshCover(f)
                 end
             end
             if not moved then table.remove(WorldRoad._props, i) end
-        end
-    end
-end
-
-function PropCut.clearFreshVeg(placed, g, w, camZ)
-    local box = PropCut.freshBox or {}
-    PropCut.freshBox = box
-    for i = #WorldRoad._props, 1, -1 do
-        local q = WorldRoad._props[i]
-        local rel = q.z - camZ
-        if not q.ghost and not q.clutter and PropCut.kinds[q.kind] and rel < MARK_REL and rel > -3 then
-            local hit = true
-            local tries = 0
-            while hit and tries < 40 do
-                hit = false
-                local b = PropCut.vegBox(q, camZ, g, w, box)
-                if b then
-                    for _, m in ipairs(placed) do
-                        if b.x1 < m.x2 and b.x2 > m.x1 and b.y1 < m.y2 and b.y2 > m.y1 then hit = true break end
-                    end
-                end
-                if hit then q.lane = q.lane + 0.05 end
-                tries = tries + 1
-            end
-            if hit then table.remove(WorldRoad._props, i) end
         end
     end
 end
@@ -3531,6 +3463,44 @@ end
 local function forkAlpha(f, i)
     if not f.converge or i == f.chosen then return 1 end
     return math.max(0, 1 - (f.converge.k or 0) * 1.6)
+end
+
+PropCut.HIDE = { dur = 0.22, roadPad = 0.02 }
+function PropCut.hideK(p)
+    local h = p.forkHide
+    if not h then return 1 end
+    return math.max(0, 1 - ((WorldRoad._time or 0) - h) / PropCut.HIDE.dur)
+end
+function PropCut.forkHideOne(p, f, g, w, camZ, now)
+    if p.forkHide or p.ghost or p.clutter or not PropCut.kinds[p.kind] then return end
+    local rel = p.z - camZ
+    local hide = false
+    if rel < MARK_REL and rel > -3 and f._placed then
+        local b = PropCut.vegBox(p, camZ, g, w, PropCut.hideBox)
+        PropCut.hideBox = b or PropCut.hideBox
+        if b then
+            for _, m in ipairs(f._placed) do
+                if b.x1 < m.x2 and b.x2 > m.x1 and b.y1 < m.y2 and b.y2 > m.y1 then hide = true break end
+            end
+        end
+    end
+    if not hide and rel > FORK_REL - 1.5 and rel <= REL_CREST + EMERGE_BAND and f.n > 1 then
+        local t = g.tOf(rel) or 0
+        local x = g.cx + p.side * w * (0.11 + 0.38 * t + p.lane * 0.38)
+        local halfRF = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+        for i = 1, f.n do
+            if f.dirs[i] ~= 0 and math.abs(x - (g.cx + forkOffset(f, i, rel, w))) < halfRF * 0.78 + PropCut.HIDE.roadPad * w then
+                hide = true
+            end
+        end
+    end
+    if hide then p.forkHide = (WorldRoad._time or 0) - (now and 10 or 0) end
+end
+function PropCut.forkHideAll(f, now)
+    if not f or not f.offK or f.converge then return end
+    local g, w = LMG.planGeom()
+    local camZ = WorldRoad._camZ
+    for _, p in ipairs(WorldRoad._props) do PropCut.forkHideOne(p, f, g, w, camZ, now) end
 end
 
 function WorldRoad._postBase(q, camZ, g, w, out)
@@ -4295,7 +4265,7 @@ local function drawProps(g, x, w, camZ)
 
             if p.clutter then Scene.Clutter.draw(p, LMG.cEnv) end
             local img = not p.clutter and getSprite(p.kind, p.variant, p.bid) or nil
-            local fadeA = propFadeK(p)
+            local fadeA = propFadeK(p) * PropCut.hideK(p)
             local roadLum = rdef and rdef.roadside
             if img and not roadLum and not PropCut.kinds[p.kind] then
                 local ct = WorldRoad._castleTop
