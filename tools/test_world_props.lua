@@ -340,6 +340,7 @@ function M.run()
         end
         for _, b in ipairs({ 1, 2, 3, 4, 5, 6 }) do
             WorldRoad.restoreProgress(b, 3)
+            WorldRoad._plan = nil
             for _ = 1, 400 do
                 if WorldRoad.isPrewarmed(b) then break end
                 WorldRoad.prewarmTick(0.05, b)

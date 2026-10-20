@@ -136,10 +136,7 @@ function M.capture(act, seed, scenario, saveDir)
         local relM = f.markZ - WorldRoad._camZ
         for i = 1, f.n do
             local geo = f._geo[i]
-            local rd = f._redraw and f._redraw[i]
-            local onTop = rd and rd.topFrame == WorldRoad._drawFrame
-            if onTop then log.redraws = (log.redraws or 0) + 1 end
-            if geo and geo.aMul > 0.5 and not f.converge and not onTop then
+            if geo and geo.aMul > 0.5 and not f.converge then
                 local label = WorldRoad.forkLabel(f.nodes[i]) or ""
                 local hw = math.max(geo.iw * geo.s * 0.5, (font13:getWidth(label) + 16) * 0.5)
                 local top = geo.py - geo.ih * geo.s - 26
@@ -373,11 +370,9 @@ function M.analyze(log)
             end
         end
     end
-    for key, n in pairs(log.presence or {}) do
-        if n < 1 then
-            pops[#pops + 1] = { uid = 0, kind = key, frame = 0, how = "sem_poste",
-                a0 = 0, a1 = 1, phase = key, at = { t = 0, x = 0, y = 0 } }
-        end
+    log.empty = 0
+    for _, n in pairs(log.presence or {}) do
+        if n < 1 then log.empty = log.empty + 1 end
     end
     for _, c in pairs(log.road or {}) do
         pops[#pops + 1] = { uid = c.uid, kind = c.kind, frame = c.frame, how = "na_estrada",
@@ -516,8 +511,8 @@ function M.run(arg)
                         end
                     end
                 end
-                print(string.format("[%s] %s luminarias=%d quadros=%d saltos=%d pops=%d sombra=%d folga_estrada=%.3f..%.3f marco_por_cima=%d",
-                    n == 0 and "ok" or "FAIL", tag, nl, log.frames, #j, #p, #s, gmin, gmax, log.redraws or 0))
+                print(string.format("[%s] %s luminarias=%d quadros=%d saltos=%d pops=%d sombra=%d folga_estrada=%.3f..%.3f sem_poste_perto=%d",
+                    n == 0 and "ok" or "FAIL", tag, nl, log.frames, #j, #p, #s, gmin, gmax, log.empty or 0))
                 report(tag, j, p, s, verbose or n > 0)
                 if os.getenv("CONT_MEM") then
                     local st = love.graphics.getStats()

@@ -2917,7 +2917,6 @@ function LMG.lumFits(p, z, kind, pl, bid)
     return true
 end
 LMG.FORK_CAMS = { 0, MARK_REL - ARRIVE_REL, 2 * (MARK_REL - ARRIVE_REL), MARK_REL - ARRIVE_REL + 20 }
-LMG.SLOT_CAMS = { 0, MARK_REL - ARRIVE_REL, MARK_REL - ARRIVE_REL + 20 }
 LMG.BATTLE_CAMS = { 0, MARK_REL - ARRIVE_REL + 20 }
 
 function WorldRoad.postBox(bid, kind, side, z, camZ, g, w, out)
@@ -2950,48 +2949,44 @@ function WorldRoad.postBox(bid, kind, side, z, camZ, g, w, out)
     return out
 end
 
-function LMG.redrawCoveredMarks()
-    local f = WorldRoad._fork
-    if not f or not f._redraw or not f._geo or f.converge then return end
-    for i = 1, f.n do
-        local rd, geo = f._redraw[i], f._geo[i]
-        if rd and geo and rd.img then
-            local x1, x2 = rd.x - rd.iw * rd.s * 0.5, rd.x + rd.iw * rd.s * 0.5
-            local y1, y2 = rd.y - rd.ih * rd.s, rd.y
-            for _, he in ipairs(WorldRoad._hitScene) do
-                local q = he.ref
-                local d = q and q.z and LuminaireEngine.def(q.bid, q.kind)
-                if d and d.roadside and q.z - WorldRoad._camZ < rd.rel
-                   and he.x1 < x2 and he.x2 > x1 and he.y1 < y2 and he.y2 > y1 then
-                    love.graphics.setColor(rd.r, rd.g, rd.b, rd.a)
-                    love.graphics.draw(rd.img, rd.x, rd.y, 0, rd.s, rd.s, rd.iw / 2, rd.ih, rd.kx, 0)
-                    rd.topFrame = WorldRoad._drawFrame
-                    WorldRoad._marksRedrawn = (WorldRoad._marksRedrawn or 0) + 1
-                    break
-                end
-            end
+LMG.MARK_SLOT = { margin = 10, label = 30, labelHalf = 64 }
+function LMG.markExtent(g, bid, w)
+    local tM = g.tOf(MARK_REL)
+    if not tM then return nil end
+    local key = bid .. "|" .. w .. "|" .. g.h
+    local c = LMG.extCache or {}
+    LMG.extCache = c
+    if c[key] then return c[key] end
+    local S = LMG.MARK_SLOT
+    local hw, hh = S.labelHalf, 0
+    for ty in pairs(LANDMARK_FOR_TYPE) do
+        local k = landmarkKeyFor(ty, bid)
+        local img = k and getLandmark(k)
+        if img then
+            local sc = g.scaleAt(lmCfg(LANDMARK_SIZE, k) or 2.0, tM, LMG.refH(k, img:getHeight()))
+            hw = math.max(hw, img:getWidth() * sc * 0.5)
+            hh = math.max(hh, img:getHeight() * sc)
         end
     end
-    love.graphics.setColor(1, 1, 1, 1)
+    c[key] = { hw = hw, hh = hh, t = tM }
+    return c[key]
 end
 
-LMG.MARK_SLOT = { halfW = 105, top = 34 }
 function LMG.markSlotOk(p, z, kind, bid, cam)
     local rel = z - cam
     if rel >= MARK_REL or rel <= -7 then return true end
     local g, w = LMG.planGeom()
-    local box = WorldRoad.postBox(bid, kind, p.side, z, cam, g, w, LMG.slotBox)
-    local tM = g.tOf(MARK_REL)
-    if not box or not tM then return true end
+    local E = LMG.markExtent(g, bid, w)
+    local box = E and WorldRoad.postBox(bid, kind, p.side, z, cam, g, w, LMG.slotBox)
+    if not box then return true end
     LMG.slotBox = box
-    local F, S = LMG.MARK_FIT, LMG.MARK_SLOT
-    local my = g.latY(p.side * FORK_SPREAD * w, tM)
-    if box.y1 >= my + F.margin then return true end
-    local cx = g.cx + roadWobble(cam + MARK_REL, tM, w) * 0.5
-    local a = math.min((box.x1 - cx) * p.side, (box.x2 - cx) * p.side)
-    local b = math.max((box.x1 - cx) * p.side, (box.x2 - cx) * p.side)
-    local cMin, cMax = F.sideMin * w, (FORK_SPREAD + F.reach) * w
-    return cMin + S.halfW < a or cMax - S.halfW > b
+    local S = LMG.MARK_SLOT
+    local reach = (FORK_SPREAD + LMG.MARK_FIT.reach) * w + E.hw + S.margin
+    local yb = math.max(g.latY(reach, E.t), g.latY(-reach, E.t), g.latY(0, E.t)) + S.margin
+    local yt = math.min(g.latY(reach, E.t), g.latY(-reach, E.t), g.latY(0, E.t)) - E.hh - S.label - S.margin
+    if box.y1 >= yb or box.y2 <= yt then return true end
+    local cx = g.cx + roadWobble(cam + MARK_REL, E.t, w) * 0.5
+    return box.x1 >= cx + reach or box.x2 <= cx - reach
 end
 
 function WorldRoad.lumPlanVerdict(p, z, kind, bid)
@@ -3005,7 +3000,7 @@ function WorldRoad.lumPlanVerdict(p, z, kind, bid)
         return "skip"
     end
     if not LMG.lumFits(p, z, kind, pl, bid) then return "skip" end
-    for _, dk in ipairs(LMG.SLOT_CAMS) do
+    for _, dk in ipairs(LMG.FORK_CAMS) do
         if not LMG.markSlotOk(p, z, kind, bid, pl.stop + dk) then return "skip" end
     end
     for _, b in ipairs(P.bands) do
@@ -3839,11 +3834,6 @@ local function drawProps(g, x, w, camZ)
                 end
                 WorldRoad._flagKx = kxF
                 love.graphics.draw(img, math.floor(px), math.floor(py), 0, s, s, iw / 2, ih, kxF, 0)
-                f._redraw = f._redraw or {}
-                local rd = f._redraw[i] or {}
-                f._redraw[i] = rd
-                rd.img, rd.x, rd.y, rd.s, rd.kx, rd.iw, rd.ih = img, math.floor(px), math.floor(py), s, kxF, iw, ih
-                rd.r, rd.g, rd.b, rd.a, rd.rel = math.min(1, lc[1] * br), math.min(1, lc[2] * br), math.min(1, lc[3] * br), aMul, relM
                 ShadowEngine.mask(img, nil, math.floor(px), math.floor(py), 0, s, s, iw / 2, ih, kxF, tM)
                 if not (lmk and lmk.smoke == "thin" and _G.gameSettings and _G.gameSettings.reducedMotion) then
                     drawLandmarkSmoke(key, px, py, iw, ih, s, aMul, lmk and lmk.smoke == "thin")
@@ -4597,7 +4587,6 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     _profMark('critters')
     drawProps(g, x, w, WorldRoad._camZ)
     WeatherEngine.flushAll()
-    LMG.redrawCoveredMarks()
 
     _profMark('props')
     love.graphics.pop()
