@@ -337,7 +337,7 @@ def main():
         verify_files = runtime + [f for f in all_files if f.startswith(VERIFY_EXTRA_PREFIXES)
                                   and os.path.splitext(f)[1].lower() not in (".py", ".md", ".sh")]
         copy_tree(verify_files, verify, strip=True)
-        shards = 3
+        shards = 6
         for si in range(1, shards + 1):
             env = dict(os.environ, CARDGAME_IDENTITY="card-game-build-verify",
                        TEST_SHARD="%d/%d" % (si, shards))
