@@ -2852,8 +2852,8 @@ local MARK_REL    = 17.5
 local ARRIVE_REL  = 7.5
 local FORK_SPREAD = 0.15
 
-PropCut.KEEP = { off = 0.28, margin = 0.012, castleT = 0.36, castleFoot = 0.30, castleCore = 0.25,
-                 markOff = 0.41, markHalf = 0.36, markTop = 0.92, varMax = 1.1, step = 0.75,
+PropCut.KEEP = { off = 0.20, margin = 0.012, castleT = 0.36, castleFoot = 0.45, castleCore = 0.12,
+                 markOff = 0.25, markHalf = 0.36, markTop = 0.92, varMax = 1.1, step = 0.75,
                  span = 40, camStep = 2, jit = 0.05 }
 function PropCut.forkNeed(z, cam, off, need)
     local rel = z - cam
@@ -2938,14 +2938,6 @@ function PropCut.clearLane(p)
     if p.ghost or not PropCut.kinds[p.kind] then return end
     local K = PropCut.KEEP
     local need = PropCut.castleNeed(p, p.kind, p.variant, p.big or 1)
-    if p.lane < need and p.kind ~= "bush" and not p.wall and getSprite("bush", 0, p.bid) then
-        local bv = WorldRoad._rng:random(0, PropCut.nvar(p.bid, "bush") - 1)
-        local nb = PropCut.castleNeed(p, "bush", bv, 1)
-        if nb < need then
-            p.kind, p.variant, p.big, p.cluster = "bush", bv, 1, nil
-            need = nb
-        end
-    end
     local pl, f = WorldRoad._plan, WorldRoad._fork
     if pl then
         local segEnd = (WorldRoad._segBase or 0) + SEGMENT_LEN - 1
@@ -3377,38 +3369,44 @@ function LMG.layoutMarks(f)
     local F = LMG.MARK_FIT
     local camZ = WorldRoad._camZ
     local dist = MARK_REL - ARRIVE_REL
-    local postsAt = {}
+    local postsAt, vegAt = {}, {}
     for si, c in ipairs(F.samples) do
         local cam = camZ + dist * c
-        local list = {}
+        local list, veg = {}, {}
         for _, p in ipairs(WorldRoad._props) do
             local d = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
             local rel = p.z - cam
             if d and d.roadside and rel < MARK_REL - dist * c and rel > -7 then
                 list[#list + 1] = WorldRoad.postBox(p.bid, p.kind, p.side, p.z, cam, g, w, {})
+            elseif not d and not p.ghost and not p.clutter and PropCut.kinds[p.kind]
+               and rel < MARK_REL - dist * c and rel > -3 then
+                local vb = PropCut.vegBox(p, cam, g, w, {})
+                if vb then veg[#veg + 1] = vb end
             end
         end
-        postsAt[si] = list
+        postsAt[si], vegAt[si] = list, veg
     end
-    local bases = {}
+    local bases, nearB, farB = {}, {}, {}
     for _, p in ipairs(WorldRoad._props) do
         local d = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
         if d and d.roadside and p.z - camZ > FORK_REL then
             bases[#bases + 1] = WorldRoad._postBase(p, camZ, g, w, {})
         elseif not d and not p.ghost and not p.clutter and PropCut.kinds[p.kind] then
             local rel = p.z - camZ
-            local t = rel > FORK_REL and rel < MARK_REL + 1 and g.tOf(rel)
+            local t = rel > FORK_REL and rel < REL_CREST + EMERGE_BAND and (g.tOf(rel) or 0)
             if t and t >= 0 then
                 local cxp = g.cx + p.side * w * (0.11 + 0.38 * t + (p.lane or 0) * 0.38)
                 local hb = 10 * (0.30 + 0.70 * t)
-                bases[#bases + 1] = { x1 = cxp - hb, x2 = cxp + hb, rel = rel, t = t,
+                local tgt = rel < MARK_REL + 1 and nearB or farB
+                tgt[#tgt + 1] = { x1 = cxp - hb, x2 = cxp + hb, rel = rel, t = t,
                     hf = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)), wob = roadWobble(p.z, t, w),
                     jag = 5 * (0.30 + 0.70 * t) + 7 * (0.35 + 0.65 * t) }
             end
         end
     end
-    local function baseClear(k, n)
-        for _, B in ipairs(bases) do
+    local tier
+    local function clearOf(list, k, n)
+        for _, B in ipairs(list) do
             local kk = math.min(1, math.max(0, (B.rel - FORK_REL) / (MARK_REL - FORK_REL)))
             kk = kk * kk * (3 - 2 * kk)
             local hm = (n > 1) and (1 - 0.22 * kk) or 1
@@ -3417,6 +3415,9 @@ function LMG.layoutMarks(f)
             if B.x1 < c + h and B.x2 > c - h then return false end
         end
         return true
+    end
+    local function baseClear(k, n)
+        return clearOf(bases, k, n) and clearOf(nearB, k, n) and (tier > 1 or clearOf(farB, k, n))
     end
     local font = require("src.ui.FontManager").getFont(13)
     local placed, offK = {}, {}
@@ -3438,22 +3439,27 @@ function LMG.layoutMarks(f)
         return { x1 = g.cx + off - hw, x2 = g.cx + off + hw,
                  y1 = py - img:getHeight() * s - F.label - F.margin, y2 = py + F.margin }
     end
-    local function hits(b, list)
-        for _, q in ipairs(list) do
+    local function hits(b, si)
+        for _, q in ipairs(postsAt[si]) do
             if q.x1 < b.x2 and q.x2 > b.x1 and q.y1 < b.y2 and q.y2 > b.y1 then return true end
+        end
+        if tier < 3 then
+            for _, q in ipairs(vegAt[si]) do
+                if q.x1 < b.x2 and q.x2 > b.x1 and q.y1 < b.y2 and q.y2 > b.y1 then return true end
+            end
         end
         return false
     end
     local function fits(i, k)
         if not baseClear(k, f.n) then return nil end
         local b = boxAt(i, k, 0)
-        if not b or hits(b, postsAt[1]) then return nil end
+        if not b or hits(b, 1) then return nil end
         for _, q in ipairs(placed) do
             if q.x1 < b.x2 and q.x2 > b.x1 then return nil end
         end
         for si = 2, #F.samples do
             local bc = boxAt(i, k, F.samples[si])
-            if bc and hits(bc, postsAt[si]) then return nil end
+            if bc and hits(bc, si) then return nil end
         end
         return b
     end
@@ -3461,39 +3467,48 @@ function LMG.layoutMarks(f)
     for i = 1, f.n do if f.dirs[i] == 0 then order[#order + 1] = i end end
     for i = 1, f.n do if f.dirs[i] ~= 0 then order[#order + 1] = i end end
     local n = math.floor(0.25 / F.step + 0.5)
-    for _, i in ipairs(order) do
-        local d = f.dirs[i]
-        local k0 = d * FORK_SPREAD
-        local best, bestBox = k0, nil
-        for j = 0, 2 * n do
-            local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
-            if (d == 0 and math.abs(k) <= F.centerMax) or (d ~= 0 and k * d >= F.sideMin) then
-                local b = fits(i, k)
-                if b then best, bestBox = k, b; break end
-            end
-        end
-        for pass = 1, 2 do
-            if bestBox then break end
-            for j = 1, math.floor(0.84 / F.step) do
+    local strained
+    for tr = 1, 3 do
+        tier, strained = tr, false
+        for q = #placed, 1, -1 do placed[q] = nil end
+        for _, i in ipairs(order) do
+            local d = f.dirs[i]
+            local k0 = d * FORK_SPREAD
+            local best, bestBox = k0, nil
+            for j = 0, 2 * n do
                 local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
-                if math.abs(k) <= 0.42 and (pass == 2 or baseClear(k, f.n)) then
-                    local b = boxAt(i, k, 0)
-                    local free = b and not hits(b, postsAt[1])
-                    if free then
-                        for _, q in ipairs(placed) do
-                            if q.x1 < b.x2 and q.x2 > b.x1 then free = false break end
-                        end
-                    end
-                    if free then best, bestBox = k, b; break end
+                if (d == 0 and math.abs(k) <= F.centerMax) or (d ~= 0 and k * d >= F.sideMin) then
+                    local b = fits(i, k)
+                    if b then best, bestBox = k, b; break end
                 end
             end
+            for pass = 1, 2 do
+                if bestBox then break end
+                if pass == 2 then strained = true end
+                for j = 1, math.floor(0.84 / F.step) do
+                    local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
+                    if math.abs(k) <= 0.42 and (pass == 2 or baseClear(k, f.n)) then
+                        local b = boxAt(i, k, 0)
+                        local free = b and not hits(b, 1)
+                        if free then
+                            for _, q in ipairs(placed) do
+                                if q.x1 < b.x2 and q.x2 > b.x1 then free = false break end
+                            end
+                        end
+                        if free then best, bestBox = k, b; break end
+                    end
+                end
+            end
+            if not bestBox then strained = true end
+            if tr == 3 and not bestBox then require("src.core.Debug").warn("WorldRoad: marco sem lugar livre de poste") end
+            offK[i] = best
+            placed[#placed + 1] = bestBox or boxAt(i, best, 0)
         end
-        if not bestBox then require("src.core.Debug").warn("WorldRoad: marco sem lugar livre de poste") end
-        offK[i] = best
-        placed[#placed + 1] = bestBox or boxAt(i, best, 0)
+        if not strained then break end
     end
     f.offK = offK
     f._placed = placed
+    f._tier = tier
 end
 
 function WorldRoad.isForkActive()
