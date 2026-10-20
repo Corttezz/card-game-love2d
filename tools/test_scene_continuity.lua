@@ -33,6 +33,7 @@ M.SCENARIOS = {
     path3 = { landmarks = { { { "battle", "rest", "shop" }, 3 } }, last = { "battle", "rest", "shop" }, after = { "rest", "event" } },
     lm2 = { landmarks = { { { "rest", "shop" }, 1 }, { { "event", "shop" }, 2 } }, last = { "battle", "rest", "shop" }, after = { "battle", "shop" } },
     resume = { resume = true, last = { "battle", "shop", "event" }, after = { "battle", "rest", "shop" } },
+    resumefork = { resume = true, forkNow = { "battle", "event", "shop" } },
 }
 
 function M.capture(act, seed, scenario, saveDir)
@@ -280,6 +281,13 @@ function M.capture(act, seed, scenario, saveDir)
                 WorldRoad._props = {}
                 WorldRoad.setBiome(act)
                 WorldRoad._blend = nil
+                if plan.forkNow then
+                    phase = "fork"
+                    WorldRoad._props = {}
+                    WorldRoad.showFork(nodesFor(plan.forkNow), function() end)
+                    step(25)
+                    return
+                end
                 phase = "battle"
                 step(20)
             end
@@ -486,7 +494,7 @@ function M.run(arg)
     io.stdout:setvbuf("line")
     local acts = { 1, 2, 3, 4, 5, 6 }
     local seeds = { 0xC0FFEE, 7331, 90210 }
-    local scenarios = { "path1", "path2", "path3", "lm2", "resume", "castle" }
+    local scenarios = { "path1", "path2", "path3", "lm2", "resume", "resumefork", "castle" }
     local saveTag
     if not arg or arg == "" then
         seeds = { seeds[1] }

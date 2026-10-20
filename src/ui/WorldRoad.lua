@@ -1105,6 +1105,7 @@ end
 
 local function populate()
     WorldRoad._props = {}
+    WorldRoad._populateFrame = WorldRoad._drawFrame or 0
     WorldRoad._sideBal = 0
     WorldRoad._nextLumZ = nil
     local b = rawBiome()
@@ -1699,7 +1700,14 @@ function WorldRoad.update(dt)
     WorldRoad._time = WorldRoad._time + dt
     prewarmTick()
 
-    if #WorldRoad._props == 0 then populate() end
+    if #WorldRoad._props == 0 then
+        populate()
+        local f = WorldRoad._fork
+        if f and not f.converge then
+            LMG.layoutMarks(f)
+            LMG.clearFreshCover(f)
+        end
+    end
 
     local encA = WorldRoad._encounter
     if encA and encA.anim and WorldRoad._travel then
@@ -2958,7 +2966,7 @@ function WorldRoad.postBox(bid, kind, side, z, camZ, g, w, out)
     return out
 end
 
-LMG.MARK_SLOT = { margin = 10, label = 30, labelHalf = 64 }
+LMG.MARK_SLOT = { margin = 18, label = 30, labelHalf = 64 }
 function LMG.markExtent(g, bid, w, relX)
     local tM = g.tOf(relX or MARK_REL)
     if not tM then return nil end
@@ -3139,10 +3147,48 @@ function WorldRoad.showFork(nodes, onChosen)
         markBoxes = {},
     }
     LMG.layoutMarks(WorldRoad._fork)
+    LMG.clearFreshCover(WorldRoad._fork)
     return true
 end
 
-LMG.MARK_FIT = { step = 0.004, reach = 0.12, sideMin = 0.08, centerMax = 0.07, margin = 5, label = 26,
+function LMG.clearFreshCover(f)
+    local placed = f and f._placed
+    if not placed or #placed == 0 then return end
+    if (WorldRoad._drawFrame or 0) - (WorldRoad._populateFrame or 0) > 20 then return end
+    local g, w = LMG.planGeom()
+    local camZ = WorldRoad._camZ
+    local box = LMG.freshBox or {}
+    LMG.freshBox = box
+    local function covers(q, z)
+        local b = WorldRoad.postBox(q.bid, q.kind, q.side, z, camZ, g, w, box)
+        if not b then return false end
+        for _, m in ipairs(placed) do
+            if b.x1 < m.x2 and b.x2 > m.x1 and b.y1 < m.y2 and b.y2 > m.y1 then return true end
+        end
+        return false
+    end
+    for i = #WorldRoad._props, 1, -1 do
+        local q = WorldRoad._props[i]
+        local d = not q.ghost and LuminaireEngine.def(q.bid, q.kind)
+        local rel = q.z - camZ
+        if d and d.roadside and rel < MARK_REL and rel > -7 and covers(q, q.z) then
+            local moved = false
+            local z0 = q.z
+            for dz = 0.5, 24, 0.5 do
+                local z = z0 - dz
+                if z - camZ <= -7 then break end
+                if not covers(q, z) then
+                    q.z = z
+                    if not WorldRoad._postBaseOnRoad(q) then moved = true break end
+                    q.z = z0
+                end
+            end
+            if not moved then table.remove(WorldRoad._props, i) end
+        end
+    end
+end
+
+LMG.MARK_FIT = { step = 0.004, reach = 0.12, sideMin = 0.08, centerMax = 0.07, margin = 18, label = 26,
                  samples = { 0 } }
 function LMG.layoutMarks(f)
     local g, w = LMG.planGeom()
@@ -3256,6 +3302,7 @@ function LMG.layoutMarks(f)
         placed[#placed + 1] = bestBox or boxAt(i, best, 0)
     end
     f.offK = offK
+    f._placed = placed
 end
 
 function WorldRoad.isForkActive()
