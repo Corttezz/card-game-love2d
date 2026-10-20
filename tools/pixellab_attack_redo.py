@@ -22,12 +22,13 @@ ATTACKS = {
                      "wings, then lunges forward and slashes the claw down diagonally "
                      "in a vicious swipe toward the viewer, beak open, then pulls back "
                      "and settles into its original standing stance"),
-    "cursed_scarecrow": ("leans its whole body forward and raises its right claw hand high above "
-                         "its hooded head, then swings that same claw arm down and across its body "
-                         "in a big raking swipe, torso twisting with the blow, straw collar "
-                         "bouncing, then straightens back into its original standing stance. "
-                         "Only the scarecrow moves: no sparks, no slash trail, no energy, no "
-                         "lightning, no fire anywhere"),
+    "cursed_scarecrow": ("rears back and lifts its right claw hand to shoulder height, then lunges "
+                         "its upper body forward and rakes the claw down across its chest in one "
+                         "big swipe, then straightens back into its original standing stance. The "
+                         "claw hand is a plain brown burlap glove with dark talons the whole time: "
+                         "it never glows, never burns, never turns yellow or orange. Pure body "
+                         "motion, no visual effects of any kind: no sparks, no slash arc, no ring, "
+                         "no fire, no impact flash"),
     "harvest_reaper": ("raises the long scythe high behind its shoulder, then swings it "
                        "down in a wide sweeping arc in front of its body toward the "
                        "viewer, robes and wheat-straw shoulders swaying with the motion, "
