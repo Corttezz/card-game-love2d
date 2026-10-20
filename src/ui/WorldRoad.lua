@@ -96,7 +96,15 @@ function PropCut.nearK(t)
     return math.min(1, math.max(0, (t - 0.3) / 0.3))
 end
 PropCut.CREST = { t = 0.15, k = 0.70, kinds = { tree = true, pine = true, deadtree = true } }
-PropCut.PIX = { ref = 2.08, cap = 2.0, fade = 0.88 }
+PropCut.PIX = { ref = 2.08, cap = 2.0, fade = 0.88, knee = 0.80 }
+function PropCut.capS(rawS, screenK)
+    local c = PropCut.PIX
+    local L = c.cap * c.ref * screenK
+    local kn = c.knee * L
+    if rawS <= kn then return rawS end
+    local span = L - kn
+    return kn + span * (1 - math.exp(-(rawS - kn) / span))
+end
 function PropCut.nearFade(rawS, screenK, soft)
     local c = PropCut.PIX
     local r = rawS / (c.cap * c.ref * screenK)
@@ -152,6 +160,7 @@ function PropCut.draw(img, kind, x, y, rot, sx, sy, kx, fimg)
 end
 
 local WorldRoad = {}
+WorldRoad.PropCut = PropCut
 
 local CREST_RATIO   = 0.40
 local DOME_R_FACTOR = 1.6
@@ -1092,6 +1101,7 @@ local function swapPropsToBiome(camZ)
             rollProp(p, p.z, p.side, wasWall)
             if wasWall then makeWall(p) end
             resolveOverlap(p)
+            PropCut.clearLane(p)
             p._pokeT, p._leafFx, p._scareBirds = nil, nil, nil
             if reduced then
                 p.swapT, p.swapDelay, p.swapDur = nil, nil, nil
@@ -1119,6 +1129,7 @@ local function populate()
                     + WorldRoad._rng:random() * 0.5, side)
                 table.insert(WorldRoad._props, p)
                 resolveOverlap(p)
+                PropCut.clearLane(p)
             end
         end
         z = z + PROP_SPACING / math.max(0.2, b.propDensity)
@@ -1133,6 +1144,7 @@ local function populate()
             makeWall(p)
             table.insert(WorldRoad._props, p)
             resolveOverlap(p)
+            PropCut.clearLane(p)
         end
         zt = zt + 0.95 + WorldRoad._rng:random() * 0.4
     end
@@ -1862,6 +1874,7 @@ function WorldRoad.update(dt)
                         + WorldRoad._rng:random() * 2, p.side, wasWall)
             if wasWall then makeWall(p) end
             resolveOverlap(p)
+            PropCut.clearLane(p)
         end
     end
 
@@ -2471,7 +2484,7 @@ local function drawPropsBehind(g, x, w, camZ)
         local fadeA = propFadeK(p)
         local roadLum = LuminaireEngine.def(p.bid, p.kind)
         roadLum = roadLum and roadLum.roadside
-        if WorldRoad._fork and not roadLum then fadeA = 0 end
+        if WorldRoad._fork and not roadLum and not PropCut.kinds[p.kind] then fadeA = 0 end
         if fadeA > 0.01 and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
             local em = 1 - (rel - REL_CREST) / EMERGE_BAND
             local pxX = g.cx + p.side * w * (0.11 + p.lane * 0.38)
@@ -2550,6 +2563,7 @@ local function drawPropsBehind(g, x, w, camZ)
                 end
                 local _, ihv = PropCut.get(img, p.kind)
                 local sink = (1 - em) * ihv * s
+                if WorldRoad._traceVeg and isTree then WorldRoad._traceVeg(p, fadeA, pxX, crest, iw * s, ih * s, 0, "behind", em) end
                 if p.cluster and isTree then
                     for ci = 1, p.cluster do
                         local off = p.side
@@ -2811,6 +2825,79 @@ local FORK_REL    = 10
 local MARK_REL    = 17.5
 local ARRIVE_REL  = 7.5
 local FORK_SPREAD = 0.15
+
+PropCut.KEEP = { off = 0.28, margin = 0.012, castleT = 0.36, castleFoot = 0.30, castleCore = 0.25, varMax = 1.1, step = 0.75,
+                 span = 40, camStep = 2, jit = 0.05 }
+function PropCut.forkNeed(z, cam, off, need)
+    local rel = z - cam
+    if rel <= FORK_REL - 1.5 or rel > REL_CREST + EMERGE_BAND then return need end
+    local t = math.max(0, math.min(1, 1 - rel / REL_CREST)) ^ T_POW
+    local k = math.min(1, math.max(0, (rel - FORK_REL) / (MARK_REL - FORK_REL)))
+    k = k * k * (3 - 2 * k)
+    local hf = ROAD_HALF * (0.30 + 0.70 * (t ^ 1.15))
+    local e = off * k + hf * 0.78 + math.max(hf * 0.15, 0.05) + PropCut.KEEP.margin
+    return math.max(need, (e - 0.11 - 0.38 * t) / 0.38)
+end
+function PropCut.castleNeed(p, kind, variant, big)
+    local K = PropCut.KEEP
+    local g, w = LMG.planGeom()
+    local need = -1
+    local cast = getSprite("castle", 0, p.bid)
+    local img = getSprite(kind, variant, p.bid)
+    if not (cast and img) then return need end
+    local base = (math.min(w, g.h * 1.5) * 0.155) / 218
+    local growth = CASTLE_APPROACH[p.bid] or 2.9
+    local seg = WorldRoad._segBase or 0
+    local CD = require("src.ui.CastleDrift")
+    local _, ihv = PropCut.get(img, kind)
+    local size = kindSize(kind, p.bid) * big * (PropCut.sizeK[img] or 1)
+    local rel = REL_CREST + EMERGE_BAND
+    while rel > 0 do
+        local t = g.tOf(rel) or 0
+        if t > K.castleT then break end
+        local prog = math.min(1, math.max(0, (p.z - rel - seg) / SEGMENT_LEN))
+        local cs = base * (CASTLE_APPROACH.far + prog ^ 1.4 * growth)
+        local ch = cast:getHeight() * cs
+        local cBase = g.crestYAt(g.cx) + ch * (0.03 + 0.20 * (1 - prog) + (CASTLE_SINK_EXTRA[p.bid] or 0) * prog)
+        local ts = g.scaleAt(size * PropCut.crestK(kind, t), t, img:getHeight()) * K.varMax
+        local top = (rel >= REL_CREST and g.crestYAt(g.cx) or g.latY(0, t)) - ihv * ts
+        if top < cBase - ch * K.castleFoot then
+            local hb = (K.castleCore * cast:getWidth() * cs + 0.15 * img:getWidth() * ts) / w + CD.MAX * CD.envelope(prog) + K.margin
+            need = math.max(need, (hb - 0.11 - 0.38 * t) / 0.38)
+        end
+        rel = rel - K.step
+    end
+    return need
+end
+function PropCut.clearLane(p)
+    if p.ghost or not PropCut.kinds[p.kind] then return end
+    local K = PropCut.KEEP
+    local need = PropCut.castleNeed(p, p.kind, p.variant, p.big or 1)
+    if p.lane < need and p.kind ~= "bush" and not p.wall and getSprite("bush", 0, p.bid) then
+        local bv = WorldRoad._rng:random(0, PropCut.nvar(p.bid, "bush") - 1)
+        local nb = PropCut.castleNeed(p, "bush", bv, 1)
+        if nb < need then
+            p.kind, p.variant, p.big, p.cluster = "bush", bv, 1, nil
+            need = nb
+        end
+    end
+    local pl, f = WorldRoad._plan, WorldRoad._fork
+    if pl then
+        local segEnd = (WorldRoad._segBase or 0) + SEGMENT_LEN - 1
+        for d = 0, K.span, K.camStep do
+            if pl.stop + d < segEnd then need = PropCut.forkNeed(p.z, pl.stop + d, K.off, need) end
+        end
+    end
+    if f then
+        local off = K.off
+        for i = 1, f.n do
+            if f.dirs[i] ~= 0 and f.offK and f.offK[i] then off = math.max(off, math.abs(f.offK[i])) end
+        end
+        local c0 = f.converge and f.converge.z0 or WorldRoad._camZ or 0
+        for d = 0, MARK_REL - ARRIVE_REL, 1 do need = PropCut.forkNeed(p.z, c0 + d, off, need) end
+    end
+    if p.lane < need then p.lane = need + WorldRoad._rng:random() * K.jit end
+end
 
 LMG.PLAN = { midLo = 6.9, midHi = 12.3, midPick = 9.0, sameGap = 5, oppGap = 2.5,
              skipLo = FORK_REL + 3, skipHi = MARK_REL + 1, pushLo = FORK_REL - 1.5,
@@ -4091,10 +4178,7 @@ local function drawProps(g, x, w, camZ)
             local img = not p.clutter and getSprite(p.kind, p.variant, p.bid) or nil
             local fadeA = propFadeK(p)
             local roadLum = rdef and rdef.roadside
-            if img and not roadLum then
-                fadeA = fadeA * PropCut.nearFade(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1)
-                    * (PropCut.sizeK[img] or 1) * PropCut.crestK(p.kind, t), t, img:getHeight()),
-                    WorldRoad.enemyScreenK(g.h), true)
+            if img and not roadLum and not PropCut.kinds[p.kind] then
                 local ct = WorldRoad._castleTop
                 if ct and t < 0.36 then
                     local kx = math.min(1, math.max(0, (math.abs(pxX - ct.cx) - ct.w * 0.5) / (ct.w * 0.24)))
@@ -4103,7 +4187,7 @@ local function drawProps(g, x, w, camZ)
             end
             if fadeA <= 0.01 then img = nil end
 
-            if img and not roadLum and WorldRoad._fork and rel > FORK_REL - 1.5 then
+            if img and not roadLum and not PropCut.kinds[p.kind] and WorldRoad._fork and rel > FORK_REL - 1.5 then
                 local f2 = WorldRoad._fork
                 local halfRF = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
                 local halfCorr = halfRF * (f2.n > 1 and 0.78 or 1)
@@ -4128,6 +4212,7 @@ local function drawProps(g, x, w, camZ)
                 local size = kindSize(p.kind, p.bid) * (p.big or 1)
                     * (PropCut.sizeK[img] or 1) * PropCut.crestK(p.kind, t)
                 local s = g.scaleAt(size, t, ih)
+                if not roadLum then s = PropCut.capS(s, WorldRoad.enemyScreenK(g.h)) end
                 local isTree = (p.kind == "tree" or p.kind == "pine"
                     or p.kind == "deadtree" or p.kind == "bush")
                 local reduced = (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -4142,6 +4227,7 @@ local function drawProps(g, x, w, camZ)
                     pvc.windPhase, pvc.canopy, pvc.trunk = pv.windPhase, pv.canopy, pv.trunk
                     pv = pvc
                 end
+                if WorldRoad._traceVeg and isTree then WorldRoad._traceVeg(p, fadeA, pxX, sy, iw * s, ih * s, t, "front", 1) end
 
                 local lumDef = LuminaireEngine.def(p.bid, p.kind)
                 local lumAnc, lumSink, lumFlip = nil, 0, 1
