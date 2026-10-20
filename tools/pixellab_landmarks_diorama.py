@@ -29,6 +29,7 @@ LIGHT = {
     "sun_r": " Warm sunlight comes from the upper RIGHT: lit faces on the right and on top, shadow faces on the left and underneath.",
     "moon_r": " Pale moonlight comes from the upper RIGHT: lit faces on the right and on top, shadow faces on the left and underneath.",
     "cold_r": " Cold white winter sun comes from the upper RIGHT: lit faces on the right and on top, shadow faces on the left and underneath.",
+    "lava_r": " Dim red volcanic sunset light comes from the upper RIGHT: lit faces on the right and on top, shadow faces on the left and underneath; the fire itself lights the inner faces of the stones and logs with orange.",
     "sun_l": " Low golden evening sun comes from the upper LEFT: lit faces on the left and on top, shadow faces on the right and underneath.",
 }
 
@@ -52,6 +53,11 @@ SPECS = {
         "a small campfire in the snow: a ring of rough dark granite stones of different sizes with thin "
         "snow caps on top, crossed split logs, a lively orange fire in the middle, the stones in front "
         "overlap the logs, low and wider than tall."),
+    "ab_rest": ("anim/abyss_landmark_rest/0.png", 64, 56, "lava_r",
+        "a small campfire of a scorched volcanic wasteland: a ring of jagged dark basalt stones of "
+        "different sizes with glowing orange cracks, two charred crossed logs with ember-red bark, a "
+        "lively orange and yellow fire in the middle, a few black cinders around the ring, the stones in "
+        "front overlap the logs, low and wider than tall, no flat colored pad under it."),
     "ma_elite": ("anim/marsh_landmark_elite/0.png", 72, 80, "moon_r",
         "a cursed swamp totem: a thick rotten tree stump carved into a tall post with a horned animal "
         "skull nailed on top, three glowing green runes carved down the front, hanging moss strands, "
@@ -96,7 +102,7 @@ def queue(names, tag="a"):
         m = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text)
         key = name + "_" + tag
         J[key] = {"job": m.group(0) if m else None, "spec": name}
-        print(f"[queue] {key}: {J[key]['job']}", flush=True)
+        print(f"[queue] {key}: {J[key]['job']} {'' if m else text[:300]}", flush=True)
         save_jobs(J)
         time.sleep(2)
 
