@@ -62,6 +62,8 @@ function QuadMesh:_grow(cap)
     local vs = self.vsize
     self.data = love.data.newByteData(cap * 4 * vs)
     self.v = ffi.cast(self.ctype, self.data:getFFIPointer())
+    self.fp = ffi.cast("float*", self.data:getFFIPointer())
+    self.bp = ffi.cast("uint8_t*", self.data:getFFIPointer())
     if oldData then
         ffi.copy(self.v, oldData:getFFIPointer(), oldN * 4 * vs)
         oldData:release()
@@ -93,36 +95,34 @@ local function alloc(self)
 end
 QuadMesh.alloc = alloc
 
+local function put(fp, bp, vi, x, y, u, v, R, G, B, A)
+    local fo, bo = vi * 5, vi * 20 + 16
+    fp[fo], fp[fo + 1], fp[fo + 2], fp[fo + 3] = x, y, u, v
+    bp[bo], bp[bo + 1], bp[bo + 2], bp[bo + 3] = R, G, B, A
+end
+
 function QuadMesh:rect(x, y, w, h, u0, v0, u1, v1, r, g, b, a)
     local i = alloc(self)
-    local vt = self.v
+    local fp, bp = self.fp, self.bp
     local R, G, B, A = c8(r), c8(g), c8(b), c8(a)
     local x1, y1 = x + w, y + h
-    local p = vt[i]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x, y, u0, v0, R, G, B, A
-    p = vt[i + 1]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x, y1, u0, v1, R, G, B, A
-    p = vt[i + 2]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x1, y, u1, v0, R, G, B, A
-    p = vt[i + 3]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x1, y1, u1, v1, R, G, B, A
+    put(fp, bp, i, x, y, u0, v0, R, G, B, A)
+    put(fp, bp, i + 1, x, y1, u0, v1, R, G, B, A)
+    put(fp, bp, i + 2, x1, y, u1, v0, R, G, B, A)
+    put(fp, bp, i + 3, x1, y1, u1, v1, R, G, B, A)
 end
 
 function QuadMesh:sprite(x, y, sx, sy, ox, oy, kx, qw, qh,
                          u0, v0, u1, v1, R, G, B, A)
     local i = alloc(self)
-    local vt = self.v
+    local fp, bp = self.fp, self.bp
     local xl, xr = -ox * sx, (qw - ox) * sx
     local shT, shB = kx * sx * (-oy), kx * sx * (qh - oy)
     local yT, yB = y + sy * (-oy), y + sy * (qh - oy)
-    local p = vt[i]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x + xl + shT, yT, u0, v0, R, G, B, A
-    p = vt[i + 1]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x + xl + shB, yB, u0, v1, R, G, B, A
-    p = vt[i + 2]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x + xr + shT, yT, u1, v0, R, G, B, A
-    p = vt[i + 3]
-    p.x, p.y, p.u, p.v, p.r, p.g, p.b, p.a = x + xr + shB, yB, u1, v1, R, G, B, A
+    put(fp, bp, i, x + xl + shT, yT, u0, v0, R, G, B, A)
+    put(fp, bp, i + 1, x + xl + shB, yB, u0, v1, R, G, B, A)
+    put(fp, bp, i + 2, x + xr + shT, yT, u1, v0, R, G, B, A)
+    put(fp, bp, i + 3, x + xr + shB, yB, u1, v1, R, G, B, A)
 end
 
 function QuadMesh:upload(from, to)
