@@ -1300,7 +1300,7 @@ local LANDMARK_FOR_TYPE = {
 local LANDMARK_SIZE = {
     landmark_battle = 3.4, landmark_elite = 4.4, landmark_rest = 3.6,
     landmark_shop = 5.2, landmark_event = 5.0, landmark_chest = 2.6,
-    landmark_miniboss = 3.8,
+    landmark_miniboss = 3.8, highlands_landmark_battle = 4.0,
 }
 local landmarkCache = {}
 local function getLandmark(key)
