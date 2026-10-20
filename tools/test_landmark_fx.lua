@@ -155,6 +155,51 @@ function M.run()
         t:truthy("WorldRoad: fumaça fina da fogueira", src:find('lmk.smoke == "thin"', 1, true) ~= nil)
     end
 
+    do
+        local I18n = require("src.i18n.I18n")
+        I18n.init()
+        local MM = require("src.systems.MapManager")
+        local EnemyRenderer = require("src.ui.EnemyRenderer")
+        local cv = love.graphics.newCanvas(W, H)
+        for _, case in ipairs({ { 1, "battle" }, { 3, "elite" }, { 5, "rest" } }) do
+            local bio, ty = case[1], case[2]
+            WorldRoad.clearCache()
+            WorldRoad.resetRun()
+            WorldRoad.setBiome(bio)
+            WorldRoad._camZ = 5.5
+            for _ = 1, 10 do WorldRoad.update(1 / 30) end
+            WorldRoad.showFork({ { type = ty, label = MM.labelFor(ty), desc = MM.descFor(ty) } }, function() end)
+            local function frame()
+                WorldRoad.update(1 / 30)
+                love.graphics.setCanvas(cv)
+                WorldRoad.draw(0, 52, W, H - 52, bio)
+                love.graphics.setCanvas()
+                local lm = WorldRoad._lmMark
+                if WorldRoad._landmark and lm and lm.drawn then return lm.a or 0 end
+                return 0
+            end
+            for _ = 1, 20 do frame() end
+            local f = WorldRoad._fork
+            local b = f and f.markBoxes and f.markBoxes[1]
+            if b then WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2) end
+            for _ = 1, 80 do frame() end
+            WorldRoad.travel({ encounter = EnemyRenderer.getEncounterBillboard({
+                spriteId = EnemyRenderer.resolveSpriteId(bio, "battle") }) })
+            local prev, worst, seen, gone = 0, 0, false, false
+            for _ = 1, 200 do
+                local a = frame()
+                if a > 0.5 then seen = true end
+                if seen and a < 0.01 then gone = true end
+                worst = math.max(worst, prev - a)
+                prev = a
+            end
+            t:truthy(string.format("ato %d %s: marco escolhido é visto e depois sai da cena", bio, ty), seen and gone)
+            t:truthy(string.format("ato %d %s: marco passa pela câmera sem sumir de uma vez (maior queda %.2f ≤ 0.25)",
+                bio, ty, worst), worst <= 0.25)
+        end
+        cv:release()
+    end
+
     WorldRoad._landmark = nil
     WorldRoad.clearCache()
     WorldRoad.resetRun()

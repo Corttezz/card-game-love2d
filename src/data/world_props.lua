@@ -63,6 +63,7 @@ return {
 
     lit = {
         fields_bush_0 = 1,
+        fields_rock_0 = 1,
         fields_tree_1 = 1,
         fields_tree_2 = 1,
         fields_tree_3 = 1,

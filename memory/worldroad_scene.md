@@ -539,6 +539,20 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   1,00/0,46/0,12, mapa de luz da poça mais fraco e emissão mais forte (R-B da poça +17,6 → +32,5 em tod 0,85).
   Regra: luz quente sobre chão frio e claro pede cor na EMISSÃO, não no mapa de luz.
 
+- **Revisão de cenas por ato × tipo de nó (20/Out/2026, frente revisao-cenas, `tools/preview_out/revisao_cenas/atoN/checklist.md`):**
+  ferramenta `lovec . test_one revisao_cenas <ato>[:fork|lm|castelo|viagem|batalha]` (1920x1080, forks battle/elite/shop e
+  event/rest/battle em tod 0,30/0,65/0,85, chegada a cada landmark, viagem quadro a quadro com `REVISAO_STEP`, batalha e elite,
+  castelo; `.txt` com a caixa de cada prop, marco, landmark e clutter) e `python tools/revisao_cenas_recortes.py folhas <dir> <dest>`.
+  (1) Marco escolhido passando pela câmera: `tOf` prende t em 1, então o landmark ficava CONGELADO no pé da tela até rel -3 e sumia
+  de uma vez (todo battle/elite e toda partida depois de rest/shop/event). Agora t segue além de 1 para rel < 0 e o marco esmaece
+  entre t 0,88 e 1,08 (`LMG.PASS_FADE`, alpha em cor, sombra, contato, luz e fumaça; `_lmMark.a`). Trava em `test_landmark_fx`
+  (queda de alpha ≤ 0,25 por quadro; mutação sem fade dá 1,00). (2) Ato 1: `fields_rock_0` (clutter e prop) tinha face creme L 220
+  e musgo lima, o pixel mais claro do primeiro plano: paleta escurecida e `lit = 1`. (3) Ato 2: faixa de grama amarelo-oliva na base
+  da loja → verde-petróleo do bioma (PNG, `anim/`, `_hover` só nos mesmos pixels). (4) Ato 3: fogueira regerada (PixelLab
+  `create_image_pro`, anel de basalto com brasa, sem almofada rosa) + quadros por `bake_luminaire_flicker.py ... flame 0.55`;
+  `abyss_embers_*` com laranja saturado no lugar do pêssego. Aberto: estandarte do battle pouco legível nos atos 2, 3 e 5 (rótulo
+  resolve), chão do ato 4 lê tundra seca sob pinheiros muito nevados, poste do ato 5 na frente dos landmarks (lead).
+
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 
 ## Origem da técnica

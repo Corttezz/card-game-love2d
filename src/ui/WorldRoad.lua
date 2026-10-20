@@ -1485,6 +1485,7 @@ LMG.LIGHT_SHOP_GLOW = { 1.00, 0.72, 0.38 }
 LMG.EMBERS = { color = { 1.00, 0.62, 0.22 }, count = 3 }
 LMG.SELF_LIGHT = { 1.00, 0.90, 0.74 }
 LMG.SHADE = { 0.42, 0.42, 0.50 }
+LMG.PASS_FADE = { 0.88, 1.08 }
 function LMG.selfLight(lmk, px, py, iw, ih, s, rel, alphaK)
     if not lmk or not lmk.selfLight or lmk.selfLight <= 0 or alphaK <= 0.05 then return end
     local gx, gy = love.graphics.transformPoint(px, py - ih * s * 0.45)
@@ -3682,6 +3683,7 @@ local function drawProps(g, x, w, camZ)
                 WorldRoad._landmark = nil
             else
                 local tL = g.tOf(relL)
+                if relL < 0 then tL = (1 - relL / REL_CREST) ^ T_POW end
                 if tL and tL >= 0 then
                     lmMark = WorldRoad._lmMark or {}
                     WorldRoad._lmMark = lmMark
@@ -3709,6 +3711,9 @@ local function drawProps(g, x, w, camZ)
     end
     local function drawChosenLandmark()
         local lm, rel, t = lmMark.lm, lmMark.rel, lmMark.t
+        local aL = math.max(0, math.min(1, (LMG.PASS_FADE[2] - t) / (LMG.PASS_FADE[2] - LMG.PASS_FADE[1])))
+        lmMark.a = aL
+        if aL <= 0.01 then return end
         local img = getLandmark(lm.key)
         if not img then return end
         img = landmarkFrame(lm.key, lm.phase or lm.z) or img
@@ -3720,8 +3725,8 @@ local function drawProps(g, x, w, camZ)
         local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
         local shY = py - 1 - shPad * s
         if not ShadowEngine.sprite(img, lx, shY, s,
-            shadowOpts(nil, nil, shPad, lmCfg(WorldRoad.SHADOW_PROFILE, lm.key))) then
-            love.graphics.setColor(0, 0, 0, 0.22)
+            shadowOpts(aL, nil, shPad, lmCfg(WorldRoad.SHADOW_PROFILE, lm.key))) then
+            love.graphics.setColor(0, 0, 0, 0.22 * aL)
             love.graphics.ellipse("fill",
                 lx + sunShadowDir(g, x, w, lx) * iw * s * 0.14,
                 shY, iw * s * 0.30, math.max(2, 4 * g.persp(t)))
@@ -3729,11 +3734,11 @@ local function drawProps(g, x, w, camZ)
         end
         local lmk = Scene.Grade.cfg("landmarks")[lm.key:match("landmark_(%a+)$") or ""]
         if lmk and lmk.scorch then
-            Scene.Contact.scorch(lx, shY, iw * s, t, lmk.scorch.radius, lmk.scorch.alpha)
+            Scene.Contact.scorch(lx, shY, iw * s, t, lmk.scorch.radius, lmk.scorch.alpha * aL)
         end
-        Scene.Contact.queue(img, lx, shY, s, t, 1, 1)
+        Scene.Contact.queue(img, lx, shY, s, t, aL, 1)
         local lc = Scene.Grade.color("landmark", t, LMG.c)
-        love.graphics.setColor(lc[1], lc[2], lc[3], 1)
+        love.graphics.setColor(lc[1], lc[2], lc[3], aL)
         local kxF = 0
         if lmk and lmk.flagWave and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
             local wP = GrassField.PRESETS[rawBiome().id]
@@ -3745,18 +3750,18 @@ local function drawProps(g, x, w, camZ)
         ShadowEngine.mask(img, nil, math.floor(lx), math.floor(py), 0, s, s, iw / 2, ih, kxF, t)
         love.graphics.setColor(1, 1, 1, 1)
         if not (lmk and lmk.smoke == "thin" and _G.gameSettings and _G.gameSettings.reducedMotion) then
-            drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, 1, lmk and lmk.smoke == "thin")
+            drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, aL, lmk and lmk.smoke == "thin")
         end
-        submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z, 1, lmk)
-        LMG.selfLight(lmk, lx, py, iw, ih, s, rel, 1)
-        if lmk and lmk.embers and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
+        submitLandmarkLight(lm.key, lx, py, iw, ih, s, rel, lm.z, aL, lmk)
+        LMG.selfLight(lmk, lx, py, iw, ih, s, rel, aL)
+        if lmk and lmk.embers and aL > 0.5 and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
             local anc = LuminaireEngine.anchor("landmark", lm.key, 0,
                 "assets/sprites/world/" .. lm.key .. ".png")
             local ax, ay = (anc and anc.ax) or 0.5, (anc and anc.ay) or 0.45
             LuminaireEngine.drawEmbersSpec(LMG.EMBERS, lx + (ax - 0.5) * iw * s,
                 py - ih * s * (1 - ay), ih * s, lm.z)
         end
-        if lmk and lmk.dust and not (_G.gameSettings and _G.gameSettings.reducedMotion)
+        if lmk and lmk.dust and aL > 0.5 and not (_G.gameSettings and _G.gameSettings.reducedMotion)
            and love.math.random() < lmk.dust.rate / 60 then
             local ra = envColor("roadA")
             local halfF = ROAD_HALF * (0.30 + 0.70 * (t ^ 1.15))
