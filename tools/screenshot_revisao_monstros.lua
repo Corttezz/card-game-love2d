@@ -252,14 +252,20 @@ function M.run(arg)
             render()
             local L = lastL
             if L and L.iw and L.iw > 0 then
-                mouseX = math.floor(L.cx - L.totalW / 2 + L.iw / 2)
-                mouseY = math.floor(L.rowY + L.rowH / 2)
-                shot("tooltip intencao", function()
-                    local realTime = love.timer.getTime
-                    love.timer.getTime = function() return realTime() + 2 end
-                    if StatusTooltip.draw then StatusTooltip.draw() end
-                    love.timer.getTime = realTime
-                end)
+                local uk = require("src.ui.UiScale").k()
+                local function tip(label, vx)
+                    mouseX = math.floor(vx * uk)
+                    mouseY = math.floor((L.rowY + L.rowH / 2) * uk)
+                    local rt = love.timer.getTime
+                    local base, ft = rt(), 0
+                    love.timer.getTime = function() return base + ft end
+                    for _ = 1, 14 do ft = ft + 0.05; render() end
+                    shot(label)
+                    love.timer.getTime = rt
+                end
+                local x0 = L.cx - L.totalW / 2
+                tip("tooltip intencao", x0 + L.iw / 2)
+                tip("tooltip estado", x0 + L.iw + L.gap + (L.pillSize or 34) / 2)
                 mouseX, mouseY = -500, -500
             end
             e.intentVisibility = "type_only"
