@@ -116,6 +116,11 @@ defeito reportado em Set/2026. Ver
   seta `soloAlphaK`) — o fade dos marcos do fork não esmaece a sombra. Não
   é da v9; fica registrado.
 
+## Revisão dos monstros (20/Out/2026)
+- Sombra e faixa de contato do inimigo seguem `atkDX + knockDX + driftX` (bote, recuo do golpe, deriva do flutuante) e o `atkDY` para baixo; antes ficavam paradas enquanto o corpo avançava 46 a 70 px. Na viagem a sombra do flutuante soma a mesma deriva.
+- Contato do cadáver mede os pés do QUADRO atual da morte (`clipMetrics.frameFeet`), não o pé em pé do 1º quadro. Flutuante ganha contato só quando pousa: `EnemyRenderer.contactK(floating, clip, poseSink)` = 0 no ar, `sink²` na queda, 1 pousado.
+- Trava: `love . test_one test_enemy_shadow_motion` (42 inimigos). Revisão visual: `lovec . test_one screenshot_revisao_monstros <ato>[:id,...]` (folha, `_pes` 2x e `_sombra` = máscara isolada por diferença de render com o motor mudo).
+
 ## v8.1 (feedback)
 - "Sem distorção, fiel demais; pode ser maior" → len 0.34-0.64 →
   **0.55-1.00** e shear 0.55 → **0.78** — a sombra estica de verdade.

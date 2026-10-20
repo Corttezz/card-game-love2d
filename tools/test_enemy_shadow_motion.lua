@@ -35,6 +35,17 @@ function M.run()
     local clock = 100
     love.timer.getTime = function() return clock end
 
+    local IconLoader = require("src.ui.IconLoader")
+    local origGet = IconLoader.get
+    local iconY
+    local buffFail = {}
+    IconLoader.get = function(name)
+        local ic = origGet(name)
+        if name == "status_strength" and ic then
+            return { size = ic.size, draw = function(x, y, sc) iconY = y end }
+        end
+        return ic
+    end
     local canvas = love.graphics.newCanvas(64, 64)
     local W, H = 1920, 1080
     local cx, cy = W / 2, math.floor(H * 0.7)
@@ -89,6 +100,16 @@ function M.run()
         end
 
         EnemyRenderer.update(1.0)
+        EnemyRenderer.triggerBuff()
+        EnemyRenderer.update(0.1)
+        iconY = nil
+        local fb = frame(game)
+        if not iconY then
+            buffFail[#buffFail + 1] = id .. "(sem icone)"
+        elseif fb and iconY < fb.drawY then
+            buffFail[#buffFail + 1] = string.format("%s(%.0f acima do topo)", id, fb.drawY - iconY)
+        end
+        EnemyRenderer.update(1.0)
         game.enemy.health = 0
         EnemyRenderer.triggerDeath(id)
         for _ = 1, 240 do EnemyRenderer.update(1 / 60) end
@@ -114,6 +135,7 @@ function M.run()
 
     ShadowEngine.silhouette = origSil
     EnemyRenderer.drawFootContact = origContact
+    IconLoader.get = origGet
     love.timer.getTime = realTime
     _G.gameSettings = savedSettings
     EnemyRenderer.clearCache()
@@ -125,6 +147,7 @@ function M.run()
     t:eq("cadaver com sombra e contato: " .. table.concat(deathFail, " "), #deathFail, 0)
     t:eq("flutuante caido ganha contato no chao: " .. table.concat(floatFail, " "), #floatFail, 0)
     t:eq("contato do cadaver mede o quadro deitado, nao o pe em pe: " .. table.concat(wideFail, " "), #wideFail, 0)
+    t:eq("icone de forca do buff nasce no corpo, nunca acima do canvas (zona do HUD): " .. table.concat(buffFail, " "), #buffFail, 0)
     t:eq("flutuante no ar nao tem contato", EnemyRenderer.contactK(true, "idle", 0), 0)
     t:eq("flutuante no ataque nao tem contato", EnemyRenderer.contactK(true, "attack", 0), 0)
     t:eq("flutuante pousado tem contato cheio", EnemyRenderer.contactK(true, "death", 1), 1)

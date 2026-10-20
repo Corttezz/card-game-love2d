@@ -22,6 +22,10 @@ ATTACKS = {
                      "wings, then lunges forward and slashes the claw down diagonally "
                      "in a vicious swipe toward the viewer, beak open, then pulls back "
                      "and settles into its original standing stance"),
+    "cursed_scarecrow": ("hunches down and draws back one oversized claw hand, then lunges "
+                         "forward and rakes the claw down diagonally in a vicious swipe toward "
+                         "the viewer, loose straw flying from the collar, then pulls back into "
+                         "its original standing stance"),
     "harvest_reaper": ("raises the long scythe high behind its shoulder, then swings it "
                        "down in a wide sweeping arc in front of its body toward the "
                        "viewer, robes and wheat-straw shoulders swaying with the motion, "
@@ -43,8 +47,20 @@ def save(j):
 
 
 def submit(eid, seed):
-    with open(F.idle_frame_path(eid), "rb") as f:
-        b64 = base64.b64encode(f.read()).decode()
+    padx = int(os.environ.get("ATTACK_PAD_X", "0"))
+    padt = int(os.environ.get("ATTACK_PAD_TOP", "0"))
+    if padx or padt:
+        import io
+        from PIL import Image
+        im = Image.open(F.idle_frame_path(eid)).convert("RGBA")
+        out = Image.new("RGBA", (im.width + 2 * padx, im.height + padt), (0, 0, 0, 0))
+        out.paste(im, (padx, padt))
+        buf = io.BytesIO()
+        out.save(buf, "PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode()
+    else:
+        with open(F.idle_frame_path(eid), "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
     prompt = f"{ATTACKS[eid]}. It keeps its {F.ENEMIES[eid]['keep']}." + SUFFIX
     args = {"action": prompt, "first_frame_base64": b64, "frame_count": 8, "seed": seed}
     text = F.tool_text(F.rpc("tools/call", {"name": "animate_image", "arguments": args}))
@@ -79,7 +95,7 @@ def run(ids, seeds):
     jobs = load()
     for eid in ids:
         for seed in seeds:
-            key = f"{eid}/s{seed}"
+            key = f"{eid}/s{seed}" + os.environ.get("ATTACK_TAG", "")
             st = jobs.get(key, {})
             if st.get("status") == "done":
                 continue
@@ -92,7 +108,7 @@ def run(ids, seeds):
             for _ in range(90):
                 time.sleep(10)
                 try:
-                    res = poll(jid, os.path.join(OUT, eid, f"s{seed}"))
+                    res = poll(jid, os.path.join(OUT, eid, f"s{seed}" + os.environ.get("ATTACK_TAG", "")))
                 except Exception as e:
                     print(f"[poll] {key}: {e}", flush=True)
                     res = "wait"
