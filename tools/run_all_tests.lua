@@ -197,7 +197,10 @@ function M.run()
     local passed, failed, crashed = 0, 0, 0
     local leaks = {}
 
-    for _, suite in ipairs(SUITES) do
+    local shardI, shardN = (os.getenv("TEST_SHARD") or ""):match("^(%d+)/(%d+)$")
+    shardI, shardN = tonumber(shardI), tonumber(shardN)
+    for si, suite in ipairs(SUITES) do
+        if shardN and (si - 1) % shardN + 1 ~= shardI then goto continue end
         print("\n========================================")
         print("  SUITE: " .. suite.name .. "  [" .. suite.group .. "]")
         print("========================================")
@@ -225,6 +228,7 @@ function M.run()
         results[#results + 1] = { name = suite.name, group = suite.group, status = status }
         collectgarbage("collect")
         collectgarbage("collect")
+        ::continue::
     end
 
     print("\n========================================")

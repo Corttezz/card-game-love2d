@@ -337,13 +337,17 @@ def main():
         verify_files = runtime + [f for f in all_files if f.startswith(VERIFY_EXTRA_PREFIXES)
                                   and os.path.splitext(f)[1].lower() not in (".py", ".md", ".sh")]
         copy_tree(verify_files, verify, strip=True)
-        env = dict(os.environ, CARDGAME_IDENTITY="card-game-build-verify")
-        code, outp = run([lovec, ".", "test_all"], cwd=verify, env=env, timeout=3600)
-        summary = [l for l in outp.splitlines() if "suites:" in l or "TUDO VERDE" in l or "FAIL" in l]
-        log("\n".join(summary[-12:]))
-        if code != 0:
-            open(os.path.join(BUILD, "verify_test_all.log"), "w", encoding="utf-8").write(outp)
-            die("test_all falhou no codigo sem comentarios (build/verify_test_all.log)")
+        shards = 3
+        for si in range(1, shards + 1):
+            env = dict(os.environ, CARDGAME_IDENTITY="card-game-build-verify",
+                       TEST_SHARD="%d/%d" % (si, shards))
+            code, outp = run([lovec, ".", "test_all"], cwd=verify, env=env, timeout=3600)
+            summary = [l for l in outp.splitlines() if "suites:" in l or "TUDO VERDE" in l or "FAIL" in l]
+            log("  parte %d/%d: " % (si, shards) + "\n".join(summary[-12:]))
+            if code != 0:
+                open(os.path.join(BUILD, "verify_test_all.log"), "w", encoding="utf-8").write(outp)
+                die("test_all (parte %d/%d) falhou no codigo sem comentarios (build/verify_test_all.log)"
+                    % (si, shards))
         shutil.rmtree(verify, ignore_errors=True)
         log("[4/6] test_all verde no codigo sem comentarios")
     else:
