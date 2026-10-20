@@ -22,10 +22,12 @@ ATTACKS = {
                      "wings, then lunges forward and slashes the claw down diagonally "
                      "in a vicious swipe toward the viewer, beak open, then pulls back "
                      "and settles into its original standing stance"),
-    "cursed_scarecrow": ("hunches down and draws back one oversized claw hand, then lunges "
-                         "forward and rakes the claw down diagonally in a vicious swipe toward "
-                         "the viewer, loose straw flying from the collar, then pulls back into "
-                         "its original standing stance"),
+    "cursed_scarecrow": ("leans its whole body forward and raises its right claw hand high above "
+                         "its hooded head, then swings that same claw arm down and across its body "
+                         "in a big raking swipe, torso twisting with the blow, straw collar "
+                         "bouncing, then straightens back into its original standing stance. "
+                         "Only the scarecrow moves: no sparks, no slash trail, no energy, no "
+                         "lightning, no fire anywhere"),
     "harvest_reaper": ("raises the long scythe high behind its shoulder, then swings it "
                        "down in a wide sweeping arc in front of its body toward the "
                        "viewer, robes and wheat-straw shoulders swaying with the motion, "
