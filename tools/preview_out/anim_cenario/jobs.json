@@ -2387,8 +2387,9 @@
   "frames": 8,
   "pin": false,
   "tool": "animate_image_pixminimax",
-  "status": "queued",
-  "t": 1792472481.907821
+  "status": "downloaded",
+  "t": 1792472481.907821,
+  "n": 9
  },
  "frost_deadtree_1/1": {
   "name": "frost_deadtree_1",
@@ -2399,8 +2400,9 @@
   "frames": 8,
   "pin": false,
   "tool": "animate_image_pixminimax",
-  "status": "queued",
-  "t": 1792472484.9638646
+  "status": "downloaded",
+  "t": 1792472484.9638646,
+  "n": 9
  },
  "frost_deadtree_0/5": {
   "name": "frost_deadtree_0",
@@ -2411,8 +2413,9 @@
   "frames": 8,
   "pin": false,
   "tool": "animate_image_pixminimax",
-  "status": "queued",
-  "t": 1792472487.9932969
+  "status": "downloaded",
+  "t": 1792472487.9932969,
+  "n": 9
  },
  "frost_deadtree_1/2": {
   "name": "frost_deadtree_1",
@@ -2423,7 +2426,138 @@
   "frames": 8,
   "pin": false,
   "tool": "animate_image_pixminimax",
-  "status": "queued",
-  "t": 1792472498.5033169
+  "status": "downloaded",
+  "t": 1792472498.5033169,
+  "n": 9
+ },
+ "frost_deadtree_0/6": {
+  "name": "frost_deadtree_0",
+  "attempt": 6,
+  "job": "5667d5e4-06a9-468b-91cc-92c7cfb02bf5",
+  "prompt": "dead",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792472609.8068452,
+  "n": 9
+ },
+ "frost_deadtree_1/3": {
+  "name": "frost_deadtree_1",
+  "attempt": 3,
+  "job": "405e7b49-f697-422a-9560-8820661a17b8",
+  "prompt": "dead",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792472699.0663302,
+  "n": 9
+ },
+ "frost_deadtree_0/7": {
+  "name": "frost_deadtree_0",
+  "attempt": 7,
+  "job": "2c0404f3-1b41-46a0-b91a-fc4193b818cd",
+  "prompt": "dead",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792472702.221142,
+  "n": 9
+ },
+ "frost_deadtree_1/4": {
+  "name": "frost_deadtree_1",
+  "attempt": 4,
+  "job": "bc4db321-4380-421f-92a3-eb86cacb515c",
+  "prompt": "dead",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792472842.378377,
+  "n": 9
+ },
+ "frost_deadtree_1/5": {
+  "name": "frost_deadtree_1",
+  "attempt": 5,
+  "job": "c011a017-6568-4afd-a894-ad15524d1fea",
+  "prompt": "dead",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792473008.7913713,
+  "n": 9
+ },
+ "frost_deadtree_1/6": {
+  "name": "frost_deadtree_1",
+  "attempt": 6,
+  "job": "b632c478-a7e2-4178-8c42-2c7540ba6a87",
+  "prompt": "dead",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792473160.1758199,
+  "n": 9
+ },
+ "frost_deadtree_0/8": {
+  "name": "frost_deadtree_0",
+  "attempt": 8,
+  "job": "334f3939-100e-44ec-bed1-75a42f1153aa",
+  "prompt": "snow",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792473431.9532313,
+  "n": 9
+ },
+ "frost_deadtree_1/7": {
+  "name": "frost_deadtree_1",
+  "attempt": 7,
+  "job": "857ff2d3-5363-43e7-bac3-2a6f85e9fa7c",
+  "prompt": "snow",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792473434.9432716,
+  "n": 9
+ },
+ "frost_deadtree_0/9": {
+  "name": "frost_deadtree_0",
+  "attempt": 9,
+  "job": "88c69086-5900-4124-8b23-b2551b0f0961",
+  "prompt": "snow",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792473438.172547,
+  "n": 9
+ },
+ "frost_deadtree_1/8": {
+  "name": "frost_deadtree_1",
+  "attempt": 8,
+  "job": "e15c9bf6-377f-4e6a-8084-4872596c51f7",
+  "prompt": "snow",
+  "seed": null,
+  "frames": 8,
+  "pin": false,
+  "tool": "animate_image_pixminimax",
+  "status": "downloaded",
+  "t": 1792473441.1804993,
+  "n": 9
  }
 }

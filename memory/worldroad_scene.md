@@ -292,6 +292,23 @@ animação mínima feita pelo PixelLab... só para dar um efeito mais detalhado"
   candidatas: gerar sem `reference_images`. Disco de copa dos campos 0,55/0,42 → 0,20/0,32 (manchas soltas).
   Poste novo rejeitado (viga de 7 px e lanterna enorme no 1080p). Animação refeita: só `fields_tree_0` e `_2`
   passaram o portão; `test_tree_anim` exige ao menos 2.
+- **Toda vegetação animada (20/Out/2026, frente anim-cenario; dono: "todas as árvores e todos os itens...
+  movimentação pequena, em camadas"):** `PropCut.animKinds` (tree/pine/deadtree/bush/rock/flowers/tuft/grass/
+  reeds/blooms/embers) substitui o portão `CREST.kinds`; o draw principal passa o quadro para qualquer kind com
+  pasta `anim/` (fase = `windPhase` do PropVariation, ou hash do z sem PV) e o `GroundClutter.draw` usa
+  `env.frames/env.frameOf` (pré-aquecido junto do clutter). Ferramenta única: `animate_image_pixminimax`
+  (8 quadros); o `animate_image` redesenha demais (20 a 40 % dos pixels nos pinheiros de neve). O delta vai de
+  um quadro gerado de REFERÊNCIA (o quadro 0 gerado não bate com a base) para os seguintes; `evaluate` busca a
+  melhor subsequência e reprova: movimento máximo fora de 1,2 a 7 % da área (brasas 30 %), passo > 8 %, mais de
+  um passo < 20 % do maior (quadro congelado) ou menos da metade dos passos ≥ 35 % (salto único). Depois do
+  portão, revisão visual (`diffsheet`, `candidate`, quadros recortados): rejeitados a olho `abyss_deadtree_2`
+  (clarão branco, refeito) e `dusk_tree_1` (o modelo mexia o tronco; `EXCLUDE` tira a caixa do tronco).
+  Prompt `ANIM_CALM=1` para a 2ª rodada. Resultado: 70 sprites, 63 animados; ficam só com o balanço, com o
+  motivo em `world_props.animStatic` (a trava `test_tree_anim` FALHA para vegetação sem pasta e sem motivo):
+  `fields_tree_4`, `highlands_pine_4`, `highlands_grass_0/1`, `marsh_deadtree_2`, `frost_deadtree_0/1` (galho nu: o pouco que o modelo mexe cai FORA da silhueta, e a silhueta precisa ficar idêntica para sombra/oclusão; o `rim_of` também exclui galho de 1 px). Base trocada por outra frente
+  = reinstalar (`install` reusa a sequência sobre o PNG novo) ou regerar se a arte mudou. 197 gerações (175 pixminimax + 22 animate_image).
+  Provas: `tools/preview_out/anim_cenario/<bioma>/` (sheet 1x/4x, GIF, diff, board, `jogo/` = quadros da
+  batalha 1080p recortados por `tools/anim_cenario_seq.py`). Textura total ~11,5 MB; draw calls iguais (431).
 
 **CASTELO SEMPRE NO CENTRO (18/Out/2026, decisão do dono, REVOGA as entradas abaixo sobre deslocar o castelo):** o dono reprovou o castelo deslocado para os lados da crista (commits c836e88d, 3fb78d46, d6406956, d63b5507: `CASTLE_APPROACH.side/pick/overlap`, fade de troca de lado): "o castelo é o foco de tudo" e o vai-e-vem "tá estranho". O código de deslocamento e fade foi APAGADO; `drawCastleOf` usa `cx = g.cx` sempre. A barra de vida/intenção do inimigo pode cobrir parte do castelo na batalha: aceito pelo dono. Não reintroduzir deslocamento, troca de lado nem fade do castelo. Trava: `test_world_props` (castelo com dx ≤ 1 px nos seis biomas e parado durante a cena).
 

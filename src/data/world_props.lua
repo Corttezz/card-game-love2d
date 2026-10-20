@@ -129,7 +129,9 @@ return {
         highlands_pine_4 = "9 tentativas PixelLab redesenham o pinheiro inclinado inteiro; fica com o balanço",
         highlands_grass_0 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
         highlands_grass_1 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
-        marsh_deadtree_2 = "7 tentativas PixelLab sem nenhum pixel mexendo (galho nu); fica com o balanço",
+        marsh_deadtree_2 = "galho nu: em 7 tentativas o pouco que o modelo mexe cai fora da silhueta, que precisa ficar idêntica",
+        frost_deadtree_0 = "galho nu: em 7 tentativas sobre a arte nova o movimento cai fora da silhueta, que precisa ficar idêntica",
+        frost_deadtree_1 = "galho nu: em 8 tentativas o movimento cai fora da silhueta, que precisa ficar idêntica",
     },
 
     variants = {
