@@ -130,6 +130,7 @@ local SUITES = {
     { group = "smoke", name = "smoke_ui_turn" },
     { group = "smoke", name = "test_worldroad_resume" },
     { group = "smoke", name = "test_perf_budget" },
+    { group = "smoke", name = "test_road_edge_rhythm" },
     { group = "smoke", name = "test_resume" },
     { group = "smoke", name = "smoke_crt_mouse" },
     { group = "valid", name = "validate_cards" },

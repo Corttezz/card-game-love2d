@@ -3559,6 +3559,7 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
         local lk = 1.30 + math.max(0, 0.42 - lum) * 1.6
         _grassFork = { cs = {}, ws = {} }
         local gc = Scene.Grade.color("grass", 1, LMG.c)
+        local vis = WorldRoad.roadVis()
         _grassCtx = {
             x = x, w = w,
             time = WorldRoad._time,
@@ -3569,13 +3570,13 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
                 return g.cx + roadWobble(z, t, w)
             end,
             roadHalf = function(t)
-                return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
+                return ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)) * vis
             end,
             roadCenters = function(z, t)
                 local f = WorldRoad._fork
                 if not f then return nil end
                 local rel = z - WorldRoad._camZ
-                if rel <= FORK_REL - 1.5 then return nil end
+                if rel <= FORK_REL then return nil end
                 local wob = roadWobble(z, t, w) * 0.5
                 local cs, ws = _grassFork.cs, _grassFork.ws
                 for i = 1, f.n do
@@ -3587,8 +3588,9 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
                     cs[f.n + 1] = g.cx + wob * 2
                     ws[f.n + 1] = 1 - f.animIn
                 end
-                return cs, (f.n > 1 and 0.78 or 1), ws
+                return cs, WorldRoad.forkArmK(f, rel), ws
             end,
+            roadEdgeOff = WorldRoad.roadEdgeOff,
             colors = {
                 mid   = { gA[1] * 0.98 * gc[1], gA[2] * 0.98 * gc[2], gA[3] * 0.98 * gc[3] },
                 light = { math.min(1, gA[1] * lk) * gc[1],
@@ -3602,6 +3604,9 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
             castleGapHalf = WorldRoad._castleBaseHalf,
             castleGapX = WorldRoad._castleTop and WorldRoad._castleTop.cx,
         }
+        local ra = envColor("roadA")
+        local rg = Scene.Grade.color("road", 1, LMG.c)
+        _grassCtx.colors.dirt = { ra[1] * rg[1], ra[2] * rg[2], ra[3] * rg[3] }
     end
     _grassCtx.relFrom = relFrom
     _grassCtx.relTo = relTo
@@ -3655,6 +3660,35 @@ function WorldRoad.forkMousePressed(mx, my)
     return true
 end
 
+function WorldRoad.roadEdgeOff(z, t, side)
+    local amp = 5 * (0.30 + 0.70 * t)
+    local e
+    if side < 0 then
+        e = -(math.sin(z * 0.55) * 0.6 + math.sin(z * 0.21 + 1.4) * 0.4) * amp
+    else
+        e = (math.sin(z * 0.47 + 3.1) * 0.6 + math.sin(z * 0.17 + 4.2) * 0.4) * amp
+    end
+    local u = z * 2.3
+    local i = math.floor(u)
+    local f = u - i
+    f = f * f * (3 - 2 * f)
+    local k = side < 0 and 13 or 19
+    local h0 = math.sin((i * k + 7) * 12.9898) * 43758.5453
+    local h1 = math.sin(((i + 1) * k + 7) * 12.9898) * 43758.5453
+    h0, h1 = h0 - math.floor(h0), h1 - math.floor(h1)
+    return e + (h0 + (h1 - h0) * f - 0.5) * 9 * (0.35 + 0.65 * t)
+end
+
+function WorldRoad.roadVis()
+    local P = GrassField.PRESETS[rawBiome().id]
+    return 1 - 0.12 * math.min(1, (P and P.carpet) or 1)
+end
+function WorldRoad.forkArmK(f, rel)
+    if not f or f.n <= 1 then return 1 end
+    local kk = math.min(1, math.max(0, (rel - FORK_REL) / 2.5))
+    return 1 - 0.22 * kk * kk * (3 - 2 * kk)
+end
+
 local function drawRoad(g, x, w, camZ)
     local roadA = envColor("roadA")
     local roadB = envColor("roadB")
@@ -3665,6 +3699,7 @@ local function drawRoad(g, x, w, camZ)
     local fork = WorldRoad._fork
 
     local step = 2
+    local vis = WorldRoad.roadVis()
     local qm = WorldRoad._roadQM
     if not qm then
         qm = QuadMesh.new(8192)
@@ -3681,7 +3716,7 @@ local function drawRoad(g, x, w, camZ)
         return v - math.floor(v)
     end
     local lastDecoRow = nil
-    local t, rel, worldZ, half0, edgeAmp, eL, eR, rowId, blend, m
+    local t, rel, worldZ, half0, eL, eR, rowId, blend, m
     local newRow
     local biomeNow = rawBiome()
     local tile = RoadSurface.get(biomeNow.id, biomeNow)
@@ -3689,13 +3724,11 @@ local function drawRoad(g, x, w, camZ)
     local tw, th, dv, v, hs
     if tile then tw, th = tile:getWidth(), tile:getHeight() end
 
-    local function paintRow(cxRow, halfMul, aMul, decorate, bright)
-        local half = half0 * halfMul
-        local jag = 14 * (0.35 + 0.65 * t)
-        local jL = (hash(rowId * 13 + 7) - 0.5) * jag
-        local jR = (hash(rowId * 19 + 3) - 0.5) * jag
-        local xL = math.floor(cxRow - half + eL + jL)
-        local xR = math.floor(cxRow + half + eR + jR)
+    local function paintRow(cxRow, halfMul, aMul, decorate, bright, wk)
+        wk = wk or 1
+        local half = half0 * halfMul * wk
+        local xL = math.floor(cxRow - half - eL * wk)
+        local xR = math.floor(cxRow + half + eR * wk)
 
         local SEG = 16
         for segX = xL, xR - 1, SEG do
@@ -3800,10 +3833,9 @@ local function drawRoad(g, x, w, camZ)
         rel = REL_CREST * (1 - t ^ (1 / T_POW))
         worldZ = camZ + rel
 
-        half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-        edgeAmp = 5 * (0.30 + 0.70 * t)
-        eL = (math.sin(worldZ * 0.55) * 0.6 + math.sin(worldZ * 0.21 + 1.4) * 0.4) * edgeAmp
-        eR = (math.sin(worldZ * 0.47 + 3.1) * 0.6 + math.sin(worldZ * 0.17 + 4.2) * 0.4) * edgeAmp
+        half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)) * vis
+        eL = WorldRoad.roadEdgeOff(worldZ, t, -1)
+        eR = WorldRoad.roadEdgeOff(worldZ, t, 1)
         rowId = math.floor(worldZ * 2.3)
         blend = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
         m = 0.97 + hash(rowId) * 0.04
@@ -3821,20 +3853,17 @@ local function drawRoad(g, x, w, camZ)
         local wob = roadWobble(worldZ, t, w)
 
         if fork and rel > FORK_REL then
-            local kk = (rel - FORK_REL) / (MARK_REL - FORK_REL)
-            kk = math.min(1, math.max(0, kk))
-            kk = kk * kk * (3 - 2 * kk)
-            local hm = (fork.n > 1) and (1 - 0.22 * kk) or 1
+            local hm = WorldRoad.forkArmK(fork, rel)
             for i = 1, fork.n do
                 local aMul = forkAlpha(fork, i) * math.max(0.001, fork.animIn or 1)
                 if aMul > 0.02 then
                     local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
                     paintRow(cx + wob * 0.5 + forkOffset(fork, i, rel, w),
-                        hm, aMul, i == 1, bright)
+                        hm, aMul, i == 1, bright, aMul)
                 end
             end
             if (fork.animIn or 1) < 1 then
-                paintRow(cx + wob, 1, 1 - fork.animIn, false, 1)
+                paintRow(cx + wob, 1, 1 - fork.animIn, false, 1, 1 - fork.animIn)
             end
         else
             paintRow(cx + wob, 1, 1, true, 1)

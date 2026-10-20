@@ -307,6 +307,15 @@ local function hash(a, b)
     return v - math.floor(v)
 end
 
+local function edgeNoise(z, side)
+    local u = z * 1.9 + side * 17.3
+    local i = math.floor(u)
+    local f = u - i
+    f = f * f * (3 - 2 * f)
+    local a, b = hash(i, 61), hash(i + 1, 61)
+    return a + (b - a) * f
+end
+
 local function emit(x, y, sx, sy, ox, oy, qw, qh, q, R, G, B,
                     kind, w1, w2, w3, w4)
     local i = qm:alloc()
@@ -363,6 +372,8 @@ end
 
 local Z_CELL = 0.26
 local SLOTS = 12
+local EDGE_MARGIN = 0.85
+local FRINGE = { cell = 0.065, slots = 8, perPx = 1.5, out = 4, outP = 14, over = 3.4 }
 
 function GrassField.draw(ctx)
     if GrassField.disabled then return end
@@ -532,13 +543,16 @@ function GrassField.draw(ctx)
                     if ctx.roadCenters then
                         centers, armK, armW = ctx.roadCenters(z, t)
                     end
-                    local clear = half * 0.90 * (centers and (armK or 1) or 1)
+                    local clear = half * (centers and (armK or 1) or 1)
+                    local offL = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, -1) or 0
+                    local offR = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, 1) or 0
                     local spread = 0.92 + 0.14 * t
                     local spanW = w * 1.06 * spread
                     local spacing = spanW / NK
                     local baseW = 12 * scale
                     local sxK = math.max(1, spacing / math.max(1, baseW)
                         * 1.25)
+                    local margin = CLUMP_W * 0.5 * scale * sxK * EDGE_MARGIN
                     local lastKey = -1
                     for oi = 1, NK do
                         local k = rc.order[oi]
@@ -548,13 +562,17 @@ function GrassField.draw(ctx)
                         if centers then
                             dRoad = 1e9
                             for a = 1, #centers do
-                                local dd = math.abs(pxX - centers[a])
-                                    - clear * (armW and armW[a] or 1)
+                                local dx = pxX - centers[a]
+                                local dd = math.abs(dx)
+                                    - (clear + (dx < 0 and offL or offR))
+                                    * (armW and armW[a] or 1)
                                 if dd < dRoad then dRoad = dd end
                             end
                         else
-                            dRoad = math.abs(pxX - roadC) - clear
+                            local dx = pxX - roadC
+                            dRoad = math.abs(dx) - clear - (dx < 0 and offL or offR)
                         end
+                        dRoad = dRoad - margin
                         if dRoad > 0 and math.abs(pxX - g.cx) < w * 0.53
                            and e.cv < (P.carpet or 1) then
                             local zk = z + e.dz * Z_CELL * 3
@@ -589,7 +607,7 @@ function GrassField.draw(ctx)
                                 math.floor(base + 1),
                                 sK * sxK * e.flip,
                                 sK * e.hMul
-                                    * (0.35 + 0.65 * edgeK) * gk,
+                                    * (0.55 + 0.45 * edgeK) * gk,
                                 CLUMP_W / 2, CELL_H, CLUMP_W, CELL_H,
                                 e.q, cR, cG, cB,
                                 K_CLUMP, e.hk, e.dz, amp, 0)
@@ -643,13 +661,14 @@ function GrassField.draw(ctx)
                     local side = (slot % 2 == 0) and -1 or 1
                     local roadC = ctx.roadCenter(z, t)
                     local half = ctx.roadHalf(t)
-                    local pxX = roadC + side * (half * 0.94
+                    local offS = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, side) or 0
+                    local pxX = roadC + side * (half + offS + 2
                         + w * (0.004 + h2 * 0.52) * (0.45 + 0.55 * t))
                     local armBlock = false
                     if ctx.roadCenters then
                         local cs, aK, aW = ctx.roadCenters(z, t)
                         if cs then
-                            local ha = half * 0.94 * (aK or 1)
+                            local ha = half * (aK or 1) + offS + 2
                             for a = 1, #cs do
                                 if math.abs(pxX - cs[a])
                                    < ha * (aW and aW[a] or 1) then
@@ -714,6 +733,91 @@ function GrassField.draw(ctx)
                                     quads[FLOWER_CELL],
                                     c8(cAcc[1]), c8(cAcc[2]), c8(cAcc[3]),
                                     K_FLOWER, nx, z, 0, h3)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if P.fringe ~= false then
+        local FR = FRINGE
+        local dirt = ctx.colors.dirt
+        local fz0 = math.floor((camZ + math.max(0.05, relFrom)) / FR.cell)
+        local fz1 = math.floor((camZ + math.min(ctx.relCrest - 0.05, relTo)) / FR.cell)
+        local dens = FR.perPx * math.min(1, 0.45 + (P.density or 1) * 0.6)
+            * (0.5 + 0.5 * (P.carpet or 1))
+        for fi = fz0, fz1 do
+            local ta = g.tOf(fi * FR.cell - camZ)
+            local tb = g.tOf((fi + 1) * FR.cell - camZ)
+            if ta and tb and tb > 0.004 then
+                local dyc = math.abs(g.latY(0, ta) - g.latY(0, tb))
+                local keep = dyc * dens * 2 / FR.slots
+                for slot = 0, FR.slots - 1 do
+                    local h1 = hash(fi * 7 + 3, slot * 13 + 1)
+                    local hk = hash(fi * 11 + 5, slot * 17 + 2)
+                    if hk < keep then
+                        local z = (fi + h1) * FR.cell
+                        local rel = z - camZ
+                        local t = g.tOf(rel)
+                        if t and t > 0.004 and rel > relFrom and rel <= relTo then
+                            local side = (slot % 2 == 0) and -1 or 1
+                            local half = ctx.roadHalf(t)
+                            local off = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, side) or 0
+                            local persp = g.persp(t)
+                            local h2 = hash(fi * 13 + 1, slot * 29 + 7)
+                            local h3 = hash(fi * 19 + 9, slot * 5 + 3)
+                            local nz = edgeNoise(z, side)
+                            local u = h2 * h2 * (FR.out + FR.outP * persp)
+                                - FR.over * (0.6 + persp) * h3 * (0.2 + 1.8 * nz * nz)
+                            local centers, armK, armW
+                            if ctx.roadCenters then centers, armK, armW = ctx.roadCenters(z, t) end
+                            local na = centers and #centers or 1
+                            for a = 1, na do
+                                local wa = centers and (armW and armW[a] or 1) or 1
+                                if wa > 0.04 then
+                                    local ca = centers and centers[a] or ctx.roadCenter(z, t)
+                                    local ra = (half * (centers and (armK or 1) or 1) + off) * wa
+                                    local bx = ca + side * (ra + u * wa)
+                                    local inside = false
+                                    if centers then
+                                        for b = 1, na do
+                                            if b ~= a then
+                                                local wb = armW and armW[b] or 1
+                                                local db = bx - centers[b]
+                                                local rb = (half * (armK or 1)
+                                                    + (ctx.roadEdgeOff and ctx.roadEdgeOff(z, t,
+                                                        db < 0 and -1 or 1) or 0)) * wb
+                                                if math.abs(db) < rb - 1 then inside = true break end
+                                            end
+                                        end
+                                    end
+                                    if not inside and math.abs(bx - g.cx) < w * 0.53 then
+                                        local base = g.latY(bx - g.cx, t)
+                                        local hv = hash(fi * 23 + a, slot * 37 + 11)
+                                        local reach = math.max(0, u) / (FR.out + FR.outP * persp)
+                                        local s = (0.22 + persp * 1.30) * P.heightK
+                                            * (0.40 + h3 * 0.45 + reach * 0.55) * math.min(1, wa * 1.5)
+                                        if s * CELL_H >= 1.5 then
+                                            local vquad = math.floor(hv * N_THIN)
+                                            local ht = hash(fi * 31 + a, slot * 41 + 5)
+                                            local c = (ht < 0.22) and cDark
+                                                or ((ht < 0.70) and cMid or cLight)
+                                            local r, gg, bb = c[1], c[2], c[3]
+                                            if dirt and u < 1 and ht > 0.45 and ht < 0.70 then
+                                                r = (r + dirt[1]) * 0.5
+                                                gg = (gg + dirt[2]) * 0.5
+                                                bb = (bb + dirt[3]) * 0.5
+                                            end
+                                            local nx = (bx - ctx.x) / w
+                                            emit(math.floor(bx), math.floor(base + 1),
+                                                s * ((hv < 0.62) and -side or side), s,
+                                                CELL_W / 2, CELL_H, CELL_W, CELL_H, quads[vquad],
+                                                c8(r), c8(gg), c8(bb), K_BLADE, nx, z, h3, hv)
+                                        end
+                                    end
+                                end
                             end
                         end
                     end
