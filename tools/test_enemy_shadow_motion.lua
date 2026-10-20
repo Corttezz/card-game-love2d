@@ -192,6 +192,15 @@ function M.run()
         local sq2, dk2 = EnemyRenderer.strongPose(st)
         t:truthy("golpe forte volta ao normal no fim", sq2 == 0 and dk2 == 0)
     end
+    do
+        local GS = require("src.scenes.GameplayScene")
+        love.timer.getTime = function() return clock + 50 end
+        t:falsy("salao sem frame de sombra cai na elipse", ShadowEngine.isActive())
+        GS.hallShadowFrame({ lightXr = 0.5 }, 1920)
+        t:truthy("salao do chefe liga a sombra de silhueta (luz atras do chefe)", ShadowEngine.isActive())
+        t:eq("luz do salao no centro: sombra cai reto pra frente", ShadowEngine.tipShiftAt(960), 0)
+        love.timer.getTime = realTime
+    end
     t:eq("apoiado sempre tem contato", EnemyRenderer.contactK(false, "idle", 0), 1)
     return t:done()
 end

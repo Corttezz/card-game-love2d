@@ -393,6 +393,15 @@ function GameplayScene.hallScreenK(sceneKey, w, h)
         tr.scale / GameplayScene.HALL_REF_SCALE))
 end
 
+GameplayScene.HALL_SHADOW = { tod = 0.55, luma = 0.85, alphaK = 1.6, tint = { 0.22, 0.18, 0.24 } }
+function GameplayScene.hallShadowFrame(anchor, width)
+    local SE = require("engine.ShadowEngine")
+    local H = GameplayScene.HALL_SHADOW
+    SE.setFrame(width * ((anchor and anchor.lightXr) or 0.5), width, H.tod, H.luma)
+    SE.setTint(H.tint[1], H.tint[2], H.tint[3])
+    SE.setAlphaK(H.alphaK)
+end
+
 GameplayScene.BOSS_OVER_COMMON = 1.15
 function GameplayScene.bossSizeK(k, worldAreaH)
     local floorK = GameplayScene.BOSS_OVER_COMMON * (250 / 330)
@@ -506,6 +515,7 @@ function GameplayScene.draw()
         if enemyCy > tetoY then enemyCy = tetoY end
         local InteriorDepth = interiorHall and require("src.ui.InteriorDepth")
         local cineHidden = BossCinematic.hidesBoss()
+        if interiorHall then GameplayScene.hallShadowFrame(anchor, width) end
         if InteriorDepth and not cineHidden then
             InteriorDepth.drawContact(interiorHall, game.enemy and game.enemy.spriteId,
                 enemyCx, enemyCy, BossCinematic.bossAlpha())
