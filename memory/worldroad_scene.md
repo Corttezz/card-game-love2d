@@ -552,6 +552,10 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   `create_image_pro`, anel de basalto com brasa, sem almofada rosa) + quadros por `bake_luminaire_flicker.py ... flame 0.55`;
   `abyss_embers_*` com laranja saturado no lugar do pêssego. Aberto: estandarte do battle pouco legível nos atos 2, 3 e 5 (rótulo
   resolve), chão do ato 4 lê tundra seca sob pinheiros muito nevados, poste do ato 5 na frente dos landmarks (lead).
+  Segunda rodada (mesmo dia): estandartes de batalha recoloridos por rampa de valor (ato 2 carmim, ato 3 cinza de cinzas,
+  ato 5 ferrugem); chão do ato 4 virou neve: `GrassField.PRESETS.frost.carpet` 0,40 (fração do tapete de touceiras desenhada;
+  o tapete de 96 touceiras por linha não dependia de `density`) e `dry = 0` (sem o tom seco quente que deixava os talos
+  marrons), `grassA/B` do frost 0,66/0,71/0,80 e 0,57/0,62/0,72. Trava em `test_world_props`.
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

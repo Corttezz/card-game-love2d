@@ -401,6 +401,18 @@ function M.run()
         _G.gameSettings = savedSettings
     end
 
+    do
+        local GF = require("engine.GrassField")
+        local P = GF.PRESETS.frost
+        t:truthy("gelo: tapete de capim ralo (neve aparece entre os talos)", (P.carpet or 1) <= 0.5)
+        t:eq("gelo: talos sem o tom seco quente", P.dry, 0)
+        local frost
+        for _, b in ipairs(require("src.data.biomes")) do if b.id == "frost" then frost = b end end
+        local g = frost and frost.grassA
+        local L = g and (0.299 * g[1] + 0.587 * g[2] + 0.114 * g[3]) or 0
+        t:truthy(string.format("gelo: chão claro de neve (luminância %.2f ≥ 0,65)", L), L >= 0.65)
+    end
+
     return t:done()
 end
 

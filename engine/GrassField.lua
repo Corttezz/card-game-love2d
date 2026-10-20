@@ -13,7 +13,7 @@ GrassField.PRESETS = {
     abyss     = { density = 0.55, heightK = 0.80, windAmp = 0.44,
                   gustAmp = 0.82, gustSpeed = 1.05, dir = 1,
                   broad = 0.05, flower = 0.08 },
-    frost     = { density = 0.50, heightK = 0.70, windAmp = 0.86,
+    frost     = { density = 0.30, heightK = 0.60, windAmp = 0.86, carpet = 0.40, dry = 0,
                   gustAmp = 1.60, gustSpeed = 1.85, dir = -1,
                   broad = 0.06, flower = 0.05 },
     marsh     = { density = 1.15, heightK = 1.30, windAmp = 0.64,
@@ -511,9 +511,8 @@ function GrassField.draw(ctx)
                                 hMul = hMul,
                                 tone = tone,
                                 key = tone * 4 + dq,
-                                dr = 1 + dryK * 0.30,
-                                dg = 1 - dryK * 0.06,
-                                db = 1 - dryK * 0.35,
+                                dk = dryK,
+                                cv = hash(ci * 7 + 3, k * 5 + 1),
                                 q = clumpQuads[math.floor(hk * N_CLUMP)
                                     % N_CLUMP],
                                 flip = (hash(ci, k) < 0.5) and 1 or -1,
@@ -556,7 +555,8 @@ function GrassField.draw(ctx)
                         else
                             dRoad = math.abs(pxX - roadC) - clear
                         end
-                        if dRoad > 0 and math.abs(pxX - g.cx) < w * 0.53 then
+                        if dRoad > 0 and math.abs(pxX - g.cx) < w * 0.53
+                           and e.cv < (P.carpet or 1) then
                             local zk = z + e.dz * Z_CELL * 3
                             local tk = g.tOf(zk - camZ) or t
                             local perspK = g.persp(tk)
@@ -571,9 +571,10 @@ function GrassField.draw(ctx)
                                 lastKey = e.key
                                 local c = (e.tone == 3) and cDark
                                     or ((e.tone == 2) and cMid or cLight)
-                                cR = c8(math.min(1, c[1] * e.dr))
-                                cG = c8(c[2] * e.dg)
-                                cB = c8(c[3] * e.db)
+                                local dk = e.dk * (P.dry or 1)
+                                cR = c8(math.min(1, c[1] * (1 + dk * 0.30)))
+                                cG = c8(c[2] * (1 - dk * 0.06))
+                                cB = c8(c[3] * (1 - dk * 0.35))
                             end
                             local edgeK = math.min(1,
                                 dRoad / (6 + 14 * perspK))
