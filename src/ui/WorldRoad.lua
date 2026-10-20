@@ -15,6 +15,7 @@ local Scene = {
     Contact = require("engine.ContactShadow"),
     Var = require("engine.PropVariation"),
     Clutter = require("engine.GroundClutter"),
+    Cut = require("engine.GroundCut"),
 }
 
 local PropCut = {
@@ -119,14 +120,25 @@ function PropCut.crestK(kind, t)
     local k = math.min(1, math.max(0, (t or 0) / c.t))
     return c.k + (1 - c.k) * k
 end
-function PropCut.cutOf(img, kind)
-    if not PropCut.kinds[kind] then return 0 end
-    local ih = img:getHeight()
-    local cut = PropCut.px[img]
+function PropCut.cutFor(ih, cut)
     if cut == nil then
         cut = math.floor(ih * PropCut.data.SINK_DEFAULT_FRAC + 0.5)
     end
     return math.max(0, math.min(cut, math.floor(ih * PropCut.data.SINK_MAX_FRAC)))
+end
+function PropCut.cutOf(img, kind)
+    if not PropCut.kinds[kind] then return 0 end
+    return PropCut.cutFor(img:getHeight(), PropCut.px[img])
+end
+function PropCut.groundCut(data, name)
+    local kind = name:match("^%a+_(%a+)_%d+$")
+    if not kind then return data, nil end
+    local cut = PropCut.kinds[kind] and PropCut.cutFor(data:getHeight(), PropCut.data.sink[name]) or nil
+    if not PropCut.kinds[kind] and not Scene.Cut.FLAT_KINDS[kind] then return data, nil end
+    local cd = data:clone()
+    if Scene.Cut.prepare(cd, name, kind, cut) > 0 then return cd, cut end
+    cd:release()
+    return data, cut
 end
 function PropCut.get(img, kind)
     if not PropCut.kinds[kind] then return nil, img:getHeight() end
@@ -382,11 +394,13 @@ local function tryLoadPng(name)
     if not love.filesystem.getInfo(path) then return nil end
     local okd, data = pcall(love.image.newImageData, path)
     if not okd or not data then return nil end
-    local ok, img = pcall(love.graphics.newImage, data)
+    local cdata, cut = PropCut.groundCut(data, name)
+    local ok, img = pcall(love.graphics.newImage, cdata)
+    if cdata ~= data then cdata:release() end
     if not ok or not img then return nil end
     img:setFilter("nearest", "nearest")
     scanContentRect(img, path, data)
-    Scene.Contact.scan(img, data)
+    Scene.Contact.scan(img, data, cut)
     Scene.Contact.setFootRows(img, PropCut.data.footRows[name])
     PropCut.px[img] = PropCut.data.sink[name]
     PropCut.sizeK[img] = PropCut.data.sizeK[name]
@@ -411,7 +425,11 @@ local function readAnimFrames(key, light)
             local path = dir .. "/" .. f
             local okd, data = pcall(love.image.newImageData, path)
             local ok, im = false, nil
-            if okd and data then ok, im = pcall(love.graphics.newImage, data) end
+            if okd and data then
+                local cdata = light and PropCut.groundCut(data, key) or data
+                ok, im = pcall(love.graphics.newImage, cdata)
+                if cdata ~= data then cdata:release() end
+            end
             if ok and im then
                 im:setFilter("nearest", "nearest")
                 if not light then
@@ -869,6 +887,7 @@ local function getSprite(kind, variant, bid)
     WorldRoad._spriteCache[key] = img
     return img
 end
+WorldRoad._getSprite = getSprite
 
 function WorldRoad.propVariants(bid, kind) return PropCut.nvar(bid, kind) end
 function WorldRoad.treeDepthShader() return PropCut.depthShader() end
@@ -4433,7 +4452,7 @@ local function drawProps(g, x, w, camZ)
                     local isTree = (p.kind == "tree" or p.kind == "pine"
                         or p.kind == "deadtree" or p.kind == "bush")
                     local hsh = (p.z * 7.31) % 1
-                    local nT = isTree and (1 + math.floor(hsh * 2))
+                    local nT = isTree and (2 + math.floor(hsh * 2))
                         or (oc2.tuftsMin + math.floor(hsh * (oc2.tuftsMax - oc2.tuftsMin + 1)))
                     local hpx = oc2.baseCover * ihv * s * (isTree and 0.6 or 1)
                         * (oc2.tuftScale[1] + hsh * (oc2.tuftScale[2] - oc2.tuftScale[1]))

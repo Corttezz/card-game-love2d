@@ -27,7 +27,42 @@ local function hash01(n)
     return v - math.floor(v)
 end
 
-function ContactShadow.scan(img, data)
+local function spansOf(low, w, row)
+    local spans = {}
+    local a = nil
+    for x = 0, w - 1 do
+        local touch = low[x] >= 0 and low[x] >= row - 1
+        if touch and not a then a = x end
+        if not touch and a then
+            spans[#spans + 1] = { a, x - 1 }
+            a = nil
+        end
+    end
+    if a then spans[#spans + 1] = { a, w - 1 } end
+    return spans
+end
+
+local function lowestRows(data, px, w, yTop)
+    local low, maxRow = {}, -1
+    for x = 0, w - 1 do
+        local lr = -1
+        for y = yTop, 0, -1 do
+            local opaque
+            if px then
+                opaque = px[(y * w + x) * 4 + 3] >= 153
+            else
+                local _, _, _, a = data:getPixel(x, y)
+                opaque = a >= 0.6
+            end
+            if opaque then lr = y; break end
+        end
+        low[x] = lr
+        if lr > maxRow then maxRow = lr end
+    end
+    return low, maxRow
+end
+
+function ContactShadow.scan(img, data, cut)
     local hit = foot[img]
     if hit ~= nil then return hit or nil end
     if not data then foot[img] = false; return nil end
@@ -52,17 +87,14 @@ function ContactShadow.scan(img, data)
         if lr > maxRow then maxRow = lr end
     end
     if maxRow < 0 then foot[img] = false; return nil end
-    local spans = {}
-    local a = nil
-    for x = 0, w - 1 do
-        local touch = low[x] >= 0 and low[x] >= maxRow - 1
-        if touch and not a then a = x end
-        if not touch and a then
-            spans[#spans + 1] = { a, x - 1 }
-            a = nil
+    local spans = spansOf(low, w, maxRow)
+    if cut and cut > 0 and cut < h then
+        local vlow, vrow = lowestRows(data, px, w, h - 1 - cut)
+        if vrow >= 0 then
+            local vs = spansOf(vlow, w, vrow)
+            if #vs > 0 then spans = vs end
         end
     end
-    if a then spans[#spans + 1] = { a, w - 1 } end
     local fp = { spans = spans, bottom = maxRow, w = w, h = h, low = low }
     fp.pivot, fp.top, fp.footPivot, fp.baseW = ContactShadow.measurePivot(data, px, w, h, maxRow)
     foot[img] = fp
@@ -212,11 +244,35 @@ local function band(q, fp)
         local x0 = math.floor(q.x + fl * cxs * s - wd * 0.5)
         local hs = math.max(1, math.min(hpx, math.floor(wd * 0.35 + 0.5)))
         local h2s = math.max(1, math.floor(hs * 0.5 + 0.5))
-        rect(x0, y0, wd, hs, r, g, b, a)
-        local inset = math.floor(wd * (0.12 + 0.10 * hash01(sp[1] * 3.1 + sp[2])) + 0.5)
-        local w2 = wd - 2 * inset
-        if w2 >= 1 then
-            rect(x0 + inset, y0 + hs, w2, h2s, r, g, b, a * 0.55)
+        local seed = sp[1] * 3.1 + sp[2] * 1.7 + fp.w
+        if hs < 2 * u or wd < 4 * u then
+            rect(x0, y0, wd, hs, r, g, b, a)
+            local inset = math.floor(wd * (0.12 + 0.10 * hash01(seed)) + 0.5)
+            local w2 = wd - 2 * inset
+            if w2 >= 1 then
+                rect(x0 + inset, y0 + hs, w2, h2s, r, g, b, a * 0.55)
+            end
+        else
+            local nCore = math.max(1, math.floor(hs / u + 0.5))
+            local nTail = math.max(1, math.floor(h2s / u + 0.5))
+            local n = nCore + nTail
+            local l, rr = x0, x0 + wd
+            local y = y0
+            for row = 0, n - 1 do
+                local ra = row < nCore and a or a * (0.55 - 0.2 * (row - nCore) / nTail)
+                if row > 0 then
+                    local f = (row + 0.3) / (n - 0.2)
+                    local half = wd * 0.5 * math.sqrt(math.max(0, 1 - f * f))
+                    local cx = x0 + wd * 0.5 + (hash01(seed + row * 5.3) - 0.5) * u * 2
+                    local nl = math.floor(cx - half * (0.86 + 0.14 * hash01(seed + row * 7.9)) + 0.5)
+                    local nr = math.floor(cx + half * (0.86 + 0.14 * hash01(seed + row * 3.7)) + 0.5)
+                    l = math.max(l, nl)
+                    rr = math.min(rr, nr)
+                end
+                if rr - l < 1 then break end
+                rect(l, y, rr - l, u, r, g, b, ra)
+                y = y + u
+            end
         end
         if frame.dither and wd > 3 * u then
             rect(x0 - u, y0, u, math.max(1, hs - u), r, g, b, a * 0.45)

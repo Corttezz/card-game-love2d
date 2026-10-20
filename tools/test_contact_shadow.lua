@@ -234,7 +234,7 @@ function M.run()
         t:truthy("WorldRoad: contato entra no passe único de sombras (com máscara de profundidade)",
             src:find("ShadowEngine.endFrame(Scene.Contact.drawAcc)", 1, true) ~= nil)
         t:truthy("WorldRoad: scan no tryLoadPng e no toImage",
-            select(2, src:gsub("Scene%.Contact%.scan%(img, data%)", "")) >= 2)
+            select(2, src:gsub("Scene%.Contact%.scan%(img, data[,%)]", "")) >= 2)
         t:truthy("WorldRoad: scan nos quadros de animação",
             src:find("Scene.Contact.scan(im, data)", 1, true) ~= nil)
         t:falsy("WorldRoad sem shOptPool solto", src:find("local shOptPool", 1, true) ~= nil)

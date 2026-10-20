@@ -42,6 +42,7 @@ local SUITES = {
     { group = "unit",  name = "test_props_opaque" },
     { group = "unit",  name = "test_scene_grade" },
     { group = "unit",  name = "test_contact_shadow" },
+    { group = "unit",  name = "test_sombra_base" },
     { group = "unit",  name = "test_sombras_item" },
     { group = "unit",  name = "test_poste_profundidade" },
     { group = "unit",  name = "test_landmark_fx" },
