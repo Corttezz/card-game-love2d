@@ -235,6 +235,30 @@ local ATK_WINDUP = 0.18
 local ATK_LUNGE  = 0.16
 local ATK_RECOIL = 0.42
 local ATK_TOTAL  = ATK_WINDUP + ATK_LUNGE + ATK_RECOIL
+EnemyRenderer.STRONG = { windup = 0.40, hold = 0.12, squash = 0.10, stretch = 0.06, dark = 0.42 }
+
+function EnemyRenderer.attackTiming(kind)
+    if kind == "strong" then
+        local w = EnemyRenderer.STRONG.windup
+        return w, ATK_LUNGE, ATK_RECOIL, w + ATK_LUNGE + ATK_RECOIL
+    end
+    return ATK_WINDUP, ATK_LUNGE, ATK_RECOIL, ATK_TOTAL
+end
+
+function EnemyRenderer.strongPose(p)
+    local S = EnemyRenderer.STRONG
+    local w = S.windup
+    if p < w then
+        local k = math.min(1, p / (w - S.hold))
+        local e = 1 - (1 - k) * (1 - k)
+        return S.squash * e, S.dark * e
+    end
+    local k = math.min(1, (p - w) / ATK_LUNGE)
+    if k < 1 then
+        return -S.stretch * math.sin(k * math.pi), S.dark * (1 - k)
+    end
+    return 0, 0
+end
 
 function EnemyRenderer.resetRun()
     EnemyRenderer.setTimeScale(1)
@@ -439,13 +463,14 @@ function EnemyRenderer.update(dt)
 
     if attackFx then
         attackFx.t = attackFx.t + dt
-        if not attackFx.apexFired and attackFx.t >= ATK_WINDUP + ATK_LUNGE then
+        local aw, al, _, at = EnemyRenderer.attackTiming(attackFx.kind)
+        if not attackFx.apexFired and attackFx.t >= aw + al then
             attackFx.apexFired = true
             slashTime = SLASH_DUR
             if not attackFx.dove and auraId then BossAura.hitFeathers(auraId) end
             if attackFx.onApex then attackFx.onApex() end
         end
-        if attackFx.t >= ATK_TOTAL then attackFx = nil end
+        if attackFx.t >= at then attackFx = nil end
     end
 
     ambientSpawnTimer = ambientSpawnTimer - dt
@@ -878,17 +903,19 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         local lunge = command and 8 or (strong and 70 or 46)
         local drop = command and 3 or (strong and 34 or 24)
         local p = attackFx.t
-        if p < ATK_WINDUP then
-            local k = p / ATK_WINDUP
-            atkDX = 16 * k
+        local aw, al, ar = EnemyRenderer.attackTiming(attackFx.kind)
+        local back = strong and 24 or 16
+        if p < aw then
+            local k = math.min(1, p / (strong and (aw - EnemyRenderer.STRONG.hold) or aw))
+            atkDX = back * k
             atkDY = -5 * k
-        elseif p < ATK_WINDUP + ATK_LUNGE then
-            local k = (p - ATK_WINDUP) / ATK_LUNGE
+        elseif p < aw + al then
+            local k = (p - aw) / al
             local kk = k * k
-            atkDX = 16 - (16 + lunge) * kk
+            atkDX = back - (back + lunge) * kk
             atkDY = -5 + (5 + drop) * kk
         else
-            local k = math.min(1, (p - ATK_WINDUP - ATK_LUNGE) / ATK_RECOIL)
+            local k = math.min(1, (p - aw - al) / ar)
             local ease = 1 - (1 - k) * (1 - k)
             atkDX = -lunge + lunge * ease
             atkDY = drop - drop * ease
@@ -1042,6 +1069,26 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local bodyA = (opts and opts.alpha) or 1
     local gradeC = SceneGrade.color("enemy", SceneGrade.depth(), EnemyRenderer._gradeC)
     tintR, tintG, tintB = tintR * gradeC[1], tintG * gradeC[2], tintB * gradeC[3]
+    local squash, darkK = 0, 0
+    if attackFx and attackFx.kind == "strong" then
+        squash, darkK = EnemyRenderer.strongPose(attackFx.t)
+        if reducedMotion() then squash = 0 end
+        if darkK > 0 then
+            local sr, sg, sb = SceneGrade.shadowTint()
+            tintR = tintR * (1 - darkK + darkK * math.min(1, sr * 1.6))
+            tintG = tintG * (1 - darkK + darkK * math.min(1, sg * 1.6))
+            tintB = tintB * (1 - darkK + darkK * math.min(1, sb * 1.6))
+        end
+    end
+    local squashed = squash ~= 0
+    if squashed then
+        local fx0 = drawX + (iw * scale) / 2
+        local fy0 = drawY + (ih - footPad) * scale
+        love.graphics.push()
+        love.graphics.translate(fx0, fy0)
+        love.graphics.scale(1 + squash, 1 - squash)
+        love.graphics.translate(-fx0, -fy0)
+    end
     if hasAnim and bodyA >= 1 then
         EnemyRenderer.drawRim(function(ox, oy)
             currentAnim:draw(drawX + ox, drawY + oy, scale)
@@ -1086,6 +1133,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             end
         end
     end
+
+    if squashed then love.graphics.pop() end
 
     if auraRect then
         BossAura.drawFront(auraId, auraRect)

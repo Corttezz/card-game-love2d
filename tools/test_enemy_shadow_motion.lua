@@ -183,6 +183,15 @@ function M.run()
         t:eq("contorno de luz desligado com luz cheia", dia, 0)
         t:truthy(string.format("contorno de luz acende no escuro (%.2f)", noite), noite > 0.1 and noite <= EnemyRenderer.RIM.max)
     end
+    do
+        local nw, _, _, nt = EnemyRenderer.attackTiming("attack")
+        local sw, _, _, st = EnemyRenderer.attackTiming("strong")
+        t:truthy("golpe forte tem antecipacao mais longa que o comum", sw > nw + 0.1 and st > nt)
+        local sq, dk = EnemyRenderer.strongPose(sw - 0.05)
+        t:truthy(string.format("golpe forte agacha e escurece no preparo (squash %.2f, escuro %.2f)", sq, dk), sq > 0.05 and dk > 0.2)
+        local sq2, dk2 = EnemyRenderer.strongPose(st)
+        t:truthy("golpe forte volta ao normal no fim", sq2 == 0 and dk2 == 0)
+    end
     t:eq("apoiado sempre tem contato", EnemyRenderer.contactK(false, "idle", 0), 1)
     return t:done()
 end

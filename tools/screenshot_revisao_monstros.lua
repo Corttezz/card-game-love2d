@@ -328,7 +328,7 @@ function M.run(arg)
             step(0.6)
             EnemyRenderer.triggerAttack("strong", function() end)
             tAcc = 0
-            for _, tt in ipairs({ 0.22, 0.32, 0.50 }) do
+            for _, tt in ipairs({ 0.15, 0.30, 0.42, 0.50, 0.70 }) do
                 step(tt - tAcc); tAcc = tt
                 shot(string.format("forte %.2fs", tt))
             end
