@@ -730,7 +730,7 @@ function EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA)
     end
 end
 
-EnemyRenderer.RIM = { max = 0.40, lumaHi = 0.85, lumaLo = 0.40, lift = 1.35 }
+EnemyRenderer.RIM = { max = 0, lumaHi = 0.85, lumaLo = 0.40, lift = 1.35 }
 EnemyRenderer._rimColor = { 0, 0, 0 }
 
 function EnemyRenderer.rimStrength()

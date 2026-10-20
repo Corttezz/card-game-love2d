@@ -181,7 +181,7 @@ function M.run()
         local noite = EnemyRenderer.rimStrength()
         LE.ambientColor, SG.isActive = origAmb, origAct
         t:eq("contorno de luz desligado com luz cheia", dia, 0)
-        t:truthy(string.format("contorno de luz acende no escuro (%.2f)", noite), noite > 0.1 and noite <= EnemyRenderer.RIM.max)
+        t:eq("sem contorno de luz no escuro (dono: borda estranha)", noite, 0)
     end
     do
         local nw, _, _, nt = EnemyRenderer.attackTiming("attack")
