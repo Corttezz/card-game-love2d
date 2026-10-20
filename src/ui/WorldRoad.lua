@@ -3679,6 +3679,23 @@ function WorldRoad.roadEdgeOff(z, t, side)
     return e + (h0 + (h1 - h0) * f - 0.5) * 9 * (0.35 + 0.65 * t)
 end
 
+WorldRoad.BITE = { cell = 44, amp = 2.4, ampT = 1.2, notchCell = 10, notch = 0.32, notchPx = 5 }
+function WorldRoad.edgeBite(z, t, side)
+    local B = WorldRoad.BITE
+    local k = side < 0 and 7.31 or 3.17
+    local c = math.floor(z * B.cell)
+    local h = math.sin((c * 1.618 + k) * 12.9898) * 43758.5453
+    h = h - math.floor(h)
+    local v = (h - 0.5) * 2 * (B.amp + B.ampT * t)
+    local n = math.floor(z * B.notchCell)
+    local hn = math.sin((n * 2.399 + k * 3) * 78.233) * 43758.5453
+    hn = hn - math.floor(hn)
+    if hn < B.notch then
+        v = v + B.notchPx * (0.9 + t) * (hn < B.notch * 0.5 and 1 or -1)
+    end
+    return v
+end
+
 function WorldRoad.roadVis()
     local P = GrassField.PRESETS[rawBiome().id]
     return 1 - 0.12 * math.min(1, (P and P.carpet) or 1)
@@ -3727,8 +3744,8 @@ local function drawRoad(g, x, w, camZ)
     local function paintRow(cxRow, halfMul, aMul, decorate, bright, wk)
         wk = wk or 1
         local half = half0 * halfMul * wk
-        local xL = math.floor(cxRow - half - eL * wk)
-        local xR = math.floor(cxRow + half + eR * wk)
+        local xL = math.floor(cxRow - half - (eL + WorldRoad.edgeBite(worldZ, t, -1)) * wk)
+        local xR = math.floor(cxRow + half + (eR + WorldRoad.edgeBite(worldZ, t, 1)) * wk)
 
         local SEG = 16
         for segX = xL, xR - 1, SEG do

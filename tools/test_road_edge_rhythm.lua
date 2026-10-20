@@ -10,6 +10,9 @@ local STRIP_MEAN = 0.06
 local STRIP_WIN = 0.25
 local SWITCH_MAX = 0.03
 local RHYTHM_MAX = 0.20
+local SMOOTH = 6
+local ROUGH_MIN = 0.42
+local ROUGH_EDGE_MIN = 0.12
 
 local function setup(WorldRoad, bio, scene, canvas)
     WorldRoad.clearCache()
@@ -98,6 +101,8 @@ local function traceEdges(full, bare, y0, y1)
                 end
                 hit.x, hit.y = tr.x, y
                 hit.s[#hit.s + 1] = f
+                hit.xs = hit.xs or {}
+                hit.xs[#hit.s] = tr.x
                 nextActive[#nextActive + 1] = hit
             end
         end
@@ -186,6 +191,24 @@ function M.measure(bio, scene)
         end
     end
     R.stripMean = R.stripMean / math.max(1, R.wins)
+    local rough, rows = 0, 0
+    R.roughMin = 1
+    for _, e in ipairs(edges) do
+        local xs = e.xs
+        if xs and #xs >= WIN then
+            local er, en = 0, 0
+            for i = 1 + SMOOTH, #xs - SMOOTH do
+                local a = 0
+                for k = i - SMOOTH, i + SMOOTH do a = a + xs[k] end
+                a = a / (2 * SMOOTH + 1)
+                en = en + 1
+                if math.abs(xs[i] - a) >= 1 then er = er + 1 end
+            end
+            rough, rows = rough + er, rows + en
+            if en > 0 then R.roughMin = math.min(R.roughMin, er / en) end
+        end
+    end
+    R.rough = rows > 0 and rough / rows or 0
     full:release()
     bare:release()
     return R
@@ -207,6 +230,10 @@ function M.run()
                 R.switchMax <= SWITCH_MAX)
             t:check(("ato 1 %s: ritmo (autocorrelação das faixas) %.2f <= %.2f"):format(sc, R.rhythm, RHYTHM_MAX),
                 R.rhythm <= RHYTHM_MAX)
+            t:check(("ato 1 %s: borda irregular, linhas fora do ajuste suave >= 1 px %.2f >= %.2f"):format(sc, R.rough, ROUGH_MIN),
+                R.rough >= ROUGH_MIN)
+            t:check(("ato 1 %s: nenhuma borda reta (pior borda %.2f >= %.2f)"):format(sc, R.roughMin, ROUGH_EDGE_MIN),
+                R.roughMin >= ROUGH_EDGE_MIN)
         end
     end)
     t:truthy("medição sem erro: " .. tostring(err), ok)

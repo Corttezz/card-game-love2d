@@ -373,7 +373,8 @@ end
 local Z_CELL = 0.26
 local SLOTS = 12
 local EDGE_MARGIN = 0.85
-local FRINGE = { cell = 0.065, slots = 8, perPx = 1.5, out = 4, outP = 14, over = 3.4 }
+local FRINGE = { cell = 0.065, slots = 8, perPx = 1.5, out = 4, outP = 14, over = 3.4,
+    tuft = 0.76, tuftMin = 0.36, tuftK = 0.8 }
 
 function GrassField.draw(ctx)
     if GrassField.disabled then return end
@@ -811,10 +812,21 @@ function GrassField.draw(ctx)
                                                 bb = (bb + dirt[3]) * 0.5
                                             end
                                             local nx = (bx - ctx.x) / w
-                                            emit(math.floor(bx), math.floor(base + 1),
-                                                s * ((hv < 0.62) and -side or side), s,
-                                                CELL_W / 2, CELL_H, CELL_W, CELL_H, quads[vquad],
-                                                c8(r), c8(gg), c8(bb), K_BLADE, nx, z, h3, hv)
+                                            if hv > FR.tuft and u < FR.out then
+                                                local sc = math.max(s, FR.tuftMin) * FR.tuftK
+                                                local tc = (ht < 0.5) and cMid or cLight
+                                                emit(math.floor(bx), math.floor(base + 1),
+                                                    sc * 0.45 * ((hv < 0.93) and 1 or -1), sc,
+                                                    CLUMP_W / 2, CELL_H, CLUMP_W, CELL_H,
+                                                    clumpQuads[math.floor(h2 * N_CLUMP) % N_CLUMP],
+                                                    c8(tc[1]), c8(tc[2]), c8(tc[3]), K_CLUMP, h3, 0,
+                                                    0.12 * P.windAmp * P.dir, 0)
+                                            else
+                                                emit(math.floor(bx), math.floor(base + 1),
+                                                    s * ((hv < 0.62) and -side or side), s,
+                                                    CELL_W / 2, CELL_H, CELL_W, CELL_H, quads[vquad],
+                                                    c8(r), c8(gg), c8(bb), K_BLADE, nx, z, h3, hv)
+                                            end
                                         end
                                     end
                                 end
