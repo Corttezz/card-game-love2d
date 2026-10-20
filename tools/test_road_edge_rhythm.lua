@@ -18,6 +18,10 @@ local function setup(WorldRoad, bio, scene, canvas)
     WorldRoad.clearCache()
     WorldRoad.resetRun()
     love.math.setRandomSeed(7)
+    math.randomseed(7)
+    WorldRoad._rng = love.math.newRandomGenerator(0xC0FFEE)
+    WorldRoad._time = 0
+    WorldRoad._birds, WorldRoad._critters, WorldRoad._ambient = {}, {}, {}
     WorldRoad.setBiome(bio)
     WorldRoad._blend = nil
     WorldRoad._prevBiomeIndex = nil
