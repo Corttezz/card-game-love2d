@@ -1,6 +1,10 @@
 local M = {}
 
 local VW, VH = 1920, 1080
+do
+    local rw, rh = (os.getenv("CONT_RES") or ""):match("^(%d+)x(%d+)$")
+    if rw then VW, VH = tonumber(rw), tonumber(rh) end
+end
 M.ROAD_GAP_TOL = 0.03
 local DT = 1 / 30
 
@@ -22,6 +26,14 @@ local function nodesFor(types)
     end
     return nodes
 end
+
+M.SCENARIOS = {
+    path1 = { last = { "battle", "rest", "shop" }, after = { "battle", "rest", "shop" } },
+    path2 = { landmarks = { { { "shop", "event" }, 1 } }, last = { "battle", "event", "rest" }, after = { "shop", "event" } },
+    path3 = { landmarks = { { { "battle", "rest", "shop" }, 3 } }, last = { "battle", "rest", "shop" }, after = { "rest", "event" } },
+    lm2 = { landmarks = { { { "rest", "shop" }, 1 }, { { "event", "shop" }, 2 } }, last = { "battle", "rest", "shop" }, after = { "battle", "shop" } },
+    resume = { resume = true, last = { "battle", "shop", "event" }, after = { "battle", "rest", "shop" } },
+}
 
 function M.capture(act, seed, scenario, saveDir)
     local I18n = require("src.i18n.I18n")
@@ -97,7 +109,19 @@ function M.capture(act, seed, scenario, saveDir)
         end
         return n
     end
+    log.road = {}
     local function checkCover(frame, phase)
+        for _, he in ipairs(WorldRoad._hitScene) do
+            local q = he.ref
+            local d = q and q.z and LEc.def(q.bid, q.kind)
+            if d and d.roadside and not log.road[q.uid or 0] and not (WorldRoad._fork and WorldRoad._fork.converge) then
+                local on, branch = WorldRoad._postBaseOnRoad(q)
+                if on then
+                    log.road[q.uid or 0] = { uid = q.uid or 0, kind = q.kind, frame = frame, phase = phase,
+                        rel = q.z - WorldRoad._camZ, branch = branch, x = he.x1, y = he.y2 }
+                end
+            end
+        end
         local f = WorldRoad._fork
         if f and not f.converge and phase == "fork" then
             local key = "fork@" .. string.format("%.1f", f.markZ)
@@ -112,7 +136,10 @@ function M.capture(act, seed, scenario, saveDir)
         local relM = f.markZ - WorldRoad._camZ
         for i = 1, f.n do
             local geo = f._geo[i]
-            if geo and geo.aMul > 0.5 and not f.converge then
+            local rd = f._redraw and f._redraw[i]
+            local onTop = rd and rd.topFrame == WorldRoad._drawFrame
+            if onTop then log.redraws = (log.redraws or 0) + 1 end
+            if geo and geo.aMul > 0.5 and not f.converge and not onTop then
                 local label = WorldRoad.forkLabel(f.nodes[i]) or ""
                 local hw = math.max(geo.iw * geo.s * 0.5, (font13:getWidth(label) + 16) * 0.5)
                 local top = geo.py - geo.ih * geo.s - 26
@@ -234,16 +261,27 @@ function M.capture(act, seed, scenario, saveDir)
             travelBattle()
             phase = "battle"
             step(15)
-            local pick = tonumber(scenario:match("(%d)$")) or 1
-            if pick ~= 1 then
-                chooseFork({ "battle", "rest", "shop" }, pick, function() end)
+            local plan = M.SCENARIOS[scenario] or M.SCENARIOS.path1
+            if plan.resume then
+                log.cuts = log.cuts or {}
+                log.cuts[frame + 1] = true
+                WorldRoad.restoreProgress(act, floor + 1)
+                WorldRoad._rng:setSeed(seed + 17)
+                WorldRoad._props = {}
+                WorldRoad.setBiome(act)
+                WorldRoad._blend = nil
+                phase = "battle"
+                step(20)
+            end
+            for _, lm in ipairs(plan.landmarks or {}) do
+                chooseFork(lm[1], lm[2], function() end)
                 phase = "landmark"
                 step(30)
             end
-            chooseFork({ "battle", "rest", "shop" }, 1, function() end)
+            chooseFork(plan.last or { "battle", "rest", "shop" }, 1, function() end)
             travelBattle()
             phase = "fork"
-            WorldRoad.showFork(nodesFor({ "battle", "rest", "shop" }), function() end)
+            WorldRoad.showFork(nodesFor(plan.after or { "shop", "event" }), function() end)
             step(25)
         end
     end)
@@ -287,7 +325,7 @@ function M.analyze(log)
                 pops[#pops + 1] = { uid = uid, kind = L.kind, frame = k, how = "esmaece",
                     a0 = p and p.a or 0, a1 = c.a, phase = c.phase, at = c }
             end
-            local want = LE.edgeGap(L.bid)
+            local want = (require("src.ui.WorldRoad").postLateral(1, L.bid) - 1) / 2
             if L.road and c and c.gap and math.abs(c.gap - want) > M.ROAD_GAP_TOL and c.a > 0.02 and not L._far then
                 L._far = true
                 pops[#pops + 1] = { uid = uid, kind = L.kind, frame = k, how = "longe",
@@ -340,6 +378,18 @@ function M.analyze(log)
             pops[#pops + 1] = { uid = 0, kind = key, frame = 0, how = "sem_poste",
                 a0 = 0, a1 = 1, phase = key, at = { t = 0, x = 0, y = 0 } }
         end
+    end
+    for _, c in pairs(log.road or {}) do
+        pops[#pops + 1] = { uid = c.uid, kind = c.kind, frame = c.frame, how = "na_estrada",
+            a0 = c.branch or 0, a1 = c.rel, phase = c.phase, at = { t = c.rel, x = c.x, y = c.y } }
+    end
+    if log.cuts then
+        local keep = {}
+        for _, pp in ipairs(pops) do if not log.cuts[pp.frame] then keep[#keep + 1] = pp end end
+        pops = keep
+        local keepJ = {}
+        for _, j in ipairs(jumps) do if not log.cuts[j.frame] then keepJ[#keepJ + 1] = j end end
+        jumps = keepJ
     end
     local seenCover = {}
     for _, c in ipairs(log.cover or {}) do
@@ -428,7 +478,7 @@ function M.run(arg)
     io.stdout:setvbuf("line")
     local acts = { 1, 2, 3, 4, 5, 6 }
     local seeds = { 0xC0FFEE, 7331, 90210 }
-    local scenarios = { "path1", "path2", "path3", "castle" }
+    local scenarios = { "path1", "path2", "path3", "lm2", "resume", "castle" }
     local saveTag
     if not arg or arg == "" then
         seeds = { seeds[1] }
@@ -466,8 +516,8 @@ function M.run(arg)
                         end
                     end
                 end
-                print(string.format("[%s] %s luminarias=%d quadros=%d saltos=%d pops=%d sombra=%d folga_estrada=%.3f..%.3f",
-                    n == 0 and "ok" or "FAIL", tag, nl, log.frames, #j, #p, #s, gmin, gmax))
+                print(string.format("[%s] %s luminarias=%d quadros=%d saltos=%d pops=%d sombra=%d folga_estrada=%.3f..%.3f marco_por_cima=%d",
+                    n == 0 and "ok" or "FAIL", tag, nl, log.frames, #j, #p, #s, gmin, gmax, log.redraws or 0))
                 report(tag, j, p, s, verbose or n > 0)
                 if os.getenv("CONT_MEM") then
                     local st = love.graphics.getStats()

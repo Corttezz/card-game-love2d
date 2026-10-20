@@ -1,6 +1,10 @@
 local M = {}
 
 local VW, VH = 1920, 1080
+do
+    local rw, rh = (os.getenv("POSTES_RES") or ""):match("^(%d+)x(%d+)$")
+    if rw then VW, VH = tonumber(rw), tonumber(rh) end
+end
 local DT = 1 / 30
 
 local function patchDims(w, h)
@@ -62,6 +66,7 @@ function M.capture(act, seed, tod, dir, every)
     GameplayScene.init({ game = game, topBar = topBar, gameUI = GameUI:new(),
         playButton = Button:new(VW * 0.8, VH * 0.8, 150, 46, "Jogar") })
     if game.messageSystem then game.messageSystem.messages = {} end
+    WorldRoad._lastRect = nil
     WorldRoad.restoreProgress(act, floor)
     WorldRoad._rng:setSeed(seed)
     WorldRoad._props = {}
@@ -92,16 +97,22 @@ function M.capture(act, seed, tod, dir, every)
         local path = dir .. "/" .. name .. ".png"
         cv:newImageData():encode("png", path)
         local LE = require("engine.LuminaireEngine")
-        local n, rels = 0, {}
+        local n, rels, bases = 0, {}, {}
         for _, he in ipairs(WorldRoad._hitScene) do
             local q = he.ref
             local d = q and LE.def(q.bid, q.kind)
             if d and d.roadside and he.x2 > 0 and he.x1 < VW and he.y2 > 0 and he.y1 < VH then
                 n = n + 1
                 rels[#rels + 1] = string.format("%+d:%.1f", q.side, q.z - WorldRoad._camZ)
+                if WorldRoad._postBase then
+                    local B = WorldRoad._postBase(q, WorldRoad._camZ, WorldRoad._planGeo(), VW, {})
+                    if B then
+                        bases[#bases + 1] = string.format("%.0f,%.0f,%.0f", B.x1, B.x2, he.y2)
+                    end
+                end
             end
         end
-        print("[ok] " .. path .. " postes=" .. n .. " " .. table.concat(rels, " "))
+        print("[ok] " .. path .. " postes=" .. n .. " " .. table.concat(rels, " ") .. " bases=" .. table.concat(bases, ";"))
     end
     local function step(n, cond, seq)
         local i = 0
@@ -136,8 +147,18 @@ function M.capture(act, seed, tod, dir, every)
         step(15)
         render()
         save("batalha")
+        if os.getenv("POSTES_RESUME") then
+            WorldRoad.restoreProgress(act, floor + 1)
+            WorldRoad._rng:setSeed(seed + 17)
+            WorldRoad._props = {}
+            WorldRoad.setBiome(act)
+            WorldRoad._blend = nil
+            step(20)
+        end
         phase = "fork"
-        WorldRoad.showFork(nodesFor({ "battle", "rest", "shop" }), function() end)
+        local types = {}
+        for ty in (os.getenv("POSTES_FORK") or "battle,rest,shop"):gmatch("[%a_]+") do types[#types + 1] = ty end
+        WorldRoad.showFork(nodesFor(types), function() end)
         step(25)
         render()
         save("encruzilhada")
