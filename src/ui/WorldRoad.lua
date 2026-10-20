@@ -485,9 +485,9 @@ function WorldRoad.postCenter(bid, kind, side, s, halfR, variant)
         flip = ((side < 0 and 1 or -1) == d.face) and 1 or -1
     end
     local inner
-    if anc.fL then
-        if side < 0 then inner = flip == 1 and anc.fR or -anc.fL
-        else inner = flip == 1 and anc.fL or -anc.fR end
+    if anc.cL then
+        if side < 0 then inner = flip == 1 and anc.cR or -anc.cL
+        else inner = flip == 1 and anc.cL or -anc.cR end
     else
         inner = (anc.offX or 0) * flip
     end
@@ -3036,11 +3036,11 @@ function LMG.marksFeasible(g, w, E, cam, self, cand)
     local placed = {}
     for _, d in ipairs({ 0, -1, 1 }) do
         local k0 = d * FORK_SPREAD
-        local n = math.floor(F.reach / F.step + 0.5)
+        local n = math.floor(0.25 / F.step + 0.5)
         local found = false
         for j = 0, 2 * n do
             local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
-            if (d == 0 and math.abs(k) <= F.centerMax) or (d ~= 0 and k * d >= F.sideMin) then
+            if (d == 0 and math.abs(k) <= F.centerMax) or (d ~= 0 and k * d >= F.sideMin and k * d <= 0.40) then
                 local off = k * w + wobM
                 local py = g.latY(off, tM)
                 local x1, x2 = g.cx + off - hw, g.cx + off + hw
@@ -3202,7 +3202,7 @@ function LMG.layoutMarks(f)
     local order = {}
     for i = 1, f.n do if f.dirs[i] == 0 then order[#order + 1] = i end end
     for i = 1, f.n do if f.dirs[i] ~= 0 then order[#order + 1] = i end end
-    local n = math.floor(F.reach / F.step + 0.5)
+    local n = math.floor(0.25 / F.step + 0.5)
     for _, i in ipairs(order) do
         local d = f.dirs[i]
         local k0 = d * FORK_SPREAD
