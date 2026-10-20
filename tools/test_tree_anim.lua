@@ -132,6 +132,12 @@ function M.run()
     local _, _, f2 = WorldRoad.treeAnim("fields", "tree", 0, 0.25)
     t:check("o quadro avança com o relógio", f1 ~= f2)
 
+    for _, kind in ipairs({ "embers", "deadtree" }) do
+        local efr = WorldRoad.treeAnim("abyss", kind, 0)
+        t:check(("abyss %s: brilho respira devagar (fps %s ≤ 3)"):format(kind, tostring(efr and efr.fps)),
+            efr ~= nil and efr.fps ~= nil and efr.fps <= 3)
+    end
+
     t:check("luminária não entra pelo caminho da vegetação",
         WorldRoad.treeAnim("fields", "lantern", 0) == nil)
 

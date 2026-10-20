@@ -303,12 +303,23 @@ animação mínima feita pelo PixelLab... só para dar um efeito mais detalhado"
   um passo < 20 % do maior (quadro congelado) ou menos da metade dos passos ≥ 35 % (salto único). Depois do
   portão, revisão visual (`diffsheet`, `candidate`, quadros recortados): rejeitados a olho `abyss_deadtree_2`
   (clarão branco, refeito) e `dusk_tree_1` (o modelo mexia o tronco; `EXCLUDE` tira a caixa do tronco).
-  Prompt `ANIM_CALM=1` para a 2ª rodada. Resultado: 70 sprites, 63 animados; ficam só com o balanço, com o
+  Prompt `ANIM_CALM=1` para a 2ª rodada. Resultado (1ª rodada): 70 sprites, 63 animados; ficavam só com o balanço, com o
   motivo em `world_props.animStatic` (a trava `test_tree_anim` FALHA para vegetação sem pasta e sem motivo):
   `fields_tree_4`, `highlands_pine_4`, `highlands_grass_0/1`, `marsh_deadtree_2`, `frost_deadtree_0/1` (galho nu: o pouco que o modelo mexe cai FORA da silhueta, e a silhueta precisa ficar idêntica para sombra/oclusão; o `rim_of` também exclui galho de 1 px). Base trocada por outra frente
   = reinstalar (`install` reusa a sequência sobre o PNG novo) ou regerar se a arte mudou. 197 gerações (175 pixminimax + 22 animate_image).
   Provas: `tools/preview_out/anim_cenario/<bioma>/` (sheet 1x/4x, GIF, diff, board, `jogo/` = quadros da
   batalha 1080p recortados por `tools/anim_cenario_seq.py`). Textura total ~11,5 MB; draw calls iguais (431).
+- **Ajuste do lead (20/Out/2026):** (1) ato 3 respira, não pisca: `breathe` reordena os quadros por amplitude
+  de luminância (rampa monotônica no pingpong) e `soften` leva cada pixel mudado só METADE do caminho (paleta
+  da base); pico de |ΔL| caiu ~55 %. `PropCut.animFps = { abyss = { embers = 2.5, deadtree = 3 } }` grava o fps
+  na própria tabela de quadros (`frames.fps`, sem alocação no draw); o resto segue 5 fps. (2) Copa que
+  re-texturizava (`fields_tree_1/3/5`): `TIPS` (só a faixa de 2 a 5 px da borda da silhueta mexe) e quadros
+  novos com `ANIM_CALM`. (3) `fields_tree_4` (TIPS + `EXCLUDE` do tronco) e `highlands_pine_4` (TIPS, 11ª
+  tentativa) agora animados: 65 de 70. (4) O pinheiro do fundo do ato 2 que "clareava" entre quadros NÃO é raio:
+  o céu fica constante, um raio forçado (`strike(0.5, 0)`) no mesmo instante não muda nenhum pixel da região
+  (ambiente já no nível da arte a essa hora, `storm()` = 0), e com clima desligado + reducedMotion a região fica
+  estável (36,4 a 36,6). Com clima ligado ela varia 34,9 a 35,9, SEMPRE abaixo da referência sem clima: é o véu
+  de chuva por fatia mais o cisalhamento de rajada revelando o pinheiro de trás. Multiply-only respeitado.
 
 **CASTELO SEMPRE NO CENTRO (18/Out/2026, decisão do dono, REVOGA as entradas abaixo sobre deslocar o castelo):** o dono reprovou o castelo deslocado para os lados da crista (commits c836e88d, 3fb78d46, d6406956, d63b5507: `CASTLE_APPROACH.side/pick/overlap`, fade de troca de lado): "o castelo é o foco de tudo" e o vai-e-vem "tá estranho". O código de deslocamento e fade foi APAGADO; `drawCastleOf` usa `cx = g.cx` sempre. A barra de vida/intenção do inimigo pode cobrir parte do castelo na batalha: aceito pelo dono. Não reintroduzir deslocamento, troca de lado nem fade do castelo. Trava: `test_world_props` (castelo com dx ≤ 1 px nos seis biomas e parado durante a cena).
 

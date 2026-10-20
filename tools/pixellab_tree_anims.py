@@ -108,7 +108,19 @@ TRUNK_BY_PROMPT = {"embers": 0.0, "pine": 0.12, "snow": 0.12, "bush": 0.12, "gra
 
 EXCLUDE = {
     "dusk_tree_1": [(24, 28, 58, 102)],
+    "fields_tree_4": [(14, 46, 42, 107)],
 }
+
+
+TIPS = {"fields_tree_1": 5, "fields_tree_3": 5, "fields_tree_5": 5,
+        "fields_tree_4": 5, "highlands_pine_4": 5}
+
+
+def erode(m, n):
+    for _ in range(n):
+        pad = np.pad(m, 1)
+        m = m & pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:]
+    return m
 
 
 def trunk_frac(name):
@@ -327,6 +339,8 @@ def delta(base, g0, gi, frac=TRUNK_FRAC, name=None):
     moved[ty0:, :] = False
     moved &= ~rim_of(bm)
     moved &= gi[:, :, 3] > 0
+    if name in TIPS:
+        moved &= ~erode(bm, TIPS[name])
     for x0, y0, x1, y1 in EXCLUDE.get(name, ()):
         moved[y0:y1, x0:x1] = False
     out = base.copy()
@@ -507,6 +521,50 @@ def candidate(name, attempt, seq, scale=3):
     print(f"[ok] {sp}")
 
 
+def lum(a):
+    return a[:, :, 0] * 0.299 + a[:, :, 1] * 0.587 + a[:, :, 2] * 0.114
+
+
+def pulse(name):
+    d = os.path.join(ANIM, name)
+    files = sorted([f for f in os.listdir(d) if re.match(r"^\d+\.png$", f)], key=lambda f: int(f[:-4]))
+    fr = [rgba(os.path.join(d, f)).astype(np.float64) for f in files]
+    m = fr[0][:, :, 3] > 0
+    l0 = lum(fr[0])
+    return [round(float(np.abs(lum(f) - l0)[m].mean()), 3) for f in fr[1:]]
+
+
+def soften(name, k=0.5):
+    d = os.path.join(ANIM, name)
+    files = sorted([f for f in os.listdir(d) if re.match(r"^\d+\.png$", f)], key=lambda f: int(f[:-4]))
+    base = rgba(os.path.join(d, files[0]))
+    pal = palette_of(base)
+    before = pulse(name)
+    for f in files[1:]:
+        p = os.path.join(d, f)
+        fr = rgba(p)
+        ch = np.any(fr[:, :, :3] != base[:, :, :3], axis=2) & (base[:, :, 3] > 0)
+        mix = base.astype(np.float64).copy()
+        mix[:, :, :3] = base[:, :, :3] + (fr[:, :, :3].astype(np.float64) - base[:, :, :3]) * k
+        mix = np.clip(np.rint(mix), 0, 255).astype(np.uint8)
+        out = base.copy()
+        snapped = snap_palette(mix, pal)
+        out[ch] = snapped[ch]
+        Image.fromarray(out).save(p)
+    print(f"[ok] {name}: pulso {before} -> {pulse(name)}")
+
+
+def breathe(name, k=0.5):
+    d = os.path.join(ANIM, name)
+    files = sorted([f for f in os.listdir(d) if re.match(r"^\d+\.png$", f)], key=lambda f: int(f[:-4]))
+    amp = pulse(name)
+    order = sorted(range(1, len(files)), key=lambda i: amp[i - 1])
+    ims = [Image.open(os.path.join(d, files[i])).copy() for i in order]
+    for j, im in enumerate(ims, 1):
+        im.save(os.path.join(d, f"{j}.png"))
+    soften(name, k)
+
+
 def texmem(names):
     total = 0
     for name in names:
@@ -581,6 +639,15 @@ def main():
             name, att, seq = (spec.split(":") + ["", ""])[:3]
             seq = [int(x) for x in seq.split(",")] if seq else evaluate(name, int(att))["seq"]
             candidate(name, int(att), seq, scale=int(kw.get("scale", 3)))
+    elif cmd == "soften":
+        for n in expand(pos):
+            soften(n, float(kw.get("k", 0.5)))
+    elif cmd == "breathe":
+        for n in expand(pos):
+            breathe(n, float(kw.get("k", 0.5)))
+    elif cmd == "pulse":
+        for n in expand(pos):
+            print(n, pulse(n))
     elif cmd == "texmem":
         texmem(expand(pos))
     elif cmd == "status":

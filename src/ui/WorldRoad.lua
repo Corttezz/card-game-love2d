@@ -31,6 +31,7 @@ local PropCut = {
     animKinds = { tree = true, pine = true, deadtree = true, bush = true, rock = true,
                   flowers = true, tuft = true, grass = true, reeds = true, blooms = true,
                   embers = true },
+    animFps = { abyss = { embers = 2.5, deadtree = 3 } },
     v4 = { 0, 1, 0, 0 }, v3 = { 0, 0, 0 }, td = {},
     STRIP_W = 400,
 }
@@ -446,6 +447,10 @@ function PropCut.treeFrames(bid, kind, variant)
         end
         if #frames < 2 then frames = nil end
     end
+    if frames then
+        local byBid = PropCut.animFps[bid]
+        frames.fps = byBid and byBid[kind] or nil
+    end
     PropCut.frames[key] = frames or false
     return frames
 end
@@ -454,7 +459,7 @@ function PropCut.frameOf(frames, phase)
     local a = PropCut.anim
     local n = #frames
     local period = a.pingpong and (2 * n - 2) or n
-    local k = math.floor((WorldRoad._time * a.fps + phase * period) % period)
+    local k = math.floor((WorldRoad._time * (frames.fps or a.fps) + phase * period) % period)
     if k >= n then k = period - k end
     return frames[k + 1]
 end

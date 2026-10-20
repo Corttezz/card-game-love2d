@@ -125,8 +125,6 @@ return {
     },
 
     animStatic = {
-        fields_tree_4 = "8 tentativas PixelLab redesenham a copa (textura nova); fica com o balanço",
-        highlands_pine_4 = "9 tentativas PixelLab redesenham o pinheiro inclinado inteiro; fica com o balanço",
         highlands_grass_0 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
         highlands_grass_1 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
         marsh_deadtree_2 = "galho nu: em 7 tentativas o pouco que o modelo mexe cai fora da silhueta, que precisa ficar idêntica",
