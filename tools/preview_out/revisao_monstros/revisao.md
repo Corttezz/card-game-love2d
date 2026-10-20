@@ -99,11 +99,21 @@ Legenda: ok = revisado e sem defeito; corrigido = defeito achado e consertado (o
 Som do ataque: `enemyAttack` toca no ápice (`applyHit`), morte `enemyDeath`, enfurecido `enemyBuffRoar`; todos registrados no `main.lua`.
 Troca viagem → batalha: desvio do corpo ≤ 0,9 px em todos os 36 de estrada; sombra com a mesma área (±3%) e o mesmo centro.
 
+## Segunda rodada (pedido do lead: zero pendência)
+
+| Item | O que foi feito | Prova |
+|---|---|---|
+| Leitura no escuro (atos 3 e 5, crepúsculo do 6, ato 4) | Oclusor do inimigo focal (`SceneGrade.FOCAL_TINT.enemy = 0,30`: parte do branco com 30% do matiz da hora; cenário segue ambiente puro) + contorno de 1 px de arte na cor da névoa do bioma, só no escuro (0 com luz cheia, até 0,40), na batalha e na viagem | `luz_atoN_antes.jpg` / `luz_atoN_depois.jpg` (N = 3 a 6, colunas tod 0,65 / 0,85 / 1,0) |
+| Morte do Colosso | Cadáver entra em fusão (corpo, sombra e contato) enquanto o monte de blocos some (`BossCinematic.bossAlpha`, `opts.alpha`) | `colosso_morte_antes_depois.png` (cima antes, baixo depois) |
+| Círculo laranja no ataque do espantalho | Edição de pixel testada e descartada (a cor do efeito é a mesma da palha); regerado com prompt sem efeito, 4 candidatas limpas, escolhida a s101v3 (garra rasga o peito) | `ato1/cursed_scarecrow.png` (quadros de ataque) |
+| Garra do Rei-Carniça | Golpe agora lê pela antecipação do golpe forte (item abaixo) e pelas linhas de corte do jogo; a arte s22 fica | `ato1/carrion_king.png` |
+| Golpe forte | Igual em todo inimigo, sem arte nova: preparo de 0,40 s com pausa, recuo de 24 px, agachamento de 10% que estica no bote e escurecimento para a sombra do bioma no preparo | `golpe_forte_pit_brute.png` (parado, comum, forte 0,15 / 0,30 / 0,42) |
+| Sombra no salão do chefe | Os seis salões têm a luz atrás do chefe: o ShadowEngine liga no salão (`GameplayScene.hallShadowFrame`) e o chefe projeta a silhueta do quadro atual para a frente, no lugar da elipse | `salao_sombra_antes_depois.png` |
+
+Travas novas: `test_enemy_shadow_motion` (contorno só no escuro, golpe forte, fusão do corpo com sombra e contato, salão com silhueta), `test_scene_grade` (inimigo focal claro e com matiz).
+
 ## Pendente / leitura honesta
 
-1. Chefes no salão usam a elipse de reserva + o contato do `InteriorDepth`, não a silhueta projetada (o salão não tem sol). É o desenho atual; o contato do salão só existe a partir do 2º quadro (usa a largura do quadro anterior), um quadro invisível atrás do fade de entrada.
-2. Morte do Colosso: o corpo vira monte de blocos, o monte esvaece por 0,7 s e o cadáver real aparece por baixo sem fade próprio. Está documentado como desenho da cinemática (memory/boss_cinematics.md), mas a troca monte → cadáver ainda se nota.
-3. Ataques regerados carregam um efeito pintado no ápice: espantalho com um círculo laranja de impacto, Rei-Carniça sem efeito (golpe de garra sutil, o jogo soma as linhas de corte). Nenhuma das candidatas veio limpa no espantalho; a escolhida termina no idle.
-4. Sombra do cadáver fica quase toda escondida sob o corpo (regra v9 de pegada); o que diz "no chão" é a faixa de contato, agora medida no quadro deitado.
-5. Inimigos do ato 3 ficam muito escuros no tod 0,85 (grade do bioma, fora desta frente).
-6. Clip `attack_strong` não existe para espantalho, ceifador e Rei-Carniça: o golpe forte usa o `attack` (só o bote é maior).
+1. Ato 4 ficou um pouco mais claro com o oclusor focal (troll de gelo quase branco no tod 0,65); continua lendo, mas é mais "recortado" que antes.
+2. Contorno de luz usa a cor da névoa do bioma: no ato 3 ele é vermelho e só reforça a borda, não muda o corpo.
+3. Chefe no salão: o contato do `InteriorDepth` continua por baixo da silhueta, e no tapete vermelho do salão 1 a silhueta é bem suave (é o tom do salão).

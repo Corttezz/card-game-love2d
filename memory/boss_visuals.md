@@ -185,7 +185,10 @@ shot_enemy_sheet [id]`.
 ## Revisão dos monstros (20/Out/2026)
 - Ataque do Rei-Carniça era da arte ANTIGA (canvas 256, corvo atarracado): o chefe trocava de desenho ao atacar. Regerado por `tools/pixellab_attack_redo.py` (animate_image a partir do idle 0, 3 candidatas). Ao instalar clip novo de chefe, conferir TODO clip contra o idle (folha lado a lado), não só os da cinemática.
 - Ícone de força do buff/enfurecido nasce no tronco (30% da altura do conteúdo), não acima do canvas, onde cobria barra de vida e pílulas.
-- Morte do Colosso: o monte de blocos esvaece sobre o cadáver real (0,7 s); o cadáver não tem fade próprio. Fica registrado como por desenho.
+- Morte do Colosso: cadáver entra em fusão enquanto o monte esvaece (`BossCinematic.bossAlpha`, `EnemyRenderer.draw opts.alpha` leva corpo, sombra e contato).
+- Salão: `GameplayScene.hallShadowFrame` liga o ShadowEngine (luz atrás do chefe) e a elipse de reserva saiu de uso no salão.
+- Golpe forte: `EnemyRenderer.STRONG` (preparo 0,40 s com pausa, squash, escurecer para a sombra do bioma), igual em todo inimigo.
+- Espantalho: ataque regerado de novo (s101v3) sem o círculo laranja.
 
 ## Pendente
 
