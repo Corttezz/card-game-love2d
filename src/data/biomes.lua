@@ -67,7 +67,7 @@ local biomes = {
         landmark = { 0.32, 0.30, 0.38 }, landmarkDark = { 0.19, 0.18, 0.25 },
         propDensity = 1.0,
         propWeights = { pine = 3, rock = 2.5, ruin = 1, bush = 1,
-                        sign = 0.4, deadtree = 0.6, flowers = 0.8,
+                        sign = 0.4, deadtree = 0.6,
                         brazier = 0.9, runestone = 0.7 },
     },
 
@@ -105,7 +105,7 @@ local biomes = {
         landmark = { 0.28, 0.16, 0.14 }, landmarkDark = { 0.16, 0.09, 0.08 },
         propDensity = 1.0,
         propWeights = { deadtree = 3, rock = 2.5, ruin = 1.2, stump = 0.6,
-                        bush = 0.8, flowers = 0.7,
+                        bush = 0.8,
                         brazier = 1.0, torch = 0.8, fissure = 0.6 },
     },
 
@@ -143,7 +143,6 @@ local biomes = {
         landmark = { 0.38, 0.40, 0.45 }, landmarkDark = { 0.23, 0.25, 0.29 },
         propDensity = 0.9,
         propWeights = { pine = 3, rock = 3, deadtree = 1, stump = 0.6,
-                        flowers = 0.6,
                         brazier = 0.8, crystal = 0.8, lantern = 0.6 },
     },
 
@@ -217,7 +216,7 @@ local biomes = {
         rock = { 0.42, 0.36, 0.30 }, rockDark = { 0.26, 0.22, 0.18 },
         landmark = { 0.42, 0.36, 0.28 }, landmarkDark = { 0.26, 0.22, 0.17 },
         propDensity = 1.15,
-        propWeights = { tree = 3, flowers = 2.5, bush = 2,
+        propWeights = { tree = 3, bush = 2,
                         sign = 0.5, rock = 0.8,
                         lantern = 1.1, shrine = 0.5 },
     },

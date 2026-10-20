@@ -556,6 +556,13 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   ato 5 ferrugem); chão do ato 4 virou neve: `GrassField.PRESETS.frost.carpet` 0,40 (fração do tapete de touceiras desenhada;
   o tapete de 96 touceiras por linha não dependia de `density`) e `dry = 0` (sem o tom seco quente que deixava os talos
   marrons), `grassA/B` do frost 0,66/0,71/0,80 e 0,57/0,62/0,72. Trava em `test_world_props`.
+  Prop sem PNG cai no `MAKERS` procedural (caixinha de 8x9 px para toco, pontinhos para flores, bolinha para pedra) e lia
+  colagem: tocos de abismo/gelo/pântano e pedras do crepúsculo ganharam arte (PixelLab `create_image_pro`, 3 variantes cada),
+  `flowers` saiu do `propWeights` de highlands/abyss/frost/dusk (o chão desenhado cobre o papel). Trava: `test_world_props`
+  exige `<bioma>_<kind>_0.png` para todo kind do `propWeights` e do `ground_clutter`. Catálogo do que cada bioma desenha:
+  `lovec . test_one revisao_catalogo [bioma]`. Também: árvore seca do gelo regerada (2 variantes, `lit = 1`), musgo/tufo verde
+  dos campos na base da pedra e da placa do ato 2 e da placa do ato 6 recolorido ao bioma, cogumelos claros do pântano
+  escurecidos, loja do ato 4 sem o bloco cinza solto e com montes de neve na base.
 
 # Histórico — v1-v3 (projeção plana por scanline, SUBSTITUÍDA)
 

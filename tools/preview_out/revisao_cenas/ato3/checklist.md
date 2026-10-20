@@ -14,3 +14,11 @@ Mesmo método (`lovec . test_one revisao_cenas 3`). Antes: `recortes/` e `antes/
 | Castelo | ok | ok | ok | ok | - | ok | assinatura | - | ok | ../castelos_seis_atos.png |
 | Viagem | correção genérica do marco passando | | | | | | | | corrigido | depois/folha_viagem.jpg |
 | Batalha / elite | ok | ok | ok | ok | ok | ok | ok | inimigo escuro sobre fundo escuro (frente de monstros) | obs | ../batalhas_seis_atos.jpg |
+
+## Segunda rodada (20/Out/2026)
+
+| Item | Antes | Veredito | Prova |
+|---|---|---|---|
+| Estandarte battle | vinho escuro sobre terra escura | corrigido: cinza de cinzas com o cervo dourado | ../estandartes/fork_ato3.png, ../estandartes/chegada_ato3.png |
+| Toco (`abyss_stump_0..2`) | caixinha marrom procedural de 8x9 px (sem PNG), 66 ocorrências nas capturas | regerado: PixelLab `create_image_pro`, toco carbonizado com rachaduras em brasa (candidatas 3, 17, 22) | ../arte_base/candidatas/toco_abismo.png, ../catalogo/abyss.png |
+| Flores procedurais | pontinhos laranja gerados em código | removidas do sorteio (as brasas de chão cobrem o papel) | ../catalogo/abyss.png |

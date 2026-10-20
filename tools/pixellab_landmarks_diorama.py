@@ -58,6 +58,26 @@ SPECS = {
         "different sizes with glowing orange cracks, two charred crossed logs with ember-red bark, a "
         "lively orange and yellow fire in the middle, a few black cinders around the ring, the stones in "
         "front overlap the logs, low and wider than tall, no flat colored pad under it."),
+    "ab_stump": ("abyss_deadtree_0.png", 44, 36, "lava_r",
+        "a short charred tree stump of a scorched volcanic wasteland: thick black burnt bark split by "
+        "thin glowing orange cracks, a cut top with dark growth rings and a faint ember glow, two or three "
+        "gnarled roots gripping the ash, a small loose cinder stone at the foot."),
+    "fr_stump": ("frost_rock_0.png", 44, 36, "cold_r",
+        "a short frozen tree stump in deep snow: dark grey-brown bark with frost, a thick cap of snow on "
+        "the cut top, icicles on one side, snow drifted against the roots, two roots disappearing into the "
+        "snow."),
+    "ma_stump": ("marsh_deadtree_1.png", 44, 36, "moon_r",
+        "a short rotten swamp tree stump: dark wet bark covered in green moss patches, a hollow broken top, "
+        "hanging moss strands, a few small pale fungi on the side, roots sinking into dark mud with a tiny "
+        "puddle at the foot."),
+    "du_rock": ("dusk_tree_1.png", 56, 40, "sun_l",
+        "a low weathered boulder of an autumn dusk heath: violet-grey stone with a warm lit top face and a "
+        "darker side face, a few cracks, small dry golden grass tufts and two fallen red leaves at its foot."),
+    "fr_dead": ("frost_deadtree_0.png", 90, 126, "cold_r",
+        "a bare leafless winter tree on a frozen tundra: thick dark grey-brown trunk with real volume, its "
+        "right face lit by cold sun and its left face in deep blue shadow, a few big forked limbs splitting "
+        "into thinner branches in front of and behind the trunk, snow lying on top of every limb and in the "
+        "forks, roots spreading into a small snow drift at the base, no leaves."),
     "ma_elite": ("anim/marsh_landmark_elite/0.png", 72, 80, "moon_r",
         "a cursed swamp totem: a thick rotten tree stump carved into a tall post with a horned animal "
         "skull nailed on top, three glowing green runes carved down the front, hanging moss strands, "

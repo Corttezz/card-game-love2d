@@ -413,6 +413,23 @@ function M.run()
         t:truthy(string.format("gelo: chão claro de neve (luminância %.2f ≥ 0,65)", L), L >= 0.65)
     end
 
+    do
+        local faltam = {}
+        local clut = require("src.data.ground_clutter").biomes
+        for _, b in ipairs(require("src.data.biomes")) do
+            local kinds = {}
+            for k in pairs(b.propWeights or {}) do kinds[#kinds + 1] = k end
+            for _, e in ipairs(clut[b.id] or {}) do kinds[#kinds + 1] = e.kind end
+            for _, k in ipairs(kinds) do
+                local path = "assets/sprites/world/" .. b.id .. "_" .. k .. "_0.png"
+                if not love.filesystem.getInfo(path) then faltam[#faltam + 1] = b.id .. "_" .. k end
+            end
+        end
+        table.sort(faltam)
+        t:truthy("todo prop e todo detalhe de chão tem arte desenhada (sem sprite procedural): "
+            .. (#faltam == 0 and "ok" or table.concat(faltam, ", ")), #faltam == 0)
+    end
+
     return t:done()
 end
 

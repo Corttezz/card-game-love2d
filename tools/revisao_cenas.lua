@@ -101,8 +101,21 @@ local function save(name, rows)
     saved[#saved + 1] = base
 end
 
+local function onlyKinds(bio)
+    local only = os.getenv("REVISAO_ONLY")
+    if not only or only == "" then return end
+    local b = require("src.data.biomes")[bio]
+    local w = {}
+    for k in only:gmatch("[^,]+") do if b.propWeights[k] then w[k] = b.propWeights[k] * 4 end end
+    for k, v in pairs(b.propWeights) do
+        if v and os.getenv("REVISAO_STRICT") ~= "1" and (k == "tree" or k == "pine" or k == "deadtree") then w[k] = v end
+    end
+    b.propWeights = w
+end
+
 local function worldSetup(bio)
     local WorldRoad = require("src.ui.WorldRoad")
+    onlyKinds(bio)
     canvas()
     WorldRoad.clearCache()
     WorldRoad.resetRun()
