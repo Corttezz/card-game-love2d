@@ -565,6 +565,7 @@ local function clipMetrics(id, animName)
     end
     m.framePads = {}
     m.frameHeights = {}
+    m.frameFeet = {}
     if imgPath and fdir and info and info.type == "directory" then
         local files = love.filesystem.getDirectoryItems(fdir)
         table.sort(files, function(a, b)
@@ -577,15 +578,18 @@ local function clipMetrics(id, animName)
                 local ok, data = pcall(love.image.newImageData, fdir .. "/" .. f)
                 local pad = m.pad
                 local fh = 0
+                local feet = false
                 if ok and data then
-                    local g, _, _, _, top = groundOf(data)
+                    local g, fl, fr, _, top = groundOf(data)
                     if g then
                         pad = (data:getHeight() - 1) - g
                         fh = g - top + 1
+                        feet = { fl, fr }
                     end
                 end
                 m.framePads[#m.framePads + 1] = pad
                 m.frameHeights[#m.frameHeights + 1] = fh
+                m.frameFeet[#m.frameFeet + 1] = feet
             end
         end
     end
@@ -699,6 +703,13 @@ function EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA)
         love.graphics.rectangle("fill", math.floor(footCx - wk / 2),
             yBase + (i - 1) * P - P, wk, P)
     end
+end
+
+function EnemyRenderer.contactK(floating, animName, sinkK)
+    if not floating then return 1 end
+    if animName ~= "death" then return 0 end
+    local k = math.max(0, math.min(1, sinkK or 0))
+    return k * k
 end
 
 function EnemyRenderer.shadowProfile(pose, animName, frameH, idleH)
@@ -851,7 +862,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         groundY = cy,
         footBottom = math.floor(drawY) + (ih - footPad) * scale,
         scale = scale, frame = frameIdx, pad = footPad,
-        floating = floating, drawY = drawY, ih = ih,
+        floating = floating, drawY = drawY, ih = ih, iw = iw,
     }
 
     lastCenterX = bodyCx + jitter + atkDX + knockDX + driftX
@@ -877,8 +888,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             shDX = dirX * lift * 0.55
             shDY = lift * 0.16
         end
-        local shX = cx + jitter * 0.5 + shDX
-        local shY = cy - 1 + sink + shDY
+        local gdx = atkDX + knockDX + driftX
+        local shX = cx + jitter * 0.5 + shDX + gdx
+        local shY = cy - 1 + sink + shDY + math.max(0, atkDY)
 
         local sx0 = -(iw * scale) / 2
         local sy0 = -(ih * scale) + footY - sink
@@ -909,17 +921,21 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 end
             end)
         local footW, footCx = nil, nil
-        if curM.footL and curM.footR then
-            footW = (curM.footR - curM.footL + 1) * scale
-            footCx = cx + ((curM.footL + curM.footR + 1) / 2 - curM.w / 2) * scale
-                + jitter * 0.5
+        local fL, fR = curM.footL, curM.footR
+        local ff = currentAnimName == "death" and curM.frameFeet and curM.frameFeet[frameIdx]
+        if ff then fL, fR = ff[1], ff[2] end
+        if fL and fR then
+            footW = (fR - fL + 1) * scale
+            footCx = cx + ((fL + fR + 1) / 2 - curM.w / 2) * scale
+                + jitter * 0.5 + gdx
         end
-        if drawn and footW and not floating then
-            EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA)
+        local contactK = EnemyRenderer.contactK(floating, currentAnimName, poseSink)
+        if drawn and footW and contactK > 0 then
+            EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA * contactK)
         end
         if not drawn then
             local baseW = footW or (((curM.cw > 0) and curM.cw or iw) * scale)
-            shX = (footCx or (bodyCx + jitter * 0.5)) + shDX
+            shX = (footCx or (bodyCx + jitter * 0.5 + gdx)) + shDX
             local rx = baseW * 0.46 * shK
             local ry = math.max(3, baseW * 0.060 * shK)
             local a = 0.30 * shA * sceneShadowA
@@ -1079,8 +1095,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             local s = (targetH / up.size.h) * popScale
             local sw2, sh2 = up.size.w * s, up.size.h * s
             love.graphics.setColor(1, 1, 1, alpha * 0.95)
+            local cH = curM.frameHeights and curM.frameHeights[frameIdx]
+            if not cH or cH <= 0 then cH = ih - footPad end
+            local headY = drawY + (ih - footPad - cH) * scale
             up.draw(math.floor(drawX + bodyW / 2 - sw2 / 2),
-                math.floor(drawY - sh2 - 4 + k * 8), s)
+                math.floor(headY + cH * scale * 0.30 - sh2 / 2 - k * 10), s)
         end
         love.graphics.setColor(1, 1, 1, 1)
     end

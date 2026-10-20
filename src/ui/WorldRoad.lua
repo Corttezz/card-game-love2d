@@ -4336,6 +4336,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
         lift = -ER.poseOffsetY(e.spriteId, e.ih * s, now, 0)
         shX = cx + ShadowEngine.tipShiftAt(cx) * lift * 0.55
         cx = cx + ER.poseOffsetX(e.spriteId, e.ih * s, now, 0)
+        shX = shX + ER.poseOffsetX(e.spriteId, e.ih * s, now, 0)
     end
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = sy - e.ih * s + footY - lift
