@@ -2806,8 +2806,8 @@ local FORK_SPREAD = 0.15
 
 LMG.PLAN = { midLo = 6.9, midHi = 12.3, midPick = 9.0, sameGap = 5, oppGap = 2.5,
              skipLo = FORK_REL + 3, skipHi = MARK_REL + 1, pushLo = FORK_REL - 1.5,
-             nearLo = -3, nearHi = 3.5, battleNext = MARK_REL - ARRIVE_REL + 20,
-             bands = { { lo = 3.6, hi = 12.5, battle = true, haveLo = 3.5, haveHi = 12.5 },
+             nearLo = -3, nearHi = 6.0, battleNext = MARK_REL - ARRIVE_REL + 20,
+             bands = { { lo = 6.1, hi = 12.5, battle = true, haveLo = 6.0, haveHi = 12.5 },
                        { lo = 18.6, hi = 19.5, haveLo = 13.5, haveHi = 20.5 },
                        { lo = 33.6, hi = 42.5, haveLo = 33.5, haveHi = 42.5 } } }
 WorldRoad.LUM_PLAN = LMG.PLAN

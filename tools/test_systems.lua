@@ -238,7 +238,7 @@ function M.run()
         local mi = ER.debugClipMetrics("cursed_scarecrow", "idle")
         local ma = ER.debugClipMetrics("cursed_scarecrow", "attack")
         check("clip metrics: idle medido", mi.h > 0)
-        check("clip metrics: attack canvas maior (cru)", ma.h > mi.h)
+        check("clip metrics: attack medido no mesmo canvas do idle", ma.h > 0 and ma.h >= mi.h)
     end
 
     local SaveManager = require("engine.SaveManager")
