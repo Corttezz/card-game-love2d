@@ -132,6 +132,19 @@ function M.capture(act, seed, scenario, saveDir)
             local key = "arrival@" .. string.format("%.1f", WorldRoad._camZ)
             log.presence[key] = math.max(log.presence[key] or 0, nearPosts())
         end
+        local lm = WorldRoad._lmMark
+        if not f and WorldRoad._landmark and lm and lm.lm == WorldRoad._landmark and lm.px and not WorldRoad._travel then
+            for _, he in ipairs(WorldRoad._hitScene) do
+                local q = he.ref
+                local d = q and q.z and LEc.def(q.bid, q.kind)
+                if d and d.roadside and q.z - WorldRoad._camZ < lm.rel
+                   and he.x1 < lm.px + lm.w * 0.5 and he.x2 > lm.px - lm.w * 0.5
+                   and he.y1 < lm.py and he.y2 > lm.py - lm.h then
+                    log.cover[#log.cover + 1] = { uid = q.uid or 0, kind = q.kind, frame = frame, mark = 0,
+                        phase = "landmark", rel = q.z - WorldRoad._camZ, x = he.x1, y = he.y1 }
+                end
+            end
+        end
         if not f or not f._geo then return end
         local relM = f.markZ - WorldRoad._camZ
         for i = 1, f.n do

@@ -131,7 +131,7 @@ for bid, kinds in pairs(CATALOG) do
 end
 function LuminaireEngine.roadKind(bid) return ROAD_KIND[bid] end
 LuminaireEngine.EDGE_GAP = 0.02
-LuminaireEngine.ROAD_STEP = 24
+LuminaireEngine.ROAD_STEP = 34
 function LuminaireEngine.edgeGap(bid)
     local d = CATALOG[bid] and ROAD_KIND[bid] and CATALOG[bid][ROAD_KIND[bid]]
     return (d and d.edgeGap) or LuminaireEngine.EDGE_GAP

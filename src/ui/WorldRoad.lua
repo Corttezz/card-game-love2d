@@ -2951,10 +2951,10 @@ function WorldRoad.postBox(bid, kind, side, z, camZ, g, w, out)
 end
 
 LMG.MARK_SLOT = { margin = 10, label = 30, labelHalf = 64 }
-function LMG.markExtent(g, bid, w)
-    local tM = g.tOf(MARK_REL)
+function LMG.markExtent(g, bid, w, relX)
+    local tM = g.tOf(relX or MARK_REL)
     if not tM then return nil end
-    local key = bid .. "|" .. w .. "|" .. g.h
+    local key = bid .. "|" .. w .. "|" .. g.h .. "|" .. (relX or MARK_REL)
     local c = LMG.extCache or {}
     LMG.extCache = c
     if c[key] then return c[key] end
@@ -2981,13 +2981,95 @@ function LMG.markSlotOk(p, z, kind, bid, cam)
     local box = E and WorldRoad.postBox(bid, kind, p.side, z, cam, g, w, LMG.slotBox)
     if not box then return true end
     LMG.slotBox = box
-    local S = LMG.MARK_SLOT
-    local reach = (FORK_SPREAD + LMG.MARK_FIT.reach) * w + E.hw + S.margin
-    local yb = math.max(g.latY(reach, E.t), g.latY(-reach, E.t), g.latY(0, E.t)) + S.margin
-    local yt = math.min(g.latY(reach, E.t), g.latY(-reach, E.t), g.latY(0, E.t)) - E.hh - S.label - S.margin
-    if box.y1 >= yb or box.y2 <= yt then return true end
-    local cx = g.cx + roadWobble(cam + MARK_REL, E.t, w) * 0.5
-    return box.x1 >= cx + reach or box.x2 <= cx - reach
+    LMG.cand = LMG.cand or {}
+    local c = LMG.cand
+    c.bid, c.kind, c.side, c.z = bid, kind, p.side, z
+    E.bid = bid
+    if not LMG.centerClear(g, w, E, cam, LMG.slotBox, rel) then return false end
+    return LMG.marksFeasible(g, w, E, cam, p, c)
+end
+
+function LMG.centerClear(g, w, E, cam, box, rel)
+    local G, S = LMG.GLUE, LMG.MARK_SLOT
+    local relE = WorldRoad.BATTLE_REL
+    local ehw = G.halfW * WorldRoad.enemyScreenK(g.h) * WorldRoad.battleSizeK(relE)
+    local A = LMG.markExtent(g, E.bid, w, ARRIVE_REL)
+    if not A then return true end
+    local objs = { { ARRIVE_REL, A.hw, A.hh }, { relE, ehw, ehw * 2.6 } }
+    for _, o in ipairs(objs) do
+        local t = g.tOf(o[1])
+        if t and rel < o[1] + G.behind then
+            local ox = g.cx + roadWobble(cam + o[1], t, w)
+            local oy = g.latY(0, t)
+            local hw = o[2] + S.margin
+            if box.x1 < ox + hw and box.x2 > ox - hw and box.y1 < oy + S.margin and box.y2 > oy - o[3] - S.margin then
+                return false
+            end
+        end
+    end
+    return true
+end
+
+function LMG.marksFeasible(g, w, E, cam, self, cand)
+    local F, S = LMG.MARK_FIT, LMG.MARK_SLOT
+    local boxes, bases = {}, {}
+    local function add(q)
+        local rel = q.z - cam
+        if rel < MARK_REL and rel > -7 then
+            boxes[#boxes + 1] = WorldRoad.postBox(q.bid, q.kind, q.side, q.z, cam, g, w, {})
+        end
+        if rel > FORK_REL then
+            bases[#bases + 1] = WorldRoad._postBase(q, cam, g, w, {})
+        end
+    end
+    for _, q in ipairs(WorldRoad._props) do
+        local d = q ~= self and not q.ghost and LuminaireEngine.def(q.bid, q.kind)
+        if d and d.roadside then add(q) end
+    end
+    add(cand)
+    local tM = E.t
+    local hw = E.hw + S.margin
+    local wobM = roadWobble(cam + MARK_REL, tM, w) * 0.5
+    local placed = {}
+    for _, d in ipairs({ 0, -1, 1 }) do
+        local k0 = d * FORK_SPREAD
+        local n = math.floor(F.reach / F.step + 0.5)
+        local found = false
+        for j = 0, 2 * n do
+            local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
+            if (d == 0 and math.abs(k) <= F.centerMax) or (d ~= 0 and k * d >= F.sideMin) then
+                local off = k * w + wobM
+                local py = g.latY(off, tM)
+                local x1, x2 = g.cx + off - hw, g.cx + off + hw
+                local y1, y2 = py - E.hh - S.label - S.margin, py + S.margin
+                local ok = true
+                for _, q in ipairs(boxes) do
+                    if q.x1 < x2 and q.x2 > x1 and q.y1 < y2 and q.y2 > y1 then ok = false break end
+                end
+                if ok then
+                    for _, q in ipairs(placed) do
+                        if q[1] < x2 and q[2] > x1 then ok = false break end
+                    end
+                end
+                if ok then
+                    for _, B in ipairs(bases) do
+                        local kk = math.min(1, math.max(0, (B.rel - FORK_REL) / (MARK_REL - FORK_REL)))
+                        kk = kk * kk * (3 - 2 * kk)
+                        local cc = g.cx + B.wob * 0.5 + k * w * kk
+                        local h = B.hf * (1 - 0.22 * kk) + B.jag
+                        if B.x1 < cc + h and B.x2 > cc - h then ok = false break end
+                    end
+                end
+                if ok then
+                    placed[#placed + 1] = { x1, x2 }
+                    found = true
+                    break
+                end
+            end
+        end
+        if not found then return false end
+    end
+    return true
 end
 
 function WorldRoad.lumPlanVerdict(p, z, kind, bid)
@@ -3129,6 +3211,23 @@ function LMG.layoutMarks(f)
                 if b then best, bestBox = k, b; break end
             end
         end
+        for pass = 1, 2 do
+            if bestBox then break end
+            for j = 1, math.floor(0.84 / F.step) do
+                local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
+                if math.abs(k) <= 0.42 and (pass == 2 or baseClear(k, f.n)) then
+                    local b = boxAt(i, k, 0)
+                    local free = b and not hits(b, postsAt[1])
+                    if free then
+                        for _, q in ipairs(placed) do
+                            if q.x1 < b.x2 and q.x2 > b.x1 then free = false break end
+                        end
+                    end
+                    if free then best, bestBox = k, b; break end
+                end
+            end
+        end
+        if not bestBox then require("src.core.Debug").warn("WorldRoad: marco sem lugar livre de poste") end
         offK[i] = best
         placed[#placed + 1] = bestBox or boxAt(i, best, 0)
     end
