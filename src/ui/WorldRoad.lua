@@ -3003,7 +3003,10 @@ function LMG.centerClear(g, w, E, cam, box, rel)
     local ehw = G.halfW * WorldRoad.enemyScreenK(g.h) * WorldRoad.battleSizeK(relE)
     local A = LMG.markExtent(g, E.bid, w, ARRIVE_REL)
     if not A then return true end
-    local objs = { { ARRIVE_REL, A.hw, A.hh }, { relE, ehw, ehw * 2.6 } }
+    local objs = LMG.CC or { {}, {} }
+    LMG.CC = objs
+    objs[1][1], objs[1][2], objs[1][3] = ARRIVE_REL, A.hw, A.hh
+    objs[2][1], objs[2][2], objs[2][3] = relE, ehw, ehw * 2.6
     for _, o in ipairs(objs) do
         local t = g.tOf(o[1])
         if t and rel < o[1] + G.behind then
@@ -3018,16 +3021,22 @@ function LMG.centerClear(g, w, E, cam, box, rel)
     return true
 end
 
+LMG.DIRS = { 0, -1, 1 }
 function LMG.marksFeasible(g, w, E, cam, self, cand)
     local F, S = LMG.MARK_FIT, LMG.MARK_SLOT
-    local boxes, bases = {}, {}
+    local MF = LMG.MF or { boxP = {}, baseP = {}, boxes = {}, bases = {}, placed = {}, pl = {} }
+    LMG.MF = MF
+    local boxes, bases = MF.boxes, MF.bases
+    local nb, nB = 0, 0
     local function add(q)
         local rel = q.z - cam
         if rel < MARK_REL and rel > -7 then
-            boxes[#boxes + 1] = WorldRoad.postBox(q.bid, q.kind, q.side, q.z, cam, g, w, {})
+            local o = WorldRoad.postBox(q.bid, q.kind, q.side, q.z, cam, g, w, MF.boxP[nb + 1] or {})
+            if o then nb = nb + 1; MF.boxP[nb] = o; boxes[nb] = o end
         end
         if rel > FORK_REL then
-            bases[#bases + 1] = WorldRoad._postBase(q, cam, g, w, {})
+            local o = WorldRoad._postBase(q, cam, g, w, MF.baseP[nB + 1] or {})
+            if o then nB = nB + 1; MF.baseP[nB] = o; bases[nB] = o end
         end
     end
     for _, q in ipairs(WorldRoad._props) do
@@ -3035,11 +3044,14 @@ function LMG.marksFeasible(g, w, E, cam, self, cand)
         if d and d.roadside then add(q) end
     end
     add(cand)
+    for i = nb + 1, #boxes do boxes[i] = nil end
+    for i = nB + 1, #bases do bases[i] = nil end
     local tM = E.t
     local hw = E.hw + S.margin
     local wobM = roadWobble(cam + MARK_REL, tM, w) * 0.5
-    local placed = {}
-    for _, d in ipairs({ 0, -1, 1 }) do
+    local placed, np = MF.placed, 0
+    for i = #placed, 1, -1 do placed[i] = nil end
+    for _, d in ipairs(LMG.DIRS) do
         local k0 = d * FORK_SPREAD
         local n = math.floor(0.25 / F.step + 0.5)
         local found = false
@@ -3069,7 +3081,11 @@ function LMG.marksFeasible(g, w, E, cam, self, cand)
                     end
                 end
                 if ok then
-                    placed[#placed + 1] = { x1, x2 }
+                    np = np + 1
+                    local pe = MF.pl[np] or {}
+                    MF.pl[np] = pe
+                    pe[1], pe[2] = x1, x2
+                    placed[np] = pe
                     found = true
                     break
                 end
