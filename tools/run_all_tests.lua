@@ -223,6 +223,8 @@ function M.run()
             failed = failed + 1
         end
         results[#results + 1] = { name = suite.name, group = suite.group, status = status }
+        collectgarbage("collect")
+        collectgarbage("collect")
     end
 
     print("\n========================================")

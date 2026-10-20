@@ -587,7 +587,7 @@ function RestScreen:_buildForgeLines(cd, gains, lvl)
         add(statLabel("def"), cur, cur + gains.def, "+" .. gains.def, "armor")
     end
     if gains.effectIndex and cd.effects and cd.effects[gains.effectIndex] then
-        local base = cd.effects[gains.effectIndex].value or 0
+        local base = cd.effects[gains.effectIndex][gains.effectField or "value"] or 0
         local cur = base + gains.effect * lvl
         add(statLabel("effect"), cur, cur + gains.effect, "+" .. gains.effect, "buff")
     end
@@ -1023,7 +1023,7 @@ function RestScreen:_hoverPanelContent(entry)
                 .. "  " .. cur .. "  ->  " .. (cur + gains.def))
         end
         if gains.effectIndex and cd.effects and cd.effects[gains.effectIndex] then
-            local base = cd.effects[gains.effectIndex].value or 0
+            local base = cd.effects[gains.effectIndex][gains.effectField or "value"] or 0
             local cur = base + gains.effect * lvl
             table.insert(gainLines, statLabel("effect")
                 .. "  " .. cur .. "  ->  " .. (cur + gains.effect))

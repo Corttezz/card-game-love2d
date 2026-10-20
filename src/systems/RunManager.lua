@@ -706,6 +706,10 @@ local UPGRADABLE_EFFECT_TYPES = {
     damage_bonus_self = true, gain_strength = true, gain_dexterity = true,
 }
 
+local STACK_EFFECT_TYPES = { apply_debuff = true }
+RunManager.STACK_EFFECT_TYPES = STACK_EFFECT_TYPES
+RunManager.STACKED_DEBUFFS = { poison = true, burn = true }
+
 function RunManager.getForgeGains(cardData)
     if not cardData then return {} end
     local gains = {}
@@ -720,9 +724,20 @@ function RunManager.getForgeGains(cardData)
     end
     if not hasBasic and cardData.effects then
         for i, eff in ipairs(cardData.effects) do
-            if eff.value and UPGRADABLE_EFFECT_TYPES[eff.type] then
+            local field = nil
+            if type(eff.value) == "number" and UPGRADABLE_EFFECT_TYPES[eff.type] then
+                field = "value"
+            elseif STACK_EFFECT_TYPES[eff.type] then
+                if RunManager.STACKED_DEBUFFS[eff.value] then
+                    field = type(eff.stacks) == "number" and "stacks" or nil
+                else
+                    field = type(eff.duration) == "number" and "duration" or nil
+                end
+            end
+            if field then
                 gains.effectIndex = i
                 gains.effectType = eff.type
+                gains.effectField = field
                 gains.effect = Config.Offers.FORGE_EFFECT_PER_LVL
                 break
             end
@@ -744,7 +759,8 @@ function RunManager:applyUpgradesToInstance(instance, level)
     if gains.effectIndex and instance.effects
         and instance.effects[gains.effectIndex] then
         local eff = instance.effects[gains.effectIndex]
-        eff.value = eff.value + gains.effect * level
+        local field = gains.effectField or "value"
+        eff[field] = eff[field] + gains.effect * level
     end
     local ok, img = pcall(function()
         return require("src.ui.CardFrame").render(instance)

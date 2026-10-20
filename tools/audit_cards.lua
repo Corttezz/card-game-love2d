@@ -526,6 +526,11 @@ function M.behaviorAudit(opts)
                     counted.forged = counted.forged + 1
                     local delta = (g2.enemyDmg - got.enemyDmg) + (g2.armor - got.armor)
                         + (g2.hpDelta - got.hpDelta) + (g2.str - got.str) + (g2.dex - got.dex)
+                    for name, st in pairs(g2.status or {}) do
+                        local base = got.status and got.status[name]
+                        delta = delta + (st.stacks or 0) - (base and base.stacks or 0)
+                            + (st.duration or 0) - (base and base.duration or 0)
+                    end
                     if delta <= 0 then
                         issues[#issues + 1] = string.format(
                             "%s (forja +%d): forjar nao mudou nada mensuravel", id, lvl)
@@ -822,7 +827,7 @@ function M.descAudit()
                     local newVal
                     if gains.atk then newVal = f.attack
                     elseif gains.def then newVal = f.defense
-                    elseif gains.effectIndex then newVal = f.effects[gains.effectIndex].value end
+                    elseif gains.effectIndex then newVal = f.effects[gains.effectIndex][gains.effectField or "value"] end
                     local found = false
                     for num in ft:gmatch("%d+") do
                         if tonumber(num) == newVal then found = true end
