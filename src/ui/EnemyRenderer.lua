@@ -918,7 +918,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     do
         local ShadowEngine = require("engine.ShadowEngine")
-        local sceneShadowA = (opts and opts.shadowA) or 1
+        local sceneShadowA = ((opts and opts.shadowA) or 1) * ((opts and opts.alpha) or 1)
         local sink = math.max(0, math.min(1, poseSink))
         local shK = pose.shadowK + (1 - pose.shadowK) * sink
         local shA = pose.shadowA + (1 - pose.shadowA) * sink
@@ -1039,17 +1039,18 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         tintG = pulse * (1 - 0.45 * k * throb)
         tintB = pulse * (1 - 0.45 * k * throb)
     end
+    local bodyA = (opts and opts.alpha) or 1
     local gradeC = SceneGrade.color("enemy", SceneGrade.depth(), EnemyRenderer._gradeC)
     tintR, tintG, tintB = tintR * gradeC[1], tintG * gradeC[2], tintB * gradeC[3]
-    if hasAnim then
+    if hasAnim and bodyA >= 1 then
         EnemyRenderer.drawRim(function(ox, oy)
             currentAnim:draw(drawX + ox, drawY + oy, scale)
         end, drawX + (iw * scale) / 2, scale)
     end
-    love.graphics.setColor(tintR, tintG, tintB, 1)
+    love.graphics.setColor(tintR, tintG, tintB, bodyA)
 
     if hasAnim then
-        currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, 1 })
+        currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, bodyA })
     else
         local sprites = loadStatic(id)
         local staticImg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
@@ -1193,7 +1194,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 or sprites.west or sprites.north)
         end
         local flatColor = SceneGrade.flatColor("enemy", {})
-        if animRef or staticRef then
+        if (animRef or staticRef) and bodyA >= 1 then
             LightEngine.submitOccluder({
                 z = (((package.loaded["src.ui.WorldRoad"] or {}).BATTLE_REL)
                     or 9) + 6,

@@ -133,6 +133,23 @@ function M.run()
         end
     end
 
+    do
+        EnemyRenderer.clearCache()
+        EnemyRenderer.resetRun()
+        local g = { enemy = { spriteId = "rot_colossus", isBoss = true, health = 10 } }
+        local alphas = {}
+        ShadowEngine.silhouette = function(x, y, o) alphas[#alphas + 1] = o.alphaK return true end
+        for _, a in ipairs({ 1, 0.5, 0 }) do
+            ShadowEngine.setFrame(cx - 600, W, 0.85, 0.8)
+            contact = nil
+            love.graphics.setCanvas(canvas)
+            EnemyRenderer.draw(g, cx, cy, { alpha = a })
+            love.graphics.setCanvas()
+            alphas[#alphas + 1] = contact and contact.a or -1
+        end
+        t:truthy(string.format("corpo esmaecendo leva sombra e contato junto (%.2f/%.2f/%.2f)", alphas[1], alphas[3], alphas[5]),
+            math.abs(alphas[3] - alphas[1] * 0.5) < 1e-6 and alphas[5] == 0 and math.abs(alphas[4] - alphas[2] * 0.5) < 1e-6)
+    end
     ShadowEngine.silhouette = origSil
     EnemyRenderer.drawFootContact = origContact
     IconLoader.get = origGet

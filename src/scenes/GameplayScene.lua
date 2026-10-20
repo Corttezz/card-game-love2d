@@ -508,7 +508,7 @@ function GameplayScene.draw()
         local cineHidden = BossCinematic.hidesBoss()
         if InteriorDepth and not cineHidden then
             InteriorDepth.drawContact(interiorHall, game.enemy and game.enemy.spriteId,
-                enemyCx, enemyCy)
+                enemyCx, enemyCy, BossCinematic.bossAlpha())
         end
         local deathCy = nil
         if anchor.deathYr then
@@ -520,6 +520,7 @@ function GameplayScene.draw()
         local function drawEnemy()
             return EnemyRenderer.draw(game, enemyCx, enemyCy, {
                 deathCy = deathCy,
+                alpha = interiorHall and BossCinematic.bossAlpha() or nil,
                 hallTr = interiorHall and SceneBackground.getCoverTransform(sceneKey, width, sceneH) or nil,
                 shadowA = anchor.shadowA,
                 lightXr = anchor.lightXr,

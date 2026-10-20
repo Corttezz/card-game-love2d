@@ -342,6 +342,12 @@ end
 function BossCinematic.isActive() return seq ~= nil end
 function BossCinematic.phase() return seq and seq.phase or nil end
 function BossCinematic.hidesBoss() return seq ~= nil and bossHidden end
+BossCinematic.CRUMBLE_FADE = 0.7
+function BossCinematic.bossAlpha()
+    local cr = fx.crumble
+    if not (cr and cr.fadeT) then return 1 end
+    return math.max(0, math.min(1, cr.fadeT / BossCinematic.CRUMBLE_FADE))
+end
 function BossCinematic.hidesHud() return seq ~= nil and hudHidden end
 function BossCinematic.hidesHand() return seq ~= nil end
 function BossCinematic.holdsEnd() return seq ~= nil and seq.phase == "death" end
@@ -1374,7 +1380,7 @@ local function drawCrumble()
     if not cr then return end
     local P = px()
     local s = cr.s
-    local fade = cr.fadeT and (1 - clamp01(cr.fadeT / 0.7)) or 1
+    local fade = cr.fadeT and (1 - clamp01(cr.fadeT / BossCinematic.CRUMBLE_FADE)) or 1
     if fade <= 0 then return end
     local img = cr.f0.img
     for _, p in ipairs(cr.pieces) do
@@ -2613,7 +2619,7 @@ function BossCinematic.update(dt, game, ctx)
     end
     if fx.crumble then
         updateCrumble(dt)
-        if fx.crumble.fadeT and fx.crumble.fadeT >= 0.7 then fx.crumble = nil end
+        if fx.crumble.fadeT and fx.crumble.fadeT >= BossCinematic.CRUMBLE_FADE then fx.crumble = nil end
     end
     if fx.ecl then fx.ecl.t = fx.ecl.t + dt end
     if fx.dawn then fx.dawn.t = fx.dawn.t + dt end

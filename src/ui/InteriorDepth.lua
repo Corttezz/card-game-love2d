@@ -26,14 +26,14 @@ local function level(d)
     return 0
 end
 
-function InteriorDepth.drawContact(hall, spriteId, footX, footY)
+function InteriorDepth.drawContact(hall, spriteId, footX, footY, alpha)
     if not lastW or EnemyPoses.isFloating(spriteId) then return end
     local w, h = love.graphics.getWidth(), love.graphics.getHeight()
     local key = "castle_hall_" .. hall
     local tr = SceneBackground.getCoverTransform(key, w, h)
     if not tr then return end
     local s = tr.scale
-    local strength = InteriorDepth.STRENGTH[hall] or 0.55
+    local strength = (InteriorDepth.STRENGTH[hall] or 0.55) * (alpha or 1)
     local anchor = SceneAnchors.get(key)
 
     local ax = (footX - tr.ox) / s

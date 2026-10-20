@@ -164,6 +164,8 @@ function M.run(arg)
     local ShadowEngine = require("engine.ShadowEngine")
     local InteriorDepth = require("src.ui.InteriorDepth")
 
+    local origBossAlpha = BossCinematic.bossAlpha
+    if os.getenv("REVMON_ANTES") == "1" then BossCinematic.bossAlpha = function() return 1 end end
     local lastBbox
     local origDraw = EnemyRenderer.draw
     EnemyRenderer.draw = function(...)
@@ -377,6 +379,10 @@ function M.run(arg)
             tAcc = 0
             local deathT = isBoss and { 0.1, 0.4, 0.8, 1.3, 2.0, 3.0, 4.5, 6.5 }
                 or { 0.05, 0.2, 0.35, 0.5, 0.7, 0.95, 1.4, 2.5 }
+            if os.getenv("REVMON_DEATH_T") then
+                deathT = {}
+                for v in os.getenv("REVMON_DEATH_T"):gmatch("[%d%.]+") do deathT[#deathT + 1] = tonumber(v) end
+            end
             for _, tt in ipairs(deathT) do
                 step(tt - tAcc, true); tAcc = tt
                 shot(string.format("morte %.2fs", tt))
@@ -474,6 +480,7 @@ function M.run(arg)
 
     EnemyRenderer.draw = origDraw
     EnemyHud.layout = origLayout
+    BossCinematic.bossAlpha = origBossAlpha
     love.graphics.getWidth, love.graphics.getHeight = realW, realH
     love.graphics.getDimensions = realDim
     love.mouse.getPosition = realMouse
