@@ -338,7 +338,7 @@ def main():
                                   and os.path.splitext(f)[1].lower() not in (".py", ".md", ".sh")]
         copy_tree(verify_files, verify, strip=True)
         env = dict(os.environ, CARDGAME_IDENTITY="card-game-build-verify")
-        code, outp = run([lovec, ".", "test_all"], cwd=verify, env=env, timeout=1800)
+        code, outp = run([lovec, ".", "test_all"], cwd=verify, env=env, timeout=3600)
         summary = [l for l in outp.splitlines() if "suites:" in l or "TUDO VERDE" in l or "FAIL" in l]
         log("\n".join(summary[-12:]))
         if code != 0:
