@@ -124,6 +124,14 @@ return {
         dusk_tree_2 = 0.90,
     },
 
+    animStatic = {
+        fields_tree_4 = "8 tentativas PixelLab redesenham a copa (textura nova); fica com o balanço",
+        highlands_pine_4 = "9 tentativas PixelLab redesenham o pinheiro inclinado inteiro; fica com o balanço",
+        highlands_grass_0 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
+        highlands_grass_1 = "8 tentativas com textura suja; o chão já balança pelo GroundClutter",
+        marsh_deadtree_2 = "7 tentativas PixelLab sem nenhum pixel mexendo (galho nu); fica com o balanço",
+    },
+
     variants = {
         fields_tree = 6,
         dusk_tree = 7,

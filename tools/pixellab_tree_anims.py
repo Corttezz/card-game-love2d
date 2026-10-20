@@ -15,17 +15,20 @@ import pixellab_enemy_anims as F
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORLD = os.path.join(ROOT, "assets/sprites/world")
 ANIM = os.path.join(WORLD, "anim")
-OUT = os.path.join(ROOT, "tools/preview_out/arvores_anim")
+OUT = os.path.join(ROOT, "tools/preview_out", os.environ.get("ANIM_OUT", "anim_cenario"))
 RAW = os.path.join(OUT, "raw")
 JOBS = os.path.join(OUT, "jobs.json")
 
 TREES = {
-    "fields": ["fields_tree_%d" % i for i in range(6)],
-    "highlands": ["highlands_pine_0", "highlands_pine_1", "highlands_pine_2", "highlands_deadtree_0"],
-    "abyss": ["abyss_deadtree_0", "abyss_deadtree_1", "abyss_deadtree_2"],
-    "frost": ["frost_pine_0", "frost_pine_1", "frost_pine_2", "frost_deadtree_0"],
-    "marsh": ["marsh_deadtree_0", "marsh_deadtree_1", "marsh_deadtree_2"],
-    "dusk": ["dusk_tree_0", "dusk_tree_1", "dusk_tree_2"],
+    "fields": ["fields_tree_%d" % i for i in range(6)] + ["fields_bush_0", "fields_flowers_0", "fields_tuft_0"],
+    "highlands": ["highlands_pine_%d" % i for i in range(6)] + ["highlands_deadtree_0"]
+                 + ["highlands_bush_%d" % i for i in range(3)] + ["highlands_grass_%d" % i for i in range(3)],
+    "abyss": ["abyss_deadtree_%d" % i for i in range(6)] + ["abyss_bush_%d" % i for i in range(3)]
+             + ["abyss_embers_%d" % i for i in range(4)],
+    "frost": ["frost_pine_%d" % i for i in range(6)] + ["frost_deadtree_0", "frost_deadtree_1"],
+    "marsh": ["marsh_deadtree_%d" % i for i in range(8)] + ["marsh_bush_0"]
+             + ["marsh_reeds_%d" % i for i in range(3)] + ["marsh_rock_%d" % i for i in range(4)],
+    "dusk": ["dusk_tree_%d" % i for i in range(7)] + ["dusk_bush_0"] + ["dusk_blooms_%d" % i for i in range(3)],
 }
 
 FRAMES = 6
@@ -35,37 +38,85 @@ TRUNK_FRAC = 0.30
 DEAD_FRAC = 0.008
 
 STILL = (" The trunk, the roots and the outer outline of the whole tree stay "
-         "completely still and identical in every frame. No camera movement, "
+         "completely still and identical in every frame. The light comes from the "
+         "same side in every frame, the lit side and the shadow side never change. "
+         "Same colors, same palette. No camera movement, "
          "no zoom, no scaling, the tree never changes shape, size or position. "
          "Subtle idle loop that returns to the first frame.")
 
+STILL_PLANT = (" The base where it touches the ground and the outer outline stay "
+               "completely still and identical in every frame. The light comes from the "
+               "same side in every frame. Same colors, same palette. No camera movement, "
+               "no zoom, no scaling, it never changes shape, size or position. "
+               "Subtle idle loop that returns to the first frame.")
+
 PROMPTS = {
-    "leafy": ("Gentle breeze idle loop: only the leaves inside the crown rustle "
-              "and shimmer very slightly, a few pixels, small leaf clusters "
+    "leafy": ("Gentle breeze idle loop, layered like a diorama: the leaf clusters "
+              "at the front of the crown rustle a little, the clusters at the back "
+              "of the crown barely move, a few pixels at most, small leaf clusters "
               "shifting back and forth." + STILL),
-    "pine": ("Gentle breeze idle loop: only the needle tips of the branches "
-             "bob up and down very slightly, a few pixels, the layers of the "
-             "crown breathing softly." + STILL),
+    "pine": ("Gentle breeze idle loop, layered like a diorama: only the needle tips "
+             "of the branch layers bob up and down very slightly, the front layers a "
+             "little more than the back ones, one or two pixels." + STILL),
     "snow": ("Gentle breeze idle loop: only the tips of the snow-laden branches "
-             "bob very slightly, a few pixels, a few loose snowflakes drifting "
-             "off the branches." + STILL),
+             "bob very slightly, one or two pixels, the snow stays on the "
+             "branches." + STILL),
     "dead": ("Gentle breeze idle loop: only the thinnest bare twigs at the ends "
              "of the branches quiver very slightly, one or two pixels, the "
-             "thick branches and the trunk rigid." + STILL),
+             "thick branches and the trunk rigid. No leaves." + STILL),
     "ember": ("Slow idle loop: the glowing ember cracks in the bark pulse "
               "softly brighter and dimmer and the thinnest twig tips quiver "
               "one pixel." + STILL),
     "moss": ("Gentle breeze idle loop: only the hanging strands of moss sway "
              "slowly side to side, a few pixels, and the thinnest twig tips "
              "quiver." + STILL),
+    "bush": ("Gentle breeze idle loop, layered: the leaves on the top and the front "
+             "of the bush rustle a little, the inner and back leaves barely move, "
+             "one or two pixels." + STILL_PLANT),
+    "grass": ("Gentle breeze idle loop: only the tips of the grass blades and stems "
+              "sway slowly to one side and back, one or two pixels, the roots still."
+              + STILL_PLANT),
+    "reeds": ("Gentle breeze idle loop: only the tops of the reeds and cattails sway "
+              "slowly side to side, one or two pixels, the stems' bases still."
+              + STILL_PLANT),
+    "puddle": ("Gentle breeze idle loop: only the tips of the reeds growing in the "
+               "puddle sway slightly, one or two pixels. The water surface, the "
+               "stones and the mud stay perfectly still." + STILL_PLANT),
+    "embers": ("Slow idle loop: the glowing embers and hot coals on the ground pulse "
+               "softly brighter and dimmer, a tiny spark flickers, nothing moves "
+               "position." + STILL_PLANT),
+    "blooms": ("Gentle breeze idle loop: only the flower heads nod softly and the "
+               "petals flutter, one or two pixels, the stems' bases still."
+               + STILL_PLANT),
 }
 
 STYLE = {
-    "fields": "leafy", "dusk": "leafy",
+    "fields_tree": "leafy", "dusk_tree": "leafy",
     "highlands_pine": "pine", "frost_pine": "snow",
-    "abyss": "ember", "marsh": "moss",
+    "abyss_deadtree": "ember", "marsh_deadtree": "moss",
     "highlands_deadtree": "dead", "frost_deadtree": "dead",
+    "fields_bush": "bush", "highlands_bush": "bush", "abyss_bush": "bush",
+    "marsh_bush": "bush", "dusk_bush": "bush",
+    "fields_flowers": "blooms", "dusk_blooms": "blooms",
+    "fields_tuft": "grass", "highlands_grass": "grass",
+    "marsh_reeds": "reeds", "marsh_rock": "puddle", "abyss_embers": "embers",
 }
+
+TRUNK_BY_PROMPT = {"embers": 0.0, "pine": 0.12, "snow": 0.12, "bush": 0.12, "grass": 0.12, "reeds": 0.12, "blooms": 0.15,
+                   "puddle": 0.45}
+
+
+EXCLUDE = {
+    "dusk_tree_1": [(24, 28, 58, 102)],
+}
+
+
+def trunk_frac(name):
+    return TRUNK_BY_PROMPT.get(style_of(name), TRUNK_FRAC)
+
+
+CALM = (" Extremely subtle: keep every pixel of the original drawing, the texture "
+        "and shading stay exactly the same, only a few tips move by a single pixel.")
 
 
 def style_of(name):
@@ -104,20 +155,25 @@ def next_attempt(name):
     return (max(n) + 1) if n else 1
 
 
-def queue(names, seed=None, prompt_key=None, frames=FRAMES, pin=False):
+def queue(names, seed=None, prompt_key=None, frames=FRAMES, pin=False, tool="animate_image"):
     import base64
     jobs = load_jobs()
     for name in names:
         with open(base_path(name), "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
         key = prompt_key or style_of(name)
-        args = {"action": PROMPTS[key], "first_frame_base64": b64,
-                "frame_count": frames}
+        text_prompt = PROMPTS[key] + (CALM if os.environ.get("ANIM_CALM") else "")
+        if tool == "animate_image_pixminimax":
+            args = {"description": text_prompt, "first_frame_base64": b64,
+                    "frame_count": frames, "no_background": True}
+        else:
+            args = {"action": text_prompt, "first_frame_base64": b64,
+                    "frame_count": frames}
         if pin:
             args["last_frame_base64"] = b64
         if seed is not None:
             args["seed"] = seed
-        text = F.tool_text(F.rpc("tools/call", {"name": "animate_image",
+        text = F.tool_text(F.rpc("tools/call", {"name": tool,
                                                 "arguments": args}))
         m = re.search(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", text)
         if not m:
@@ -127,7 +183,7 @@ def queue(names, seed=None, prompt_key=None, frames=FRAMES, pin=False):
         os.makedirs(attempt_dir(name, att), exist_ok=True)
         jobs[f"{name}/{att}"] = {"name": name, "attempt": att, "job": m.group(1),
                                  "prompt": key, "seed": seed, "frames": frames, "pin": pin,
-                                 "tool": "animate_image", "status": "queued",
+                                 "tool": tool, "status": "queued",
                                  "t": time.time()}
         save_jobs(jobs)
         print(f"[ok] {name} tentativa {att} job {m.group(1)} prompt={key} frames={frames} pin={pin}")
@@ -172,11 +228,11 @@ def rgba(path):
     return np.array(Image.open(path).convert("RGBA"))
 
 
-def trunk_box(base):
+def trunk_box(base, frac=TRUNK_FRAC):
     a = base[:, :, 3] > 0
     ys, xs = np.where(a)
     y0, y1 = ys.min(), ys.max()
-    ty0 = int(y1 - (y1 - y0) * TRUNK_FRAC)
+    ty0 = int(y1 - (y1 - y0) * frac)
     rows = a[ty0:y1 + 1]
     cols = np.where(rows.any(axis=0))[0]
     return ty0, y1, cols.min(), cols.max()
@@ -193,7 +249,7 @@ def measure(name, attempt):
     base = rgba(base_path(name))
     frs = frames_of(name, attempt)
     bm = base[:, :, 3] > 0
-    ty0, ty1, tx0, tx1 = trunk_box(base)
+    ty0, ty1, tx0, tx1 = trunk_box(base, trunk_frac(name))
     rows = []
     g0 = frs[0] if frs else None
     for i, fr in enumerate(frs):
@@ -263,47 +319,33 @@ def rim_of(bm):
     return bm & ~n4
 
 
-def delta(base, g0, gi):
+def delta(base, g0, gi, frac=TRUNK_FRAC, name=None):
     bm = base[:, :, 3] > 0
-    ty0 = trunk_box(base)[0]
+    ty0 = trunk_box(base, frac)[0]
     moved = ~np.all(gi == g0, axis=2)
     moved &= bm
     moved[ty0:, :] = False
     moved &= ~rim_of(bm)
     moved &= gi[:, :, 3] > 0
+    for x0, y0, x1, y1 in EXCLUDE.get(name, ()):
+        moved[y0:y1, x0:x1] = False
     out = base.copy()
     out[moved] = gi[moved]
     out[~bm] = 0
     return out, int(moved.sum())
 
 
-def install(name, attempt, force=False):
-    rows = measure(name, attempt)
-    gate = all(r[1] >= IOU_MIN and r[2] >= TRUNK_MIN for r in rows)
-    if not gate and not force:
-        print(f"[FAIL] {name} tentativa {attempt}: reprovada no check, não instalada")
-        return False
-    base = rgba(base_path(name))
-    frs = [f for f in frames_of(name, attempt) if f.shape == base.shape]
-    pal = palette_of(base)
-    g = [snap_palette(f, pal) for f in frs]
-    outs = []
-    counts = []
-    for n in range(1, len(g)):
-        out, c = delta(base, g[0], g[n])
-        counts.append(c)
-        outs.append(out)
-    if max(counts) < DEAD_FRAC * int((base[:, :, 3] > 0).sum()) and not force:
-        print(f"[FAIL] {name} tentativa {attempt}: animação morta ({counts} px), não instalada")
-        return False
+def install(name, attempt, seq):
+    base, g = snapped(name, attempt)
+    outs = build(name, base, g, seq)
     dest = os.path.join(ANIM, name)
     if os.path.isdir(dest):
         shutil.rmtree(dest)
     os.makedirs(dest)
     shutil.copyfile(base_path(name), os.path.join(dest, "0.png"))
-    for n, out in enumerate(outs, 1):
+    for n, out in enumerate(outs[1:], 1):
         Image.fromarray(out).save(os.path.join(dest, f"{n}.png"))
-    print(f"[ok] {name}: {len(g)} quadros instalados em {dest} (px movidos por quadro {counts})")
+    print(f"[ok] {name}: {len(outs)} quadros instalados em {dest} (tentativa {attempt}, sequência {seq})")
     return True
 
 
@@ -358,6 +400,113 @@ def rawsheet(name, attempt, scale=3):
     print(f"[ok] {p}")
 
 
+def diffsheet(names, scale=4):
+    for name in names:
+        d = os.path.join(ANIM, name)
+        if not os.path.isdir(d):
+            print(f"[FAIL] {name}: sem pasta anim")
+            continue
+        files = sorted([f for f in os.listdir(d) if re.match(r"^\d+\.png$", f)],
+                       key=lambda f: int(f[:-4]))
+        frs = [rgba(os.path.join(d, f)) for f in files]
+        f0 = frs[0]
+        h, w = f0.shape[:2]
+        tiles = [f0]
+        for fr in frs[1:]:
+            diff = np.zeros_like(f0)
+            m = np.any(fr[:, :, :3] != f0[:, :, :3], axis=2) & (f0[:, :, 3] > 0)
+            diff[:, :, 3] = (f0[:, :, 3] > 0) * 255
+            diff[:, :, :3] = (f0[:, :, :3] * 0.35).astype(np.uint8)
+            diff[m] = (255, 60, 200, 255)
+            tiles.append(diff)
+        out = Image.new("RGBA", ((w + 4) * len(tiles) * scale, h * scale), (40, 40, 48, 255))
+        for i, t in enumerate(tiles):
+            im = Image.fromarray(t).resize((w * scale, h * scale), Image.NEAREST)
+            out.paste(im, (i * (w + 4) * scale, 0), im)
+        od = os.path.join(OUT, name.split("_")[0])
+        os.makedirs(od, exist_ok=True)
+        sp = os.path.join(od, f"diff_{name}.png")
+        out.save(sp)
+        print(f"[ok] {sp}")
+
+
+def snapped(name, attempt):
+    base = rgba(base_path(name))
+    frs = [f for f in frames_of(name, attempt) if f.shape == base.shape]
+    pal = palette_of(base)
+    return base, [snap_palette(f, pal) for f in frs]
+
+
+def build(name, base, g, seq):
+    return [base] + [delta(base, g[seq[0]], g[n], trunk_frac(name), name)[0] for n in seq[1:]]
+
+
+GATE = {"embers": (0.30, 0.20)}
+
+
+def score_seq(base, outs, cap=(0.07, 0.08)):
+    bm = base[:, :, 3] > 0
+    area = int(bm.sum())
+    moved = [int((np.any(o[:, :, :3] != base[:, :, :3], axis=2) & bm).sum()) for o in outs[1:]]
+    steps = [int((np.any(outs[i][:, :, :3] != outs[i + 1][:, :, :3], axis=2) & bm).sum())
+             for i in range(len(outs) - 1)]
+    mx = max(moved)
+    ratio = max(steps) / max(1, mx)
+    ok = (mx >= 0.012 * area and mx <= cap[0] * area and max(steps) <= cap[1] * area
+          and sum(1 for st in steps if st < 0.2 * max(steps)) <= 1
+          and 2 * sum(1 for st in steps if st >= 0.35 * max(steps)) >= len(steps))
+    return ok, moved, steps, area, mx, ratio
+
+
+def evaluate(name, attempt):
+    import itertools
+    base, g = snapped(name, attempt)
+    best = None
+    cache = {}
+    for ref in range(1, len(g)):
+        rest = list(range(ref + 1, len(g)))
+        for k in range(min(len(rest), 6), 2, -1):
+            for sub in itertools.combinations(rest, k):
+                seq = (ref,) + sub
+                outs = [base]
+                for n in sub:
+                    key = (ref, n)
+                    if key not in cache:
+                        cache[key] = delta(base, g[ref], g[n], trunk_frac(name), name)[0]
+                    outs.append(cache[key])
+                ok, moved, steps, area, mx, ratio = score_seq(base, outs, GATE.get(style_of(name), (0.07, 0.08)))
+                score = (ok, len(seq), -abs(mx - 0.03 * area), -ratio)
+                if best is None or score > best["score"]:
+                    best = {"seq": list(seq), "ok": ok, "moved": moved, "steps": steps,
+                            "area": area, "frac": round(mx / area, 4), "ratio": round(ratio, 3),
+                            "score": score}
+    return best
+
+
+def candidate(name, attempt, seq, scale=3):
+    base, g = snapped(name, attempt)
+    outs = build(name, base, g, seq)
+    bm = base[:, :, 3] > 0
+    h, w = base.shape[:2]
+    rowsimg = Image.new("RGBA", ((w + 4) * len(outs) * scale, h * 2 * scale + 4), (40, 40, 48, 255))
+    for i, o in enumerate(outs):
+        im = Image.fromarray(o).resize((w * scale, h * scale), Image.NEAREST)
+        rowsimg.paste(im, (i * (w + 4) * scale, 0), im)
+        prev = outs[i - 1] if i else outs[0]
+        m = np.any(o[:, :, :3] != prev[:, :, :3], axis=2) & bm
+        d = np.zeros_like(base)
+        d[:, :, 3] = bm * 255
+        d[:, :, :3] = (base[:, :, :3] * 0.35).astype(np.uint8)
+        d[m] = (255, 60, 200, 255)
+        im = Image.fromarray(d).resize((w * scale, h * scale), Image.NEAREST)
+        rowsimg.paste(im, (i * (w + 4) * scale, h * scale + 4), im)
+    od = os.path.join(OUT, name.split("_")[0])
+    os.makedirs(od, exist_ok=True)
+    sp = os.path.join(od, f"cand_{name}_{attempt}.png")
+    rowsimg.save(sp)
+    print(f"[ok] {sp}")
+
+
 def texmem(names):
     total = 0
     for name in names:
@@ -402,16 +551,16 @@ def main():
     if cmd == "queue":
         queue(expand(pos), seed=int(kw["seed"]) if "seed" in kw else None,
               prompt_key=kw.get("prompt"), frames=int(kw.get("frames", FRAMES)),
-              pin="pin" in kw)
+              pin="pin" in kw, tool=kw.get("tool", "animate_image"))
     elif cmd == "poll":
         poll()
     elif cmd == "check":
         return 0 if check(expand(pos)) else 1
     elif cmd == "install":
         for spec in pos:
-            name, _, att = spec.partition(":")
-            install(name, int(att) if att else max(int(x) for x in os.listdir(os.path.join(RAW, name))),
-                    force="force" in kw)
+            name, att, seq = (spec.split(":") + ["", ""])[:3]
+            seq = [int(x) for x in seq.split(",")] if seq else evaluate(name, int(att))["seq"]
+            install(name, int(att), seq)
     elif cmd == "sheet":
         sheet(expand(pos), scale=int(kw.get("scale", 1)), dt=float(kw.get("dt", 0.15)))
     elif cmd == "rawsheet":
@@ -419,6 +568,19 @@ def main():
             name, _, att = spec.partition(":")
             rawsheet(name, int(att) if att else max(int(x) for x in os.listdir(os.path.join(RAW, name))),
                      scale=int(kw.get("scale", 3)))
+    elif cmd == "diffsheet":
+        diffsheet(expand(pos), scale=int(kw.get("scale", 4)))
+    elif cmd == "evaluate":
+        for spec in pos:
+            name, _, att = spec.partition(":")
+            ev = evaluate(name, int(att))
+            ev.pop("score", None)
+            print(name, att, ev)
+    elif cmd == "candidate":
+        for spec in pos:
+            name, att, seq = (spec.split(":") + ["", ""])[:3]
+            seq = [int(x) for x in seq.split(",")] if seq else evaluate(name, int(att))["seq"]
+            candidate(name, int(att), seq, scale=int(kw.get("scale", 3)))
     elif cmd == "texmem":
         texmem(expand(pos))
     elif cmd == "status":

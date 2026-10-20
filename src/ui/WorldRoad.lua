@@ -28,6 +28,9 @@ local PropCut = {
     kinds = { tree = true, pine = true, deadtree = true, bush = true },
     nv = {}, EMPTY = {},
     anim = { fps = 5, pingpong = true }, frames = {},
+    animKinds = { tree = true, pine = true, deadtree = true, bush = true, rock = true,
+                  flowers = true, tuft = true, grass = true, reeds = true, blooms = true,
+                  embers = true },
     v4 = { 0, 1, 0, 0 }, v3 = { 0, 0, 0 }, td = {},
     STRIP_W = 400,
 }
@@ -426,7 +429,7 @@ local function luminaireFrames(bid, kind, variant)
 end
 
 function PropCut.treeFrames(bid, kind, variant)
-    if not PropCut.CREST.kinds[kind] then return nil end
+    if not PropCut.animKinds[kind] then return nil end
     local key = bid .. "_" .. kind .. "_" .. variant
     local hit = PropCut.frames[key]
     if hit ~= nil then return hit or nil end
@@ -3689,6 +3692,7 @@ function LMG.clutterEnv(g, x, w, camZ)
     e.screenK = WorldRoad.enemyScreenK(g.h)
     e.pixRef = PropCut.PIX.ref
     e.flipToSun = PropCut.flipToSun
+    e.frames, e.frameOf = PropCut.treeFrames, PropCut.frameOf
     e.sunRight = sunShadowDir(g, x, w, g.cx) < 0
     e.relMax = REL_CREST * (1 - Scene.Clutter.DATA.tMin ^ (1 / T_POW))
     e.fork = WorldRoad._fork ~= nil
@@ -4236,11 +4240,12 @@ local function drawProps(g, x, w, camZ)
                 love.graphics.setColor(math.min(1, pc[1] * vtR), math.min(1, pc[2] * vtG),
                     math.min(1, pc[3] * vtB), fadeA)
                 local dprev = nil
-                local tfr = (pv and not reduced) and PropCut.treeFrames(p.bid, p.kind, p.variant) or nil
+                local tfr = (not reduced) and PropCut.treeFrames(p.bid, p.kind, p.variant) or nil
                 if isTree then dprev = PropCut.beginDepth(img, t) end
                 PropCut.draw(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip,
-                    tfr and PropCut.frameOf(tfr, pv.windPhase / 6.2832) or nil)
+                    tfr and PropCut.frameOf(tfr, pv and pv.windPhase / 6.2832
+                        or Scene.Clutter.hash01(p.z * 0.731)) or nil)
                 PropCut.endDepth(dprev)
                 PropCut.mask(img, p.kind, math.floor(pxX), math.floor(sy + sink2),
                     rot, s * lumFlip * vflip, s, gustKx * lumFlip * vflip, t)
@@ -4803,7 +4808,7 @@ local function prewarmJobs(idx)
         end
     end
     for _, e in ipairs(Scene.Clutter.entries(bid) or PropCut.EMPTY) do
-        for v = 0, (e.n or 1) - 1 do getSprite(e.kind, v, bid) end
+        for v = 0, (e.n or 1) - 1 do getSprite(e.kind, v, bid); PropCut.treeFrames(bid, e.kind, v) end
         y()
     end
     PropCut.depthShader(); y()

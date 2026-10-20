@@ -80,7 +80,7 @@ function GroundClutter.collect(out, env)
                             local p = pool[n]
                             if not p then p = { clutter = true, kind = "clutter", lane = 0 }; pool[n] = p end
                             local fb = hash01(hs * 9.91 + 0.19) < 0.5 and -1 or 1
-                            p.z, p.side, p.bid, p.e, p.img = z, side, env.bid, e, img
+                            p.z, p.side, p.bid, p.e, p.img, p.v = z, side, env.bid, e, img, v
                             p.px, p.py, p.s, p.t, p.rel = px, py, s, t, rel
                             p.flip = env.flipToSun(img, env.sunRight, fb)
                             p.ph = hs * 1.7
@@ -116,7 +116,8 @@ function GroundClutter.draw(p, env)
     local c = Grade.color(e.family or "prop", t, col)
     love.graphics.setColor(c[1], c[2], c[3], a)
     local sink = (e.sink or 0) * s
-    love.graphics.draw(img, px, py + sink, rot, s * flip, s, iw / 2, ih)
+    local fr = not env.reduced and env.frames and env.frames(p.bid, e.kind, p.v)
+    love.graphics.draw(fr and env.frameOf(fr, hash01(p.ph)) or img, px, py + sink, rot, s * flip, s, iw / 2, ih)
     ShadowEngine.mask(img, nil, px, py + sink, rot, s * flip, s, iw / 2, ih, 0, t)
     if e.solid then
         GrassField.requireTufts(p.rel - 0.05, px, iw * s * 0.7, 2,
