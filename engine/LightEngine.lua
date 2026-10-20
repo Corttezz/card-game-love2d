@@ -17,6 +17,7 @@ local occShader
 local shaderOk = nil
 
 local queue, microQueue, occQueue = {}, {}, {}
+local pool = { e = {}, m = {}, ne = 0, nm = 0, lights = {}, entries = {}, fc = { 0, 0, 0 }, white = { 1, 1, 1 } }
 local frameActive = false
 local ambient = { 1, 1, 1 }
 local time = 0
@@ -106,6 +107,7 @@ function LightEngine.beginFrame(amb)
     for i = #queue, 1, -1 do queue[i] = nil end
     for i = #microQueue, 1, -1 do microQueue[i] = nil end
     for i = #occQueue, 1, -1 do occQueue[i] = nil end
+    pool.ne, pool.nm = 0, 0
     frameActive = true
 end
 
@@ -122,16 +124,17 @@ function LightEngine.submit(spec)
     elseif spec.flicker == "pulse" then
         inten = inten * (0.88 + 0.12 * math.sin(time * 1.7 + (spec.seed or 0)))
     end
-    local entry = {
-        x = spec.x, y = spec.y, r = radius,
-        color = spec.color or { 1, 1, 1 },
-        i = inten,
-        dither = spec.dither and 1 or 0,
-        ditherAmt = spec.ditherAmt or 1.0,
-        levels = spec.levels or 4,
-        z = spec.z or -1,
-        sy = spec.sy or 1,
-    }
+    pool.ne = pool.ne + 1
+    local entry = pool.e[pool.ne] or {}
+    pool.e[pool.ne] = entry
+    entry.x, entry.y, entry.r = spec.x, spec.y, radius
+    entry.color = spec.color or pool.white
+    entry.i = inten
+    entry.dither = spec.dither and 1 or 0
+    entry.ditherAmt = spec.ditherAmt or 1.0
+    entry.levels = spec.levels or 4
+    entry.z = spec.z or -1
+    entry.sy = spec.sy or 1
     if #queue < MAX_LIGHTS then
         queue[#queue + 1] = entry
     else
@@ -147,11 +150,13 @@ end
 function LightEngine.submitMicro(x, y, radius, color, intensity, z)
     if not frameActive or LightEngine.debugNoLights then return end
     if #microQueue >= MAX_MICRO then return end
-    microQueue[#microQueue + 1] = {
-        x = x, y = y, r = radius or 8,
-        color = color or { 1, 1, 1 }, i = intensity or 1,
-        z = z or -1, micro = true,
-    }
+    pool.nm = pool.nm + 1
+    local m = pool.m[pool.nm] or { micro = true }
+    pool.m[pool.nm] = m
+    m.x, m.y, m.r = x, y, radius or 8
+    m.color, m.i = color or pool.white, intensity or 1
+    m.z = z or -1
+    microQueue[#microQueue + 1] = m
 end
 
 function LightEngine.submitOccluder(o)
@@ -164,6 +169,11 @@ function LightEngine.tintCompensate(r, g, b)
     if not frameActive then return r, g, b end
     local k = math.min(1 / 0.55, 1 / math.max(0.55, lumaOf(ambient)))
     return math.min(1, r * k), math.min(1, g * k), math.min(1, b * k)
+end
+
+function LightEngine._entryOrder(a, b)
+    if a.z ~= b.z then return a.z > b.z end
+    return (a.occ and 0 or 1) < (b.occ and 0 or 1)
 end
 
 function LightEngine.composite(x, y, w, h)
@@ -186,10 +196,11 @@ function LightEngine.composite(x, y, w, h)
     love.graphics.setCanvas(canvas)
     love.graphics.clear(ambient[1], ambient[2], ambient[3], 1)
 
-    local lights = {}
+    local lights, entries = pool.lights, pool.entries
+    for i = #lights, 1, -1 do lights[i] = nil end
+    for i = #entries, 1, -1 do entries[i] = nil end
     for _, l in ipairs(queue) do lights[#lights + 1] = l end
     for _, m in ipairs(microQueue) do lights[#lights + 1] = m end
-    local entries = {}
     for _, l in ipairs(lights) do entries[#entries + 1] = l end
     for _, o in ipairs(occQueue) do
         local hit = false
@@ -203,10 +214,7 @@ function LightEngine.composite(x, y, w, h)
         end
         if hit or o.lift or o.flatColor then o.occ = true; entries[#entries + 1] = o end
     end
-    table.sort(entries, function(a, b)
-        if a.z ~= b.z then return a.z > b.z end
-        return (a.occ and 0 or 1) < (b.occ and 0 or 1)
-    end)
+    table.sort(entries, LightEngine._entryOrder)
 
     local mw = microImg and microImg:getWidth() or 16
     local ww = whiteImg and whiteImg:getWidth() or 2
@@ -225,7 +233,9 @@ function LightEngine.composite(x, y, w, h)
             love.graphics.setColor(1, 1, 1, 1)
             if occShader then
                 love.graphics.setShader(occShader)
-                occShader:send("flatColor", { cr, cg, cb })
+                local fc = pool.fc
+                fc[1], fc[2], fc[3] = cr, cg, cb
+                occShader:send("flatColor", fc)
             else
                 love.graphics.setShader()
                 love.graphics.setColor(cr, cg, cb, 1)
