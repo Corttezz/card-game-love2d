@@ -342,6 +342,7 @@ local function domeGeom(x, y, w, h)
     end
     return g
 end
+WorldRoad.domeGeom = domeGeom
 
 local ffi = require("ffi")
 local contentRect = setmetatable({}, { __mode = "k" })
@@ -2311,6 +2312,15 @@ local CASTLE_APPROACH = {
 local CASTLE_SINK_EXTRA = {
     fields = 0.06, frost = 0.07, marsh = 0.06, dusk = 0.06,
 }
+function WorldRoad.castleScale(g, w, bid, progress)
+    local refW = math.min(w, g.h * 1.5)
+    return (refW * 0.155) / 218 * (CASTLE_APPROACH.far + (progress ^ 1.4) * (CASTLE_APPROACH[bid] or 2.9))
+end
+function WorldRoad.castleBaseY(g, bid, cx, s, iw, ih, progress)
+    local baseY = g.crestYAt(cx) + ih * s * (0.03 + 0.20 * (1 - progress) + (CASTLE_SINK_EXTRA[bid] or 0) * progress)
+    local foot = require("src.ui.CastleFoot").limit(g, bid, cx, s, iw, ih)
+    return (foot and foot > baseY) and foot or baseY
+end
 local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local walked = math.max(0, camZ - (segBase or WorldRoad._segBase or 0))
     local progress = math.min(1, walked / SEGMENT_LEN)
@@ -2327,17 +2337,12 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
         end
     end
     local iw, ih = img:getWidth(), img:getHeight()
-    local refW = math.min(w, g.h * 1.5)
-    local baseScale = (refW * 0.155) / 218
-    local growth = CASTLE_APPROACH[bid] or 2.9
-    local s = baseScale * (CASTLE_APPROACH.far + (progress ^ 1.4) * growth)
-    local sinkExtra = (CASTLE_SINK_EXTRA[bid] or 0) * progress
+    local s = WorldRoad.castleScale(g, w, bid, progress)
     local cx = g.cx
     if segBase == WorldRoad._segBase then
         cx = cx + require("src.ui.CastleDrift").offset(camZ, progress, w)
     end
-    local baseY = g.crestYAt(cx)
-        + ih * s * (0.03 + 0.20 * (1 - progress) + sinkExtra)
+    local baseY = WorldRoad.castleBaseY(g, bid, cx, s, iw, ih, progress)
     local lmc = Scene.Grade.cfg("landmarks").castle
     if alpha >= 1 and lmc and lmc.hillShadow then
         local crest2 = g.crestYAt(cx)
@@ -2362,9 +2367,11 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
             s = s,
             progress = progress,
             h = ih * s, w = iw * s, baseY = baseY, cx = cx,
+            bid = bid, iw = iw, ih = ih, drawX = math.floor(cx - iw * s / 2),
+            drawY = math.floor(baseY - ih * s),
         }
         WorldRoad._castleBaseHalf = iw * s * 0.44
-        GrassField.requireTufts(REL_CREST - 0.1, cx, iw * s * 0.9, 6,
+        GrassField.requireTufts(REL_CREST - 0.1, cx, iw * s * 1.06, 8,
             (ih * s * 0.05) / GrassField.CELL_H)
 
         local LW = Config.Lighting.WINDOW
