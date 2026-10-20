@@ -119,6 +119,7 @@ defeito reportado em Set/2026. Ver
 ## Revisão dos monstros (20/Out/2026)
 - Sombra e faixa de contato do inimigo seguem `atkDX + knockDX + driftX` (bote, recuo do golpe, deriva do flutuante) e o `atkDY` para baixo; antes ficavam paradas enquanto o corpo avançava 46 a 70 px. Na viagem a sombra do flutuante soma a mesma deriva.
 - Contato do cadáver mede os pés do QUADRO atual da morte (`clipMetrics.frameFeet`), não o pé em pé do 1º quadro. Flutuante ganha contato só quando pousa: `EnemyRenderer.contactK(floating, clip, poseSink)` = 0 no ar, `sink²` na queda, 1 pousado.
+- Leitura no escuro (atos 3 e 5, crepúsculo do 6): `SceneGrade.FOCAL_TINT.enemy = 0.30` dá ao OCLUSOR do inimigo o flat branco + 30% do matiz do ambiente (exceção focal da regra "ambiente puro para todo oclusor"; cenário segue ambiente puro). Mais um contorno de luz fino (`EnemyRenderer.drawRim`, 1 px de arte acima e do lado oposto ao sol, cor = névoa do bioma, força por luma do ambiente: 0 com luz cheia, até 0,40 no escuro), no billboard da viagem também. Provas: `tools/preview_out/revisao_monstros/luz_atoN_{antes,depois}.jpg` (`screenshot_revisao_monstros luz:N:tag`, tod 0,65/0,85/1,0).
 - Trava: `love . test_one test_enemy_shadow_motion` (42 inimigos). Revisão visual: `lovec . test_one screenshot_revisao_monstros <ato>[:id,...]` (folha, `_pes` 2x e `_sombra` = máscara isolada por diferença de render com o motor mudo).
 
 ## v8.1 (feedback)

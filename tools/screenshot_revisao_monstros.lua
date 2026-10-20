@@ -24,7 +24,106 @@ local function rosterOf(act)
     return list
 end
 
+function M.runLuz(act, tag)
+    local vcanvas = love.graphics.newCanvas(VW, VH)
+    local realW, realH = love.graphics.getWidth, love.graphics.getHeight
+    local realDim = love.graphics.getDimensions
+    love.graphics.getWidth = function() return VW end
+    love.graphics.getHeight = function() return VH end
+    love.graphics.getDimensions = function() return VW, VH end
+    local realMouse = love.mouse.getPosition
+    love.mouse.getPosition = function() return -500, -500 end
+    require("src.i18n.I18n").init()
+    require("src.ui.PixelCanvas").enableNearest()
+    _G.EventManager = _G.EventManager or require("engine.EventManager")
+    _G.Event = _G.Event or require("engine.Event")
+    local Game = require("src.core.Game")
+    local GameplayScene = require("src.scenes.GameplayScene")
+    local EnemyRenderer = require("src.ui.EnemyRenderer")
+    local WorldRoad = require("src.ui.WorldRoad")
+    local TopBar = require("components.TopBar")
+    local GameUI = require("components.GameUI")
+    local Button = require("components.Button")
+    local EnemyRoster = require("src.systems.EnemyRoster")
+    local ActSystem = require("src.systems.ActSystem")
+    local Enemy = require("src.entities.Enemy")
+    local FontManager = require("src.ui.FontManager")
+    local font = FontManager.getFont(16)
+    local tods = { 0.65, 0.85, 1.0 }
+    local list = {}
+    for _, e in ipairs(rosterOf(act)) do
+        if e.node ~= "boss" then list[#list + 1] = e end
+    end
+    local cw, ch = 420, 470
+    local sheet = love.graphics.newCanvas(#tods * (cw + 6), #list * (ch + 6))
+    love.graphics.setCanvas(sheet)
+    love.graphics.clear(0.12, 0.12, 0.12, 1)
+    love.graphics.setCanvas()
+    for row, entry in ipairs(list) do
+        _G.EventManager.clear()
+        EnemyRenderer.clearCache()
+        EnemyRenderer.resetRun()
+        local game = Game:new()
+        game:startNewRun("warrior")
+        game:startGame()
+        local run = game.runManager.currentRun
+        run.actNumber = act
+        run.floorInAct = 5
+        run.currentNode = { type = entry.node }
+        game.enemy = EnemyRoster.spawn(Enemy, entry.id,
+            ActSystem.getEnemyStats(act, 5, entry.node))
+        game.messageSystem = nil
+        _G.game = game
+        local topBar = TopBar:new()
+        topBar:setGame(game)
+        GameplayScene.init({ game = game, topBar = topBar, gameUI = GameUI:new(),
+            playButton = Button:new(VW * 0.8, VH * 0.8, 150, 46, "Jogar") })
+        WorldRoad.setBiome(act)
+        for col, tod in ipairs(tods) do
+            WorldRoad.setTimeOfDay(tod, true)
+            for _ = 1, 40 do
+                WorldRoad.update(1 / 60)
+                EnemyRenderer.update(1 / 60)
+                WorldRoad.setTimeOfDay(tod, true)
+            end
+            love.graphics.setCanvas(vcanvas)
+            love.graphics.clear(0, 0, 0, 1)
+            GameplayScene.draw()
+            love.graphics.setCanvas()
+            local f = EnemyRenderer.getLastFoot()
+            local bx = f and f.bodyX or VW / 2
+            local gy = f and f.groundY or VH * 0.7
+            local x0 = math.max(0, math.min(VW - cw, math.floor(bx - cw / 2)))
+            local y0 = math.max(0, math.min(VH - ch, math.floor(gy - ch + 90)))
+            local q = love.graphics.newQuad(x0, y0, cw, ch, VW, VH)
+            love.graphics.setCanvas(sheet)
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(vcanvas, q, (col - 1) * (cw + 6), (row - 1) * (ch + 6))
+            love.graphics.setFont(font)
+            local LE = require("engine.LightEngine")
+            local ar, ag, ab = LE.ambientColor()
+            love.graphics.print(string.format("%.2f a%.2f r%.2f %s", tod,
+                0.299 * ar + 0.587 * ag + 0.114 * ab, EnemyRenderer.rimStrength(), entry.id),
+                (col - 1) * (cw + 6) + 4, (row - 1) * (ch + 6) + 2)
+            love.graphics.setCanvas()
+            q:release()
+        end
+    end
+    love.filesystem.createDirectory("revisao_monstros")
+    local out = "revisao_monstros/luz_ato" .. act .. "_" .. (tag or "x") .. ".png"
+    local d = sheet:newImageData()
+    d:encode("png", out)
+    d:release(); sheet:release(); vcanvas:release()
+    love.graphics.getWidth, love.graphics.getHeight = realW, realH
+    love.graphics.getDimensions = realDim
+    love.mouse.getPosition = realMouse
+    print("[revisao_monstros] " .. love.filesystem.getSaveDirectory() .. "/" .. out)
+    return true
+end
+
 function M.run(arg)
+    local la, lt = (arg or ""):match("^luz:(%d+):?(%w*)$")
+    if la then return M.runLuz(tonumber(la), lt) end
     local act, only = parseArg(arg)
     local vcanvas = love.graphics.newCanvas(VW, VH)
     local realW, realH = love.graphics.getWidth, love.graphics.getHeight

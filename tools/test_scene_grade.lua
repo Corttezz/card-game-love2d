@@ -115,11 +115,22 @@ function M.run()
     local f0 = {}
     SceneGrade.flatColor(SceneGrade.FAMILIES[1], f0)
     for _, fam in ipairs(SceneGrade.FAMILIES) do
-        local fc = SceneGrade.flatColor(fam, {})
-        if math.abs(fc[1] - f0[1]) > 1e-9 or math.abs(fc[2] - f0[2]) > 1e-9
-           or math.abs(fc[3] - f0[3]) > 1e-9 then same = false end
+        if not SceneGrade.FOCAL_TINT[fam] then
+            local fc = SceneGrade.flatColor(fam, {})
+            if math.abs(fc[1] - f0[1]) > 1e-9 or math.abs(fc[2] - f0[2]) > 1e-9
+               or math.abs(fc[3] - f0[3]) > 1e-9 then same = false end
+        end
     end
-    t:truthy("flatColor igual para TODAS as famílias", same)
+    t:truthy("flatColor igual para todas as famílias de cenário", same)
+    do
+        local fe = SceneGrade.flatColor("enemy", {})
+        local le = 0.299 * fe[1] + 0.587 * fe[2] + 0.114 * fe[3]
+        local lf = 0.299 * f0[1] + 0.587 * f0[2] + 0.114 * f0[3]
+        t:truthy(string.format("inimigo (focal) le claro: flat %.2f >= 0.8 e acima do cenario %.2f", le, lf),
+            le >= 0.8 and le >= lf)
+        t:truthy("inimigo mantem o matiz da hora (nao e branco puro)",
+            math.max(fe[1], fe[2], fe[3]) - math.min(fe[1], fe[2], fe[3]) > 0.005)
+    end
     t:truthy("flatColor = ambiente puro", math.abs(f0[1] - amb[1]) < 1e-9
         and math.abs(f0[2] - amb[2]) < 1e-9 and math.abs(f0[3] - amb[3]) < 1e-9)
 

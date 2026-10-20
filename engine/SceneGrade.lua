@@ -171,8 +171,18 @@ function SceneGrade.color(family, t, out)
     return out
 end
 
+SceneGrade.FOCAL_TINT = { enemy = 0.30 }
+
 function SceneGrade.flatColor(family, out)
     out = out or {}
+    local ft = SceneGrade.FOCAL_TINT[family]
+    if ft then
+        local m = math.max(S.ar, S.ag, S.ab, 1e-3)
+        out[1] = 1 - ft * (1 - S.ar / m)
+        out[2] = 1 - ft * (1 - S.ag / m)
+        out[3] = 1 - ft * (1 - S.ab / m)
+        return out
+    end
     local l = 0.299 * S.ar + 0.587 * S.ag + 0.114 * S.ab
     local k = 1
     if S.liftRef > 0 and l > 0 then k = math.min(S.maxLift, math.max(1, S.liftRef / l)) end

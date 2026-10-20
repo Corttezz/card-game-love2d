@@ -153,6 +153,19 @@ function M.run()
     t:eq("flutuante pousado tem contato cheio", EnemyRenderer.contactK(true, "death", 1), 1)
     t:truthy("flutuante caindo: contato cresce com a queda",
         EnemyRenderer.contactK(true, "death", 0.5) < EnemyRenderer.contactK(true, "death", 0.9))
+    do
+        local LE = require("engine.LightEngine")
+        local SG = require("engine.SceneGrade")
+        local origAmb, origAct = LE.ambientColor, SG.isActive
+        SG.isActive = function() return true end
+        LE.ambientColor = function() return 1, 1, 1 end
+        local dia = EnemyRenderer.rimStrength()
+        LE.ambientColor = function() return 0.62, 0.40, 0.36 end
+        local noite = EnemyRenderer.rimStrength()
+        LE.ambientColor, SG.isActive = origAmb, origAct
+        t:eq("contorno de luz desligado com luz cheia", dia, 0)
+        t:truthy(string.format("contorno de luz acende no escuro (%.2f)", noite), noite > 0.1 and noite <= EnemyRenderer.RIM.max)
+    end
     t:eq("apoiado sempre tem contato", EnemyRenderer.contactK(false, "idle", 0), 1)
     return t:done()
 end

@@ -4364,6 +4364,9 @@ function LMG.drawEncounterFront(g, x, w, camZ)
             { alphaK = 0.9, footPad = e.footPad,
               baseK = e.shadowBaseK, riseK = e.shadowRiseK })
     end
+    if e.anim then
+        require("src.ui.EnemyRenderer").drawRim(function(ox, oy) e.anim:draw(dx0 + ox, dy0 + oy, s) end, cx, s)
+    end
     local ec = Scene.Grade.color("enemy", t, LMG.c)
     local t4 = LMG.tint4
     t4[1], t4[2], t4[3], t4[4] = ec[1], ec[2], ec[3], 1

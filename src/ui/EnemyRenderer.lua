@@ -705,6 +705,54 @@ function EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA)
     end
 end
 
+EnemyRenderer.RIM = { max = 0.40, lumaHi = 0.85, lumaLo = 0.40, lift = 1.35 }
+EnemyRenderer._rimColor = { 0, 0, 0 }
+
+function EnemyRenderer.rimStrength()
+    if not SceneGrade.isActive() then return 0 end
+    local ar, ag, ab = LightEngine.ambientColor()
+    local l = 0.299 * ar + 0.587 * ag + 0.114 * ab
+    local R = EnemyRenderer.RIM
+    local k = (R.lumaHi - l) / (R.lumaHi - R.lumaLo)
+    return math.max(0, math.min(1, k)) * R.max
+end
+
+function EnemyRenderer.rimColor(out)
+    out = out or EnemyRenderer._rimColor
+    local r, g, b = SceneGrade.fogRaw()
+    local m = math.max(r, g, b, 1e-3)
+    local L = EnemyRenderer.RIM.lift
+    out[1], out[2], out[3] = math.min(1, r / m * L * 0.75), math.min(1, g / m * L * 0.75), math.min(1, b / m * L * 0.75)
+    return out
+end
+
+function EnemyRenderer.drawRim(drawAt, cx, scale)
+    local k = EnemyRenderer.rimStrength()
+    if k <= 0 then return false end
+    if EnemyRenderer._rimShader == nil then
+        local ok, sh = pcall(love.graphics.newShader, "shaders/occluder.glsl")
+        EnemyRenderer._rimShader = ok and sh or false
+        if not ok then Debug.warn("[EnemyRenderer] contorno de luz sem shader: " .. tostring(sh)) end
+    end
+    local sh = EnemyRenderer._rimShader
+    if not sh then return false end
+    local P = math.max(1, math.floor(scale + 0.5))
+    local away = require("engine.ShadowEngine").tipShiftAt(cx)
+    local side = (away > 0.08) and -1 or ((away < -0.08) and 1 or 0)
+    local c = EnemyRenderer.rimColor()
+    local prevShader = love.graphics.getShader()
+    local bm, am = love.graphics.getBlendMode()
+    love.graphics.setBlendMode("add", "alphamultiply")
+    love.graphics.setShader(sh)
+    sh:send("flatColor", { c[1] * k, c[2] * k, c[3] * k })
+    drawAt(0, -P)
+    if side ~= 0 then drawAt(side * P, 0) end
+    love.graphics.setShader(prevShader)
+    love.graphics.setBlendMode(bm, am)
+    love.graphics.setColor(1, 1, 1, 1)
+    return true
+end
+
 function EnemyRenderer.contactK(floating, animName, sinkK)
     if not floating then return 1 end
     if animName ~= "death" then return 0 end
@@ -993,6 +1041,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
     local gradeC = SceneGrade.color("enemy", SceneGrade.depth(), EnemyRenderer._gradeC)
     tintR, tintG, tintB = tintR * gradeC[1], tintG * gradeC[2], tintB * gradeC[3]
+    if hasAnim then
+        EnemyRenderer.drawRim(function(ox, oy)
+            currentAnim:draw(drawX + ox, drawY + oy, scale)
+        end, drawX + (iw * scale) / 2, scale)
+    end
     love.graphics.setColor(tintR, tintG, tintB, 1)
 
     if hasAnim then
