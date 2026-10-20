@@ -2,6 +2,8 @@ local M = {}
 
 M.MIN_ALPHA = 0.999
 M.VW, M.VH = 1920, 1080
+M.TREE_HALF = 0.36
+M.TREE_TOP = 0.92
 
 local function crossfading(WorldRoad)
     if WorldRoad._blend then return true end
@@ -23,7 +25,7 @@ function M.capture(act, seed, scenario)
     local WorldRoad = require("src.ui.WorldRoad")
     local PC = WorldRoad.PropCut
     local Cont = require("tools.test_scene_continuity")
-    local log = { dens = {}, dframes = {}, frames = 0, low = {}, pops = {}, draws = 0, lowN = 0, minA = 1, phases = {} }
+    local log = { cover = {}, dens = {}, dframes = {}, frames = 0, low = {}, pops = {}, draws = 0, lowN = 0, minA = 1, phases = {} }
     local frame = 0
     local fade = false
     local seen, prev = {}, {}
@@ -45,6 +47,8 @@ function M.capture(act, seed, scenario)
         return origDraw(img, kind, ...)
     end
     local onRoad = {}
+    local cover = {}
+    local font13 = require("src.ui.FontManager").getFont(13)
     WorldRoad._traceVeg = function(p, a, x, y, w, h, t, src, em)
         local f = WorldRoad._fork
         if f and f.offK and not f.converge and (f.animIn or 0) > 0.5 and a > 0.5 then
@@ -59,6 +63,26 @@ function M.capture(act, seed, scenario)
                 end
             end
         end
+        if f and f._geo and not f.converge and src == "front" and a > 0.02 then
+            local relT = p.z - WorldRoad._camZ
+            local relM = f.markZ - WorldRoad._camZ
+            for i = 1, f.n do
+                local geo = f._geo[i]
+                if geo and geo.aMul > 0.5 and relT < relM then
+                    local label = WorldRoad.forkLabel(f.nodes[i]) or ""
+                    local hw = math.max(geo.iw * geo.s * 0.5, (font13:getWidth(label) + 16) * 0.5)
+                    local mx1, mx2 = geo.px - hw, geo.px + hw
+                    local my1, my2 = geo.py - geo.ih * geo.s - 26, geo.py
+                    local tx1, tx2 = x - w * M.TREE_HALF, x + w * M.TREE_HALF
+                    local ty1 = y - h * M.TREE_TOP
+                    if tx1 < mx2 and tx2 > mx1 and ty1 < my2 and y > my1 and not cover[p.uid or 0] then
+                        cover[p.uid or 0] = true
+                        log.cover[#log.cover + 1] = { frame = frame, uid = p.uid or 0, kind = p.kind, mark = i,
+                            rel = relT, x = x, y = y, phase = phaseOf(WorldRoad) }
+                    end
+                end
+            end
+        end
         if a > 0.02 and x + w * 0.5 > 0 and x - w * 0.5 < M.VW and y - h < M.VH then
             local ph = phaseOf(WorldRoad)
             log.dens[ph] = (log.dens[ph] or 0) + 1
@@ -68,9 +92,13 @@ function M.capture(act, seed, scenario)
                 kind = p.kind, a = a }
         end
     end
+    local lastPop = WorldRoad._populateFrame
     local origPresent = love.graphics.present
     love.graphics.present = function(...)
-        if frame > 0 and not fade then
+        local popF = WorldRoad._populateFrame
+        local fresh = popF ~= lastPop
+        lastPop = popF
+        if frame > 0 and not fade and not fresh then
             for uid, c in pairs(prev) do
                 if not seen[uid] then
                     local onScreen = c.x + c.w * 0.5 > 0 and c.x - c.w * 0.5 < M.VW and c.y - c.h < M.VH and c.y < M.VH + 4
@@ -110,10 +138,10 @@ function M.run(arg)
     io.stdout:setvbuf("line")
     local acts = { 1, 2, 3, 4, 5, 6 }
     local seeds = { 0xC0FFEE }
-    local scenarios = { "path3", "castle" }
+    local scenarios = { "path3", "resumefork", "castle" }
     if arg == "all" then
         seeds = { 0xC0FFEE, 7331 }
-        scenarios = { "path1", "path3", "castle" }
+        scenarios = { "path1", "path3", "lm2", "resumefork", "castle" }
     elseif arg and arg ~= "" then
         local a, s, sc = arg:match("^(%d*):?(%d*):?(%w*)$")
         if a and a ~= "" then acts = { tonumber(a) } end
@@ -126,7 +154,7 @@ function M.run(arg)
             for _, sc in ipairs(scenarios) do
                 local log = M.capture(act, seed, sc)
                 total = total + 1
-                local fail = log.lowN > 0 or #log.pops > 0
+                local fail = log.lowN > 0 or #log.pops > 0 or #log.cover > 0
                 local dn = {}
                 for k, n in pairs(log.dens) do dn[#dn + 1] = string.format("%s=%.1f", k, n / math.max(1, log.dframes[k] or 1)) end
                 table.sort(dn)
@@ -134,12 +162,17 @@ function M.run(arg)
                 local ph = {}
                 for k, n in pairs(log.phases) do ph[#ph + 1] = k .. "=" .. n end
                 table.sort(ph)
-                print(string.format("[%s] a%d/%s/%d quadros=%d desenhos=%d translucidos=%d alpha_min=%.3f somem=%d aviso_arvore_no_ramo=%d ramo_max=%.3f densidade %s | %s",
+                print(string.format("[%s] a%d/%s/%d quadros=%d desenhos=%d translucidos=%d alpha_min=%.3f somem=%d cobre_marco=%d aviso_arvore_no_ramo=%d ramo_max=%.3f densidade %s | %s",
                     fail and "FAIL" or "ok", act, sc, seed, log.frames, log.draws, log.lowN, log.minA,
-                    #log.pops, log.onRoad, log.offMax or 0, table.concat(dn, " "), table.concat(ph, " ")))
+                    #log.pops, #log.cover, log.onRoad, log.offMax or 0, table.concat(dn, " "), table.concat(ph, " ")))
                 for i, l in ipairs(log.low) do
                     if i > 4 then break end
                     print(string.format("    translucido f=%d %s a=%.3f %s", l.frame, l.kind, l.a, l.phase))
+                end
+                for i, c in ipairs(log.cover) do
+                    if i > 6 then break end
+                    print(string.format("    cobre f=%d uid=%d %s marco=%d rel=%.1f (%.0f,%.0f) %s",
+                        c.frame, c.uid, c.kind, c.mark, c.rel, c.x, c.y, c.phase))
                 end
                 for i, p in ipairs(log.pops) do
                     if i > 6 then break end

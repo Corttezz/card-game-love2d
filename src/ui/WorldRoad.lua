@@ -2852,7 +2852,8 @@ local MARK_REL    = 17.5
 local ARRIVE_REL  = 7.5
 local FORK_SPREAD = 0.15
 
-PropCut.KEEP = { off = 0.28, margin = 0.012, castleT = 0.36, castleFoot = 0.30, castleCore = 0.25, varMax = 1.1, step = 0.75,
+PropCut.KEEP = { off = 0.28, margin = 0.012, castleT = 0.36, castleFoot = 0.30, castleCore = 0.25,
+                 markOff = 0.41, markHalf = 0.36, markTop = 0.92, varMax = 1.1, step = 0.75,
                  span = 40, camStep = 2, jit = 0.05 }
 function PropCut.forkNeed(z, cam, off, need)
     local rel = z - cam
@@ -2895,6 +2896,44 @@ function PropCut.castleNeed(p, kind, variant, big)
     end
     return need
 end
+function PropCut.vegBox(p, camZ, g, w, out)
+    local img = getSprite(p.kind, p.variant, p.bid)
+    local rel = p.z - camZ
+    local t = g.tOf(rel)
+    if not img or not t then return nil end
+    local K = PropCut.KEEP
+    local _, ihv = PropCut.get(img, p.kind)
+    local s = PropCut.capS(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1) * (PropCut.sizeK[img] or 1)
+        * PropCut.crestK(p.kind, t), t, img:getHeight()), WorldRoad.enemyScreenK(g.h))
+        * Scene.Var.of(p.z, p.kind, Scene.Grade.cfg("trees")).scale
+    local over = math.max(0, -rel)
+    local x = g.cx + p.side * w * (0.11 + 0.38 * t + over * 0.09 + p.lane * 0.38)
+    local y = g.latY(x - g.cx, t) + over * g.h * 0.13
+    out = out or {}
+    out.x1, out.x2 = x - img:getWidth() * s * K.markHalf, x + img:getWidth() * s * K.markHalf
+    out.y1, out.y2 = y - ihv * s * K.markTop, y
+    return out
+end
+function PropCut.markNeed(p, cam, need)
+    local rel = p.z - cam
+    if rel >= MARK_REL or rel <= -3 then return need end
+    local g, w = LMG.planGeom()
+    local E = LMG.markExtent(g, p.bid, w)
+    local img = getSprite(p.kind, p.variant, p.bid)
+    if not E or not img then return need end
+    local K = PropCut.KEEP
+    local t = g.tOf(rel) or 1
+    local _, ihv = PropCut.get(img, p.kind)
+    local s = PropCut.capS(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1) * (PropCut.sizeK[img] or 1)
+        * PropCut.crestK(p.kind, t), t, img:getHeight()), WorldRoad.enemyScreenK(g.h)) * K.varMax
+    local over = math.max(0, -rel)
+    local inner = 0.11 + 0.38 * t + over * 0.09
+    local top = g.latY(0, t) + over * g.h * 0.13 - ihv * s * K.markTop
+    local edge = K.markOff * w + roadWobble(cam + MARK_REL, E.t, w) * 0.5
+    if top >= g.latY(edge, E.t) + LMG.MARK_SLOT.margin then return need end
+    local reach = edge + E.hw + LMG.MARK_SLOT.margin + img:getWidth() * s * K.markHalf
+    return math.max(need, (reach / w - inner) / 0.38)
+end
 function PropCut.clearLane(p)
     if p.ghost or not PropCut.kinds[p.kind] then return end
     local K = PropCut.KEEP
@@ -2912,6 +2951,9 @@ function PropCut.clearLane(p)
         local segEnd = (WorldRoad._segBase or 0) + SEGMENT_LEN - 1
         for d = 0, K.span, K.camStep do
             if pl.stop + d < segEnd then need = PropCut.forkNeed(p.z, pl.stop + d, K.off, need) end
+        end
+        for _, dk in ipairs(LMG.FORK_CAMS) do
+            if pl.stop + dk < segEnd then need = PropCut.markNeed(p, pl.stop + dk, need) end
         end
     end
     if f then
@@ -3270,6 +3312,7 @@ function LMG.clearFreshCover(f)
     if (WorldRoad._drawFrame or 0) - (WorldRoad._populateFrame or 0) > 20 then return end
     local g, w = LMG.planGeom()
     local camZ = WorldRoad._camZ
+    PropCut.clearFreshVeg(placed, g, w, camZ)
     local box = LMG.freshBox or {}
     LMG.freshBox = box
     local function covers(q, z)
@@ -3297,6 +3340,31 @@ function LMG.clearFreshCover(f)
                 end
             end
             if not moved then table.remove(WorldRoad._props, i) end
+        end
+    end
+end
+
+function PropCut.clearFreshVeg(placed, g, w, camZ)
+    local box = PropCut.freshBox or {}
+    PropCut.freshBox = box
+    for i = #WorldRoad._props, 1, -1 do
+        local q = WorldRoad._props[i]
+        local rel = q.z - camZ
+        if not q.ghost and not q.clutter and PropCut.kinds[q.kind] and rel < MARK_REL and rel > -3 then
+            local hit = true
+            local tries = 0
+            while hit and tries < 40 do
+                hit = false
+                local b = PropCut.vegBox(q, camZ, g, w, box)
+                if b then
+                    for _, m in ipairs(placed) do
+                        if b.x1 < m.x2 and b.x2 > m.x1 and b.y1 < m.y2 and b.y2 > m.y1 then hit = true break end
+                    end
+                end
+                if hit then q.lane = q.lane + 0.05 end
+                tries = tries + 1
+            end
+            if hit then table.remove(WorldRoad._props, i) end
         end
     end
 end
@@ -4263,7 +4331,7 @@ local function drawProps(g, x, w, camZ)
                     pvc.windPhase, pvc.canopy, pvc.trunk = pv.windPhase, pv.canopy, pv.trunk
                     pv = pvc
                 end
-                if WorldRoad._traceVeg and isTree then WorldRoad._traceVeg(p, fadeA, pxX, sy, iw * s, ih * s, t, "front", 1) end
+                if WorldRoad._traceVeg and isTree then WorldRoad._traceVeg(p, fadeA, pxX, sy, iw * s, select(2, PropCut.get(img, p.kind)) * s, t, "front", 1) end
 
                 local lumDef = LuminaireEngine.def(p.bid, p.kind)
                 local lumAnc, lumSink, lumFlip = nil, 0, 1
