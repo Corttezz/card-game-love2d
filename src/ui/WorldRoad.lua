@@ -3301,6 +3301,16 @@ function LMG.layoutMarks(f)
         local d = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
         if d and d.roadside and p.z - camZ > FORK_REL then
             bases[#bases + 1] = WorldRoad._postBase(p, camZ, g, w, {})
+        elseif not d and not p.ghost and not p.clutter and PropCut.kinds[p.kind] then
+            local rel = p.z - camZ
+            local t = rel > FORK_REL and rel < MARK_REL + 1 and g.tOf(rel)
+            if t and t >= 0 then
+                local cxp = g.cx + p.side * w * (0.11 + 0.38 * t + (p.lane or 0) * 0.38)
+                local hb = 10 * (0.30 + 0.70 * t)
+                bases[#bases + 1] = { x1 = cxp - hb, x2 = cxp + hb, rel = rel, t = t,
+                    hf = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)), wob = roadWobble(p.z, t, w),
+                    jag = 5 * (0.30 + 0.70 * t) + 7 * (0.35 + 0.65 * t) }
+            end
         end
     end
     local function baseClear(k, n)
