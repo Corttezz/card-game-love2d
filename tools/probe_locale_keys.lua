@@ -13,7 +13,7 @@ local function loadTable(path)
     return ok and type(t) == "table" and t or nil
 end
 function M.run()
-    local dirs = { "", "tutorial/", "scribe_dice/", "enemy_kit/", "run_modifiers/", "boss_cinematics/" }
+    local dirs = { "", "tutorial/", "scribe_dice/", "enemy_kit/", "run_modifiers/", "boss_cinematics/", "bestiary/" }
     local total = 0
     for _, d in ipairs(dirs) do
         local base = loadTable("src/i18n/locales/" .. d .. "pt_BR.lua")

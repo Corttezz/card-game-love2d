@@ -153,3 +153,8 @@ Saraivada/Muralha/Par derrubou o piloto (guerreiro 55% -> 0-5%); compensar só n
 jogador não voltou, escalar o inimigo voltou. Os testes de curva (test_progression,
 smoke_acts) medem a curva CRUA com o knob desligado e testam o knob à parte.
 Detalhes: memory/combo_rules.md e memory/balance_curves.md.
+
+## Bestiário: nomes, epítetos e registros (21/Out/2026)
+
+- Nome de criatura = `end_screen.enemy.<id>` (fonte única, HUD/fim de run/bestiário). Até 21/Out só 18 dos 42 tinham nome; os 24 da leva nova apareciam com o id cru. Criatura nova entra nessa tabela nos 5 locales.
+- Epíteto, registro (lore de 2 a 4 frases, até 280 caracteres) e assinatura dos chefes em `src/i18n/locales/bestiary/<loc>.lua`, plugado como `bestiary = require(...)`; `bestiary.ui.*` são os rótulos da aba Criaturas. Trava `test_bestiary_lore` (toda criatura do ROSTER nos 5 locales, chefe com assinatura, sem marcador).
