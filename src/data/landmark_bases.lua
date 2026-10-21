@@ -17,13 +17,13 @@ return {
     },
     family = {
         shop = {
-            padW = 1.55, padX = 0.02, padFront = 17, padBack = 0.32, pathW = 0.22, pathFront = 13,
+            padW = 1.55, padX = 0.02, padFront = 17, padBack = 0.32, pathW = 0.21, pathFront = 21,
             props = { { "propa", -0.53, 1, 0.22 }, { "propb", 0.54, 1, 0.25 } },
             veg = { { -0.36, 1, 0.20 }, { 0.38, 1, 0.17 } },
             pool = { color = { 1.00, 0.72, 0.38 }, radiusK = 0.60, intensity = 2.4, sy = 0.30 },
         },
         event = {
-            padW = 1.45, padX = 0.00, padFront = 15, padBack = 0.30, pathW = 0.20, pathFront = 11,
+            padW = 1.45, padX = 0.00, padFront = 15, padBack = 0.30, pathW = 0.20, pathFront = 19,
             props = { { "propa", 0.52, 1, 0.22 } },
             veg = { { -0.43, 1, 0.20 }, { 0.43, 1, 0.18 } },
             pool = { color = { 1.00, 0.72, 0.38 }, radiusK = 0.50, intensity = 1.8, sy = 0.30 },
