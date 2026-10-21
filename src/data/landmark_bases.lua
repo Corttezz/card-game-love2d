@@ -24,6 +24,10 @@ return {
             veg = { { -0.43, 1 }, { 0.43, 1 } },
             pool = { color = { 1.00, 0.72, 0.38 }, radiusK = 0.50, intensity = 1.8, sy = 0.30 },
         },
+        elite = {
+            pad = "epad", path = false, padX = 0.00, padFront = 13, pathFront = 19,
+            props = { { "epropa", -0.62, 1 }, { "epropb", 0.62, 1 } },
+        },
     },
     door = {
         landmark_shop = 0.60, highlands_landmark_shop = 0.65, abyss_landmark_shop = 0.50,
@@ -33,6 +37,7 @@ return {
     },
     props = {
         frost_landmark_shop = { { "propa", -0.53, 1 }, { "propb", 0.47, 1 } },
+        highlands_landmark_elite = { { "epropa", -0.62, 1 } },
     },
     embers = { ab = { color = { 1.00, 0.55, 0.18 }, count = 3 } },
     poolColor = {

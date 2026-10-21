@@ -103,6 +103,51 @@ SPECS["ab_propc"] = ("abyss_landmark_shop.png", 40, 30, "lava_r",
 SPECS["ab_propd"] = ("abyss_landmark_shop.png", 44, 30, "lava_r",
     "a short fence of two charred wooden stakes with glowing ember tips joined by a rusty orange chain, "
     "a small wooden sign with a red painted mark hangs from the chain." + PROP)
+E = {
+    "fl": ("anim/landmark_elite/0.png", "sun_r", "an old forest country road",
+           "trampled dark earth around a cursed obelisk, a ring of scattered grey stone rubble, a few "
+           "cracked flagstones, faint purple scorch marks and one small pale bone",
+           "a broken rusty sword and a cracked round shield lying on the ground among a few stones",
+           "a leaning wooden stake with a torn dark purple banner"),
+    "hi": ("anim/highlands_landmark_elite/0.png", "moon_r", "a cold moonlit highland",
+           "trampled grey-brown earth with toppled blue-grey stone blocks and rubble, cracked slabs, "
+           "a few loose pebbles, a pale skull half buried",
+           "a heap of broken blue-grey stone rubble with a snapped spear",
+           "a leaning iron stake with a torn dark blue banner"),
+    "ab": ("anim/abyss_landmark_elite/0.png", "lava_r", "a scorched volcanic wasteland",
+           "scorched black basalt ground with glowing orange cracks, scattered dark rubble, grey ash "
+           "and a few charred bones",
+           "a charred broken axe and a cracked black helmet among dark rubble",
+           "a charred stake with a burnt torn red banner and glowing ember edges"),
+    "fr": ("anim/frost_landmark_elite/0.png", "cold_r", "a snowy frozen tundra",
+           "trampled dirty snow around an ice monolith, shards of blue ice scattered, a few dark "
+           "frozen stones and a broken frozen bone",
+           "a broken frozen sword stuck in a small pile of ice shards",
+           "a leaning wooden stake with a frozen torn pale blue banner and icicles"),
+    "ma": ("anim/marsh_landmark_elite/0.png", "moon_r", "a haunted dark green swamp",
+           "dark trampled mud around a cursed totem with a few large flat stones, a scattered "
+           "ring of pale bones and one animal skull, a dark puddle with a pale rim, few large shapes",
+           "a pile of pale animal bones and a horned skull",
+           "a crooked wooden stake with a torn mossy green banner and hanging charms"),
+    "du": ("anim/dusk_landmark_elite/0.png", "sun_l", "an autumn heath at golden dusk",
+           "trampled ochre earth around an ancient standing stone, a ring of small fallen grey "
+           "stones, fallen red leaves and a cracked old shield half buried",
+           "a broken old sword and a cracked shield lying on a small pile of stones",
+           "a leaning wooden stake with a torn faded red banner"),
+}
+for bid, (ref, light, world, pad, propa, propb) in E.items():
+    SPECS[bid + "_epad"] = (ref, 112, 34, light,
+        "the ominous flat ground around a dangerous elite place in " + world + ": " + pad + ". "
+        "Few, large, readable shapes, calm, no noise." + FLAT)
+    SPECS[bid + "_epath"] = (ref, 32, 40, light,
+        "a short straight approach path in " + world + ": a few trampled flat stones and packed "
+        "earth leading up to a cursed monument. Seen from the front at a low camera, the path runs "
+        "STRAIGHT from the bottom edge of the image up to the top edge, vertical and centered, the "
+        "near part at the bottom a little wider. Not rotated, not diagonal." + FLAT)
+    SPECS[bid + "_epropa"] = (ref, 40, 26, light,
+        "battle debris in " + world + ": " + propa + "." + PROP)
+    SPECS[bid + "_epropb"] = (ref, 24, 44, light,
+        "a war marker in " + world + ": " + propb + ", the stake goes straight into the ground." + PROP)
 L.SPECS = SPECS
 
 def queue(names, tag):

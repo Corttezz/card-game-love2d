@@ -8,6 +8,8 @@ local FORKS = {
     shop = { nodes = { "battle", "elite", "shop" }, idx = 3 },
     event = { nodes = { "event", "rest", "battle" }, idx = 1 },
     elite = { nodes = { "battle", "elite", "shop" }, idx = 2 },
+    battle = { nodes = { "battle", "elite", "shop" }, idx = 1 },
+    rest = { nodes = { "event", "rest", "battle" }, idx = 2 },
 }
 
 local cv
@@ -175,8 +177,8 @@ function M.run(arg)
     if os.getenv("LOJA_NOTUFTS") == "1" then
         require("engine.GrassField").requireTufts = function() end
     end
-    for _, k in ipairs({ "shop", "event", "elite" }) do
-        if what == "" or what == k then shot(act, k, tod, seq) end
+    for _, k in ipairs({ "shop", "event", "elite", "battle", "rest" }) do
+        if (what == "" and k ~= "battle" and k ~= "rest") or what == k then shot(act, k, tod, seq) end
     end
     love.timer.getTime = realTime
     print(love.filesystem.getSaveDirectory() .. "/" .. dir .. " " .. saved)

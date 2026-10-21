@@ -4199,11 +4199,6 @@ local function drawProps(g, x, w, camZ)
                 lmk.dust.alpha)
         end
         submitLandmarkOccluder(img, lx, py, iw, ih, s, rel)
-        local oc2 = Scene.Grade.cfg("occlusion")
-        local th = oc2.baseCover * ih * s / GrassField.CELL_H
-        GrassField.requireTufts(rel - 0.05, lx, iw * s * 0.3, oc2.tuftsMin, th * 0.8)
-        GrassField.requireTufts(rel - 0.05, lx - iw * s * 0.36, iw * s * 0.28, oc2.tuftsMax, th * 1.3)
-        GrassField.requireTufts(rel - 0.05, lx + iw * s * 0.36, iw * s * 0.28, oc2.tuftsMax, th * 1.3)
         WorldRoad._landmarkDrawnAt = GrassField.stats.builds + GrassField.stats.replays
     end
     local function drawForkPhysical()
@@ -4297,13 +4292,6 @@ local function drawProps(g, x, w, camZ)
                 end
                 if aMul > 0.6 then
                     submitLandmarkOccluder(img, px, py, iw, ih, s, relM)
-                end
-                do
-                    local oc2 = Scene.Grade.cfg("occlusion")
-                    local hsh = (i * 0.618) % 1
-                    GrassField.requireTufts(relM - 0.05, px, iw * s * 0.8,
-                        oc2.tuftsMin + math.floor(hsh * (oc2.tuftsMax - oc2.tuftsMin + 1)),
-                        oc2.baseCover * ih * s * aMul / GrassField.CELL_H)
                 end
                 f._geo[i] = { px = px, py = py, s = s, iw = iw, ih = ih,
                               aMul = aMul, hovered = hovered }

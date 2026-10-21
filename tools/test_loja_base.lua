@@ -54,8 +54,13 @@ function M.run()
         for _, c in ipairs(calls) do if c.key == key then return c end end
     end
     local missing, partial, onLabel, lmMiss, frames, lmSeen, noClear = {}, {}, {}, {}, 0, 0, 0
+    local tuftAt, eliteSeen = {}, 0
+    local GF = require("engine.GrassField")
+    local SETS = { { types = { "shop", "battle", "event" }, lm = "shop" },
+                   { types = { "elite", "rest", "battle" }, lm = "elite" } }
     for act = 1, 6 do
-        setupFork(WorldRoad, act, { "shop", "battle", "event" })
+      for _, SET in ipairs(SETS) do
+        setupFork(WorldRoad, act, SET.types)
         for fi = 1, 26 do
             frame(act)
             frames = frames + 1
@@ -75,7 +80,18 @@ function M.run()
                 for i = 1, f.n do
                     local ge = f._geo[i]
                     local ty = f.nodes[i].type
-                    if ge and (ty == "shop" or ty == "event") then
+                    if ge then
+                        local reqs, rn = GF._tuftRequests()
+                        for ri = 1, rn do
+                            local q = reqs[ri]
+                            if math.abs(q.x - ge.px) < ge.iw * ge.s * 0.6
+                               and math.abs(q.rel - (f.markZ - WorldRoad._camZ)) < 0.3 then
+                                tuftAt[#tuftAt + 1] = act .. ":" .. ty
+                            end
+                        end
+                    end
+                    if ge and ty == "elite" then eliteSeen = eliteSeen + 1 end
+                    if ge and (ty == "shop" or ty == "event" or ty == "elite") then
                         local key
                         for _, c in ipairs(calls) do
                             if c.key:match("landmark_" .. ty .. "$") then key = c.key end
@@ -106,13 +122,14 @@ function M.run()
             frame(act)
             local lm = WorldRoad._lmMark
             if lm and lm.drawn and lm.lm and lm.lm == WorldRoad._landmark and lm.a and lm.a > 0.01
-               and lm.lm.key:match("shop$") then
+               and lm.lm.key:match(SET.lm .. "$") then
                 lmSeen = lmSeen + 1
                 local c = find(lm.lm.key)
                 if not (c and c.over) then lmMiss[#lmMiss + 1] = act .. ":" .. fi end
             end
             if fi == 90 then WorldRoad.travel({}) end
         end
+      end
     end
     LB.under, LB.over = realUnder, realOver
     local SE = require("engine.ShadowEngine")
@@ -175,8 +192,10 @@ function M.run()
     t:eq("base desenhada sem clareira na grama", noClear, 0)
     t:eq("base sem a camada da frente: " .. table.concat(partial, " "), #partial, 0)
     t:eq("base encostando em rótulo: " .. table.concat(onLabel, " "), #onLabel, 0)
-    t:truthy("loja vista na chegada e na partida (" .. lmSeen .. " quadros)", lmSeen > 120)
-    t:eq("loja da chegada/partida desenhada sem a base: " .. table.concat(lmMiss, " "), #lmMiss, 0)
+    t:truthy("loja e elite vistas na chegada e na partida (" .. lmSeen .. " quadros)", lmSeen > 240)
+    t:truthy("elite medida na encruzilhada (" .. eliteSeen .. " quadros)", eliteSeen >= 6 * 20)
+    t:eq("tufo de grama pedido na base de marco (mato mexendo): " .. table.concat(tuftAt, " "), #tuftAt, 0)
+    t:eq("loja/elite da chegada e partida desenhada sem a base: " .. table.concat(lmMiss, " "), #lmMiss, 0)
     return t:done()
 end
 

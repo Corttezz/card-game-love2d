@@ -55,7 +55,7 @@ end
 
 function LandmarkBase.has(key)
     local fam, code = LandmarkBase.parse(key)
-    return fam ~= nil and load(code .. "_pad") ~= nil
+    return fam ~= nil and load(code .. "_" .. (LandmarkBase.DATA.family[fam].pad or "pad")) ~= nil
 end
 
 local function grow(x1, y1, x2, y2)
@@ -139,9 +139,9 @@ function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel, g)
     box.n, box.key = 0, key
     local fam, code = LandmarkBase.parse(key)
     if not fam or alpha <= 0.01 then return false end
-    local pad = load(code .. "_pad")
-    if not pad then return false end
     local F = LandmarkBase.DATA.family[fam]
+    local pad = load(code .. "_" .. (F.pad or "pad"))
+    if not pad then return false end
     local tint = LandmarkBase.DATA.tint[code]
     local W, doorX = geo(key, F, px, iw, s)
     local fk = flatK(t)
@@ -156,7 +156,7 @@ function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel, g)
     love.graphics.draw(pad, math.floor(cx), math.floor(bottom), 0, sx, sy, pw / 2, ph)
     grow(cx - pw * sx / 2, bottom - ph * sy, cx + pw * sx / 2, bottom)
     clearGrass(g, rel, cx, bottom, pw * sx / 2, alpha)
-    local path = load(code .. "_path")
+    local path = F.path ~= false and load(code .. "_" .. (F.path or "path"))
     if path then
         local aw, ah = path:getWidth(), path:getHeight()
         local qx = s
@@ -203,7 +203,7 @@ function LandmarkBase.over(key, px, py, iw, ih, s, t, alpha, col)
     local F = LandmarkBase.DATA.family[fam]
     local W, doorX = geo(key, F, px, iw, s)
     local fk = flatK(t)
-    local veg = load(code .. "_veg")
+    local veg = F.veg and load(code .. "_veg")
     if veg then
         local vc = SceneGrade.color(SceneGrade.familyOf("bush"), t, vegCol)
         local vw = veg:getWidth()

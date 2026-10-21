@@ -199,14 +199,13 @@ function M.run()
         local at = WorldRoad._landmarkDrawnAt or -1
         t:truthy(("landmark escolhido pintado ENTRE fatias de grama (fatia %d de %d)"):format(at, total),
             at > 0 and at < total)
-        t:truthy("tufos escritos no quadro (" .. GrassField.stats.tufts .. ")", GrassField.stats.tufts > 0)
         local lx = WorldRoad.getRoadAnchor(9, 0, 52, W, H - 52)
         local reqs, n = GrassField._tuftRequests()
-        local near = false
+        local near = 0
         for i = 1, n do
-            if math.abs(reqs[i].x - lx) < 3 and reqs[i].rel < 9 and reqs[i].rel > 8.5 then near = true end
+            if math.abs(reqs[i].x - lx) < 200 and reqs[i].rel < 9.2 and reqs[i].rel > 8.5 then near = near + 1 end
         end
-        t:truthy("tufo pedido na frente da base do landmark", near)
+        t:eq("nenhum tufo de grama pedido na base do landmark (fica sobre a estrada)", near, 0)
         local src = love.filesystem.read("src/ui/WorldRoad.lua") or ""
         t:falsy("drawLandmarkFront não existe mais", src:find("drawLandmarkFront", 1, true) ~= nil)
         t:truthy("landmark escolhido desenha dentro de drawProps (balanço da cena)",
