@@ -3,6 +3,7 @@ local TK = require("tools.testkit")
 local M = {}
 
 M.ALLOWED = {
+    ["cheat.crt_variant"]            = "modo cheat (DEV): variante do CRT trocada",
     ["messages.not_in_run"]          = "erro de fluxo (só fora de run)",
     ["messages.card_add_failed"]     = "erro",
     ["messages.joker_benched"]       = "coringa foi pra bancada, não pro campo",

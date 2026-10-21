@@ -612,7 +612,8 @@ function CheatMode.keypressed(key)
         local id = require("src.ui.CRTShader").cycleVariant(key == "pageup" and 1 or -1)
         local g = game()
         if g and g.addMessage then
-            g:addMessage(require("src.i18n.I18n").t("cheat.crt_variant", { name = id }, "CRT: {name}"), "info")
+            local I18n = require("src.i18n.I18n")
+            g:addMessage(I18n.t("cheat.crt_variant", { name = id }, "CRT: {name}"), "info")
         end
         return true
     end
