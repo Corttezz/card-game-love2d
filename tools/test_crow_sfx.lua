@@ -56,6 +56,9 @@ function M.simulate(turns)
     local BC = require("src.ui.BossCinematic")
     local ER = require("src.ui.EnemyRenderer")
     local okC, CrowSfx = pcall(require, "src.systems.CrowSfx")
+    love.math.setRandomSeed(4242)
+    math.randomseed(4242)
+    TK.seedRng(4242)
     local now = 0
     local clock = function() return now end
     local savedAudio, savedNow = _G.audioSystem, okC and CrowSfx.now or nil
@@ -278,12 +281,12 @@ function M.run()
             local f = family(e.code)
             local spec = CrowSfx.MOMENTS[f]
             if lastBy[f] and spec and e.t - lastBy[f] < (spec.cooldown or 0) - 1e-6 then
-                tooClose = f
+                tooClose = string.format("%s em %.2f s depois de %.2f s (cooldown %.2f)", f, e.t, lastBy[f], spec.cooldown or 0)
             end
             lastBy[f] = e.t
         end
     end
-    t:falsy("nenhum som de corvo repete dentro do cooldown na luta", tooClose)
+    t:truthy("nenhum som de corvo repete dentro do cooldown na luta" .. (tooClose and (": " .. tooClose) or ""), not tooClose)
     local prevCode, twice = nil, nil
     for _, e in ipairs(log) do
         if isCrow(e.code) then
