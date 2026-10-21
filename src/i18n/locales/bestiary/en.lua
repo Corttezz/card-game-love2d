@@ -21,6 +21,14 @@ return {
         stat_killed_you  = "Defeated you",
         new_creatures    = "New creatures: {n}",
         end_label        = "NEW CREATURES",
+        biome = {
+            fields    = "Ruined Fields",
+            highlands = "Tower Hills",
+            abyss     = "Abyss Road",
+            frost     = "Spectral Glacier",
+            marsh     = "Rotting Marsh",
+            dusk      = "Dusk Fields",
+        },
     },
 
     creature = {

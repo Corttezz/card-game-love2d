@@ -112,6 +112,10 @@ function EndScreens.summary(kind, game)
     local ur = game and game.unlockResult
     add("label_discoveries", (ur and ur.newDiscoveries)
         or require("src.systems.UnlockSystem").runDiscoveries())
+    local creatures = require("src.systems.Bestiary").runNewCount()
+    if creatures > 0 then
+        cells[#cells + 1] = { label = I18n.t("bestiary.ui.end_label"), value = tostring(creatures) }
+    end
     return { subtitle = subtitle, cells = cells }
 end
 

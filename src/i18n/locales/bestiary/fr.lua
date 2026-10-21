@@ -21,6 +21,14 @@ return {
         stat_killed_you  = "Vous a vaincu",
         new_creatures    = "Nouvelles créatures : {n}",
         end_label        = "NOUVELLES CRÉATURES",
+        biome = {
+            fields    = "Champs en Ruine",
+            highlands = "Collines de la Tour",
+            abyss     = "Route de l'Abîme",
+            frost     = "Glacier Spectral",
+            marsh     = "Marais Putride",
+            dusk      = "Champs du Crépuscule",
+        },
     },
 
     creature = {

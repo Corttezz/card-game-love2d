@@ -21,6 +21,14 @@ return {
         stat_killed_you  = "Hat dich besiegt",
         new_creatures    = "Neue Kreaturen: {n}",
         end_label        = "NEUE KREATUREN",
+        biome = {
+            fields    = "Verwüstete Felder",
+            highlands = "Turmhügel",
+            abyss     = "Abgrundstraße",
+            frost     = "Geisterhafter Gletscher",
+            marsh     = "Fäulnissumpf",
+            dusk      = "Dämmerfelder",
+        },
     },
 
     creature = {

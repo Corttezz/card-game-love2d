@@ -1729,7 +1729,7 @@ function love.keypressed(key)
         local NC = require("src.ui.NavCursor")
         local it = NC.KEYS[key]
         if it and NC.claimsInput(currentState,
-                currentState == "collection" and collectionScreen.inspectedCard ~= nil) then
+                currentState == "collection" and collectionScreen:ownsNavigation()) then
             if NC.intent(it, "keyboard") then return end
         end
     end
@@ -1780,7 +1780,7 @@ function love.keypressed(key)
         return
     end
     if currentState == "collection" then
-        local wasInspecting = collectionScreen.inspectedCard ~= nil
+        local wasInspecting = collectionScreen:ownsNavigation()
         if collectionScreen.keypressed then collectionScreen:keypressed(key) end
         if key == "escape" and not wasInspecting then
             currentState = "menu"
@@ -1872,7 +1872,7 @@ function love.gamepadpressed(joystick, button)
     NC.noteDevice("pad")
     if it == "back" then love.keypressed("escape") return end
     if NC.claimsInput(currentState,
-            currentState == "collection" and collectionScreen.inspectedCard ~= nil) then
+            currentState == "collection" and collectionScreen:ownsNavigation()) then
         if require("src.systems.Tutorial").blocksKey(it) then return end
         NC.intent(it, "pad")
         return

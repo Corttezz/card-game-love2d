@@ -79,6 +79,7 @@ function M.run()
         t:truthy("pt_BR: titulo da derrota NAO e mais o ingles 'GAME OVER'",
             I18n.t("end_screen.defeat_title") ~= "GAME OVER")
 
+        require("src.systems.Bestiary").resetRun()
         local sum = EndScreens.summary("gameOver", gd)
         t:eq("resumo tem 9 celulas (com novas descobertas, como no Balatro)", #sum.cells, 9)
         t:truthy("subtitulo nomeia quem matou", sum.subtitle:find(I18n.t("end_screen.enemy.tower_lich"), 1, true))

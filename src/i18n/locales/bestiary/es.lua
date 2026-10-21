@@ -21,6 +21,14 @@ return {
         stat_killed_you  = "Te derrotó",
         new_creatures    = "Nuevas criaturas: {n}",
         end_label        = "NUEVAS CRIATURAS",
+        biome = {
+            fields    = "Campos Arruinados",
+            highlands = "Colinas de la Torre",
+            abyss     = "Camino del Abismo",
+            frost     = "Glaciar Espectral",
+            marsh     = "Pantano Podrido",
+            dusk      = "Campos del Ocaso",
+        },
     },
 
     creature = {

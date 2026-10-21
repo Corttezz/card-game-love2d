@@ -1,5 +1,3 @@
-local Debug = require("src.core.Debug")
-
 local Debug        = require("src.core.Debug")
 local FontManager  = require("src.ui.FontManager")
 local Palette      = require("src.ui.Palette")
@@ -15,6 +13,8 @@ local I18n         = require("src.i18n.I18n")
 local Sfx          = require("src.systems.Sfx")
 local UnlockSystem = require("src.systems.UnlockSystem")
 local CardBack     = require("src.ui.CardBack")
+local BestiaryGrid = require("src.ui.BestiaryGrid")
+local Bestiary     = require("src.systems.Bestiary")
 
 local CollectionScreen = {}
 CollectionScreen.__index = CollectionScreen
@@ -53,7 +53,43 @@ function CollectionScreen:new()
     self.onCloseCallback = nil
     self.inspectedCard = nil
     self.inspectAnim = 0
+    self.section = "cards"
+    self.bestiary = BestiaryGrid.new()
     return self
+end
+
+CollectionScreen.SECTIONS = {
+    { id = "cards", i18n = "bestiary.ui.tab_cards" },
+    { id = "creatures", i18n = "bestiary.ui.tab" },
+}
+
+local function sectionRects()
+    local font = FontManager.getFont(12)
+    local x, out = 20, {}
+    for _, sct in ipairs(CollectionScreen.SECTIONS) do
+        local w = font:getWidth(I18n.t(sct.i18n)) + 24
+        out[#out + 1] = { id = sct.id, label = I18n.t(sct.i18n), x = x, y = 16, w = w, h = 30 }
+        x = x + w + 6
+    end
+    return out
+end
+CollectionScreen._sectionRects = sectionRects
+
+function CollectionScreen:setSection(id)
+    if self.section == id then return end
+    self.section = id
+    self.hoverCard = nil
+    self.inspectedCard = nil
+    if id == "creatures" then self.bestiary:show() end
+end
+
+function CollectionScreen:ownsNavigation()
+    return self.inspectedCard ~= nil or (self.section == "creatures" and self.bestiary:isOpen())
+end
+
+function CollectionScreen:sectionHasNew(id)
+    if id == "creatures" then return Bestiary.anyNew() end
+    return self:freshInFilter("all")
 end
 
 local function sortCards(list)
@@ -173,6 +209,7 @@ function CollectionScreen:show(onClose)
     self._tabFresh = nil
     self:_buildInstances(0.012)
     self:_applyFilter()
+    if self.section == "creatures" then self.bestiary:show() else self.bestiary:refresh() end
 end
 
 function CollectionScreen:hide()
@@ -185,6 +222,7 @@ function CollectionScreen:isVisible()
 end
 
 function CollectionScreen:resize()
+    self.bestiary:resize()
     self._mysteryCanvas = nil
     self._lockedCanvas = nil
     self:_applyFilter()
@@ -207,6 +245,12 @@ end
 function CollectionScreen:update(dt)
     if not self.visible then return end
     if not self._buildDone then self:_buildInstances() end
+    if self.section == "creatures" then
+        local mx, my = love.mouse.getPosition()
+        self.hoverCard = nil
+        self.bestiary:update(dt, mx, my)
+        return
+    end
     if self.inspectedCard then
         self.inspectAnim = math.min(1, self.inspectAnim + dt * 6)
     else
@@ -261,11 +305,13 @@ end
 function CollectionScreen:wheelmoved(x, y)
     if not self.visible then return end
     if self.inspectedCard then return end
+    if self.section == "creatures" then return self.bestiary:wheelmoved(x, y) end
     self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY - y * 40))
 end
 
 function CollectionScreen:keypressed(key)
     if not self.visible then return end
+    if self.section == "creatures" and self.bestiary:keypressed(key) then return end
     if self.inspectedCard then
         if key == "escape" or key == "space" or key == "return" then
             Sfx.play("menuClose")
@@ -316,10 +362,27 @@ end
 
 function CollectionScreen:mousepressed(x, y, button)
     if not self.visible then return end
+    if button == 1 and not self:ownsNavigation() then
+        for _, r in ipairs(sectionRects()) do
+            if inRect(x, y, r.x, r.y, r.w, r.h) then
+                Sfx.play("buttonClick")
+                self:setSection(r.id)
+                return
+            end
+        end
+    end
+    if self.section == "creatures" and self.bestiary:isOpen() then
+        self.bestiary:mousepressed(x, y, button)
+        return
+    end
     if button == 1 and not self.inspectedCard and inRect(x, y, closeRect()) then
         Sfx.play("menuClose")
         self:hide()
         if self.onCloseCallback then self.onCloseCallback() end
+        return
+    end
+    if self.section == "creatures" then
+        self.bestiary:mousepressed(x, y, button)
         return
     end
     if button == 1 then
@@ -393,7 +456,7 @@ function CollectionScreen:_computeDropIndex(mx, my)
 end
 
 function CollectionScreen:mousemoved(x, y, dx, dy)
-    if not self.visible or self.inspectedCard then return end
+    if not self.visible or self.inspectedCard or self.section == "creatures" then return end
     if self._dragPendingIdx and not self._draggingIdx then
         local Config = require("src.core.Config")
         local threshold = (Config.Cards and Config.Cards.DRAG_THRESHOLD_PX) or 6
@@ -408,6 +471,10 @@ end
 function CollectionScreen:mousereleased(x, y, button)
     if not self.visible then return end
     if button ~= 1 then return end
+    if self.section == "creatures" then
+        self.bestiary:mousereleased(x, y, button)
+        return
+    end
 
     if self._draggingIdx then
         local dropIdx = self:_computeDropIndex(x, y)
@@ -442,6 +509,37 @@ local function drawBackground()
     love.graphics.rectangle("fill", 0, 0, w, h)
 end
 
+local function drawSections(self)
+    local NavCursor = require("src.ui.NavCursor")
+    local mx, my = love.mouse.getPosition()
+    local font = FontManager.getFont(12)
+    for _, r in ipairs(sectionRects()) do
+        local active = self.section == r.id
+        local hot = inRect(mx, my, r.x, r.y, r.w, r.h) and not self:ownsNavigation()
+        Palette.set(Palette.INK, 0.6)
+        love.graphics.rectangle("fill", r.x + 2, r.y + 3, r.w, r.h)
+        if active then
+            Palette.set(Palette.AGED_GOLD)
+        else
+            Palette.set(hot and Palette.PARCHMENT_DARK or Palette.INK, hot and 1 or 0.85)
+        end
+        love.graphics.rectangle("fill", r.x, r.y, r.w, r.h)
+        Palette.set(active and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD_DARK)
+        love.graphics.rectangle("line", r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1)
+        if active then
+            Palette.set(Palette.AGED_GOLD_LIGHT)
+            love.graphics.rectangle("fill", r.x + 2, r.y + 2, r.w - 4, 1)
+        end
+        love.graphics.setFont(font)
+        Palette.set(active and Palette.INK or Palette.PARCHMENT_LIGHT)
+        love.graphics.print(r.label, r.x + 12, r.y + math.floor((r.h - font:getHeight()) / 2) + 1)
+        if not active and self:sectionHasNew(r.id) then
+            require("src.ui.DiscoveryMark").drawAlert(r.x + r.w - 4, r.y - 2)
+        end
+        NavCursor.target("section:" .. r.id, r.x, r.y, r.w, r.h)
+    end
+end
+
 local function drawTitleAndFilters(self)
     local width = love.graphics.getWidth()
 
@@ -451,8 +549,17 @@ local function drawTitleAndFilters(self)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT)
     love.graphics.print(title, (width - titleFont:getWidth(title)) / 2, 12)
 
+    drawSections(self)
+
     local subFont = FontManager.getFont(14)
     love.graphics.setFont(subFont)
+    if self.section == "creatures" then
+        local n, total = self.bestiary:seenCount()
+        local sub = I18n.t("bestiary.ui.count", { n = n, total = total })
+        love.graphics.setColor(Palette.PARCHMENT_LIGHT)
+        love.graphics.print(sub, (width - subFont:getWidth(sub)) / 2, 50)
+        return
+    end
     local sub = I18n.t("unlocks.discovered_count",
         { n = self.discoveredCount or #self.filtered, total = #self.filtered })
     love.graphics.setColor(Palette.PARCHMENT_LIGHT)
@@ -949,10 +1056,35 @@ local function drawInspectModal(self)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+local function drawCloseButton()
+    local cx, cy, cw, ch = closeRect()
+    require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
+    local mx, my = love.mouse.getPosition()
+    local hot = inRect(mx, my, cx, cy, cw, ch)
+    Palette.set(hot and Palette.BLOOD or Palette.PANEL_FILL)
+    love.graphics.rectangle("fill", cx, cy, cw, ch, 4, 4)
+    Palette.set(Palette.AGED_GOLD)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", cx, cy, cw, ch, 4, 4)
+    local xf = FontManager.getFont(14)
+    love.graphics.setFont(xf)
+    Palette.set(Palette.PARCHMENT_LIGHT)
+    love.graphics.print("X", math.floor(cx + (cw - xf:getWidth("X")) / 2),
+        math.floor(cy + (ch - xf:getHeight()) / 2))
+    if hot then require("src.ui.CursorManager").request("hand") end
+end
+
 function CollectionScreen:draw()
     if not self.visible then return end
     drawBackground()
     drawTitleAndFilters(self)
+    if self.section == "creatures" then
+        self.bestiary:draw()
+        if not self.bestiary:isOpen() then drawCloseButton() end
+        self.bestiary:drawCard()
+        love.graphics.setColor(1, 1, 1, 1)
+        return
+    end
 
     local width, height = love.graphics.getDimensions()
     local dt = love.timer.getDelta()
@@ -1053,23 +1185,7 @@ function CollectionScreen:draw()
         drawHoverTooltip(self)
     end
 
-    if not self.inspectedCard then
-        local cx, cy, cw, ch = closeRect()
-        require("src.ui.NavCursor").target("close", cx, cy, cw, ch)
-        local mx, my = love.mouse.getPosition()
-        local hot = inRect(mx, my, cx, cy, cw, ch)
-        Palette.set(hot and Palette.BLOOD or Palette.PANEL_FILL)
-        love.graphics.rectangle("fill", cx, cy, cw, ch, 4, 4)
-        Palette.set(Palette.AGED_GOLD)
-        love.graphics.setLineWidth(1)
-        love.graphics.rectangle("line", cx, cy, cw, ch, 4, 4)
-        local xf = FontManager.getFont(14)
-        love.graphics.setFont(xf)
-        Palette.set(Palette.PARCHMENT_LIGHT)
-        love.graphics.print("X", math.floor(cx + (cw - xf:getWidth("X")) / 2),
-            math.floor(cy + (ch - xf:getHeight()) / 2))
-        if hot then require("src.ui.CursorManager").request("hand") end
-    end
+    if not self.inspectedCard then drawCloseButton() end
 
     drawInspectModal(self)
 
