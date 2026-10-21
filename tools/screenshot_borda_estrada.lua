@@ -32,16 +32,27 @@ local function setup(WorldRoad, bio, scene, width, height, topBarH, canvas)
     end
     WorldRoad._camZ = 5.5
     tick(30)
-    if scene == "fork" or scene == "abrindo" then
+    local pick = scene:match("^clica(%a+)$")
+    if scene == "fork" or scene == "abrindo" or pick then
         require("src.i18n.I18n").init()
         require("src.i18n.I18n").setLocale("en", true)
         local MM = require("src.systems.MapManager")
         local nodes = {}
-        for i, ty in ipairs({ "battle", "rest", "shop" }) do
+        local types = (pick == "event") and { "battle", "event", "shop" } or { "battle", "rest", "shop" }
+        for i, ty in ipairs(types) do
             nodes[i] = { type = ty, label = MM.labelFor(ty), desc = MM.descFor(ty) }
         end
         WorldRoad.showFork(nodes, function() end)
-        tick(scene == "fork" and 60 or 6)
+        tick(scene == "abrindo" and 6 or 60)
+        if pick then
+            local f = WorldRoad._fork
+            for i, ty in ipairs(types) do
+                local b = f and f.markBoxes and f.markBoxes[i]
+                if ty == pick and b then
+                    WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
+                end
+            end
+        end
     elseif scene == "viagem" then
         local EnemyRenderer = require("src.ui.EnemyRenderer")
         WorldRoad.travel({
@@ -85,8 +96,13 @@ function M.run(arg)
             WorldRoad.update(1 / 30)
             for si = 1, nseq do
                 if si > 1 then
-                    clock = clock + 1 / 30
-                    WorldRoad.update(1 / 30)
+                    for _ = 1, tonumber(os.getenv("BORDA_STEP") or "1") do
+                        clock = clock + 1 / 30
+                        WorldRoad.update(1 / 30)
+                        love.graphics.setCanvas(canvas)
+                        WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
+                        love.graphics.setCanvas()
+                    end
                 end
                 love.graphics.setCanvas(canvas)
                 love.graphics.clear(0, 0, 0, 1)
