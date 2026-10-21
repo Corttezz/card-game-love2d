@@ -21,16 +21,20 @@ local function lum(r, g, b) return 0.299 * r + 0.587 * g + 0.114 * b end
 
 local function checkLayouts(t, Bestiary, Layout, Card, I18n)
     local entries = Bestiary.entries()
-    local counts = {}
-    for _, e in ipairs(entries) do counts[e.act] = (counts[e.act] or 0) + 1 end
     for _, loc in ipairs(I18n.available) do
         I18n.setLocale(loc, true)
         local bad = {}
         for _, sz in ipairs(SIZES) do
             local sw, sh, k = sz[1], sz[2], sz[3]
-            local G = Layout.grid(sw, sh, 120, sh - 40, k, counts)
+            local G = Layout.grid(sw, sh, 114, sh - 36, k, entries)
             for _, p in ipairs(Layout.validateGrid(G, sw, sh)) do
                 bad[#bad + 1] = ("%dx%d@%.2f grade: %s"):format(sw, sh, k, p)
+            end
+            local Grid = require("src.ui.BestiaryGrid")
+            for act, ch in pairs(G.chips) do
+                local _, tw = Grid.ribbonText(ch)
+                local n = #Grid.ribbonLines(nil, act, tw)
+                if n > 2 then bad[#bad + 1] = ("%dx%d marcador do ato %d em %d linhas"):format(sw, sh, act, n) end
             end
             for _, e in ipairs(entries) do
                 for _, defeated in ipairs({ true, false }) do
@@ -122,29 +126,20 @@ function M.run()
             for i, e in ipairs(grid.entries) do if e.id == id then return i end end
         end
         local G = grid:layout()
-        local function spriteLum(id)
-            local i = indexOf(id)
-            local c = G.cells[i]
-            local data = canvas:newImageData()
-            local y0 = G.top + c.y + 24
-            local y1 = G.top + c.y + c.h - Layout.NAME_H - 8
-            local best = 0
-            for y = y0, y1, 2 do
-                for x = c.x + 4, c.x + c.w - 5, 2 do
-                    local r, g, b = data:getPixel(x, y)
-                    best = math.max(best, lum(r, g, b))
-                end
-            end
-            data:release()
-            return best
+        local Card = require("src.ui.BestiaryCard")
+        local realDraw = Card.drawSprite
+        local drawn = {}
+        Card.drawSprite = function(id, ...)
+            drawn[id] = true
+            return realDraw(id, ...)
         end
-        grid.scrollY = 0
+        grid:setScroll(0, true)
         frame(s, canvas)
-        local unseenLum = spriteLum("blight_bull")
-        local seenLum = spriteLum("cursed_scarecrow")
-        t:truthy(("nao descoberta = silhueta escura (luz max %.2f)"):format(unseenLum), unseenLum < 0.3)
-        t:truthy(("descoberta mostra a arte (luz max %.2f)"):format(seenLum), seenLum > 0.45)
-        t:falsy("silhueta nao abre a ficha", grid:open(indexOf("blight_bull")))
+        Card.drawSprite = realDraw
+        t:falsy("nao descoberta: nada da criatura na pagina (sem silhueta)", drawn.blight_bull)
+        t:eq("nao descoberta: nenhum quadro do sprite carregado", Sprites.get("blight_bull").loaded, 0)
+        t:truthy("descoberta desenha a criatura", drawn.cursed_scarecrow)
+        t:falsy("nao descoberta nao abre a ficha", grid:open(indexOf("blight_bull")))
 
         t:truthy("aba Criaturas com '!' enquanto ha nova", s:sectionHasNew("creatures"))
         t:truthy("fixture: Lavrador Oco nova", Bestiary.isNew("hollow_farmer"))
@@ -160,30 +155,54 @@ function M.run()
         love.mousereleased = function(x, y, b) s:mousereleased(x, y, b) end
         love.wheelmoved = function(x, y) s:wheelmoved(x, y) end
         local visited = {}
-        for col = 1, Layout.COLS do
+        local function predecessor(i)
+            local c = G.cells[i]
+            local best, bd
+            for j, d in pairs(G.cells) do
+                if j ~= i and d.y == c.y and d.x < c.x and (not bd or c.x - d.x < bd) then best, bd = j, c.x - d.x end
+            end
+            if best then return best, "right" end
+            local up = grid:columnNeighbor(i, -1)
+            if up then return up, "down" end
+            return nil, "down"
+        end
+        for i in pairs(G.cells) do
+            local from, dir = predecessor(i)
+            local c = G.cells[i]
             NC._reset()
-            grid.scrollY = 0
+            local view = G.viewH
+            local target = c.y + math.min(c.h * 0.6, 110) - view
+            if from then
+                local d = G.cells[from]
+                if dir == "right" then target = math.min(c.y, d.y) - 8 end
+                if dir == "down" and c.y + 120 - (d.y + 10) > view then target = d.y end
+            else
+                target = 0
+            end
+            grid:setScroll(math.max(0, target), true)
             s:update(1 / 60)
             frame(s, canvas)
-            local cx, cy, cw, ch = grid:cellScreen(col)
-            NC.mouseMoved(cx + cw / 2, cy + ch / 2)
-            NC.intent("down", "keyboard")
-            for _ = 1, 120 do
-                s:update(1 / 60)
-                frame(s, canvas)
-                local key = NC.focusKey()
-                local i = type(key) == "string" and tonumber(key:match("^bst:(%d+)$"))
-                if i then visited[i] = true end
-                if i and i + Layout.COLS > #grid.entries and grid.scrollY >= G.maxScroll then break end
-                NC.intent("down", "keyboard")
+            if from then
+                local fx, fy, fw, fh = grid:cellScreen(from)
+                local vy0 = math.max(fy, G.top)
+                local vy1 = math.min(fy + fh, G.bottom)
+                NC.mouseMoved(fx + fw / 2, (vy0 + vy1) / 2)
+            else
+                local ch = G.chips[c.act]
+                NC.mouseMoved(ch.x + ch.w / 2, ch.y + ch.h / 2)
             end
+            NC.intent(dir, "keyboard")
+            NC.intent(dir, "keyboard")
+            local key = NC.focusKey()
+            local got = type(key) == "string" and tonumber(key:match("^bst:(%d+)$"))
+            if got == i then visited[i] = true end
         end
         local missing = {}
         for i = 1, #grid.entries do if not visited[i] then missing[#missing + 1] = grid.entries[i].id end end
-        t:eq("teclado alcanca todas as celulas (" .. table.concat(missing, ",") .. ")", #missing, 0)
+        t:eq("teclado: cada celula a uma seta da vizinha (" .. table.concat(missing, ",") .. ")", #missing, 0)
 
         NC._reset()
-        grid.scrollY = 0
+        grid:setScroll(0, true)
         s:update(1 / 60)
         frame(s, canvas)
         local kx, ky, kw, kh = grid:cellScreen(indexOf("cursed_scarecrow"))

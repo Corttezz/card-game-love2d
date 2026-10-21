@@ -21,6 +21,7 @@ return {
         stat_killed_you  = "Vous a vaincu",
         new_creatures    = "Nouvelles créatures : {n}",
         end_label        = "NOUVELLES CRÉATURES",
+        habitat          = "Habitat : {biome}",
         biome = {
             fields    = "Champs en Ruine",
             highlands = "Collines de la Tour",

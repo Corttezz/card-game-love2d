@@ -1,6 +1,7 @@
 local M = {}
 
 local SIZES = { { 1280, 720 }, { 1920, 1080 }, { 2560, 1440 } }
+if os.getenv("BESTIARIO_SIZES") == "2" then SIZES = { { 1280, 720 }, { 1920, 1080 } } end
 
 local SEEN = {
     "cursed_scarecrow", "hollow_farmer", "plague_rats", "harvest_reaper", "wicker_effigy", "carrion_king",
@@ -96,13 +97,17 @@ function M.run(arg)
                 Sprites.pump(1)
                 if Sprites.pendingCount() == 0 then break end
             end
+            for _ = 1, 6 do c:draw() end
+            local hx, hy, hw, hh = c.bestiary:cellScreen(1)
+            mx, my = hx + hw / 2, hy + hh / 2
             for _ = 1, 20 do c:update(1 / 30) end
-            shoot("aba", w, h, function() c:draw() end)
-            c.bestiary.scrollY = 9999
-            c:draw()
+            shoot("aba", w, h, function() for _ = 1, 6 do c:draw() end end)
+            mx, my = -100, -100
+            for _ = 1, 20 do c:update(1 / 30) end
+            c.bestiary:setScroll(9999, true)
             c:update(1 / 30)
-            shoot("aba_fim", w, h, function() c:draw() end)
-            c.bestiary.scrollY = 0
+            shoot("aba_fim", w, h, function() for _ = 1, 6 do c:draw() end end)
+            c.bestiary:setScroll(0, true)
             local function openId(id)
                 for i, e in ipairs(c.bestiary.entries) do
                     if e.id == id then c.bestiary:open(i) end
@@ -110,13 +115,13 @@ function M.run(arg)
                 for _ = 1, 20 do c:update(1 / 30) end
             end
             openId("cursed_scarecrow")
-            shoot("ficha_comum", w, h, function() c:draw() end)
+            shoot("ficha_comum", w, h, function() for _ = 1, 6 do c:draw() end end)
             c.bestiary:close()
             openId("carrion_king")
-            shoot("ficha_chefe", w, h, function() c:draw() end)
+            shoot("ficha_chefe", w, h, function() for _ = 1, 6 do c:draw() end end)
             c.bestiary:close()
             openId("tower_lich")
-            shoot("ficha_chefe_invicto", w, h, function() c:draw() end)
+            shoot("ficha_chefe_invicto", w, h, function() for _ = 1, 6 do c:draw() end end)
             c.bestiary:close()
             c:hide()
             love.mouse.getPosition = realMouse

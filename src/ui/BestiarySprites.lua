@@ -180,9 +180,9 @@ function BestiarySprites.frameAt(id, t)
     local s = ensureSet(id)
     local first = s.frames[1]
     if not first then return nil, s end
-    if reduced() or s.loaded < #s.files then return first, s end
+    if reduced() or s.loaded < #s.files then return first, s, 1 end
     local n = #s.files
-    if n <= 1 then return first, s end
+    if n <= 1 then return first, s, 1 end
     local step = math.floor((t or 0) * s.fps)
     local idx
     if s.pingpong then
@@ -192,7 +192,7 @@ function BestiarySprites.frameAt(id, t)
     else
         idx = (step % n) + 1
     end
-    return s.frames[idx] or first, s
+    return s.frames[idx] or first, s, idx
 end
 
 function BestiarySprites.isReady(id, all)

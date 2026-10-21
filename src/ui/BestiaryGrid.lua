@@ -6,43 +6,76 @@ local TextFit = require("src.ui.TextFit")
 local Layout = require("src.ui.BestiaryLayout")
 local Sprites = require("src.ui.BestiarySprites")
 local Card = require("src.ui.BestiaryCard")
+local BInk = require("src.ui.BestiaryInk")
+local Ink = require("src.ui.RunJournalInk")
 local Bestiary = require("src.systems.Bestiary")
 local Sfx = require("src.systems.Sfx")
 
 local Grid = {}
 Grid.__index = Grid
 
-Grid.TOP = 120
-Grid.BOTTOM_PAD = 40
+Grid.TOP = 114
+Grid.BOTTOM_PAD = 36
+Grid.PAGE_CACHE = 4
+Grid.SCROLL_RATE = 12
+Grid.NUMERALS = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII" }
+Grid.RIBBON = {
+    Palette.BLOOD, Palette.STEEL, Palette.RUST,
+    Palette.lerp(Palette.STEEL, Palette.STEEL_LIGHT, 0.4), Palette.MOSS,
+    Palette.lerp(Palette.BLOOD_DARK, Palette.ARCANE_INK or Palette.INK, 0.3),
+}
+
+local function rgba(c, a)
+    love.graphics.setColor(c[1], c[2], c[3], (a or 1) * (c[4] or 1))
+end
 
 function Grid.new()
     local self = setmetatable({}, Grid)
     self.scrollY = 0
+    self.scrollTarget = 0
     self.time = 0
     self.k = 1
     self.entries = {}
     self.openIdx = nil
     self.openAnim = 0
+    self.pages = {}
+    self.pageOrder = {}
+    pcall(BInk.prewarm)
     return self
 end
 
 function Grid:refresh()
     self.entries = Bestiary.entries()
-    self.actCounts = {}
-    for _, e in ipairs(self.entries) do
-        self.actCounts[e.act] = (self.actCounts[e.act] or 0) + 1
-    end
-    for a = 1, #self.actCounts do self.actCounts[a] = self.actCounts[a] or 0 end
     self.layoutKey = nil
+    self:dropPages()
+end
+
+function Grid:dropPages()
+    for _, p in pairs(self.pages or {}) do
+        if p.canvas and p.canvas.release then p.canvas:release() end
+    end
+    self.pages, self.pageOrder = {}, {}
 end
 
 function Grid:show()
     self:refresh()
-    self.scrollY = 0
+    self.scrollY, self.scrollTarget = 0, 0
     self.openIdx = nil
     self.openAnim = 0
     self.hoverIdx = nil
-    for _, e in ipairs(self.entries) do Sprites.prefetch(e.id, false) end
+    self.hoverT = {}
+    self.bakeHold = 1
+    self.warm = { function() BInk.engraveShader() end }
+    for a = 1, 6 do
+        local b = Card.biomeId(a)
+        if b then
+            self.warm[#self.warm + 1] = function() BInk.image("assets/sprites/world/" .. b .. "_mountains.png") end
+            self.warm[#self.warm + 1] = function() BInk.image("assets/sprites/world/" .. b .. "_castle.png") end
+        end
+    end
+    for _, e in ipairs(self.entries) do
+        if Bestiary.isSeen(e.id) then Sprites.prefetch(e.id, false) end
+    end
     for _, e in ipairs(self.entries) do
         if Bestiary.isSeen(e.id) then Sprites.prefetch(e.id, true) end
     end
@@ -51,17 +84,27 @@ end
 function Grid:resize()
     self.layoutKey = nil
     self.cardKey = nil
+    self:dropPages()
 end
 
 function Grid:layout()
     local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
     local key = sw .. "x" .. sh .. "@" .. self.k
     if self.layoutKey ~= key then
-        self.G = Layout.grid(sw, sh, Grid.TOP, sh - Grid.BOTTOM_PAD, self.k, self.actCounts or {})
+        self.G = Layout.grid(sw, sh, Grid.TOP, sh - Grid.BOTTOM_PAD, self.k, self.entries)
         self.layoutKey = key
+        self:dropPages()
     end
-    self.scrollY = math.max(0, math.min(self.G.maxScroll, self.scrollY))
+    local mx = self.G.maxScroll
+    self.scrollTarget = math.max(0, math.min(mx, self.scrollTarget or 0))
+    self.scrollY = math.max(0, math.min(mx, self.scrollY))
     return self.G
+end
+
+function Grid:setScroll(y, instant)
+    local G = self:layout()
+    self.scrollTarget = math.max(0, math.min(G.maxScroll, y))
+    if instant or BInk.reduced() then self.scrollY = self.scrollTarget end
 end
 
 function Grid:cellScreen(i)
@@ -94,7 +137,7 @@ end
 function Grid:hitCell(mx, my)
     local G = self:layout()
     if my < G.top or my > G.bottom then return nil end
-    for i, c in ipairs(G.cells) do
+    for i, c in pairs(G.cells) do
         local y = G.top + c.y - self.scrollY
         if mx >= c.x and mx <= c.x + c.w and my >= y and my <= y + c.h then return i end
     end
@@ -104,13 +147,11 @@ function Grid:ensureVisible(i)
     local G = self:layout()
     local c = G.cells[i]
     if not c then return end
-    local y = c.y - self.scrollY
-    local act = G.acts[c.act]
+    local y = c.y - self.scrollTarget
     if y < 0 then
-        local top = (act and c.y - act.header.y <= Layout.HEADER_H + 1) and act.header.y or c.y
-        self.scrollY = math.max(0, top)
+        self:setScroll(c.y - 8)
     elseif y + c.h > G.viewH then
-        self.scrollY = math.min(G.maxScroll, c.y + c.h - G.viewH)
+        self:setScroll(c.y + c.h - G.viewH + 8)
     end
 end
 
@@ -122,12 +163,17 @@ function Grid:open(i)
     self.cardKey = nil
     Bestiary.clearNew(e.id)
     Sprites.want(e.id, true)
+    if not BInk.reduced() then
+        local sw, sh = love.graphics.getWidth(), love.graphics.getHeight()
+        self.splash = BInk.splash(sw / 2, sh / 2, i * 31 + 7)
+    end
     return true
 end
 
 function Grid:close()
     self.openIdx = nil
     self.cardKey = nil
+    self.splash = nil
 end
 
 function Grid:step(delta)
@@ -140,7 +186,8 @@ function Grid:step(delta)
     end
     if i == self.openIdx then return false end
     self.openIdx = i
-    self.openAnim = 0.6
+    self.openAnim = 0.55
+    self.turnDir = delta
     self.cardKey = nil
     Bestiary.clearNew(self.entries[i].id)
     self:ensureVisible(i)
@@ -153,39 +200,102 @@ function Grid:seenCount()
     return n, #self.entries
 end
 
+function Grid:actSeen(a)
+    local seen, total = 0, 0
+    for _, e in ipairs(self.entries) do
+        if e.act == a then
+            total = total + 1
+            if Bestiary.isSeen(e.id) then seen = seen + 1 end
+        end
+    end
+    return seen, total
+end
+
 function Grid:update(dt, mx, my)
-    self.time = self.time + (dt or 0)
-    Sprites.pump()
+    dt = dt or 0
+    self.time = self.time + dt
+    if self.warm and #self.warm > 0 then
+        table.remove(self.warm, 1)()
+    else
+        Sprites.pump()
+    end
+    if BInk.reduced() then
+        self.scrollY = self.scrollTarget or self.scrollY
+    else
+        local d = (self.scrollTarget or self.scrollY) - self.scrollY
+        if math.abs(d) < 0.5 then self.scrollY = self.scrollTarget
+        else self.scrollY = self.scrollY + d * math.min(1, dt * Grid.SCROLL_RATE) end
+    end
+    self.splash = BInk.updateSplash(self.splash, dt)
+    local e = self:openEntry()
+    if e and e.tier == "boss" then
+        local okA, BossAura = pcall(require, "src.ui.BossAura")
+        if okA and BossAura.has(e.id) then BossAura.update(dt, e.id) end
+    end
+    self.hoverT = self.hoverT or {}
+    for i, v in pairs(self.hoverT) do
+        local target = (i == self.hoverIdx) and 1 or 0
+        local nv = v + (target - v) * math.min(1, dt * 12)
+        if BInk.reduced() then nv = target end
+        self.hoverT[i] = (nv < 0.01 and target == 0) and nil or nv
+    end
     if self.openIdx then
-        self.openAnim = math.min(1, self.openAnim + (dt or 0) * 6)
+        self.openAnim = math.min(1, self.openAnim + dt * 5)
         self.hoverIdx = nil
         return
     end
     self.openAnim = 0
     local prev = self.hoverIdx
     self.hoverIdx = self:hitCell(mx, my)
+    if self.hoverIdx then self.hoverT[self.hoverIdx] = self.hoverT[self.hoverIdx] or 0 end
     if self.hoverIdx and self.hoverIdx ~= prev then
         local NavCursor = require("src.ui.NavCursor")
         if NavCursor.isActive() then self:ensureVisible(self.hoverIdx) end
-        local e = self.entries[self.hoverIdx]
         Sfx.playWithVariation("hoverCard", 0.95, 0.18)
-        if e and Bestiary.isNew(e.id) then Bestiary.clearNew(e.id) end
-    elseif self.hoverIdx then
-        local e = self.entries[self.hoverIdx]
-        if e and Bestiary.isNew(e.id) then Bestiary.clearNew(e.id) end
     end
+    if self.hoverIdx then
+        local h = self.entries[self.hoverIdx]
+        if h and Bestiary.isNew(h.id) then Bestiary.clearNew(h.id) end
+    end
+end
+
+function Grid:columnNeighbor(i, dir)
+    local G = self:layout()
+    local c = G.cells[i]
+    if not c then return nil end
+    local cx = c.x + c.w / 2
+    local best, bd
+    for j, d in pairs(G.cells) do
+        if j ~= i and cx >= d.x - 8 and cx <= d.x + d.w + 8 then
+            local dy = (d.y - c.y) * dir
+            if dy > 0 and (not bd or dy < bd) then best, bd = j, dy end
+        end
+    end
+    return best
 end
 
 function Grid:wheelmoved(_, y)
     if self.openIdx then return end
-    local G = self:layout()
-    self.scrollY = math.max(0, math.min(G.maxScroll, self.scrollY - y * 48))
+    local NavCursor = require("src.ui.NavCursor")
+    if NavCursor.synthesizing and self.hoverIdx then
+        local nxt = self:columnNeighbor(self.hoverIdx, y < 0 and 1 or -1)
+        if nxt then
+            local G = self:layout()
+            local d = G.cells[nxt]
+            local peek = math.min(d.h * 0.6, 110)
+            local want = y < 0 and (d.y + peek - G.viewH) or (d.y + d.h - peek)
+            if y < 0 then want = math.max(want, self.scrollTarget + 20) else want = math.min(want, self.scrollTarget - 20) end
+            self:setScroll(want, true)
+            return
+        end
+    end
+    self:setScroll((self.scrollTarget or self.scrollY) - y * 60)
 end
 
 function Grid:scrollToAct(a)
     local G = self:layout()
     local act = G.acts[a]
-    if act then self.scrollY = math.max(0, math.min(G.maxScroll, act.header.y)) end
+    if act then self:setScroll(act.page.y) end
 end
 
 function Grid:keypressed(key)
@@ -202,10 +312,10 @@ function Grid:keypressed(key)
     end
     local G = self:layout()
     if key == "up" or key == "pageup" then
-        self.scrollY = math.max(0, self.scrollY - (key == "up" and 100 or G.viewH))
+        self:setScroll(self.scrollTarget - (key == "up" and 100 or G.viewH))
         return true
     elseif key == "down" or key == "pagedown" then
-        self.scrollY = math.min(G.maxScroll, self.scrollY + (key == "down" and 100 or G.viewH))
+        self:setScroll(self.scrollTarget + (key == "down" and 100 or G.viewH))
         return true
     end
     return false
@@ -218,9 +328,9 @@ function Grid:mousepressed(x, y, button)
         return true
     end
     local G = self:layout()
-    for a, ch in ipairs(G.chips) do
+    for a, ch in pairs(G.chips) do
         if Card.hit(ch, x, y) then
-            Sfx.play("buttonClick")
+            Sfx.play("collectionFlip")
             self:scrollToAct(a)
             return true
         end
@@ -262,67 +372,17 @@ function Grid:mousereleased(x, y, button)
     return false
 end
 
-local function rgba(c, a)
-    love.graphics.setColor(c[1], c[2], c[3], (a or 1) * (c[4] or 1))
-end
-
 local screenScissor = Layout.scissor
 
 function Grid:currentAct()
     local G = self:layout()
-    local best = 1
-    for a, act in ipairs(G.acts) do
-        if act.header.y <= self.scrollY + 40 then best = a end
-    end
-    return best
-end
-
-local NUMERALS = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII" }
-
-function Grid:chipStyle()
-    local G = self:layout()
-    local key = (self.layoutKey or "") .. (I18n.current or "")
-    if self._chipKey == key then return self._chipSize, self._chipNumW end
-    local f = FontManager.getFont(10)
-    local numW = 0
-    for a = 1, #G.chips do numW = math.max(numW, f:getWidth(NUMERALS[a] or tostring(a))) end
-    local size = 10
-    for a, ch in ipairs(G.chips) do
-        local _, _, sz = TextFit.fit(TextCase.upper(Card.biomeName(a)), 10, ch.w - numW - 28, 6)
-        size = math.min(size, sz)
-    end
-    self._chipKey, self._chipSize, self._chipNumW = key, size, numW
-    return size, numW
-end
-
-function Grid:drawChips()
-    local G = self:layout()
-    local NavCursor = require("src.ui.NavCursor")
-    local cur = self:currentAct()
-    local mx, my = love.mouse.getPosition()
-    local size, numW = self:chipStyle()
-    for a, ch in ipairs(G.chips) do
-        local active = a == cur
-        local hot = Card.hit(ch, mx, my) and not self.openIdx
-        if active then rgba(Palette.AGED_GOLD) else rgba(Palette.INK, hot and 0.85 or 0.6) end
-        love.graphics.rectangle("fill", ch.x, ch.y, ch.w, ch.h, 4, 4)
-        rgba(hot and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT_DARK)
-        love.graphics.rectangle("line", ch.x, ch.y, ch.w, ch.h, 4, 4)
-        local label = TextCase.upper(Card.biomeName(a))
-        local numeral = NUMERALS[a] or tostring(a)
-        local f = FontManager.getFont(10)
-        love.graphics.setFont(f)
-        rgba(active and Palette.INK or Palette.AGED_GOLD_LIGHT)
-        love.graphics.print(numeral, ch.x + 8, ch.y + math.floor((ch.h - f:getHeight()) / 2) + 1)
-        local lf = FontManager.getFont(size)
-        rgba(active and Palette.INK or Palette.PARCHMENT_LIGHT)
-        TextFit.print(label, ch.x + 8 + numW + 10, ch.y + math.floor((ch.h - lf:getHeight()) / 2) + 1,
-            { size = size, maxW = ch.w - numW - 28, minSize = 6 })
-        if self:actHasNew(a) then
-            require("src.ui.DiscoveryMark").drawAlert(ch.x + ch.w - 4, ch.y - 2)
+    local best
+    for a, act in pairs(G.acts) do
+        if act.page.y <= self.scrollY + G.viewH * 0.4 and (not best or act.page.y > G.acts[best].page.y) then
+            best = a
         end
-        NavCursor.target("bstchip:" .. a, ch.x, ch.y, ch.w, ch.h)
     end
+    return best or 1
 end
 
 function Grid:actHasNew(a)
@@ -332,103 +392,249 @@ function Grid:actHasNew(a)
     return false
 end
 
-function Grid:drawCell(i, c, x, y, hovered)
-    local G = self.G
-    local e = self.entries[i]
-    local seen = Bestiary.isSeen(e.id)
-    local fresh = seen and Bestiary.isNew(e.id)
-    local tierCol = Card.TIER_COLOR[e.tier] or Palette.PARCHMENT_LIGHT
-    local tierInk = Card.TIER_INK[e.tier] or Palette.PARCHMENT_DARK
-    rgba(Palette.INK, 0.55)
-    love.graphics.rectangle("fill", x + 3, y + 4, c.w, c.h)
-    rgba(Palette.lerp(Palette.INK, tierInk, seen and 0.22 or 0.08), seen and 0.92 or 0.86)
-    love.graphics.rectangle("fill", x, y, c.w, c.h)
-    local groundY = y + Layout.CELL_PAD + G.spriteH - 6
-    rgba(Palette.lerp(Palette.INK, Palette.PARCHMENT_DARK, 0.18), 1)
-    love.graphics.rectangle("fill", x + 2, groundY, c.w - 4, y + c.h - Layout.NAME_H - groundY)
-    if seen then
-        Sprites.want(e.id, true)
-    else
-        Sprites.want(e.id, false)
-    end
-    Card.drawGround(x + c.w / 2, groundY + 2, math.floor(Layout.REF_W * G.spriteS * 0.6), seen and 1 or 0.6)
-    local sx0, sy0, sw0, sh0 = love.graphics.getScissor()
-    local vy0 = math.max(y + 2, G.top)
-    local vy1 = math.min(y + c.h - Layout.NAME_H, G.bottom)
-    if vy1 > vy0 then
-        screenScissor(x + 2, vy0, c.w - 4, vy1 - vy0)
-        Card.drawSprite(e.id, x + c.w / 2, groundY + 2, G.spriteS, self.time, 1, not seen)
-        if sx0 then love.graphics.setScissor(sx0, sy0, sw0, sh0) else love.graphics.setScissor() end
-    end
-    local ny = y + c.h - Layout.NAME_H
-    rgba(Palette.INK, 0.9)
-    love.graphics.rectangle("fill", x + 1, ny, c.w - 2, Layout.NAME_H - 1)
-    rgba(seen and Palette.PARCHMENT_LIGHT or Palette.PARCHMENT_DARK)
-    local name = seen and Card.name(e.id) or I18n.t("bestiary.ui.unknown", nil, "???")
+function Grid.ribbonText(ch)
+    local nf = FontManager.getFont(10)
+    local tx = ch.x + 8 + nf:getWidth("VIII") + 6
+    return tx, ch.x + ch.w - 8 - tx
+end
+
+function Grid:ribbonLines(a, w)
+    local label = Card.biomeName(a)
     local f = FontManager.getFont(8)
-    TextFit.print(name, x + 4, ny + math.floor((Layout.NAME_H - f:getHeight()) / 2),
-        { size = 8, maxW = c.w - 8, align = "center", minSize = 6 })
-    local tl = TextCase.upper(Card.tierLabel(e.tier))
-    local tf = FontManager.getFont(8)
-    local tw = math.min(c.w - 8, tf:getWidth(tl) + 10)
-    rgba(Palette.INK, 0.92)
-    love.graphics.rectangle("fill", x + 4, y + 4, tw, tf:getHeight() + 6)
-    rgba(tierInk, 1)
-    love.graphics.rectangle("fill", x + 4, y + 4, 2, tf:getHeight() + 6)
-    rgba(tierCol, seen and 1 or 0.6)
-    TextFit.print(tl, x + 8, y + 7, { size = 8, maxW = tw - 6, minSize = 6 })
-    if e.tier == "boss" or e.tier == "miniboss" then
-        rgba(tierCol, seen and 0.9 or 0.4)
-        love.graphics.rectangle("line", x + 2.5, y + 2.5, c.w - 5, c.h - 5)
-    end
-    if hovered then
-        rgba(Palette.AGED_GOLD_LIGHT)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", x + 1, y + 1, c.w - 2, c.h - 2)
-        love.graphics.setLineWidth(1)
-    else
-        rgba(seen and Palette.AGED_GOLD_DARK or Palette.PARCHMENT_DARK, seen and 1 or 0.6)
-        love.graphics.rectangle("line", x + 0.5, y + 0.5, c.w - 1, c.h - 1)
-    end
-    if fresh then
-        require("src.ui.DiscoveryMark").drawAlert(x + c.w - 4, y + 4, 9)
-    end
-    if hovered then
-        require("src.ui.CursorManager").request(seen and "hand" or "arrow")
+    local _, lines = f:getWrap(label, w)
+    return lines
+end
+
+function Grid:drawChips()
+    local G = self:layout()
+    local NavCursor = require("src.ui.NavCursor")
+    local cur = self:currentAct()
+    local mx, my = love.mouse.getPosition()
+    for a, ch in pairs(G.chips) do
+        local active = a == cur
+        local hot = Card.hit(ch, mx, my) and not self.openIdx
+        local drop = active and 6 or (hot and 3 or 0)
+        local col = Grid.RIBBON[((a - 1) % #Grid.RIBBON) + 1]
+        local x, y, w, h = ch.x, ch.y, ch.w, ch.h + drop
+        rgba(Palette.INK, 0.5)
+        love.graphics.rectangle("fill", x + 2, y + 2, w, h - 6)
+        rgba(col)
+        love.graphics.rectangle("fill", x, y, w, h - 6)
+        love.graphics.polygon("fill", x, y + h - 6, x + w / 2, y + h - 6, x, y + h)
+        love.graphics.polygon("fill", x + w, y + h - 6, x + w / 2, y + h - 6, x + w, y + h)
+        rgba(Palette.lighten(col, 0.25), 0.8)
+        love.graphics.rectangle("fill", x + 3, y, 1, h - 7)
+        love.graphics.rectangle("fill", x + w - 4, y, 1, h - 7)
+        rgba(Palette.darken(col, 0.45), 0.9)
+        love.graphics.rectangle("fill", x, y, w, 2)
+        local numeral = Grid.NUMERALS[a] or tostring(a)
+        local nf = FontManager.getFont(10)
+        love.graphics.setFont(nf)
+        rgba(Palette.PARCHMENT_LIGHT, active and 1 or 0.85)
+        local ny = y + math.floor((h - 6 - nf:getHeight()) / 2) + 1
+        love.graphics.print(numeral, x + 8, ny)
+        local tx, tw = Grid.ribbonText(ch)
+        local lines = self:ribbonLines(a, tw)
+        local f = FontManager.getFont(8)
+        love.graphics.setFont(f)
+        local lh = f:getHeight() + 2
+        local ty = y + math.floor((h - 6 - #lines * lh) / 2) + 1
+        for li, line in ipairs(lines) do
+            love.graphics.print(line, tx, ty + (li - 1) * lh)
+        end
+        if self:actHasNew(a) then BInk.alert(x + w - 6, y + 4, self.time) end
+        NavCursor.target("bstchip:" .. a, ch.x, ch.y, ch.w, ch.h)
     end
 end
 
-function Grid:drawHeaders()
-    local G = self.G
-    for a, act in ipairs(G.acts) do
-        local y = G.top + act.header.y - self.scrollY
-        if inView(G, y, act.header.h) then
-            local label = TextCase.upper(Card.actLabel(a))
-            local f = FontManager.getFont(12)
-            rgba(Palette.AGED_GOLD_LIGHT)
-            local w = TextFit.print(label, act.header.x, y + 6, { size = 12, maxW = act.header.w * 0.7, minSize = 8 })
-            local seen, total = 0, 0
-            for _, e in ipairs(self.entries) do
-                if e.act == a then
-                    total = total + 1
-                    if Bestiary.isSeen(e.id) then seen = seen + 1 end
-                end
-            end
-            local cnt = seen .. "/" .. total
-            local cf = FontManager.getFont(10)
-            love.graphics.setFont(cf)
-            local cw = cf:getWidth(cnt)
-            rgba(seen == total and Palette.AGED_GOLD_LIGHT or Palette.PARCHMENT)
-            love.graphics.print(cnt, act.header.x + act.header.w - cw, y + 8)
-            local rx = act.header.x + w + 12
-            local rw = act.header.x + act.header.w - cw - 12 - rx
-            if rw > 0 then
-                rgba(Palette.AGED_GOLD_DARK, 0.9)
-                love.graphics.rectangle("fill", rx, y + 6 + math.floor(f:getHeight() / 2), rw, 1)
-                rgba(Palette.AGED_GOLD, 0.5)
-                love.graphics.rectangle("fill", rx, y + 8 + math.floor(f:getHeight() / 2), math.floor(rw * 0.3), 1)
-            end
+function Grid:pageKey(page)
+    local parts = { self.layoutKey or "", I18n.current or "" }
+    for i, c in pairs(self.G.cells) do
+        if c.act == page.act then
+            local id = self.entries[i].id
+            parts[#parts + 1] = (Bestiary.isSeen(id) and "s" or "-") .. (Bestiary.isDefeated(id) and "d" or "-")
         end
+    end
+    return table.concat(parts, "")
+end
+
+local function nameFont(c)
+    return c.tier == "boss" and 12 or 8
+end
+
+function Grid:bakeSlot(i, c)
+    local e = self.entries[i]
+    local seen = Bestiary.isSeen(e.id)
+    local seed = i * 97
+    Ink.begin()
+    if not seen then
+        BInk.frame(c.x + 6, c.y + 6, c.w - 12, c.h - 12, seed, BInk.FADED, 0.75, { wobble = 0.5 })
+        Ink.flush()
+        return
+    end
+    if c.tier == "boss" then
+        Ink.flush()
+        rgba(Ink.PAPER_DARK, 0.55)
+        love.graphics.rectangle("fill", c.x + 4, c.y + 4, c.w - 8, c.h - 8)
+        Ink.begin()
+        BInk.frame(c.x + 2, c.y + 2, c.w - 4, c.h - 4, seed, BInk.INK, 0.85, { overshoot = 6 })
+        BInk.frame(c.x + 7, c.y + 7, c.w - 14, c.h - 14, seed + 50, BInk.SEPIA, 0.7, { wobble = 0.6 })
+        BInk.corners(c.x + 7, c.y + 7, c.w - 14, c.h - 14, BInk.INK, 0.8, seed, 12)
+    elseif c.tier == "miniboss" then
+        BInk.frame(c.x + 3, c.y + 3, c.w - 6, c.h - 6, seed, BInk.SEPIA, 0.85, { overshoot = 4 })
+        BInk.frame(c.x + 7, c.y + 7, c.w - 14, c.h - 14, seed + 50, BInk.SEPIA, 0.5, { wobble = 0.6 })
+    elseif c.tier == "elite" then
+        BInk.frame(c.x + 4, c.y + 4, c.w - 8, c.h - 8, seed, BInk.SEPIA, 0.8, { overshoot = 3 })
+    else
+        BInk.tape(c.x + 18, c.y + 8, 28, 9, -0.12, seed)
+        BInk.tape(c.x + c.w - 18, c.y + 8, 28, 9, 0.12, seed + 3)
+    end
+    BInk.hatchGround(c.x + math.floor(c.w * 0.2), c.groundY + 2, math.floor(c.w * 0.6), seed, BInk.SEPIA, 0.55)
+    if c.tier ~= "common" then BInk.seal(c.seal.x, c.seal.y, c.seal.r, c.tier, seed) end
+    Ink.flush()
+    local name = Card.name(e.id)
+    rgba(BInk.INK, 0.92)
+    local nf = nameFont(c)
+    local w = TextFit.print(name, c.x + 10, c.nameY, { size = nf, maxW = c.w - 20, align = "center", minSize = 7 })
+    local f = FontManager.getFont(nf)
+    local ux = c.x + math.floor((c.w - w) / 2)
+    Ink.begin()
+    Ink.line(ux, c.nameY + f:getHeight() + 3, ux + w, c.nameY + f:getHeight() + 2, BInk.SEPIA, 0.6, seed + 9, { wobble = 0.4 })
+    Ink.flush()
+    if c.tier == "boss" then
+        local ep = I18n.t("bestiary.creature." .. e.id .. ".epithet", nil, "")
+        if ep ~= "" and ep ~= "bestiary.creature." .. e.id .. ".epithet" then
+            rgba(Palette.RUST)
+            TextFit.print(ep, c.x + 12, c.nameY + f:getHeight() + 8,
+                { size = 8, maxW = c.w - 24, align = "center", minSize = 7 })
+        end
+    end
+    if Bestiary.isDefeated(e.id) then
+        Ink.begin()
+        local tx, ty = c.x + 12, c.y + (c.tier == "common" and 18 or 14)
+        Ink.line(tx, ty + 3, tx + 3, ty + 6, BInk.RED, 0.85, seed + 21, { wobble = 0.2, weight = 2 })
+        Ink.line(tx + 3, ty + 6, tx + 9, ty - 1, BInk.RED, 0.85, seed + 22, { wobble = 0.2, weight = 2 })
+        Ink.flush()
+    end
+end
+
+function Grid:bakePage(page)
+    local k = self.k
+    local W, H = math.ceil(page.w * k), math.ceil(page.h * k)
+    local canvas = love.graphics.newCanvas(W, H)
+    canvas:setFilter("nearest", "nearest")
+    love.graphics.push("all")
+    love.graphics.setCanvas(canvas)
+    love.graphics.clear(0, 0, 0, 0)
+    love.graphics.origin()
+    love.graphics.setScissor()
+    love.graphics.scale(k)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(BInk.paper(page.w, page.h, 13 + page.act % 2), 0, 0)
+    love.graphics.translate(-page.x, -page.y)
+    local a = page.act
+    local h = page.header
+    local v = page.vignette
+    local biome = Card.biomeId(a)
+    if biome then
+        BInk.engrave("assets/sprites/world/" .. biome .. "_mountains.png", v.x, v.y, v.w, v.h, 0.9, BInk.SEPIA, 1.5)
+        BInk.engrave("assets/sprites/world/" .. biome .. "_castle.png", v.x + v.w - 96, v.y + 6, 80, v.h - 6, 0.9, BInk.SEPIA, 1.25)
+    end
+    local numeral = Grid.NUMERALS[a] or tostring(a)
+    local big = FontManager.getFont(24)
+    love.graphics.setFont(big)
+    rgba(BInk.RED, 0.9)
+    love.graphics.print(numeral, h.x, h.y + 4)
+    local nx = h.x + big:getWidth(numeral) + 14
+    rgba(BInk.SEPIA)
+    TextFit.print(TextCase.upper(I18n.t("acts.fallback", { n = a })), nx, h.y + 4,
+        { size = 8, maxW = v.x - nx - 12, minSize = 7 })
+    rgba(BInk.INK)
+    TextFit.print(Card.biomeName(a), nx, h.y + 18, { size = 16, maxW = v.x - nx - 12, minSize = 10 })
+    local seen, total = self:actSeen(a)
+    rgba(Palette.RUST)
+    TextFit.print(I18n.t("bestiary.ui.count", { n = seen, total = total }), nx, h.y + 42,
+        { size = 8, maxW = v.x - nx - 12, minSize = 7 })
+    Ink.begin()
+    local ly = h.y + h.h - 2
+    Ink.line(h.x, ly, h.x + h.w, ly + 1, BInk.SEPIA, 0.7, a * 7, { wobble = 0.8 })
+    Ink.line(h.x + 40, ly + 3, h.x + h.w - 40, ly + 4, BInk.SEPIA, 0.35, a * 7 + 1, { wobble = 0.8, dash = 6, gap = 4 })
+    BInk.tally(nx, h.y + 54, seen, BInk.INK, 0.75, a * 5, 8)
+    local f = page.footer
+    Ink.line(f.x + f.w / 2 - 60, f.y + 6, f.x + f.w / 2 - 12, f.y + 6, BInk.SEPIA, 0.5, a * 3, { wobble = 0.5 })
+    Ink.line(f.x + f.w / 2 + 12, f.y + 6, f.x + f.w / 2 + 60, f.y + 6, BInk.SEPIA, 0.5, a * 3 + 1, { wobble = 0.5 })
+    Ink.flush()
+    local ff = FontManager.getFont(8)
+    love.graphics.setFont(ff)
+    rgba(BInk.SEPIA)
+    love.graphics.print(numeral, math.floor(f.x + f.w / 2 - ff:getWidth(numeral) / 2), f.y + 2)
+    for i, c in pairs(self.G.cells) do
+        if c.act == a then self:bakeSlot(i, c) end
+    end
+    love.graphics.pop()
+    return canvas
+end
+
+function Grid:pageCanvas(page, allowBake)
+    local p = self.pages[page.act]
+    local key = self:pageKey(page)
+    if p and p.key == key then return p.canvas, false end
+    if not allowBake then return p and p.canvas or nil, false end
+    if p and p.canvas then p.canvas:release() end
+    local canvas = self:bakePage(page)
+    self.pages[page.act] = { canvas = canvas, key = key }
+    for i, a in ipairs(self.pageOrder) do if a == page.act then table.remove(self.pageOrder, i) break end end
+    self.pageOrder[#self.pageOrder + 1] = page.act
+    while #self.pageOrder > Grid.PAGE_CACHE do
+        local old = table.remove(self.pageOrder, 1)
+        local op = self.pages[old]
+        if op and op.canvas then op.canvas:release() end
+        self.pages[old] = nil
+    end
+    return canvas, true
+end
+
+function Grid:drawSlotLive(i, c, y)
+    local e = self.entries[i]
+    local seen = Bestiary.isSeen(e.id)
+    local hv = (self.hoverT and self.hoverT[i]) or 0
+    local dy = y - c.y
+    if not seen then
+        local size = c.tier == "boss" and 48 or 32
+        local cy = c.y + dy + math.floor((c.h - (c.tier == "boss" and 10 or 0)) / 2)
+        BInk.question(c.x + c.w / 2, cy, self.time + i * 0.7, size, 1)
+        if hv > 0.05 then
+            Ink.begin()
+            BInk.frame(c.x + 6, c.y + dy + 6, c.w - 12, c.h - 12, i * 97, BInk.SEPIA, 0.6 * hv, { wobble = 0.5 })
+            Ink.flush()
+        end
+        return
+    end
+    Sprites.want(e.id, true)
+    local lift = math.floor(hv * 3 + 0.5)
+    local gy = c.groundY + dy + 2
+    local s = c.s
+    BInk.shadow(c.x + c.w / 2, gy, math.floor(Layout.REF_W * s * (0.62 + 0.1 * hv)), 1 - 0.3 * hv)
+    local box = c.spriteBox
+    local sx0, sy0, sw0, sh0 = love.graphics.getScissor()
+    local vy0 = math.max(box.y + dy - 6, self.G.top)
+    local vy1 = math.min(box.y + dy + box.h, self.G.bottom)
+    if vy1 > vy0 then
+        screenScissor(box.x, vy0, box.w, vy1 - vy0)
+        Card.drawSprite(e.id, c.x + c.w / 2, gy - lift, s, self.time, 1, false)
+        if sx0 then love.graphics.setScissor(sx0, sy0, sw0, sh0) else love.graphics.setScissor() end
+    end
+    if hv > 0.05 then
+        Ink.begin()
+        BInk.corners(c.x + 3, c.y + dy + 3, c.w - 6, c.h - 6, BInk.INK, 0.85 * hv, i * 3, c.tier == "boss" and 16 or 10)
+        Ink.flush()
+        rgba(BInk.INK, hv)
+        TextFit.print(Card.name(e.id), c.x + 10, c.nameY + dy,
+            { size = nameFont(c), maxW = c.w - 20, align = "center", minSize = 7 })
+        require("src.ui.CursorManager").request("hand")
+    end
+    if Bestiary.isNew(e.id) then
+        BInk.alert(c.x + c.w - (c.tier == "common" and 12 or 32), c.y + dy + 12, self.time)
     end
 end
 
@@ -438,28 +644,49 @@ function Grid:draw()
     local width = love.graphics.getWidth()
     self:drawChips()
     screenScissor(0, G.top, width, G.viewH)
-    self:drawHeaders()
+    local baked = 0
+    if (self.bakeHold or 0) > 0 then
+        self.bakeHold = self.bakeHold - 1
+        baked = 1
+    end
+    for _, page in ipairs(G.pages) do
+        local y = G.top + page.y - self.scrollY
+        if inView(G, y, page.h) then
+            local canvas, did = self:pageCanvas(page, baked < 1)
+            if did then baked = baked + 1 end
+            rgba(Palette.INK, 0.55)
+            love.graphics.rectangle("fill", page.x + 4, y + 6, page.w, page.h)
+            if canvas then
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.draw(canvas, page.x, y, 0, 1 / self.k, 1 / self.k)
+            else
+                rgba(Ink.PAPER)
+                love.graphics.rectangle("fill", page.x, y, page.w, page.h)
+            end
+        end
+    end
     local NavCursor = require("src.ui.NavCursor")
-    for i, c in ipairs(G.cells) do
+    for i, c in pairs(G.cells) do
         local y = G.top + c.y - self.scrollY
         if inView(G, y, c.h) then
-            self:drawCell(i, c, c.x, y, i == self.hoverIdx)
+            self:drawSlotLive(i, c, y)
+            local fh = math.min(c.h, G.slotH)
             local ty0 = math.max(y, G.top)
-            local ty1 = math.min(y + c.h, G.bottom)
-            if ty1 - ty0 >= c.h * 0.5 then
+            local ty1 = math.min(y + fh, G.bottom)
+            if ty1 - ty0 >= math.min(fh * 0.5, 90) then
                 NavCursor.target("bst:" .. i, c.x, ty0, c.w, ty1 - ty0)
             end
         end
     end
     love.graphics.setScissor()
     if G.maxScroll > 0 then
-        local barX = width - 12
+        local barX = width - 10
         local frac = self.scrollY / G.maxScroll
         local knobH = math.max(30, G.viewH * (G.viewH / (G.viewH + G.maxScroll)))
-        rgba(Palette.INK, 0.5)
-        love.graphics.rectangle("fill", barX, G.top, 6, G.viewH)
-        rgba(Palette.AGED_GOLD)
-        love.graphics.rectangle("fill", barX, G.top + frac * (G.viewH - knobH), 6, knobH)
+        rgba(Palette.PARCHMENT_DARK, 0.6)
+        love.graphics.rectangle("fill", barX + 2, G.top, 1, G.viewH)
+        rgba(Palette.PARCHMENT_LIGHT, 0.9)
+        love.graphics.rectangle("fill", barX, G.top + frac * (G.viewH - knobH), 5, knobH)
     end
 end
 
@@ -468,13 +695,15 @@ function Grid:drawCard()
     local C, texts = self:cardLayout()
     local e = self:openEntry()
     local mx, my = love.mouse.getPosition()
-    local seen, total = self:seenCount()
+    local seen = self:seenCount()
     local idx = 0
     for i = 1, self.openIdx do if Bestiary.isSeen(self.entries[i].id) then idx = idx + 1 end end
     local ease = 1 - (1 - self.openAnim) ^ 3
-    local reduced = _G.gameSettings and _G.gameSettings.reducedMotion
-    Card.draw(C, texts, e, { anim = reduced and 1 or (0.25 + 0.75 * ease), t = self.time, mx = mx, my = my,
-        canNav = seen > 1, counter = idx .. "/" .. seen })
+    local reduced = BInk.reduced()
+    Card.draw(C, texts, e, { anim = reduced and 1 or ease, t = self.time, mx = mx, my = my,
+        canNav = seen > 1, counter = idx .. "/" .. seen, turn = self.turnDir })
+    BInk.drawSplash(self.splash)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 return Grid
