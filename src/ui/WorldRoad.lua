@@ -435,7 +435,7 @@ local function readAnimFrames(key, light)
                 if not light then
                     scanContentRect(im, path, data)
                     Scene.Contact.scan(im, data)
-                    Scene.Contact.setFootRows(im, PropCut.data.footRows[key])
+                    Scene.Contact.setFootRows(im, PropCut.data.footRows[key] or PropCut.data.footRows[(key:gsub("_hover$", ""))])
                 end
                 frames[#frames + 1] = im
             end
@@ -4219,6 +4219,7 @@ local function drawProps(g, x, w, camZ)
                 local animT = f._animT and f._animT[i]
                 img = (animT and landmarkFrameAt(key, animT + i * 3.7)
                     or landmarkFrame(key, i * 3.7)) or img
+                local shImg = img
                 local hoverK = (f._hoverK and f._hoverK[i]) or 0
                 local aDef = lmCfg(LANDMARK_ANIM, key)
                 if hoverK > 0.02 and aDef and aDef.hoverAnim then
@@ -4240,9 +4241,9 @@ local function drawProps(g, x, w, camZ)
                 end
                 local hovered = (f.hover == i and not f.converge)
                 LMG.Base.under(key, px, py, iw, s, tM, aMul, Scene.Grade.color("landmark", tM, LMG.c), relM, g)
-                local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, key) or 0
+                local shPad = Scene.Contact.padOf(shImg) or lmCfg(LANDMARK_SHADOW_PAD, key) or 0
                 local shY = py - 1 - shPad * s
-                if not ShadowEngine.sprite(img, px, shY, s,
+                if not ShadowEngine.sprite(shImg, px, shY, s,
                     shadowOpts(aMul, nil, shPad,
                         lmCfg(WorldRoad.SHADOW_PROFILE, key))) then
                     love.graphics.setColor(0, 0, 0, 0.22 * aMul)
@@ -4255,7 +4256,7 @@ local function drawProps(g, x, w, camZ)
                     Scene.Contact.scorch(px, shY, iw * s, tM,
                         lmk.scorch.radius, lmk.scorch.alpha * aMul)
                 end
-                Scene.Contact.queue(img, px, shY, s, tM, aMul, 1)
+                Scene.Contact.queue(shImg, px, shY, s, tM, aMul, 1)
                 local br = hovered and 1.10 or 1
                 local lc = Scene.Grade.color("landmark", tM, LMG.c)
                 love.graphics.setColor(math.min(1, lc[1] * br), math.min(1, lc[2] * br),
