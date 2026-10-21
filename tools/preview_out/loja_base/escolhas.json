@@ -1,0 +1,21 @@
+{
+ "ab_pad": "ab_pad_a__3",
+ "ab_propa": "ab_propa_a__26",
+ "ab_propb": "ab_propb_a__3",
+ "du_pad": "du_pad_a__0",
+ "du_propa": "du_propa_a__24",
+ "du_propb": "du_propb_a__0",
+ "fl_pad": "fl_pad_a__0",
+ "fl_propa": "fl_propa_a__11",
+ "fl_propb": "fl_propb_a__0",
+ "fl_veg": "fl_veg_a__41",
+ "fr_pad": "fr_pad_a__1",
+ "fr_propa": "fr_propa_a__9",
+ "fr_propb": "fr_propb_a__3",
+ "hi_pad": "hi_pad_a__1",
+ "hi_propa": "hi_propa_a__20",
+ "hi_propb": "hi_propb_a__5",
+ "ma_pad": "ma_pad_a__2",
+ "ma_propa": "ma_propa_a__12",
+ "ma_propb": "ma_propb_a__4"
+}

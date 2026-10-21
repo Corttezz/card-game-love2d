@@ -1528,6 +1528,7 @@ LMG.EMBERS = { color = { 1.00, 0.62, 0.22 }, count = 3 }
 LMG.SELF_LIGHT = { 1.00, 0.90, 0.74 }
 LMG.SHADE = { 0.42, 0.42, 0.50 }
 LMG.PASS_FADE = { 0.88, 1.08 }
+LMG.Base = require("src.ui.LandmarkBase")
 function LMG.selfLight(lmk, px, py, iw, ih, s, rel, alphaK)
     if not lmk or not lmk.selfLight or lmk.selfLight <= 0 or alphaK <= 0.05 then return end
     local gx, gy = love.graphics.transformPoint(px, py - ih * s * 0.45)
@@ -4142,6 +4143,7 @@ local function drawProps(g, x, w, camZ)
         local py = g.latY(0, t)
         local lx = g.cx + roadWobble(lm.z, t, w)
         lmMark.h, lmMark.w, lmMark.py, lmMark.px = ih * s, iw * s, py, lx
+        LMG.Base.under(lm.key, lx, py, iw, s, t, aL, Scene.Grade.color("landmark", t, LMG.c), rel)
         local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
         local shY = py - 1 - shPad * s
         if not ShadowEngine.sprite(img, lx, shY, s,
@@ -4168,6 +4170,7 @@ local function drawProps(g, x, w, camZ)
         WorldRoad._flagKx = kxF
         love.graphics.draw(img, math.floor(lx), math.floor(py), 0, s, s, iw / 2, ih, kxF, 0)
         ShadowEngine.mask(img, nil, math.floor(lx), math.floor(py), 0, s, s, iw / 2, ih, kxF, t)
+        LMG.Base.over(lm.key, lx, py, iw, LMG.refH(lm.key, ih), s, t, aL, lc)
         love.graphics.setColor(1, 1, 1, 1)
         if not (lmk and lmk.smoke == "thin" and _G.gameSettings and _G.gameSettings.reducedMotion) then
             drawLandmarkSmoke(lm.key, lx, py, iw, ih, s, aL, lmk and lmk.smoke == "thin")
@@ -4231,6 +4234,7 @@ local function drawProps(g, x, w, camZ)
                     s = s * (1 + f.chosenPulse * 0.25)
                 end
                 local hovered = (f.hover == i and not f.converge)
+                LMG.Base.under(key, px, py, iw, s, tM, aMul, Scene.Grade.color("landmark", tM, LMG.c), relM)
                 local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, key) or 0
                 local shY = py - 1 - shPad * s
                 if not ShadowEngine.sprite(img, px, shY, s,
@@ -4251,6 +4255,8 @@ local function drawProps(g, x, w, camZ)
                 local lc = Scene.Grade.color("landmark", tM, LMG.c)
                 love.graphics.setColor(math.min(1, lc[1] * br), math.min(1, lc[2] * br),
                     math.min(1, lc[3] * br), aMul)
+                LMG.lcH = LMG.lcH or {}
+                LMG.lcH[1], LMG.lcH[2], LMG.lcH[3] = math.min(1, lc[1] * br), math.min(1, lc[2] * br), math.min(1, lc[3] * br)
                 local kxF = 0
                 if lmk and lmk.flagWave and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
                     local wP = GrassField.PRESETS[rawBiome().id]
@@ -4260,6 +4266,7 @@ local function drawProps(g, x, w, camZ)
                 WorldRoad._flagKx = kxF
                 love.graphics.draw(img, math.floor(px), math.floor(py), 0, s, s, iw / 2, ih, kxF, 0)
                 ShadowEngine.mask(img, nil, math.floor(px), math.floor(py), 0, s, s, iw / 2, ih, kxF, tM)
+                LMG.Base.over(key, px, py, iw, LMG.refH(key, ih), s, tM, aMul, LMG.lcH)
                 if not (lmk and lmk.smoke == "thin" and _G.gameSettings and _G.gameSettings.reducedMotion) then
                     drawLandmarkSmoke(key, px, py, iw, ih, s, aMul, lmk and lmk.smoke == "thin")
                 end
