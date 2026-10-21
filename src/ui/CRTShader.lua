@@ -25,6 +25,45 @@ local calmRect = { 0, 0, 0, 0 }
 local calmRect2 = { 0, 0, 0, 0 }
 local caScale = 1
 
+CRTShader.VARIANTS = { "atual", "A_bezel_curvatura", "B_mascara_aperture", "C_halation_bloom",
+    "D_convergencia_bordas", "E_vinheta_desfoque_bordas", "F_vidro_reflexo", "G_forte_combinado",
+    "H_moldura_segue_imagem" }
+CRTShader.variant = "atual"
+
+local function pathOf(id)
+    if not id or id == "atual" then return "shaders/crt.glsl" end
+    return "tools/crt_variants/" .. id .. ".glsl"
+end
+
+function CRTShader.useVariant(id)
+    local path = pathOf(id)
+    if not love.filesystem.getInfo(path) then
+        Debug.warn("[CRTShader] variante inexistente: " .. tostring(id))
+        return false
+    end
+    local ok, s = pcall(love.graphics.newShader, path)
+    if not ok then
+        Debug.warn("[CRTShader] falha ao carregar " .. path .. ": " .. tostring(s))
+        return false
+    end
+    if shader and shader ~= s then shader:release() end
+    shader = s
+    CRTShader.variant = id or "atual"
+    return true
+end
+
+function CRTShader.cycleVariant(dir)
+    local list, cur = CRTShader.VARIANTS, 1
+    for i, id in ipairs(list) do if id == CRTShader.variant then cur = i end end
+    local nxt = (cur - 1 + (dir or 1)) % #list + 1
+    CRTShader.useVariant(list[nxt])
+    return CRTShader.variant
+end
+
+local function send(name, v)
+    if shader:hasUniform(name) then shader:send(name, v) end
+end
+
 function CRTShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/crt.glsl")
     if not ok then
@@ -33,6 +72,8 @@ function CRTShader.load()
         return false
     end
     shader = s
+    local want = os.getenv("CARDGAME_CRT")
+    if want and want ~= "" and require("src.core.Release").isDev() then CRTShader.useVariant(want) end
     sceneCanvas = love.graphics.newCanvas()
     sceneCanvas:setFilter("linear", "linear")
     return true
@@ -244,17 +285,17 @@ function CRTShader.renderTube(src, dst)
     love.graphics.setScissor()
     love.graphics.clear(0, 0, 0, 1)
     love.graphics.setShader(shader)
-    shader:send("time", love.timer.getTime())
-    shader:send("resolution", { w, h })
-    shader:send("strength", math.max(0.6, strength > 0.01 and strength or 0.75))
-    shader:send("power", 1)
-    shader:send("powerDir", 1)
-    shader:send("glitch", 0)
-    shader:send("glitchY", 0.5)
-    shader:send("degrade", 0)
-    shader:send("calmRect", { 0, 0, 0, 0 })
-    shader:send("calmRect2", { 0, 0, 0, 0 })
-    shader:send("caScale", 1)
+    send("time", love.timer.getTime())
+    send("resolution", { w, h })
+    send("strength", math.max(0.6, strength > 0.01 and strength or 0.75))
+    send("power", 1)
+    send("powerDir", 1)
+    send("glitch", 0)
+    send("glitchY", 0.5)
+    send("degrade", 0)
+    send("calmRect", { 0, 0, 0, 0 })
+    send("calmRect2", { 0, 0, 0, 0 })
+    send("caScale", 1)
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(src, 0, 0)
     love.graphics.setShader()
@@ -278,17 +319,17 @@ function CRTShader.endScene(target)
     love.graphics.setCanvas(target)
     love.graphics.setShader(shader)
     local w, h = love.graphics.getDimensions()
-    shader:send("time", love.timer.getTime())
-    shader:send("resolution", { w, h })
-    shader:send("strength", strength)
-    shader:send("power", power)
-    shader:send("powerDir", powerDirection)
-    shader:send("glitch", glitchAmount)
-    shader:send("glitchY", glitchBandY)
-    shader:send("degrade", degradeAmount)
-    shader:send("calmRect", calmRect)
-    shader:send("calmRect2", calmRect2)
-    shader:send("caScale", caScale)
+    send("time", love.timer.getTime())
+    send("resolution", { w, h })
+    send("strength", strength)
+    send("power", power)
+    send("powerDir", powerDirection)
+    send("glitch", glitchAmount)
+    send("glitchY", glitchBandY)
+    send("degrade", degradeAmount)
+    send("calmRect", calmRect)
+    send("calmRect2", calmRect2)
+    send("caScale", caScale)
     caScale = 1
     calmRect[1], calmRect[2], calmRect[3], calmRect[4] = 0, 0, 0, 0
     calmRect2[1], calmRect2[2], calmRect2[3], calmRect2[4] = 0, 0, 0, 0

@@ -1,4 +1,5 @@
 return {
+    crt_variant = "Tela CRT: {name}",
     title = "MODO CHEAT",
     tab = "CHEAT  {k}",
     hide = "{k} esconde",

@@ -118,12 +118,20 @@ function CheatMode.activate(opts)
     if opts.isolate ~= false then CheatMode.isolateSaves(opts.setIdentity) end
     require("src.systems.UnlockSystem").setOverrideAll(true)
     CheatMode.patchPlayer()
+    require("src.ui.WorldRoad").avoidUI = CheatMode.panelRect
     settingsApplied = false
     Debug.log("[cheat] modo cheat ativo, saves em " .. tostring(CheatMode.identity))
 end
 
+function CheatMode.panelRect()
+    if not CheatMode.active or not CheatMode.panelOpen then return nil end
+    local ok, L = pcall(require("components.CheatPanel").currentLayout)
+    return ok and L or nil
+end
+
 function CheatMode.deactivate()
     CheatMode.active = false
+    require("src.ui.WorldRoad").avoidUI = nil
     _G.CHEAT_MODE = nil
     CheatMode.god, CheatMode.infiniteMana, CheatMode.rush = false, false, false
     pending.kill, pending.win, pending.forkPick = false, false, nil
@@ -598,6 +606,14 @@ function CheatMode.keypressed(key)
     if not CheatMode.active then return false end
     if key == "f1" then
         CheatMode.panelOpen = not CheatMode.panelOpen
+        return true
+    end
+    if key == "pageup" or key == "pagedown" then
+        local id = require("src.ui.CRTShader").cycleVariant(key == "pageup" and 1 or -1)
+        local g = game()
+        if g and g.addMessage then
+            g:addMessage(require("src.i18n.I18n").t("cheat.crt_variant", { name = id }, "CRT: {name}"), "info")
+        end
         return true
     end
     local CheatActions = require("src.ui.CheatActions")

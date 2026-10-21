@@ -435,7 +435,7 @@ local function readAnimFrames(key, light)
                 if not light then
                     scanContentRect(im, path, data)
                     Scene.Contact.scan(im, data)
-                    Scene.Contact.setFootRows(im, PropCut.data.footRows[key] or PropCut.data.footRows[(key:gsub("_hover$", ""))])
+                    Scene.Contact.setFootRows(im, PropCut.data.footRows[key])
                 end
                 frames[#frames + 1] = im
             end
@@ -3294,6 +3294,11 @@ function LMG.clearFreshCover(f)
     end
 end
 
+function LMG.uiBlocked(b)
+    local fn = WorldRoad.avoidUI
+    local r = fn and fn()
+    return r and r.w and b.x1 < r.x + r.w and b.x2 > r.x and b.y1 < r.y + r.h and b.y2 > r.y or false
+end
 LMG.MARK_FIT = { step = 0.004, reach = 0.12, sideMin = 0.08, centerMax = 0.07, margin = 18, label = 26,
                  samples = { 0 } }
 function LMG.layoutMarks(f)
@@ -3386,7 +3391,7 @@ function LMG.layoutMarks(f)
     local function fits(i, k)
         if not baseClear(k, f.n) then return nil end
         local b = boxAt(i, k, 0)
-        if not b or hits(b, 1) then return nil end
+        if not b or hits(b, 1) or LMG.uiBlocked(b) then return nil end
         for _, q in ipairs(placed) do
             if q.x1 < b.x2 and q.x2 > b.x1 then return nil end
         end
@@ -3422,7 +3427,7 @@ function LMG.layoutMarks(f)
                     local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
                     if math.abs(k) <= 0.42 and (pass == 2 or baseClear(k, f.n)) then
                         local b = boxAt(i, k, 0)
-                        local free = b and not hits(b, 1)
+                        local free = b and not hits(b, 1) and not LMG.uiBlocked(b)
                         if free then
                             for _, q in ipairs(placed) do
                                 if q.x1 < b.x2 and q.x2 > b.x1 then free = false break end
@@ -4214,7 +4219,6 @@ local function drawProps(g, x, w, camZ)
                 local animT = f._animT and f._animT[i]
                 img = (animT and landmarkFrameAt(key, animT + i * 3.7)
                     or landmarkFrame(key, i * 3.7)) or img
-                local shImg = img
                 local hoverK = (f._hoverK and f._hoverK[i]) or 0
                 local aDef = lmCfg(LANDMARK_ANIM, key)
                 if hoverK > 0.02 and aDef and aDef.hoverAnim then
@@ -4236,9 +4240,9 @@ local function drawProps(g, x, w, camZ)
                 end
                 local hovered = (f.hover == i and not f.converge)
                 LMG.Base.under(key, px, py, iw, s, tM, aMul, Scene.Grade.color("landmark", tM, LMG.c), relM, g)
-                local shPad = Scene.Contact.padOf(shImg) or lmCfg(LANDMARK_SHADOW_PAD, key) or 0
+                local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, key) or 0
                 local shY = py - 1 - shPad * s
-                if not ShadowEngine.sprite(shImg, px, shY, s,
+                if not ShadowEngine.sprite(img, px, shY, s,
                     shadowOpts(aMul, nil, shPad,
                         lmCfg(WorldRoad.SHADOW_PROFILE, key))) then
                     love.graphics.setColor(0, 0, 0, 0.22 * aMul)
@@ -4251,7 +4255,7 @@ local function drawProps(g, x, w, camZ)
                     Scene.Contact.scorch(px, shY, iw * s, tM,
                         lmk.scorch.radius, lmk.scorch.alpha * aMul)
                 end
-                Scene.Contact.queue(shImg, px, shY, s, tM, aMul, 1)
+                Scene.Contact.queue(img, px, shY, s, tM, aMul, 1)
                 local br = hovered and 1.10 or 1
                 local lc = Scene.Grade.color("landmark", tM, LMG.c)
                 love.graphics.setColor(math.min(1, lc[1] * br), math.min(1, lc[2] * br),

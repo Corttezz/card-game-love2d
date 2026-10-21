@@ -1,4 +1,5 @@
 return {
+    crt_variant = "Pantalla CRT: {name}",
     title = "MODO TRUCOS",
     tab = "TRUCOS  {k}",
     hide = "{k} oculta",

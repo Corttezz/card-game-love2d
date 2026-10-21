@@ -1,4 +1,5 @@
 return {
+    crt_variant = "Écran CRT : {name}",
     title = "MODE TRICHE",
     tab = "TRICHE  {k}",
     hide = "{k} masque",

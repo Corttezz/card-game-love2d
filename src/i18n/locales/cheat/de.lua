@@ -1,4 +1,5 @@
 return {
+    crt_variant = "CRT-Bildschirm: {name}",
     title = "CHEAT-MODUS",
     tab = "CHEAT  {k}",
     hide = "{k} blendet aus",
