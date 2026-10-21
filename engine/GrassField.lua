@@ -30,12 +30,13 @@ local N_THIN, N_BROAD = 6, 2
 local FLOWER_CELL = N_THIN + N_BROAD
 local N_CLUMP = 6
 local CLUMP_W = 16
-local atlasImg, quads, clumpQuads
+local N_FILLQ = 3
+local atlasImg, quads, clumpQuads, fillQuads
 
 local function bakeAtlas()
     if atlasImg then return end
     local n = N_THIN + N_BROAD + 1
-    local atlasW = CELL_W * n + CLUMP_W * N_CLUMP
+    local atlasW = CELL_W * n + CLUMP_W * (N_CLUMP + N_FILLQ)
     local id = love.image.newImageData(atlasW, CELL_H)
     local function put(cell, x, y, lum)
         if x >= 0 and x < CELL_W and y >= 0 and y < CELL_H then
@@ -111,11 +112,36 @@ local function bakeAtlas()
             end
         end
     end
+    local fillX0 = clumpX0 + CLUMP_W * N_CLUMP
+    for fv = 0, N_FILLQ - 1 do
+        local rng = love.math.newRandomGenerator(4000 + fv * 89)
+        local xo = fillX0 + fv * CLUMP_W
+        for _ = 1, 24 + rng:random(0, 6) do
+            local bx = rng:random(0, CLUMP_W - 1)
+            local len = 3 + rng:random(0, 6)
+            local lean = (rng:random() * 2 - 1) * 1.6
+            local bright = 0.62 + rng:random() * 0.38
+            for i = 0, len - 1 do
+                local fy = i / math.max(1, len - 1)
+                local x = math.floor(bx + lean * fy * fy + 0.5)
+                local y = (CELL_H - 1) - i
+                if x >= 0 and x < CLUMP_W then
+                    local lum = (0.52 + 0.30 * fy) * bright
+                    id:setPixel(xo + x, y, math.min(1, lum), math.min(1, lum), math.min(1, lum), 1)
+                end
+            end
+        end
+    end
     atlasImg = love.graphics.newImage(id)
     atlasImg:setFilter("nearest", "nearest")
     quads = {}
     for i = 0, n - 1 do
         quads[i] = { (i * CELL_W) / atlasW, 0, (i * CELL_W + CELL_W) / atlasW, 1 }
+    end
+    fillQuads = {}
+    for i = 0, N_FILLQ - 1 do
+        local x0 = clumpX0 + (N_CLUMP + i) * CLUMP_W
+        fillQuads[i] = { x0 / atlasW, 0, (x0 + CLUMP_W) / atlasW, 1 }
     end
     clumpQuads = {}
     for i = 0, N_CLUMP - 1 do
@@ -316,6 +342,45 @@ local function edgeNoise(z, side)
     return a + (b - a) * f
 end
 
+local function roadDist(px, centers, armW, clear, offL, offR, roadC)
+    if centers then
+        local d = 1e9
+        for a = 1, #centers do
+            local dx = px - centers[a]
+            local dd = math.abs(dx) - (clear + (dx < 0 and offL or offR)) * (armW and armW[a] or 1)
+            if dd < d then d = dd end
+        end
+        return d
+    end
+    local dx = px - roadC
+    return math.abs(dx) - clear - (dx < 0 and offL or offR)
+end
+
+local function gapWidth(px, centers, armW, clear, offL, offR)
+    if not centers then return 1e9 end
+    local dl, dr = 1e9, 1e9
+    for a = 1, #centers do
+        local wa = armW and armW[a] or 1
+        local dx = px - centers[a]
+        if dx > 0 then
+            local d = dx - (clear + offR) * wa
+            if d < dl then dl = d end
+        else
+            local d = -dx - (clear + offL) * wa
+            if d < dr then dr = d end
+        end
+    end
+    return dl + dr
+end
+
+local function clumpColor(e, P, cDark, cMid, cLight)
+    local c = (e.tone == 3) and cDark or ((e.tone == 2) and cMid or cLight)
+    local dk = e.dk * (P.dry or 1)
+    return QuadMesh.c8(math.min(1, c[1] * (1 + dk * 0.30))),
+        QuadMesh.c8(c[2] * (1 - dk * 0.06)),
+        QuadMesh.c8(c[3] * (1 - dk * 0.35))
+end
+
 local function emit(x, y, sx, sy, ox, oy, qw, qh, q, R, G, B,
                     kind, w1, w2, w3, w4)
     local i = qm:alloc()
@@ -373,6 +438,9 @@ end
 local Z_CELL = 0.26
 local SLOTS = 12
 local EDGE_MARGIN = 0.85
+local ISLAND = { cell = 0.9, chance = 0.20, tMin = 0.06, inMin = 0.04, inMax = 0.16,
+    nMin = 3, nMax = 7, spread = 14, zJit = 0.12, k = 0.50 }
+local FILL = { n = 4, k = 0.66, band = 2.2, edge = 0.85, narrowW = 0.22 }
 local FRINGE = { cell = 0.065, slots = 8, perPx = 1.5, out = 4, outP = 14, over = 3.4,
     tuft = 0.76, tuftMin = 0.36, tuftK = 0.8 }
 
@@ -545,8 +613,8 @@ function GrassField.draw(ctx)
                         centers, armK, armW = ctx.roadCenters(z, t)
                     end
                     local clear = half * (centers and (armK or 1) or 1)
-                    local offL = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, -1) or 0
-                    local offR = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, 1) or 0
+                    local offL = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, -1, clear) or 0
+                    local offR = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, 1, clear) or 0
                     local spread = 0.92 + 0.14 * t
                     local spanW = w * 1.06 * spread
                     local spacing = spanW / NK
@@ -555,27 +623,22 @@ function GrassField.draw(ctx)
                         * 1.25)
                     local margin = CLUMP_W * 0.5 * scale * sxK * EDGE_MARGIN
                     local lastKey = -1
+                    local fillBand = margin + spacing * FILL.band
+                    local age = t0 - rc.born
                     for oi = 1, NK do
                         local k = rc.order[oi]
                         local e = rc[k]
                         local pxX = g.cx + e.lf * spanW
-                        local dRoad
-                        if centers then
-                            dRoad = 1e9
-                            for a = 1, #centers do
-                                local dx = pxX - centers[a]
-                                local dd = math.abs(dx)
-                                    - (clear + (dx < 0 and offL or offR))
-                                    * (armW and armW[a] or 1)
-                                if dd < dRoad then dRoad = dd end
-                            end
-                        else
-                            local dx = pxX - roadC
-                            dRoad = math.abs(dx) - clear - (dx < 0 and offL or offR)
+                        local dRaw = roadDist(pxX, centers, armW, clear, offL, offR, roadC)
+                        local dRoad = dRaw - margin
+                        local onField = math.abs(pxX - g.cx) < w * 0.53 and e.cv < (P.carpet or 1)
+                        local gk = 1
+                        if age < 1.4 then
+                            gk = math.min(1, age / (0.6 + e.hk * 0.7))
+                            gk = gk * gk * (3 - 2 * gk)
+                            cacheable = false
                         end
-                        dRoad = dRoad - margin
-                        if dRoad > 0 and math.abs(pxX - g.cx) < w * 0.53
-                           and e.cv < (P.carpet or 1) then
+                        if dRoad > 0 and onField then
                             local zk = z + e.dz * Z_CELL * 3
                             local tk = g.tOf(zk - camZ) or t
                             local perspK = g.persp(tk)
@@ -588,22 +651,10 @@ function GrassField.draw(ctx)
                                 lastKey = -1
                             elseif e.key ~= lastKey then
                                 lastKey = e.key
-                                local c = (e.tone == 3) and cDark
-                                    or ((e.tone == 2) and cMid or cLight)
-                                local dk = e.dk * (P.dry or 1)
-                                cR = c8(math.min(1, c[1] * (1 + dk * 0.30)))
-                                cG = c8(c[2] * (1 - dk * 0.06))
-                                cB = c8(c[3] * (1 - dk * 0.35))
+                                cR, cG, cB = clumpColor(e, P, cDark, cMid, cLight)
                             end
                             local edgeK = math.min(1,
                                 dRoad / (6 + 14 * perspK))
-                            local age = t0 - rc.born
-                            local gk = 1
-                            if age < 1.4 then
-                                gk = math.min(1, age / (0.6 + e.hk * 0.7))
-                                gk = gk * gk * (3 - 2 * gk)
-                                cacheable = false
-                            end
                             emit(math.floor(pxX),
                                 math.floor(base + 1),
                                 sK * sxK * e.flip,
@@ -612,6 +663,33 @@ function GrassField.draw(ctx)
                                 CLUMP_W / 2, CELL_H, CLUMP_W, CELL_H,
                                 e.q, cR, cG, cB,
                                 K_CLUMP, e.hk, e.dz, amp, 0)
+                        end
+                        local nearEdge = dRaw > -fillBand and dRaw < fillBand
+                        local narrow = centers and dRaw > -fillBand
+                            and gapWidth(pxX, centers, armW, clear, offL, offR) < w * FILL.narrowW
+                        if onField and (nearEdge or narrow) then
+                            local fr, fg, fb = clumpColor(e, P, cDark, cMid, cLight)
+                            lastKey = -1
+                            local nF = FILL.n
+                            for j = 0, nF - 1 do
+                                local hj = hash(ci * 29 + j * 7, k * 13 + 3)
+                                local hz = hash(ci * 31 + j * 5, k * 19 + 7)
+                                local fx = pxX + (j + hj - nF * 0.5) * spacing / nF * 1.2
+                                local zf = z + (hz - 0.5) * Z_CELL * M
+                                local tf = g.tOf(zf - camZ) or t
+                                local sF = (0.26 + g.persp(tf) * 1.75) * P.heightK
+                                    * FILL.k * (0.75 + hj * 0.5)
+                                local fh = CLUMP_W * 0.5 * sF
+                                local dF = roadDist(fx, centers, armW, clear, offL, offR, roadC)
+                                if dF > fh * FILL.edge and sF * CELL_H >= 1.5 then
+                                    emit(math.floor(fx), math.floor(g.latY(fx - g.cx, tf) + 1),
+                                        sF * ((hz < 0.5) and 1 or -1),
+                                        sF * (0.85 + hz * 0.4) * gk,
+                                        CLUMP_W / 2, CELL_H, CLUMP_W, CELL_H,
+                                        fillQuads[(math.floor(hj * N_FILLQ) + j) % N_FILLQ],
+                                        fr, fg, fb, K_CLUMP, hj, e.dz, 0.10 * P.windAmp * P.dir, 0)
+                                end
+                            end
                         end
                     end
                 end
@@ -662,7 +740,7 @@ function GrassField.draw(ctx)
                     local side = (slot % 2 == 0) and -1 or 1
                     local roadC = ctx.roadCenter(z, t)
                     local half = ctx.roadHalf(t)
-                    local offS = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, side) or 0
+                    local offS = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, side, half) or 0
                     local pxX = roadC + side * (half + offS + 2
                         + w * (0.004 + h2 * 0.52) * (0.45 + 0.55 * t))
                     local armBlock = false
@@ -765,7 +843,6 @@ function GrassField.draw(ctx)
                         if t and t > 0.004 and rel > relFrom and rel <= relTo then
                             local side = (slot % 2 == 0) and -1 or 1
                             local half = ctx.roadHalf(t)
-                            local off = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, side) or 0
                             local persp = g.persp(t)
                             local h2 = hash(fi * 13 + 1, slot * 29 + 7)
                             local h3 = hash(fi * 19 + 9, slot * 5 + 3)
@@ -775,6 +852,8 @@ function GrassField.draw(ctx)
                             local centers, armK, armW
                             if ctx.roadCenters then centers, armK, armW = ctx.roadCenters(z, t) end
                             local na = centers and #centers or 1
+                            local hA = half * (centers and (armK or 1) or 1)
+                            local off = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, side, hA) or 0
                             for a = 1, na do
                                 local wa = centers and (armW and armW[a] or 1) or 1
                                 if wa > 0.04 then
@@ -789,7 +868,7 @@ function GrassField.draw(ctx)
                                                 local db = bx - centers[b]
                                                 local rb = (half * (armK or 1)
                                                     + (ctx.roadEdgeOff and ctx.roadEdgeOff(z, t,
-                                                        db < 0 and -1 or 1) or 0)) * wb
+                                                        db < 0 and -1 or 1, hA) or 0)) * wb
                                                 if math.abs(db) < rb - 1 then inside = true break end
                                             end
                                         end
@@ -828,6 +907,59 @@ function GrassField.draw(ctx)
                                                     c8(r), c8(gg), c8(bb), K_BLADE, nx, z, h3, hv)
                                             end
                                         end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if P.fringe ~= false then
+        local IS = ISLAND
+        local c0 = math.floor((camZ + math.max(0.05, relFrom)) / IS.cell)
+        local c1 = math.floor((camZ + math.min(ctx.relCrest - 0.05, relTo)) / IS.cell)
+        for ci2 = c0, c1 do
+            for side = -1, 1, 2 do
+                local hs = hash(ci2 * 17 + side * 5, 77)
+                if hs < IS.chance * (P.carpet or 1) then
+                    local z = (ci2 + 0.2 + hash(ci2 * 3 + side, 91) * 0.6) * IS.cell
+                    local rel = z - camZ
+                    local t = g.tOf(rel)
+                    if t and t > IS.tMin and rel > relFrom and rel <= relTo then
+                        local half = ctx.roadHalf(t)
+                        local persp = g.persp(t)
+                        local centers, armK, armW
+                        if ctx.roadCenters then centers, armK, armW = ctx.roadCenters(z, t) end
+                        local hA = half * (centers and (armK or 1) or 1)
+                        local off = ctx.roadEdgeOff and ctx.roadEdgeOff(z, t, side, hA) or 0
+                        local depth = IS.inMin + hash(ci2 * 7 + side, 13) * (IS.inMax - IS.inMin)
+                        local na = centers and #centers or 1
+                        for a = 1, na do
+                            local wa = centers and (armW and armW[a] or 1) or 1
+                            if wa > 0.5 then
+                                local ca = centers and centers[a] or ctx.roadCenter(z, t)
+                                local ex = ca + side * (hA + off) * wa
+                                local n = IS.nMin + math.floor(hash(ci2 * 11 + a, side + 40) * (IS.nMax - IS.nMin + 1))
+                                local spread = IS.spread * (0.4 + persp)
+                                for b = 0, n - 1 do
+                                    local hb = hash(ci2 * 23 + b, side * 3 + a)
+                                    local hc = hash(ci2 * 29 + b, side * 7 + a)
+                                    local bx = ex - side * (depth * hA * (1 - hb * 0.6))
+                                        + (hc - 0.5) * spread
+                                    local zb = z + (hb - 0.5) * IS.zJit
+                                    local tb = g.tOf(zb - camZ) or t
+                                    local sb = (0.26 + g.persp(tb) * 1.75) * P.heightK * IS.k * (0.7 + hc * 0.6)
+                                    if sb * CELL_H >= 1.5 then
+                                        local c = (hb < 0.3) and cDark or ((hb < 0.75) and cMid or cLight)
+                                        emit(math.floor(bx), math.floor(g.latY(bx - g.cx, tb) + 1),
+                                            sb * ((hc < 0.5) and 1 or -1), sb * (0.7 + hb * 0.5),
+                                            CLUMP_W / 2, CELL_H, CLUMP_W, CELL_H,
+                                            fillQuads[(b + ci2) % N_FILLQ],
+                                            c8(c[1]), c8(c[2]), c8(c[3]), K_CLUMP, hb, 0,
+                                            0.10 * P.windAmp * P.dir, 0)
                                     end
                                 end
                             end
@@ -889,7 +1021,7 @@ function GrassField.draw(ctx)
 end
 
 function GrassField.clearCache()
-    atlasImg, quads, clumpQuads, qm, shader = nil, nil, nil, nil, nil
+    atlasImg, quads, clumpQuads, fillQuads, qm, shader = nil, nil, nil, nil, nil, nil
     frameId_, frameMode, cacheable = nil, "build", false
     cache = { valid = false, slices = {} }
     rowCache = {}

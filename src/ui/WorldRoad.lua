@@ -3660,7 +3660,30 @@ function WorldRoad.forkMousePressed(mx, my)
     return true
 end
 
-function WorldRoad.roadEdgeOff(z, t, side)
+WorldRoad.SHAPE = { wander = 0.15, wanderF = 0.19, bayF = 0.55, bayT = 0.68, bay = 0.13,
+                    narrowT = 0.24, narrow = 0.16 }
+function WorldRoad.valueNoise(u, seed)
+    local i = math.floor(u)
+    local f = u - i
+    f = f * f * (3 - 2 * f)
+    local a = math.sin((i * 1.731 + seed) * 12.9898) * 43758.5453
+    local b = math.sin(((i + 1) * 1.731 + seed) * 12.9898) * 43758.5453
+    a, b = a - math.floor(a), b - math.floor(b)
+    return a + (b - a) * f
+end
+function WorldRoad.roadWidthK(z, side)
+    local S = WorldRoad.SHAPE
+    local sd = side < 0 and 11.3 or 29.7
+    local VN = WorldRoad.valueNoise
+    local k = (VN(z * S.wanderF, sd) * 0.65 + VN(z * S.wanderF * 2.3, sd + 5.1) * 0.35 - 0.5) * 2 * S.wander
+    local nb = VN(z * S.bayF, sd + 17.9)
+    if nb > S.bayT then k = k + (nb - S.bayT) / (1 - S.bayT) * S.bay end
+    local nn = VN(z * S.bayF * 1.3, sd + 41.3)
+    if nn < S.narrowT then k = k - (S.narrowT - nn) / S.narrowT * S.narrow end
+    return math.min(0.12, k)
+end
+
+function WorldRoad.roadEdgeOff(z, t, side, half)
     local amp = 5 * (0.30 + 0.70 * t)
     local e
     if side < 0 then
@@ -3676,7 +3699,9 @@ function WorldRoad.roadEdgeOff(z, t, side)
     local h0 = math.sin((i * k + 7) * 12.9898) * 43758.5453
     local h1 = math.sin(((i + 1) * k + 7) * 12.9898) * 43758.5453
     h0, h1 = h0 - math.floor(h0), h1 - math.floor(h1)
-    return e + (h0 + (h1 - h0) * f - 0.5) * 9 * (0.35 + 0.65 * t)
+    e = e + (h0 + (h1 - h0) * f - 0.5) * 9 * (0.35 + 0.65 * t)
+    if half then e = e + half * WorldRoad.roadWidthK(z, side) end
+    return e
 end
 
 WorldRoad.BITE = { cell = 44, amp = 2.4, ampT = 1.2, notchCell = 10, notch = 0.32, notchPx = 5 }
@@ -3744,6 +3769,8 @@ local function drawRoad(g, x, w, camZ)
     local function paintRow(cxRow, halfMul, aMul, decorate, bright, wk)
         wk = wk or 1
         local half = half0 * halfMul * wk
+        eL = WorldRoad.roadEdgeOff(worldZ, t, -1, half0 * halfMul)
+        eR = WorldRoad.roadEdgeOff(worldZ, t, 1, half0 * halfMul)
         local xL = math.floor(cxRow - half - (eL + WorldRoad.edgeBite(worldZ, t, -1)) * wk)
         local xR = math.floor(cxRow + half + (eR + WorldRoad.edgeBite(worldZ, t, 1)) * wk)
 
@@ -3785,17 +3812,19 @@ local function drawRoad(g, x, w, camZ)
             end
         end
 
-        if t > 0.45 then
-            local rutA = (t - 0.45) * 0.5
-            local rutW = math.max(1, math.floor(2 * g.persp(t)))
-            local rdx = half * 0.42
-            local ra = rutA * 0.5 * aMul
-            rect(math.floor(cxRow - rdx),
-                math.floor(g.latY(cxRow - rdx - cx, t)), rutW, step,
-                roadEdge[1], roadEdge[2], roadEdge[3], ra)
-            rect(math.floor(cxRow + rdx),
-                math.floor(g.latY(cxRow + rdx - cx, t)), rutW, step,
-                roadEdge[1], roadEdge[2], roadEdge[3], ra)
+        if t > 0.18 then
+            local VN = WorldRoad.valueNoise
+            local rutW = math.max(1, math.floor(2.2 * g.persp(t) + 0.5))
+            local ra = math.min(1, (t - 0.18) * 2.2) * 0.42 * aMul
+            for sd = -1, 1, 2 do
+                local wear = VN(worldZ * 0.9, sd * 7.7 + 3.1)
+                if wear > 0.28 then
+                    local rdx = half * (0.40 + (VN(worldZ * 0.35, sd * 5.3) - 0.5) * 0.10)
+                    local rx = math.floor(cxRow + sd * rdx)
+                    rect(rx, math.floor(g.latY(rx - cx, t)), rutW, step,
+                        roadEdge[1], roadEdge[2], roadEdge[3], ra * math.min(1, (wear - 0.28) * 4))
+                end
+            end
         end
 
         local yL = math.floor(g.latY(xL - cx, t))
@@ -3851,8 +3880,6 @@ local function drawRoad(g, x, w, camZ)
         worldZ = camZ + rel
 
         half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)) * vis
-        eL = WorldRoad.roadEdgeOff(worldZ, t, -1)
-        eR = WorldRoad.roadEdgeOff(worldZ, t, 1)
         rowId = math.floor(worldZ * 2.3)
         blend = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
         m = 0.97 + hash(rowId) * 0.04

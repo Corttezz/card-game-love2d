@@ -7,10 +7,14 @@ local TOP = 80
 local BAND = 8
 local WIN = 48
 local STRIP_MEAN = 0.06
-local STRIP_WIN = 0.25
+local STRIP_WIN = 0.55
 local SWITCH_MAX = 0.03
 local RHYTHM_MAX = 0.20
 local SMOOTH = 6
+local WEDGE_MIN_W = 6
+local GROUND_TOL = 0.15
+local WEDGE_COVER = 0.55
+local WEDGE_CARPET = { [4] = 0.45 }
 local ROUGH_MIN = 0.42
 local ROUGH_EDGE_MIN = 0.12
 
@@ -37,8 +41,11 @@ local function setup(WorldRoad, bio, scene, canvas)
     end
     WorldRoad._camZ = 5.5
     tick(30)
-    if scene == "fork" then
+    if scene == "fork" or scene == "forkbare" then
         local nodes = { { type = "battle" }, { type = "rest" }, { type = "shop" } }
+        if scene == "forkbare" then
+            nodes = { { type = "wedge_a" }, { type = "wedge_b" }, { type = "wedge_c" } }
+        end
         WorldRoad.showFork(nodes, function() end)
     end
     tick(60)
@@ -218,6 +225,85 @@ function M.measure(bio, scene)
     return R
 end
 
+function M.wedge(bio)
+    local WorldRoad = require("src.ui.WorldRoad")
+    local GrassField = require("engine.GrassField")
+    local canvas = love.graphics.newCanvas(W, H)
+    local realTime = love.timer.getTime
+    love.timer.getTime = function() return 100 end
+    local RoadWear = require("engine.RoadWear")
+    local realWear = RoadWear.draw
+    RoadWear.draw = function() end
+    setup(WorldRoad, bio, "forkbare", canvas)
+    local full = render(WorldRoad, bio, canvas)
+    GrassField.disabled = true
+    local bare = render(WorldRoad, bio, canvas)
+    local realOff = WorldRoad.roadEdgeOff
+    WorldRoad.roadEdgeOff = function() return -1e5 end
+    local none = render(WorldRoad, bio, canvas)
+    WorldRoad.roadEdgeOff = realOff
+    RoadWear.draw = realWear
+    GrassField.disabled = nil
+    love.timer.getTime = realTime
+    canvas:release()
+    local cx = W / 2
+    local x0, x1 = math.floor(cx - W * 0.30), math.floor(cx + W * 0.30)
+    local covered, total, rows = 0, 0, 0
+    local road = {}
+    local dump = os.getenv("BORDA_DUMP")
+    local dumpImg = dump and full:clone() or nil
+    for y = math.floor(H * 0.40), math.floor(H * 0.75) do
+        for x = x0, x1 do road[x] = not same(bare, none, x, y) end
+        local rs, gs, bs = {}, {}, {}
+        for x = x0, x1, 4 do
+            local r, g2, b = none:getPixel(x, y)
+            rs[#rs + 1], gs[#gs + 1], bs[#bs + 1] = r, g2, b
+        end
+        table.sort(rs) table.sort(gs) table.sort(bs)
+        local mi = math.floor(#rs / 2) + 1
+        local mr, mg, mb = rs[mi], gs[mi], bs[mi]
+        local runs, inRoad, start = 0, false, nil
+        local gaps = {}
+        for x = x0, x1 do
+            if road[x] and not inRoad then
+                runs = runs + 1
+                if start then gaps[#gaps + 1] = { start, x - 1 } end
+                inRoad = true
+            elseif not road[x] and inRoad then
+                inRoad = false
+                start = x
+            end
+        end
+        if runs >= 2 then
+            local any = false
+            for _, gp in ipairs(gaps) do
+                local gw = gp[2] - gp[1] + 1
+                if gw >= WEDGE_MIN_W and gw <= W * 0.25 then
+                    any = true
+                    for x = gp[1] + 1, gp[2] - 1 do
+                        local r, g2, b = none:getPixel(x, y)
+                        if math.abs(r - mr) + math.abs(g2 - mg) + math.abs(b - mb) < GROUND_TOL then
+                            total = total + 1
+                            local cv = not same(full, bare, x, y)
+                            if cv then covered = covered + 1 end
+                            if dumpImg then dumpImg:setPixel(x, y, cv and 0 or 1, cv and 1 or 0, 0, 1) end
+                        end
+                    end
+                end
+            end
+            if any then rows = rows + 1 end
+        end
+    end
+    if dumpImg then
+        dumpImg:encode("png", dump .. "_cunha_" .. bio .. ".png")
+        dumpImg:release()
+    end
+    full:release()
+    bare:release()
+    none:release()
+    return total > 0 and covered / total or 0, rows, total
+end
+
 function M.run()
     local t = TK.new("borda grama/estrada sem ritmo de faixas (autocorrelação por fileira)")
     _G.EventManager = _G.EventManager or require("engine.EventManager")
@@ -238,6 +324,12 @@ function M.run()
                 R.rough >= ROUGH_MIN)
             t:check(("ato 1 %s: nenhuma borda reta (pior borda %.2f >= %.2f)"):format(sc, R.roughMin, ROUGH_EDGE_MIN),
                 R.roughMin >= ROUGH_EDGE_MIN)
+        end
+        for bio = 1, 6 do
+            local cov, rows, px = M.wedge(bio)
+            t:check(("ato %d: cunha entre ramos medida (%d linhas, %d px)"):format(bio, rows, px), rows >= 20)
+            local need = WEDGE_COVER * (WEDGE_CARPET[bio] or 1)
+            t:check(("ato %d: cunha entre ramos coberta de grama %.2f >= %.2f"):format(bio, cov, need), cov >= need)
         end
     end)
     t:truthy("medição sem erro: " .. tostring(err), ok)
