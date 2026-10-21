@@ -4143,7 +4143,7 @@ local function drawProps(g, x, w, camZ)
         local py = g.latY(0, t)
         local lx = g.cx + roadWobble(lm.z, t, w)
         lmMark.h, lmMark.w, lmMark.py, lmMark.px = ih * s, iw * s, py, lx
-        LMG.Base.under(lm.key, lx, py, iw, s, t, aL, Scene.Grade.color("landmark", t, LMG.c), rel)
+        LMG.Base.under(lm.key, lx, py, iw, s, t, aL, Scene.Grade.color("landmark", t, LMG.c), rel, g)
         local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
         local shY = py - 1 - shPad * s
         if not ShadowEngine.sprite(img, lx, shY, s,
@@ -4234,7 +4234,7 @@ local function drawProps(g, x, w, camZ)
                     s = s * (1 + f.chosenPulse * 0.25)
                 end
                 local hovered = (f.hover == i and not f.converge)
-                LMG.Base.under(key, px, py, iw, s, tM, aMul, Scene.Grade.color("landmark", tM, LMG.c), relM)
+                LMG.Base.under(key, px, py, iw, s, tM, aMul, Scene.Grade.color("landmark", tM, LMG.c), relM, g)
                 local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, key) or 0
                 local shY = py - 1 - shPad * s
                 if not ShadowEngine.sprite(img, px, shY, s,

@@ -46,9 +46,40 @@ def flat(im, seed):
     return im
 
 
+WORLD = os.path.join(ROOT, "assets/sprites/world")
+
+
+def down(src, width):
+    path = os.path.join(RAW, src[4:] + ".png") if src.startswith("raw/") else os.path.join(WORLD, src + ".png")
+    im = hard(Image.open(path).convert("RGBA"))
+    bb = im.getbbox()
+    im = im.crop(bb)
+    k = width / im.width
+    h = max(1, round(im.height * k))
+    pal = sorted({c[:3] for c in im.get_flattened_data() if c[3] >= 128})
+    small = im.resize((width, h), Image.BOX)
+    px = small.load()
+    for y in range(h):
+        for x in range(width):
+            r, g, b, a = px[x, y]
+            if a < 110:
+                px[x, y] = (0, 0, 0, 0)
+                continue
+            ur, ug, ub = r * 255 / max(a, 1), g * 255 / max(a, 1), b * 255 / max(a, 1)
+            best = min(pal, key=lambda c: (c[0] - ur) ** 2 + (c[1] - ug) ** 2 + (c[2] - ub) ** 2)
+            px[x, y] = best + (255,)
+    return small
+
+
 def install(picks):
     os.makedirs(DEST, exist_ok=True)
     for name, src in sorted(picks.items()):
+        if src.startswith("down:"):
+            _, wsrc, wpx = src.split(":")
+            im = down(wsrc, int(wpx))
+            im.save(os.path.join(DEST, name + ".png"))
+            print(f"[ok] {name} <- {src} {im.size}")
+            continue
         flip = src.endswith("!")
         src = src.rstrip("!")
         im = Image.open(os.path.join(RAW, src + ".png")).convert("RGBA")

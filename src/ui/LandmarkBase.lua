@@ -4,6 +4,7 @@ local LuminaireEngine = require("engine.LuminaireEngine")
 local Contact = require("engine.ContactShadow")
 local ShadowEngine = require("engine.ShadowEngine")
 local SceneGrade = require("engine.SceneGrade")
+local GrassField = require("engine.GrassField")
 
 local LandmarkBase = {}
 LandmarkBase.DATA = require("src.data.landmark_bases")
@@ -16,6 +17,7 @@ local box = { x1 = 0, y1 = 0, x2 = 0, y2 = 0, key = nil, n = 0 }
 local shOpts = { alphaK = 1, flip = 1, footPad = 0 }
 local vegCol = {}
 local padCol = {}
+local propCol = {}
 LandmarkBase.box = box
 
 local function load(name)
@@ -116,7 +118,24 @@ local function geo(key, F, px, iw, s)
     return W, px + (door - 0.5) * W
 end
 
-function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel)
+LandmarkBase.CLEAR = { halfK = 0.80, rim = 0.25, step = 0.04, maxBack = 4 }
+
+local function clearGrass(g, rel, cx, frontY, halfW, alpha)
+    if not g or not rel or alpha <= 0.02 then return end
+    local C = LandmarkBase.CLEAR
+    local lo = rel
+    local dx = cx - g.cx
+    while lo > rel - C.maxBack do
+        local t = g.tOf(lo - C.step)
+        if not t or t >= 1 then break end
+        lo = lo - C.step
+        if g.latY(dx, t) >= frontY then break end
+    end
+    GrassField.requireClearing(lo, rel + 0.02, cx, halfW * C.halfK * math.min(1, alpha), C.rim)
+end
+LandmarkBase._clearGrass = clearGrass
+
+function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel, g)
     box.n, box.key = 0, key
     local fam, code = LandmarkBase.parse(key)
     if not fam or alpha <= 0.01 then return false end
@@ -127,7 +146,7 @@ function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel)
     local W, doorX = geo(key, F, px, iw, s)
     local fk = flatK(t)
     local pw, ph = pad:getWidth(), pad:getHeight()
-    local sx = W * F.padW / pw
+    local sx = s
     local sy = sx * fk
     local cx = px + F.padX * W
     local bottom = py + F.padFront * s * fk
@@ -136,16 +155,23 @@ function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel)
     love.graphics.setColor(col[1] * pc[1], col[2] * pc[2], col[3] * pc[3], alpha)
     love.graphics.draw(pad, math.floor(cx), math.floor(bottom), 0, sx, sy, pw / 2, ph)
     grow(cx - pw * sx / 2, bottom - ph * sy, cx + pw * sx / 2, bottom)
+    clearGrass(g, rel, cx, bottom, pw * sx / 2, alpha)
     local path = load(code .. "_path")
     if path then
         local aw, ah = path:getWidth(), path:getHeight()
-        local qx = W * F.pathW / aw
+        local qx = s
         local qy = qx * fk
         local pb = py + F.pathFront * s * fk
         local tc = tint.path
         love.graphics.setColor(col[1] * tc[1], col[2] * tc[2], col[3] * tc[3], alpha)
         love.graphics.draw(path, math.floor(doorX), math.floor(pb), 0, qx, qy, aw / 2, ah)
         grow(doorX - aw * qx / 2, pb - ah * qy, doorX + aw * qx / 2, pb)
+    end
+    local em = LandmarkBase.DATA.embers[code]
+    if em and alpha > 0.5 and not (_G.gameSettings and _G.gameSettings.reducedMotion) then
+        local hw = pw * sx * 0.40
+        LuminaireEngine.drawEmbersSpec(em, cx - hw, bottom - ph * sy * 0.3, W * 0.5, cx * 0.37)
+        LuminaireEngine.drawEmbersSpec(em, cx + hw, bottom - ph * sy * 0.4, W * 0.5, cx * 0.71)
     end
     local P = F.pool
     if P then
@@ -176,14 +202,13 @@ function LandmarkBase.over(key, px, py, iw, ih, s, t, alpha, col)
     if not fam or alpha <= 0.01 or box.key ~= key then return false end
     local F = LandmarkBase.DATA.family[fam]
     local W, doorX = geo(key, F, px, iw, s)
-    local Hs = ih * s
     local fk = flatK(t)
-    local veg = load(LandmarkBase.DATA.veg[code] or (code .. "_veg"))
+    local veg = load(code .. "_veg")
     if veg then
         local vc = SceneGrade.color(SceneGrade.familyOf("bush"), t, vegCol)
         local vw = veg:getWidth()
         for i, v in ipairs(F.veg) do
-            local vs = W * v[3] / vw
+            local vs = s
             local vx = px + v[1] * W
             local dir = v[1] < 0 and -1 or 1
             local need = vw * vs / 2 + W * 0.10
@@ -191,15 +216,19 @@ function LandmarkBase.over(key, px, py, iw, ih, s, t, alpha, col)
             drawProp(veg, vx, py + v[2] * s * fk, vs, t, alpha, vc, dir)
         end
     end
-    for _, p in ipairs(F.props) do
+    for _, p in ipairs(LandmarkBase.DATA.props[key] or F.props) do
         local img = load(code .. "_" .. p[1])
+        local tp = LandmarkBase.DATA.tint[code].props
+        if img and tp then
+            propCol[1], propCol[2], propCol[3] = math.min(1, col[1] * tp[1]), math.min(1, col[2] * tp[2]), math.min(1, col[3] * tp[3])
+        end
         if img then
-            local ps = Hs * p[4] / img:getHeight()
+            local ps = s
             local vx = px + p[2] * W
             local dir = p[2] < 0 and -1 or 1
             local need = img:getWidth() * ps / 2 + W * 0.08
             if math.abs(vx - doorX) < need then vx = doorX + dir * need end
-            drawProp(img, vx, py + p[3] * s * fk, ps, t, alpha, col, 1)
+            drawProp(img, vx, py + p[3] * s * fk, ps, t, alpha, tp and propCol or col, 1)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)

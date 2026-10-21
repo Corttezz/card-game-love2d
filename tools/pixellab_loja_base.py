@@ -82,6 +82,27 @@ for bid, (ref, light, world, pad, path, propA, propB, veg) in B.items():
     SPECS[bid + "_veg"] = (ref, 40, 28, light,
         "a small vegetation clump of " + world + ": " + veg + ", low and wider than tall, it grows "
         "against the corner of a building." + PROP)
+SPECS["ma_pad2"] = ("marsh_landmark_shop.png", 112, 36, "moon_r",
+    "the yard of a stilt hut in a haunted swamp: a small boardwalk platform of a few wide wet wooden "
+    "planks laid side by side on dark mud, the planks have a pale moonlit top edge, around it three or "
+    "four dark water puddles each with a thin pale rim highlight, a few large flat mossy patches. Few, "
+    "large, clean shapes, calm and readable, no noise, no speckle." + FLAT)
+SPECS["ma_propc"] = ("marsh_landmark_shop.png", 24, 40, "moon_r",
+    "a single wooden stake pushed into the mud with a small iron lantern hanging from a hook at its top, "
+    "the lantern glass glows warm yellow, a coil of pale rope hangs on the stake." + PROP)
+SPECS["ma_propd"] = ("marsh_landmark_shop.png", 40, 28, "moon_r",
+    "a small wooden barrel with a pale weathered top rim and pale iron hoops, next to it a coil of thick "
+    "pale hemp rope lying on the ground." + PROP)
+SPECS["ab_pad2"] = ("abyss_landmark_shop.png", 120, 36, "lava_r",
+    "the yard of a shop in a scorched volcanic wasteland: warm dark red-brown baked rock ground with "
+    "patches of pale grey ash, several thin glowing orange and yellow cracks running through it, a few "
+    "glowing ember coals scattered near the ragged edge, warm and readable, not black." + FLAT)
+SPECS["ab_propc"] = ("abyss_landmark_shop.png", 40, 30, "lava_r",
+    "an iron-bound wooden chest with warm red-brown wood and bright copper corners, a small iron brazier "
+    "next to it with glowing orange coals that light the chest." + PROP)
+SPECS["ab_propd"] = ("abyss_landmark_shop.png", 44, 30, "lava_r",
+    "a short fence of two charred wooden stakes with glowing ember tips joined by a rusty orange chain, "
+    "a small wooden sign with a red painted mark hangs from the chain." + PROP)
 L.SPECS = SPECS
 
 def queue(names, tag):

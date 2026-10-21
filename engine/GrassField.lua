@@ -169,7 +169,16 @@ local GF_FORMAT = {
 local K_CLUMP, K_CREST, K_BLADE, K_BROAD, K_FLOWER = 0, 1, 2, 3, 4
 GrassField.CELL_H = CELL_H
 local tufts, tuftN = {}, 0
-function GrassField.beginFrame() tuftN = 0 end
+local clears, clearN = {}, 0
+function GrassField.beginFrame() tuftN = 0; clearN = 0 end
+function GrassField.requireClearing(relLo, relHi, x, halfW, rim)
+    if relLo ~= relLo or x ~= x or not halfW or halfW < 2 or relHi <= relLo then return end
+    clearN = clearN + 1
+    local c = clears[clearN]
+    if not c then c = {}; clears[clearN] = c end
+    c.relLo, c.relHi, c.x, c.halfW, c.rim = relLo, relHi, x, halfW, rim or 0.22
+end
+function GrassField._clearings() return clears, clearN end
 function GrassField.requireTufts(rel, x, w, n, scale)
     if rel ~= rel or x ~= x then return end
     tuftN = tuftN + 1
@@ -179,8 +188,32 @@ function GrassField.requireTufts(rel, x, w, n, scale)
     q.n, q.s, q.done = math.max(1, math.floor(n or 3)), math.max(0.02, scale or 1), false
 end
 function GrassField._tuftRequests() return tufts, tuftN end
+local function clearHash(a, b)
+    local n = math.sin(a * 12.9898 + b * 78.233) * 43758.5453
+    return n - math.floor(n)
+end
+local function cleared(px, rel)
+    for i = 1, clearN do
+        local c = clears[i]
+        if rel > c.relLo and rel < c.relHi then
+            local u = (rel - c.relLo) / (c.relHi - c.relLo)
+            local e = 1 - (1 - u) * (1 - u)
+            local hw = c.halfW * math.sqrt(math.max(0, e))
+            local rag = 1 - c.rim * clearHash(math.floor(px / 3), math.floor(rel * 24))
+            if math.abs(px - c.x) < hw * rag then return true end
+        end
+    end
+    return false
+end
+GrassField._cleared = cleared
 local function tuftSig(relFrom, relTo)
     local sig = 0
+    for i = 1, clearN do
+        local c = clears[i]
+        if c.relLo < relTo and c.relHi > relFrom then
+            sig = sig + math.floor(c.x) * 5 + math.floor(c.halfW) * 11 + math.floor(c.relLo * 100) * 17
+        end
+    end
     for i = 1, tuftN do
         local q = tufts[i]
         if q.rel > relFrom and q.rel <= relTo then
@@ -638,6 +671,7 @@ function GrassField.draw(ctx)
                             gk = gk * gk * (3 - 2 * gk)
                             cacheable = false
                         end
+                        if dRoad > 0 and onField and clearN > 0 and cleared(pxX, rel) then onField = false end
                         if dRoad > 0 and onField then
                             local zk = z + e.dz * Z_CELL * 3
                             local tk = g.tOf(zk - camZ) or t
@@ -681,7 +715,8 @@ function GrassField.draw(ctx)
                                     * FILL.k * (0.75 + hj * 0.5)
                                 local fh = CLUMP_W * 0.5 * sF
                                 local dF = roadDist(fx, centers, armW, clear, offL, offR, roadC)
-                                if dF > fh * FILL.edge and sF * CELL_H >= 1.5 then
+                                if dF > fh * FILL.edge and sF * CELL_H >= 1.5
+                                   and not (clearN > 0 and cleared(fx, zf - camZ)) then
                                     emit(math.floor(fx), math.floor(g.latY(fx - g.cx, tf) + 1),
                                         sF * ((hz < 0.5) and 1 or -1),
                                         sF * (0.85 + hz * 0.4) * gk,
@@ -758,7 +793,8 @@ function GrassField.draw(ctx)
                         end
                     end
                     if not armBlock
-                       and math.abs(pxX - g.cx) < w * 0.52 then
+                       and math.abs(pxX - g.cx) < w * 0.52
+                       and not (clearN > 0 and cleared(pxX, rel)) then
                         local base = g.latY(pxX - g.cx, t)
                         local persp = g.persp(t)
                         local nx = (pxX - ctx.x) / w
@@ -873,7 +909,8 @@ function GrassField.draw(ctx)
                                             end
                                         end
                                     end
-                                    if not inside and math.abs(bx - g.cx) < w * 0.53 then
+                                    if not inside and math.abs(bx - g.cx) < w * 0.53
+                                       and not (clearN > 0 and cleared(bx, rel)) then
                                         local base = g.latY(bx - g.cx, t)
                                         local hv = hash(fi * 23 + a, slot * 37 + 11)
                                         local reach = math.max(0, u) / (FR.out + FR.outP * persp)
@@ -952,7 +989,7 @@ function GrassField.draw(ctx)
                                     local zb = z + (hb - 0.5) * IS.zJit
                                     local tb = g.tOf(zb - camZ) or t
                                     local sb = (0.26 + g.persp(tb) * 1.75) * P.heightK * IS.k * (0.7 + hc * 0.6)
-                                    if sb * CELL_H >= 1.5 then
+                                    if sb * CELL_H >= 1.5 and not (clearN > 0 and cleared(bx, zb - camZ)) then
                                         local c = (hb < 0.3) and cDark or ((hb < 0.75) and cMid or cLight)
                                         emit(math.floor(bx), math.floor(g.latY(bx - g.cx, tb) + 1),
                                             sb * ((hc < 0.5) and 1 or -1), sb * (0.7 + hb * 0.5),
@@ -1027,6 +1064,7 @@ function GrassField.clearCache()
     rowCache = {}
     lastCamZ = nil
     tuftN = 0
+    clearN = 0
 end
 
 return GrassField

@@ -53,7 +53,7 @@ function M.run()
     local function find(key)
         for _, c in ipairs(calls) do if c.key == key then return c end end
     end
-    local missing, partial, onLabel, lmMiss, frames, lmSeen = {}, {}, {}, {}, 0, 0
+    local missing, partial, onLabel, lmMiss, frames, lmSeen, noClear = {}, {}, {}, {}, 0, 0, 0
     for act = 1, 6 do
         setupFork(WorldRoad, act, { "shop", "battle", "event" })
         for fi = 1, 26 do
@@ -83,6 +83,8 @@ function M.run()
                         local c = key and find(key)
                         if not c then
                             missing[#missing + 1] = act .. ":" .. ty .. ":" .. fi
+                        elseif select(2, require("engine.GrassField")._clearings()) == 0 then
+                            noClear = noClear + 1
                         elseif not c.over then
                             partial[#partial + 1] = act .. ":" .. ty .. ":" .. fi
                         else
@@ -115,6 +117,7 @@ function M.run()
     LB.under, LB.over = realUnder, realOver
     cv:release()
     t:eq("marco da encruzilhada desenhado sem a base (" .. frames .. " quadros): " .. table.concat(missing, " "), #missing, 0)
+    t:eq("base desenhada sem clareira na grama", noClear, 0)
     t:eq("base sem a camada da frente: " .. table.concat(partial, " "), #partial, 0)
     t:eq("base encostando em rótulo: " .. table.concat(onLabel, " "), #onLabel, 0)
     t:truthy("loja vista na chegada e na partida (" .. lmSeen .. " quadros)", lmSeen > 120)
