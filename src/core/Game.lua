@@ -131,6 +131,15 @@ function Game:startGame()
     for i = 1, Config.Game.INITIAL_HAND_SIZE + self:getShopServiceCount("card_draw_upgrade") do
         self:drawCard((i - 1) * 0.08)
     end
+    if not self._resumingRun then self:noteBestiary("seen") end
+end
+
+function Game:noteBestiary(kind)
+    if not self.isRunMode then return false end
+    local run = self.runManager and self.runManager.currentRun
+    local e = self.enemy
+    if not (run and e) then return false end
+    return require("src.systems.Bestiary").onFight(run, e.spriteId, kind)
 end
 
 function Game:promoteInnateCardsToTop()
@@ -261,6 +270,7 @@ function Game:startNewRun(classId, opts)
     self.unlockResult = nil
 
     local runData = self.runManager:startNewRun(classId, opts)
+    require("src.systems.Bestiary").resetRun(runData)
 
     require("engine.ProfileStats").recordRunStart(classId)
     UnlockSystem.onRunStarted(classId, runData.currentDeck)
@@ -1378,6 +1388,7 @@ end
 function Game:_onEnemyDeath()
     if self._deathHandled then return end
     self._deathHandled = true
+    self:noteBestiary("defeated")
 
     local okER, EnemyRenderer = pcall(require, "src.ui.EnemyRenderer")
     if okER and EnemyRenderer.triggerDeath then
@@ -1572,6 +1583,8 @@ function Game:nextPhase()
         EnemyRoster.remember(run, enemyId)
         self.battleTurn = 0
         self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
+        require("src.systems.Bestiary").beginFight(run)
+        if nodeType ~= "boss" then self:noteBestiary("seen") end
     else
         local newHealth = Config.Game.ENEMY_BASE_HEALTH + (self.currentPhase - 1) * Config.Game.ENEMY_HEALTH_SCALING
         local newDamage = Config.Game.ENEMY_BASE_DAMAGE + (self.currentPhase - 1) * Config.Game.ENEMY_DAMAGE_SCALING
@@ -1658,7 +1671,10 @@ function Game:resumeRun()
         Rng.setActive(r)
     end
 
+    self._resumingRun = true
     self:startGame()
+    self._resumingRun = false
+    require("src.systems.Bestiary").attachRun(run)
 
     local ps = run.playerState
     if ps and ps.maxHealth then
@@ -1703,6 +1719,7 @@ function Game:resumeRun()
     if self.player then self.player.frost = 0 end
     self.battleTurn = 0
     self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")
+    if inBattle then self:noteBestiary("seen") end
     if not inBattle then
         local r = Rng.fromState(savedRng)
         Rng.setActive(r)
@@ -1722,6 +1739,7 @@ function Game:checkGameOver()
         self.gameState = "gameOver"
         if self.isRunMode and self.runManager and not self._saveDeleted then
             self._saveDeleted = true
+            self:noteBestiary("killedYou")
             self.runManager:deleteSave()
             local run = self.runManager.currentRun
             local PS = require("engine.ProfileStats")

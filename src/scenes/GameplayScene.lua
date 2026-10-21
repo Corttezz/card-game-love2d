@@ -91,6 +91,7 @@ end
 function GameplayScene._onBossEntered()
     bossEntered = true
     bossEnteredKey = runFloorKey()
+    if game and game.noteBestiary then game:noteBestiary("seen") end
     BossCinematic.startIntro(game)
 end
 

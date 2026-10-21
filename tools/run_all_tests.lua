@@ -103,6 +103,7 @@ local SUITES = {
     { group = "unit",  name = "test_unlocks" },
     { group = "unit",  name = "test_discovery_mark" },
     { group = "unit",  name = "test_descobertas" },
+    { group = "unit",  name = "test_bestiary" },
     { group = "unit",  name = "test_toast_audit" },
     { group = "unit",  name = "test_confirm_dialog" },
     { group = "unit",  name = "test_lifecycle" },
