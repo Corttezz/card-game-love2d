@@ -11,6 +11,10 @@ return {
         ma = { pad = { 1.00, 1.00, 1.00 }, path = { 1.00, 1.00, 1.00 } },
         du = { pad = { 1.00, 1.00, 1.00 }, path = { 1.00, 1.00, 1.00 } },
     },
+    famTint = {
+        battle = { hi = { 0.62, 0.62, 0.70 }, fr = { 0.80, 0.82, 0.88 }, du = { 0.82, 0.78, 0.74 } },
+        rest = { hi = { 0.58, 0.58, 0.66 }, fr = { 0.82, 0.84, 0.90 }, du = { 0.74, 0.68, 0.64 } },
+    },
     family = {
         shop = {
             padX = 0.02, padFront = 17, pathFront = 21,
@@ -23,6 +27,14 @@ return {
             props = { { "propa", 0.52, 1 } },
             veg = { { -0.43, 1 }, { 0.43, 1 } },
             pool = { color = { 1.00, 0.72, 0.38 }, radiusK = 0.50, intensity = 1.8, sy = 0.30 },
+        },
+        battle = {
+            pad = "bpad", path = false, padX = 0.00, padFront = 9,
+            props = { { "bprop", 0.95, 1 } },
+        },
+        rest = {
+            pad = "rpad", path = false, padX = 0.00, padFront = 10,
+            props = { { "rprop", -0.92, -2 } },
         },
         elite = {
             pad = "epad", path = false, padX = 0.00, padFront = 13, pathFront = 19,

@@ -8,7 +8,26 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "tools/preview_out/loja_base/pixellab/raw")
 DEST = os.path.join(ROOT, "assets/sprites/world/base")
 PICKS = os.path.join(ROOT, "tools/preview_out/loja_base/escolhas.json")
-FLAT = ("pad", "path")
+FLAT = ("pad", "path", "epad", "bpad", "rpad")
+FALL = ("bpad", "rpad", "epad")
+BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+
+
+def falloff(im, start=0.45):
+    w, h = im.size
+    px = im.load()
+    cx, cy = (w - 1) / 2, (h - 1) / 2
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] == 0:
+                continue
+            d = ((x - cx) / (w / 2)) ** 2 + ((y - cy) / (h / 2)) ** 2
+            d = d ** 0.5
+            if d > start:
+                k = (d - start) / (1 - start)
+                if (BAYER[y % 4][x % 4] + 0.5) / 16 < k:
+                    px[x, y] = (0, 0, 0, 0)
+    return im
 
 
 def lum(c):
@@ -85,6 +104,8 @@ def install(picks):
         im = Image.open(os.path.join(RAW, src + ".png")).convert("RGBA")
         part = name.split("_", 1)[1]
         im = flat(im, len(name) * 977) if part in FLAT else hard(im)
+        if part in FALL:
+            im = falloff(im)
         if flip:
             im = im.transpose(Image.FLIP_LEFT_RIGHT)
         bb = im.getbbox()

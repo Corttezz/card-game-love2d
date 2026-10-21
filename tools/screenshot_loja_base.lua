@@ -69,8 +69,8 @@ local function save(name, WorldRoad, idx, full)
     if full then data:encode("png", dir .. "/" .. name .. ".png") end
     local px, py, bw, bh = boxOf(WorldRoad, idx)
     if px then
-        local x1 = math.max(0, math.floor(px - bw * 0.95))
-        local x2 = math.min(VW, math.floor(px + bw * 0.95))
+        local x1 = math.max(0, math.floor(px - math.max(bw * 0.95, bh * 0.9)))
+        local x2 = math.min(VW, math.floor(px + math.max(bw * 0.95, bh * 0.9)))
         local y1 = math.max(0, math.floor(py - bh * 1.15))
         local y2 = math.min(VH, math.floor(py + bh * 0.45))
         if x2 - x1 > 4 and y2 - y1 > 4 then

@@ -136,12 +136,13 @@ end
 LandmarkBase._clearGrass = clearGrass
 
 function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel, g)
-    box.n, box.key = 0, key
+    box.n, box.key = 0, nil
     local fam, code = LandmarkBase.parse(key)
     if not fam or alpha <= 0.01 then return false end
     local F = LandmarkBase.DATA.family[fam]
     local pad = load(code .. "_" .. (F.pad or "pad"))
     if not pad then return false end
+    box.key = key
     local tint = LandmarkBase.DATA.tint[code]
     local W, doorX = geo(key, F, px, iw, s)
     local fk = flatK(t)
@@ -150,7 +151,7 @@ function LandmarkBase.under(key, px, py, iw, s, t, alpha, col, rel, g)
     local sy = sx * fk
     local cx = px + F.padX * W
     local bottom = py + F.padFront * s * fk
-    local pc = tint.pad
+    local pc = (LandmarkBase.DATA.famTint[fam] or {})[code] or tint.pad
     col = SceneGrade.color("road", t, padCol)
     love.graphics.setColor(col[1] * pc[1], col[2] * pc[2], col[3] * pc[3], alpha)
     love.graphics.draw(pad, math.floor(cx), math.floor(bottom), 0, sx, sy, pw / 2, ph)

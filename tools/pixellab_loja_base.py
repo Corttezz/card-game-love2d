@@ -148,6 +148,38 @@ for bid, (ref, light, world, pad, propa, propb) in E.items():
         "battle debris in " + world + ": " + propa + "." + PROP)
     SPECS[bid + "_epropb"] = (ref, 24, 44, light,
         "a war marker in " + world + ": " + propb + ", the stake goes straight into the ground." + PROP)
+BR = {
+    "fl": ("anim/landmark_battle/0.png", "anim/landmark_rest/0.png", "sun_r", "an old forest country road",
+           "light brown trampled dirt", "a few grey pebbles and green grass blades at the rim"),
+    "hi": ("anim/highlands_landmark_battle/0.png", "anim/highlands_landmark_rest/0.png", "moon_r",
+           "a cold moonlit highland", "pale grey-brown trampled earth", "a few blue-grey pebbles"),
+    "ab": ("anim/abyss_landmark_battle/0.png", "anim/abyss_landmark_rest/0.png", "lava_r",
+           "a scorched volcanic wasteland", "warm dark red-brown baked earth with grey ash",
+           "a few small black cinders"),
+    "fr": ("anim/frost_landmark_battle/0.png", "anim/frost_landmark_rest/0.png", "cold_r",
+           "a snowy frozen tundra", "trampled pale grey snow", "a few small dark stones"),
+    "ma": ("anim/marsh_landmark_battle/0.png", "anim/marsh_landmark_rest/0.png", "moon_r",
+           "a haunted dark green swamp", "dark brown trampled mud", "a few reeds and a small puddle"),
+    "du": ("anim/dusk_landmark_battle/0.png", "anim/dusk_landmark_rest/0.png", "sun_l",
+           "an autumn heath at golden dusk", "warm ochre trampled earth", "a few fallen red leaves"),
+}
+for bid, (bref, rref, light, world, earth, bits) in BR.items():
+    SPECS[bid + "_bpad"] = (bref, 96, 30, light,
+        "the trampled ground where a war banner stands in " + world + ": " + earth + " with a few boot and "
+        "hoof prints, " + bits + ". Subtle, calm, low contrast, few large shapes." + FLAT)
+    SPECS[bid + "_bprop"] = (bref, 40, 24, light,
+        "a broken wooden spear and a small cracked round shield lying on the ground in " + world + "." + PROP)
+    SPECS[bid + "_rpad"] = (rref, 104, 32, light,
+        "the ground around a small campfire in " + world + ": " + earth + " with a soft ring of grey ash and "
+        "a few dark scorch spots near the center, " + bits + " at the rim. Subtle, calm, low contrast." + FLAT)
+    SPECS[bid + "_rprop"] = (rref, 40, 22, light,
+        "a short wooden log seat lying on its side for sitting by a campfire in " + world + ", bark on the "
+        "outside and a pale cut end." + PROP)
+SPECS["fl_epad2"] = ("anim/landmark_elite/0.png", 112, 34, "sun_r",
+    "the ground around a cursed obelisk on an old forest country road: light brown trampled dirt the same "
+    "colour as a dirt road, a ring of a few small grey stones and one pale bone, and only a small dark "
+    "purple-black scorch mark right at the center where the obelisk stands. Light, low contrast, it "
+    "blends into a brown dirt road." + FLAT)
 L.SPECS = SPECS
 
 def queue(names, tag):

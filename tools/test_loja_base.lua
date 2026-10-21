@@ -57,7 +57,9 @@ function M.run()
     local tuftAt, eliteSeen = {}, 0
     local GF = require("engine.GrassField")
     local SETS = { { types = { "shop", "battle", "event" }, lm = "shop" },
-                   { types = { "elite", "rest", "battle" }, lm = "elite" } }
+                   { types = { "elite", "rest", "battle" }, lm = "elite" },
+                   { types = { "rest", "battle", "event" }, lm = "rest" },
+                   { types = { "battle", "event", "shop" }, lm = "battle" } }
     for act = 1, 6 do
       for _, SET in ipairs(SETS) do
         setupFork(WorldRoad, act, SET.types)
@@ -91,7 +93,7 @@ function M.run()
                         end
                     end
                     if ge and ty == "elite" then eliteSeen = eliteSeen + 1 end
-                    if ge and (ty == "shop" or ty == "event" or ty == "elite") then
+                    if ge and (ty == "shop" or ty == "event" or ty == "elite" or ty == "battle" or ty == "rest") then
                         local key
                         for _, c in ipairs(calls) do
                             if c.key:match("landmark_" .. ty .. "$") then key = c.key end
@@ -192,7 +194,7 @@ function M.run()
     t:eq("base desenhada sem clareira na grama", noClear, 0)
     t:eq("base sem a camada da frente: " .. table.concat(partial, " "), #partial, 0)
     t:eq("base encostando em rótulo: " .. table.concat(onLabel, " "), #onLabel, 0)
-    t:truthy("loja e elite vistas na chegada e na partida (" .. lmSeen .. " quadros)", lmSeen > 240)
+    t:truthy("loja e elite vistas na chegada e na partida (" .. lmSeen .. " quadros)", lmSeen > 480)
     t:truthy("elite medida na encruzilhada (" .. eliteSeen .. " quadros)", eliteSeen >= 6 * 20)
     t:eq("tufo de grama pedido na base de marco (mato mexendo): " .. table.concat(tuftAt, " "), #tuftAt, 0)
     t:eq("loja/elite da chegada e partida desenhada sem a base: " .. table.concat(lmMiss, " "), #lmMiss, 0)
