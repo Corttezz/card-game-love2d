@@ -115,6 +115,61 @@ function M.run()
         end
     end
     LB.under, LB.over = realUnder, realOver
+    local SE = require("engine.ShadowEngine")
+    local CS = require("engine.ContactShadow")
+    local realSprite, realQueue = SE.sprite, CS.queue
+    local rec
+    SE.sprite = function(img, x, y, sc, o)
+        if rec then rec[#rec + 1] = { "sh", img, math.floor(x), math.floor(y), sc, o and o.footPad } end
+        return realSprite(img, x, y, sc, o)
+    end
+    CS.queue = function(img, x, y, sc, tt, a, fl)
+        if rec then rec[#rec + 1] = { "ct", img, math.floor(x), math.floor(y), sc, CS.padOf(img) } end
+        return realQueue(img, x, y, sc, tt, a, fl)
+    end
+    local hoverDiff, hoverSeen = {}, 0
+    local function pick(list, px)
+        local out = {}
+        for _, r in ipairs(list) do
+            if math.abs(r[3] - px) <= 1 then out[#out + 1] = r end
+        end
+        return out
+    end
+    for act = 1, 6 do
+        for _, ty in ipairs({ "shop", "event", "elite" }) do
+            setupFork(WorldRoad, act, { "battle", ty, "rest" })
+            for _ = 1, 26 do frame(act) end
+            local f = WorldRoad._fork
+            local ge = f and f._geo and f._geo[2]
+            if ge then
+                f.hover, f._hoverK = nil, f._hoverK or {}
+                f._hoverK[2] = 0
+                rec = {}
+                love.graphics.setCanvas(cv)
+                WorldRoad.draw(0, 52, W, H - 52, act)
+                love.graphics.setCanvas()
+                local a0 = pick(rec, ge.px)
+                f.hover, f._hoverK[2] = 2, 1
+                rec = {}
+                love.graphics.setCanvas(cv)
+                WorldRoad.draw(0, 52, W, H - 52, act)
+                love.graphics.setCanvas()
+                local a1 = pick(rec, ge.px)
+                rec = nil
+                hoverSeen = hoverSeen + 1
+                local same = #a0 == #a1 and #a0 > 0
+                for i = 1, math.min(#a0, #a1) do
+                    for k = 1, 6 do
+                        if a0[i][k] ~= a1[i][k] then same = false end
+                    end
+                end
+                if not same then hoverDiff[#hoverDiff + 1] = act .. ":" .. ty end
+            end
+        end
+    end
+    SE.sprite, CS.queue = realSprite, realQueue
+    t:truthy("hover medido em " .. hoverSeen .. " marcos", hoverSeen >= 18)
+    t:eq("sombra/contato do marco mudam no hover: " .. table.concat(hoverDiff, " "), #hoverDiff, 0)
     cv:release()
     t:eq("marco da encruzilhada desenhado sem a base (" .. frames .. " quadros): " .. table.concat(missing, " "), #missing, 0)
     t:eq("base desenhada sem clareira na grama", noClear, 0)

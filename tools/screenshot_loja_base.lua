@@ -7,6 +7,7 @@ local TOPBAR = 80
 local FORKS = {
     shop = { nodes = { "battle", "elite", "shop" }, idx = 3 },
     event = { nodes = { "event", "rest", "battle" }, idx = 1 },
+    elite = { nodes = { "battle", "elite", "shop" }, idx = 2 },
 }
 
 local cv
@@ -118,6 +119,20 @@ local function shot(bio, kind, tod, seq)
     WorldRoad.update(1 / 30)
     frame()
     save(string.format("fork_%s", kind), WorldRoad, idx, true)
+    if os.getenv("LOJA_HOVER") == "1" and WorldRoad._fork then
+        local f = WorldRoad._fork
+        f.hover, f._hoverK = idx, f._hoverK or {}
+        f._hoverK[idx] = 1
+        frame()
+        save(string.format("fork_%s_hover", kind), WorldRoad, idx, false)
+        f.hover, f._hoverK[idx] = nil, 0
+    end
+    if os.getenv("LOJA_FRAMES") == "1" then
+        for fi = 1, 3 do
+            tick(4, true)
+            save(string.format("fork_%s_f%d", kind, fi), WorldRoad, idx, false)
+        end
+    end
     clickMark(WorldRoad, idx)
     for i = 1, 85 do
         tick(1, true)
@@ -130,6 +145,12 @@ local function shot(bio, kind, tod, seq)
     WorldRoad.update(1 / 30)
     frame()
     save(string.format("lm_%s", kind), WorldRoad, idx, true)
+    if os.getenv("LOJA_FRAMES") == "1" then
+        for fi = 1, 3 do
+            tick(4, true)
+            save(string.format("lm_%s_f%d", kind, fi), WorldRoad, idx, false)
+        end
+    end
     if seq then
         WorldRoad.travel({})
         for i = 1, 60 do
@@ -151,7 +172,10 @@ function M.run(arg)
     love.timer.getTime = function() return 100 end
     local tod = tonumber(os.getenv("LOJA_TOD") or "") or 0.65
     local seq = os.getenv("LOJA_SEQ") == "1"
-    for _, k in ipairs({ "shop", "event" }) do
+    if os.getenv("LOJA_NOTUFTS") == "1" then
+        require("engine.GrassField").requireTufts = function() end
+    end
+    for _, k in ipairs({ "shop", "event", "elite" }) do
         if what == "" or what == k then shot(act, k, tod, seq) end
     end
     love.timer.getTime = realTime
