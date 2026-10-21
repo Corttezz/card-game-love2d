@@ -25,7 +25,10 @@ local calmRect = { 0, 0, 0, 0 }
 local calmRect2 = { 0, 0, 0, 0 }
 local caScale = 1
 
-CRTShader.VARIANTS = { "atual", "A_bezel_curvatura", "B_mascara_aperture", "C_halation_bloom",
+CRTShader.BEZEL_PX = 16
+CRTShader.CURV = { 0.068, 0.089 }
+
+CRTShader.VARIANTS = { "atual", "antigo", "A_bezel_curvatura", "B_mascara_aperture", "C_halation_bloom",
     "D_convergencia_bordas", "E_vinheta_desfoque_bordas", "F_vidro_reflexo", "G_forte_combinado",
     "H_moldura_segue_imagem" }
 CRTShader.variant = "atual"
@@ -261,7 +264,7 @@ function CRTShader.screenToContent(x, y)
     local ar = w / h
     local ppx = (x / w - 0.5) * ar
     local ppy = (y / h - 0.5)
-    local bezelU = 20.0 / h
+    local bezelU = CRTShader.BEZEL_PX / h
     local hex = 0.5 * ar - bezelU
     local hey = 0.5 - bezelU
     if hex <= 0 or hey <= 0 then return x, y end
@@ -269,10 +272,11 @@ function CRTShader.screenToContent(x, y)
     local ty = (ppy / hey) * 0.5 + 0.5
     local cx, cy = tx - 0.5, ty - 0.5
     local r2 = cx * cx + cy * cy
-    local kx = 0.060 * strength
-    local ky = 0.080 * strength
-    local sx = tx + cx * (kx * r2 * 1.6 + kx * r2 * r2 * 7.0)
-    local sy = ty + cy * (ky * r2 * 1.6 + ky * r2 * r2 * 7.0)
+    local kx = CRTShader.CURV[1] * strength
+    local ky = CRTShader.CURV[2] * strength
+    local g = r2 * 1.6 + r2 * r2 * 9.0
+    local sx = tx + cx * kx * g
+    local sy = ty + cy * ky * g
     return sx * w, sy * h
 end
 

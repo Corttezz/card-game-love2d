@@ -26,7 +26,8 @@ local function sendIf(sh, name, value)
     if sh:hasUniform(name) then sh:send(name, value) end
 end
 
-local function buildScene()
+local function buildScene(W, H)
+    W, H = W or 1920, H or 1080
     local TK = require("tools.testkit")
     TK.bootstrap()
     require("src.ui.PixelCanvas").enableNearest()
@@ -153,7 +154,7 @@ function M.run()
 
     local ok, err = pcall(function()
         require("src.ui.FontManager").clearCache()
-        local scene = buildScene()
+        local scene = buildScene(W, H)
         scene:newImageData():encode("png", OUT .. "/sem_crt.png")
         print("[crt_variantes] " .. OUT .. "/sem_crt.png")
         local out = love.graphics.newCanvas(W, H)
@@ -232,5 +233,7 @@ function M.run()
     require("src.ui.UiScale").force(1)
     return ok
 end
+
+M.buildScene = buildScene
 
 return M

@@ -10,15 +10,98 @@ extern vec4 calmRect;
 extern vec4 calmRect2;
 extern number caScale;
 
-const float BEZEL_PX = 20.0;
+const float BEZEL_PX = 16.0;
+const float CORNER_R = 0.045;
+const vec2 CURV = vec2(0.068, 0.089);
 
 float roundedBoxSDF(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + r;
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
+vec2 roundedBoxNormal(vec2 p, vec2 b, float r) {
+    vec2 q = abs(p) - b + r;
+    vec2 g;
+    if (q.x > 0.0 || q.y > 0.0) g = normalize(max(q, vec2(0.0)) + vec2(1e-6));
+    else g = (q.x > q.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    return g * vec2(p.x < 0.0 ? -1.0 : 1.0, p.y < 0.0 ? -1.0 : 1.0);
+}
+
 float rand(vec2 co) {
     return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float luma(vec3 c) {
+    return dot(c, vec3(0.299, 0.587, 0.114));
+}
+
+vec2 clampUv(vec2 t) {
+    return clamp(t, vec2(0.0005), vec2(0.9995));
+}
+
+vec2 warp(vec2 tuv, float k) {
+    vec2 cc = tuv - 0.5;
+    float r2 = dot(cc, cc);
+    vec2 kk = CURV * k;
+    return tuv + cc * kk * (r2 * 1.6 + r2 * r2 * 9.0);
+}
+
+vec3 bezelSpill(Image tex, vec2 ppI, vec2 halfExt, float dIn) {
+    vec2 m = (ppI / halfExt) * 0.5 + 0.5;
+    if (m.x > 1.0) m.x = 2.0 - m.x;
+    if (m.y > 1.0) m.y = 2.0 - m.y;
+    if (m.x < 0.0) m.x = -m.x;
+    if (m.y < 0.0) m.y = -m.y;
+    vec2 o = vec2(3.0 + dIn * 0.9) / resolution;
+    vec3 s = Texel(tex, clampUv(m)).rgb * 0.28;
+    s += Texel(tex, clampUv(m + vec2(o.x, 0.0))).rgb * 0.18;
+    s += Texel(tex, clampUv(m - vec2(o.x, 0.0))).rgb * 0.18;
+    s += Texel(tex, clampUv(m + vec2(0.0, o.y))).rgb * 0.18;
+    s += Texel(tex, clampUv(m - vec2(0.0, o.y))).rgb * 0.18;
+    return s;
+}
+
+vec3 cabinet(Image tex, vec2 uv, vec2 ppI, vec2 halfExt, float dIn) {
+    vec2 sp = floor(uv * resolution);
+    float dOut = min(min(sp.x, resolution.x - 1.0 - sp.x), min(sp.y, resolution.y - 1.0 - sp.y));
+    float di = floor(dIn);
+    vec2 n = roundedBoxNormal(ppI, halfExt, CORNER_R);
+    vec2 toLight = normalize(vec2(-0.62, -0.78));
+    float facing = dot(n, toLight);
+    float lum = 1.0 + 0.10 * facing;
+    vec3 spill = vec3(0.0);
+    if (di < 2.0) {
+        lum = (di < 1.0) ? 0.14 : 0.30;
+    } else if (di < 8.0) {
+        float k = (di - 2.0) / 5.0;
+        lum = 1.0 - 0.62 * facing - 0.12 * (1.0 - k);
+        spill = bezelSpill(tex, ppI, halfExt, dIn) * exp(-(di - 2.0) / 3.0) * 0.30;
+    } else if (di < 9.0) {
+        lum = 1.45 + 0.35 * max(-facing, 0.0) + 0.20 * max(facing, 0.0);
+    } else if (di < 11.0) {
+        lum = 0.86;
+    }
+    if (dOut < 4.0) {
+        float k = 1.0 - dOut / 4.0;
+        lum = mix(lum, 1.0 + 0.75 * facing, 0.8) * (1.0 - 0.15 * k);
+        if (dOut < 1.0) lum *= 0.5;
+    }
+    vec2 tl = uv * vec2(resolution.x / resolution.y, 1.0);
+    float nearTL = exp(-dot(tl, tl) * 2.2);
+    float spec = 0.0;
+    if (di >= 8.0 && di < 9.0) spec += 0.10 * max(facing, 0.0) * nearTL;
+    if (dOut >= 1.0 && dOut < 4.0) {
+        float band = exp(-pow((tl.x - tl.y * 1.7 - 0.06) / 0.05, 2.0));
+        spec += 0.12 * max(facing, 0.0) * band;
+    }
+    vec3 plastic = vec3(0.112, 0.102, 0.094);
+    vec3 cab = plastic * lum;
+    cab *= 0.94 + 0.11 * rand(floor(uv * resolution * 0.5));
+    cab += vec3(0.85, 0.85, 0.80) * spec * 0.6;
+    cab += spill * vec3(0.95, 0.92, 0.88);
+    vec2 wq = abs(uv - 0.5) * 2.0;
+    cab *= 1.0 - 0.25 * pow(max(wq.x, wq.y), 12.0);
+    return cab;
 }
 
 vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
@@ -29,52 +112,17 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     vec2 ar = vec2(resolution.x / max(1.0, resolution.y), 1.0);
     vec2 pp = (uv - 0.5) * ar;
     float bezelU = BEZEL_PX / max(1.0, resolution.y);
-    float cornerR = 0.012;
     vec2 halfExt = 0.5 * ar - bezelU;
-    vec2 nn = pp / (0.5 * ar);
-    float rrA = dot(nn, nn);
-    vec2 ppA = pp * (1.0 + 0.042 * rrA);
-    float dTube = roundedBoxSDF(ppA, halfExt, cornerR);
+    vec2 tuv = (pp / halfExt) * 0.5 + 0.5;
+    vec2 suv0 = warp(tuv, strength);
+    vec2 ppI = (suv0 - 0.5) * 2.0 * halfExt;
+    float dTube = roundedBoxSDF(ppI, halfExt, CORNER_R);
+    float gradD = length(vec2(dFdx(dTube), dFdy(dTube)));
+    float dIn = dTube / max(gradD, 1e-6);
 
     if (dTube > 0.0) {
-        vec3 plastic = vec3(0.115, 0.104, 0.095);
-
-        vec2 aPen = abs(ppA) - halfExt;
-        aPen = max(aPen, vec2(0.0));
-
-        float lumX = (pp.x < 0.0) ? 0.98 : 0.78;
-        float lumY = (pp.y < 0.0) ? 0.55 : 1.22;
-        float mixXY = smoothstep(-0.007, 0.007, aPen.x - aPen.y);
-        float facetLum = mix(lumY, lumX, mixXY);
-
-        float dSeam = abs(aPen.x - aPen.y);
-        float seamShadow = 0.0;
-        if (aPen.x > 0.0005 && aPen.y > 0.0005) {
-            seamShadow = exp(-pow(dSeam / 0.0075, 2.0))
-                * smoothstep(0.003, 0.010, dTube);
-        }
-
-        vec3 cab = plastic * facetLum;
-        cab *= 0.95 + 0.10 * rand(floor(uv * resolution * 0.5));
-        cab *= 1.0 - 0.20 * seamShadow;
-
-        float groove = smoothstep(0.0045, 0.0, dTube);
-        cab *= 1.0 - 0.55 * groove;
-
-        float lipZone = smoothstep(0.013, 0.0045, dTube)
-            * (1.0 - smoothstep(0.0045, 0.0, dTube));
-        float lipStrength;
-        if (aPen.x > aPen.y) lipStrength = (pp.x < 0.0) ? 0.5 : 0.35;
-        else lipStrength = (pp.y < 0.0) ? 0.06 : 0.9;
-        cab += vec3(0.20, 0.19, 0.175) * lipZone * lipStrength;
-
-        vec2 wq = abs(uv - 0.5) * 2.0;
-        cab *= 1.0 - 0.30 * pow(max(wq.x, wq.y), 10.0);
-
-        return vec4(cab, 1.0) * color;
+        return vec4(cabinet(tex, uv, ppI, halfExt, dIn), 1.0) * color;
     }
-
-    vec2 tuv = (pp / halfExt) * 0.5 + 0.5;
 
     float p = clamp(power, 0.0, 1.0);
     float surge = 1.0;
@@ -182,10 +230,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         }
     }
 
-    vec2 cc = tuv - 0.5;
-    float r2 = dot(cc, cc);
-    vec2 curvXY = vec2(0.060, 0.080) * strength;
-    vec2 suv = tuv + cc * (curvXY * r2 * 1.6 + curvXY * r2 * r2 * 7.0);
+    vec2 suv = (p < 0.999) ? warp(tuv, strength) : suv0;
     if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) {
         return vec4(vec3(0.012), 1.0) * color;
     }
@@ -208,32 +253,74 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
         calm = max(calm, 1.0 - smoothstep(0.0, 24.0, length(dd2)));
     }
     float deg = degrade * (1.0 - calm);
+    float steady = 1.0 - calm;
 
-    float caPx = (0.9 + mix(1.6, 3.5, deg) * r2 * 4.0) * strength * caBoost;
-    caPx *= (1.0 - calm) * caScale;
-    float caOffset = caPx / max(1.0, resolution.x);
-    vec4 colR = Texel(tex, suv + vec2(caOffset, 0.0));
-    vec4 colG = Texel(tex, suv);
-    vec4 colB = Texel(tex, suv - vec2(caOffset, 0.0));
-    vec3 rgb = vec3(colR.r, colG.g, colB.b);
+    vec2 cc = suv - 0.5;
+    float r2 = dot(cc, cc);
+    float edgeK = smoothstep(0.05, 0.42, r2);
+    vec2 ipx = 1.0 / resolution;
+    float resK = clamp(resolution.y / 1080.0, 0.6, 1.5);
+
+    float conv = smoothstep(0.015, 0.5, r2) * (1.0 + 0.8 * deg);
+    vec2 dir = cc * 2.0;
+    float convAmt = strength * caScale * caBoost * steady;
+    vec2 offR = (dir * conv * 2.6 + vec2(0.0, -conv * 0.7)) * ipx * convAmt * resK;
+    vec2 offB = (-dir * conv * 2.2 + vec2(conv * 0.3, conv * 0.7)) * ipx * convAmt * resK;
+    vec2 caB = vec2(0.9 * convAmt * ipx.x, 0.0);
+    vec3 rgb = vec3(Texel(tex, suv + offR + caB).r, Texel(tex, suv).g, Texel(tex, suv + offB - caB).b);
+
+    float blurK = smoothstep(0.07, 0.48, r2) * steady;
+    if (blurK > 0.002) {
+        float rad = 2.4 * blurK * strength * resK;
+        vec3 soft = rgb * 0.20;
+        for (int i = 0; i < 8; i++) {
+            float a = float(i) * 0.785398 + 0.39;
+            vec2 d = vec2(cos(a), sin(a));
+            soft += Texel(tex, suv + d * rad * ipx).rgb * 0.06;
+            soft += Texel(tex, suv + d * rad * 0.5 * ipx).rgb * 0.04;
+        }
+        rgb = mix(rgb, soft, clamp(blurK * 0.6, 0.0, 1.0));
+    }
 
     vec2 hpx = 2.0 / resolution;
-    vec3 halo = Texel(tex, suv + hpx).rgb + Texel(tex, suv - hpx).rgb
+    vec3 halo = (Texel(tex, suv + hpx).rgb + Texel(tex, suv - hpx).rgb
         + Texel(tex, suv + vec2(hpx.x, -hpx.y)).rgb
-        + Texel(tex, suv + vec2(-hpx.x, hpx.y)).rgb;
-    halo *= 0.25;
-    float haloLum = dot(halo, vec3(0.299, 0.587, 0.114));
-    rgb += halo * haloLum * 0.10 * strength;
+        + Texel(tex, suv + vec2(-hpx.x, hpx.y)).rgb) * 0.25;
+    rgb += halo * luma(halo) * 0.10 * strength;
 
-    float frameParity = mod(floor(time * 60.0), 2.0);
-    float lineParity = mod(floor(suv.y * resolution.y * 0.5) + frameParity, 2.0);
-    float shimmer = 1.0 - lineParity * 0.012 * strength;
-    float scan = 1.0 - sin(suv.y * resolution.y * 1.5) * 0.035 * strength;
-    float triad = mod(px.x, 3.0);
-    vec3 grille = vec3(1.0);
-    grille.r += (triad < 1.0 ? 0.05 : -0.03) * strength;
-    grille.g += (triad >= 1.0 && triad < 2.0 ? 0.05 : -0.03) * strength;
-    grille.b += (triad >= 2.0 ? 0.05 : -0.03) * strength;
+    float tubeRim = smoothstep(-0.035, 0.0, dTube);
+    rgb *= 1.0 - 0.50 * tubeRim * tubeRim * strength;
+
+    vec3 bloom = vec3(0.0);
+    float rr1 = mix(3.0, 6.0, edgeK) * resK;
+    float rr2 = mix(9.0, 18.0, edgeK) * resK;
+    for (int i = 0; i < 8; i++) {
+        float a = float(i) * 0.785398 + 0.2;
+        vec2 d = vec2(cos(a), sin(a));
+        vec3 s1 = Texel(tex, suv + d * rr1 * ipx).rgb;
+        vec3 s2 = Texel(tex, suv + d * rr2 * ipx + d.yx * 2.0 * ipx).rgb;
+        bloom += s1 * smoothstep(0.35, 0.80, luma(s1)) * 0.60 + s2 * smoothstep(0.35, 0.80, luma(s2)) * 0.40;
+    }
+    bloom = bloom / 8.0 * vec3(1.0, 0.88, 0.72);
+    rgb += max(bloom - rgb * 0.85, vec3(0.0)) * mix(0.65, 1.1, edgeK) * strength * 1.6;
+
+    float corner = smoothstep(0.22, 0.50, r2);
+    rgb *= 1.0 - 0.14 * corner * strength;
+
+    float lumS = clamp(luma(rgb), 0.0, 1.0);
+    float ly = suv.y * resolution.y / 3.0;
+    float sy = fract(ly) - 0.5;
+    float bw = mix(0.22, 0.46, lumS);
+    float beam = exp(-(sy * sy) / (2.0 * bw * bw));
+    float scanAmt = mix(0.18, 0.55, edgeK) * strength * (1.0 - 0.6 * calm);
+    float scan = mix(1.0, beam * 1.22, scanAmt);
+    float col = mod(floor(px.x), 3.0);
+    vec3 stripe = vec3(0.50);
+    if (col < 1.0) stripe.r = 1.0;
+    else if (col < 2.0) stripe.g = 1.0;
+    else stripe.b = 1.0;
+    float maskAmt = mix(0.18, 0.65, edgeK) * strength * (1.0 - 0.6 * calm);
+    vec3 maskV = mix(vec3(1.0), stripe * 1.5, maskAmt) * scan;
 
     float dome = 1.0 - (mix(0.03, 0.05, deg) * r2 * 2.0
         + mix(0.05, 0.10, deg) * r2 * r2 * 8.0) * strength;
@@ -243,41 +330,55 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
 
     float shadowW = mix(mix(0.05, 0.08, deg), mix(0.16, 0.28, deg),
         clamp(1.0 - tuv.y, 0.0, 1.0));
-    float glassShadow = 1.0 - shadowW * strength
-        * smoothstep(-0.020, -0.001, dTube);
+    float glassShadow = 1.0 - shadowW * strength * smoothstep(-0.020, -0.001, dTube);
 
     float dEdge = deg * smoothstep(0.04, 0.32, r2);
-
     vec2 vPos = (suv - 0.5) * 0.45;
     float vignette = clamp(1.0 - dot(vPos, vPos), 0.0, 1.0);
-    vignette = mix(1.0, pow(vignette, 2.0),
-        mix(0.30, 0.55, deg) * strength);
+    vignette = mix(1.0, vignette * vignette, mix(0.30, 0.55, deg) * strength);
     float flickAmp = 0.008 * (1.0 + 2.5 * dEdge);
-    float flicker = (1.0 - flickAmp * strength)
-        + flickAmp * strength * sin(time * 60.0);
+    float flicker = (1.0 - flickAmp * strength) + flickAmp * strength * sin(time * 60.0);
     float noise = (rand(suv * resolution + time * 40.0) * 0.018 - 0.009)
         * strength * (1.0 + 2.5 * dEdge);
 
     if (desat > 0.001) {
-        float luma = dot(rgb, vec3(0.299, 0.587, 0.114));
-        rgb = mix(rgb, vec3(luma) * vec3(0.82, 0.93, 1.18), desat * 0.7);
+        float l = luma(rgb);
+        rgb = mix(rgb, vec3(l) * vec3(0.82, 0.93, 1.18), desat * 0.7);
     }
     if (snow > 0.001) {
-        float n = rand(suv * resolution + vec2(time * 173.0, time * 91.0));
-        rgb = mix(rgb, vec3(n * 0.85 + 0.06), snow);
+        float nz = rand(suv * resolution + vec2(time * 173.0, time * 91.0));
+        rgb = mix(rgb, vec3(nz * 0.85 + 0.06), snow);
     }
     if (rollBar > 0.001) {
         rgb *= 1.0 - 0.65 * rollBar;
     }
-
     if (dEdge > 0.001) {
         float hum = pow(0.5 + 0.5 * sin((suv.y - time * 0.22) * 9.4), 3.0);
         rgb *= 1.0 - 0.13 * dEdge * hum;
-        float luma = dot(rgb, vec3(0.299, 0.587, 0.114));
-        rgb = mix(rgb, vec3(luma) * vec3(0.92, 0.97, 1.06), 0.18 * dEdge);
+        float l = luma(rgb);
+        rgb = mix(rgb, vec3(l) * vec3(0.92, 0.97, 1.06), 0.18 * dEdge);
     }
 
-    rgb *= grille * scan * shimmer * flicker * vignette * dome * glassShadow;
+    rgb *= maskV * flicker * vignette * dome * glassShadow;
+
+    vec2 wq = tuv - vec2(0.27, 0.19);
+    float ca = cos(-0.42);
+    float sa = sin(-0.42);
+    wq = vec2(ca * wq.x - sa * wq.y, sa * wq.x + ca * wq.y);
+    float dWin = roundedBoxSDF(wq * vec2(1.0, 1.7), vec2(0.17, 0.10), 0.05);
+    float winMask = 1.0 - smoothstep(-0.05, 0.05, dWin);
+    float winGrad = clamp(1.0 - (wq.x + 0.17) / 0.40, 0.0, 1.0);
+    float refl = winMask * (0.55 + 0.45 * winGrad);
+    float darkness = 1.0 - clamp(luma(rgb) * 1.4, 0.0, 1.0);
+    rgb += vec3(0.80, 0.86, 0.95) * refl * 0.045 * strength * (0.35 + 0.65 * darkness);
+
+    float rimG = smoothstep(-0.07, 0.0, dTube);
+    rgb = rgb * (1.0 - 0.14 * rimG * strength) + vec3(0.16, 0.17, 0.19) * 0.14 * rimG * strength;
+    float topSide = clamp(1.0 - tuv.y * 1.6, 0.0, 1.0) * clamp(1.0 - abs(tuv.x - 0.42) * 1.6, 0.0, 1.0);
+    float specLine = exp(-pow((dTube + 0.011) / 0.0035, 2.0)) * topSide;
+    rgb += vec3(0.95, 0.95, 1.0) * specLine * 0.22 * strength;
+
+    rgb += vec3(0.008) * strength;
     rgb += sheen;
     rgb += noise;
     rgb *= surge;

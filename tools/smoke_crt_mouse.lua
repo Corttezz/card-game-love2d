@@ -39,6 +39,12 @@ function M.run()
         { w * 0.08, h * 0.50, "meio-esquerda" },
         { w * 0.92, h * 0.50, "meio-direita" },
         { w * 0.50, h * 0.50, "centro" },
+        { w * 0.05, h * 0.07, "canto sup-esq (painel de coringas)" },
+        { w * 0.95, h * 0.07, "canto sup-dir (engrenagem)" },
+        { w * 0.05, h * 0.93, "canto inf-esq (vida)" },
+        { w * 0.95, h * 0.93, "canto inf-dir (orbe de mana)" },
+        { w * 0.12, h * 0.15, "perto do canto sup-esq" },
+        { w * 0.88, h * 0.85, "perto do canto inf-dir" },
     }
 
     for _, p in ipairs(points) do

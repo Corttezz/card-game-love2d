@@ -32,7 +32,7 @@ M.TOOL_RESULT_PRINTERS = {
     "tools/screenshot_achievements.lua", "tools/screenshot_attack.lua", "tools/screenshot_boot_entry.lua",
     "tools/screenshot_bootfx.lua", "tools/screenshot_cartas_vivas.lua", "tools/screenshot_cashout.lua",
     "tools/screenshot_class_select.lua", "tools/screenshot_collection.lua", "tools/screenshot_combobanner.lua",
-    "tools/screenshot_crt.lua", "tools/screenshot_crt_levels.lua", "tools/screenshot_crt_variantes.lua", "tools/screenshot_cursor.lua",
+    "tools/screenshot_crt.lua", "tools/screenshot_crt_final.lua", "tools/screenshot_crt_levels.lua", "tools/screenshot_crt_variantes.lua", "tools/screenshot_cursor.lua",
     "tools/screenshot_damage_preview.lua", "tools/screenshot_death.lua", "tools/screenshot_discovery.lua",
     "tools/screenshot_end_screens.lua", "tools/screenshot_endless.lua", "tools/screenshot_endscreens.lua",
     "tools/screenshot_enemy_scene.lua", "tools/screenshot_event.lua", "tools/screenshot_event_anim.lua",
