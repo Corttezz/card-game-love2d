@@ -93,19 +93,19 @@ end
 local function cooled(last, now, cd)
     if not last or cd <= 0 then return true end
     local dt = now - last
-    return dt < 0 or dt >= cd
+    return dt < -2 or dt >= cd
 end
 
 function CrowSfx.play(moment, opts)
     local spec = CrowSfx.MOMENTS[moment]
     if not spec or not CrowSfx.load() then return nil end
-    local now = CrowSfx.now()
-    if not cooled(lastT[moment], now, spec.cooldown or 0) then return nil end
+    local delay = opts and opts.delay or 0
+    local at = CrowSfx.now() + math.max(0, delay)
+    if not cooled(lastT[moment], at, spec.cooldown or 0) then return nil end
     local code = pick(moment)
     if not code then return nil end
-    lastT[moment] = now
+    lastT[moment] = at
     lastCode[moment] = code
-    local delay = opts and opts.delay or 0
     local function fire()
         Sfx.playWithVariation(code, 1.0, spec.pitchVar or 0)
     end
