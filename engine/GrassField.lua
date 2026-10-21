@@ -179,13 +179,14 @@ function GrassField.requireClearing(relLo, relHi, x, halfW, rim)
     c.relLo, c.relHi, c.x, c.halfW, c.rim = relLo, relHi, x, halfW, rim or 0.22
 end
 function GrassField._clearings() return clears, clearN end
-function GrassField.requireTufts(rel, x, w, n, scale)
+function GrassField.requireTufts(rel, x, w, n, scale, seed)
     if rel ~= rel or x ~= x then return end
     tuftN = tuftN + 1
     local q = tufts[tuftN]
     if not q then q = {}; tufts[tuftN] = q end
     q.rel, q.x, q.w = rel, x, math.max(2, w or 2)
     q.n, q.s, q.done = math.max(1, math.floor(n or 3)), math.max(0.02, scale or 1), false
+    q.seed = seed and math.floor(seed) or nil
 end
 function GrassField._tuftRequests() return tufts, tuftN end
 local function clearHash(a, b)
@@ -1015,7 +1016,7 @@ function GrassField.draw(ctx)
             if tq and tq > 0 then
                 local nx = (q.x - ctx.x) / w
                 local zq = camZ + q.rel
-                local qx = math.floor(q.x)
+                local qx = (not GrassField._legacyTuftHash and q.seed) or math.floor(q.x)
                 for bi = 0, q.n - 1 do
                     local hb = hash(qx * 31 + bi, 17)
                     local hv = hash(qx * 53 + bi, 7)
@@ -1023,6 +1024,10 @@ function GrassField.draw(ctx)
                         + (hb - 0.5) * q.w / q.n
                     local base = g.latY(bx - g.cx, tq)
                     local s = q.s * (0.72 + hb * 0.55)
+                    local probe = GrassField.tuftProbe
+                    if probe then
+                        probe[#probe + 1] = { seed = q.seed, bi = bi, x = bx, qx = q.x, w = q.w, s = s }
+                    end
                     local vquad = (hv < P.broad)
                         and (N_THIN + math.floor(hb * N_BROAD)) or math.floor(hv * N_THIN)
                     local ht = hash(qx * 17 + bi, 23)

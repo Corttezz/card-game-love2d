@@ -2393,7 +2393,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
         }
         WorldRoad._castleBaseHalf = iw * s * 0.44
         GrassField.requireTufts(REL_CREST - 0.1, cx, iw * s * 1.06, 8,
-            (ih * s * 0.05) / GrassField.CELL_H)
+            (ih * s * 0.05) / GrassField.CELL_H, 4241 + bid:byte(1))
 
         local LW = Config.Lighting.WINDOW
         local bio = BIOME_BY_ID[bid]
@@ -4584,7 +4584,7 @@ local function drawProps(g, x, w, camZ)
                     local hpx = oc2.baseCover * ihv * s * (isTree and 0.6 or 1)
                         * (oc2.tuftScale[1] + hsh * (oc2.tuftScale[2] - oc2.tuftScale[1]))
                     GrassField.requireTufts(rel - 0.05, pxX, iw * s * 0.8, nT,
-                        hpx / GrassField.CELL_H)
+                        hpx / GrassField.CELL_H, (p.z * 977.31) % 65536 + (p.side or 0) * 7)
                 end
 
                 if not p.ghost and p.kind ~= "tuft" and p.kind ~= "flowers" then

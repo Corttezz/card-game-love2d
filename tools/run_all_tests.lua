@@ -47,6 +47,7 @@ local SUITES = {
     { group = "unit",  name = "test_poste_profundidade" },
     { group = "unit",  name = "test_landmark_fx" },
     { group = "unit",  name = "test_loja_base" },
+    { group = "unit",  name = "test_tufos_base" },
     { group = "unit",  name = "test_prop_variation" },
     { group = "unit",  name = "test_boss_visuals" },
     { group = "unit",  name = "test_boss_mechanics" },

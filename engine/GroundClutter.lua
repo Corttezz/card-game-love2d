@@ -121,7 +121,7 @@ function GroundClutter.draw(p, env)
     ShadowEngine.mask(img, nil, px, py + sink, rot, s * flip, s, iw / 2, ih, 0, t)
     if e.solid then
         GrassField.requireTufts(p.rel - 0.05, px, iw * s * 0.7, 2,
-            DATA.cover * ih * s / GrassField.CELL_H)
+            DATA.cover * ih * s / GrassField.CELL_H, (p.ph or 0) * 10007 + 3)
     end
 end
 
