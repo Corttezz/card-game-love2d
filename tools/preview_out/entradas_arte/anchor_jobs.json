@@ -1,0 +1,68 @@
+{
+  "cursed_scarecrow": [
+    {
+      "job": "ecf107fc-25aa-413d-9519-845b796e89c5",
+      "done": true
+    }
+  ],
+  "harvest_reaper": [
+    {
+      "job": "148bf083-365d-4cb3-80c4-116357664654",
+      "done": true
+    }
+  ],
+  "moon_gargoyle": [
+    {
+      "job": "5a572701-3006-4b89-8a16-b6a2a84a1572",
+      "done": true
+    }
+  ],
+  "ram_cultist": [
+    {
+      "job": "0418d6b9-6ddc-4f80-90e1-b9937aa93740",
+      "done": true
+    },
+    {
+      "job": "3735c066-d589-4921-9428-872a13d19c82",
+      "done": true
+    }
+  ],
+  "abyss_acolyte": [
+    {
+      "job": "39178129-2d47-4b83-9702-f061c00d85aa",
+      "done": true
+    },
+    {
+      "job": "3c449f50-63a3-4eb6-a2ea-f060348793cd",
+      "done": true
+    }
+  ],
+  "obsidian_sentinel": [
+    {
+      "job": "7d1a9348-23cb-4a1f-b213-9dd032decc43",
+      "done": true
+    },
+    {
+      "job": "e3dcdfac-64b2-4113-95b3-0e7115a1252c",
+      "done": true
+    }
+  ],
+  "ember_imp": [
+    {
+      "job": "dddc2457-f6ca-4d5b-b444-b4389badaf17",
+      "done": true
+    }
+  ],
+  "pit_brute": [
+    {
+      "job": "f5afa465-e758-4bbd-b26e-6ce045b04fca",
+      "done": true
+    }
+  ],
+  "abyss_watcher": [
+    {
+      "job": "2033ef2f-9418-49ef-9c3b-b1ecfa6e4765",
+      "done": true
+    }
+  ]
+}

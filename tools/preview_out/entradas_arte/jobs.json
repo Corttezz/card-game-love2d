@@ -1,0 +1,196 @@
+{
+  "cursed_scarecrow/awaken": {
+    "status": "ok",
+    "job_id": "668d6242-4d20-416b-9a3c-cb30c01c7d63",
+    "tries": [
+      {
+        "job": "668d6242-4d20-416b-9a3c-cb30c01c7d63",
+        "drift": 0.002,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\cursed_scarecrow_awaken_t1"
+      }
+    ],
+    "drift": 0.002
+  },
+  "hollow_farmer/walk": {
+    "status": "ok",
+    "job_id": "1ff1bb78-d1e3-45fd-8a6b-9026f93a3359",
+    "tries": [
+      {
+        "job": "1ff1bb78-d1e3-45fd-8a6b-9026f93a3359",
+        "drift": 0.002,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\hollow_farmer_walk_t1"
+      }
+    ],
+    "drift": 0.002
+  },
+  "plague_rats/form": {
+    "status": "ok",
+    "job_id": "cdb970d8-dbf0-477b-883d-da54a07dc032",
+    "tries": [
+      {
+        "job": "8433c1e9-5c9d-4a7d-9942-aac7fef94a68",
+        "drift": 0.003,
+        "problems": [
+          "RATO NO AR (quadros 1-2)"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t1"
+      },
+      {
+        "job": "cdb970d8-dbf0-477b-883d-da54a07dc032",
+        "drift": 0.003,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t2"
+      }
+    ],
+    "drift": 0.003
+  },
+  "harvest_reaper/form": {
+    "status": "ok",
+    "job_id": "0d36bbcc-c54d-406b-8688-c3f78edc173b",
+    "tries": [
+      {
+        "job": "3e7a1683-7bbf-4de9-8b2b-f47efb59f248",
+        "drift": 0.005,
+        "problems": [
+          "FLICKER (volta a escuro no meio)"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\harvest_reaper_form_t1"
+      },
+      {
+        "job": "0d36bbcc-c54d-406b-8688-c3f78edc173b",
+        "drift": 0.004,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\harvest_reaper_form_t2"
+      }
+    ],
+    "drift": 0.004
+  },
+  "blight_bull/charge": {
+    "status": "ok",
+    "job_id": "47af205b-a036-44e6-9074-9071fda8ca9b",
+    "tries": [
+      {
+        "job": "47af205b-a036-44e6-9074-9071fda8ca9b",
+        "drift": 0.001,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\blight_bull_charge_t1"
+      }
+    ],
+    "drift": 0.001
+  },
+  "wicker_effigy/awaken": {
+    "status": "ok",
+    "job_id": "18857370-c310-45c4-acf6-f07f4ab7a873",
+    "tries": [
+      {
+        "job": "7ab12b44-e1f7-4b8c-ba9b-2c6ccd93f813",
+        "drift": 0.018,
+        "problems": [
+          "CORPO INTEIRO BRILHANDO (quadros 2-7)"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\wicker_effigy_awaken_t1"
+      },
+      {
+        "job": "18857370-c310-45c4-acf6-f07f4ab7a873",
+        "drift": 0.002,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\wicker_effigy_awaken_t2"
+      }
+    ],
+    "drift": 0.002
+  },
+  "moon_gargoyle/awaken": {
+    "status": "submit_failed",
+    "job_id": "14083cd2-5c3d-4dbf-9c1e-442ca2f3df7e",
+    "tries": [
+      {
+        "job": "14083cd2-5c3d-4dbf-9c1e-442ca2f3df7e",
+        "drift": 0.04,
+        "problems": [
+          "CICLO DE COR (branco, roxo, VERMELHO)"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\moon_gargoyle_awaken_t1"
+      }
+    ],
+    "drift": 0.04
+  },
+  "ram_cultist/walk": {
+    "status": "submit_failed",
+    "job_id": "a2731da8-9c93-4c9e-ba2e-430805a53212",
+    "tries": [
+      {
+        "job": "a2731da8-9c93-4c9e-ba2e-430805a53212",
+        "drift": 0.006,
+        "problems": [
+          "QUASE PARADO (nao anda)"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t1"
+      }
+    ],
+    "drift": 0.006
+  },
+  "storm_harpy/swoop": {
+    "status": "ok",
+    "job_id": "1d179912-f43d-435c-a2a1-13f1f701758e",
+    "tries": [
+      {
+        "job": "1d179912-f43d-435c-a2a1-13f1f701758e",
+        "drift": 0.004,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\storm_harpy_swoop_t1"
+      }
+    ],
+    "drift": 0.004
+  },
+  "storm_harpy/land": {
+    "status": "ok",
+    "job_id": "5aec3c55-948d-43ab-b9fc-2386782250de",
+    "tries": [
+      {
+        "job": "5aec3c55-948d-43ab-b9fc-2386782250de",
+        "drift": 0.002,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\storm_harpy_land_t1"
+      }
+    ],
+    "drift": 0.002
+  },
+  "rune_golem/assemble": {
+    "status": "submit_failed",
+    "job_id": "c749578c-8114-492d-95a3-453ee5e8377c",
+    "tries": [
+      {
+        "job": "c749578c-8114-492d-95a3-453ee5e8377c",
+        "drift": 0.005,
+        "problems": [
+          "MONTA EM 1 QUADRO, runas magenta no meio"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\rune_golem_assemble_t1"
+      }
+    ],
+    "drift": 0.005
+  },
+  "spectral_knight/form": {
+    "status": "ok",
+    "job_id": "67d32dc9-3669-4c54-9362-8adc3fd2bc5c",
+    "tries": [
+      {
+        "job": "67d32dc9-3669-4c54-9362-8adc3fd2bc5c",
+        "drift": 0.006,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\spectral_knight_form_t1"
+      }
+    ],
+    "drift": 0.006
+  },
+  "storm_griffin/swoop": {
+    "status": "submit_failed",
+    "tries": []
+  },
+  "storm_griffin/land": {
+    "status": "submit_failed",
+    "tries": []
+  }
+}
