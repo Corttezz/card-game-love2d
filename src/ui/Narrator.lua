@@ -117,14 +117,25 @@ end
 function Narrator.wrap(text, font, width)
     local lines = { {} }
     local lineW = 0
-    for _, w in ipairs(tokenize(text or "")) do
+    local toks = tokenize(text or "")
+    local function groupW(i)
+        local gw = 0
+        for j = i, #toks do
+            local t = toks[j]
+            if t.newline or (j > i and t.space) then break end
+            gw = gw + font:getWidth(t.text)
+        end
+        return gw
+    end
+    for i, w in ipairs(toks) do
         if w.newline then
             lines[#lines + 1] = {}
             lineW = 0
         else
             local piece = (w.space and lineW > 0) and (" " .. w.text) or w.text
             local pw = font:getWidth(piece)
-            if lineW > 0 and lineW + pw > width and w.space then
+            local gw = w.space and (font:getWidth(" ") + groupW(i)) or pw
+            if lineW > 0 and lineW + gw > width and w.space then
                 lines[#lines + 1] = {}
                 lineW = 0
                 piece = w.text

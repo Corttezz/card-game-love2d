@@ -598,6 +598,44 @@ function M.run()
 
     Tutorial._forceForTests(false)
     Tutorial._reset()
+    do
+        local function walk(tbl, out, prefix)
+            for k, v in pairs(tbl) do
+                if type(v) == "table" then walk(v, out, prefix .. k .. ".")
+                elseif type(v) == "string" and #v > 20 then out[#out + 1] = { key = prefix .. k, text = v } end
+            end
+        end
+        local over, checked = {}, 0
+        for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
+            local ok, tbl = pcall(require, "src.i18n.locales.tutorial." .. loc)
+            if ok and type(tbl) == "table" then
+                local texts = {}
+                walk(tbl, texts, loc .. ":")
+                for _, pair in ipairs({ { 1024, 1 }, { 1280, 1 }, { 1366, 1 }, { 1920, 1.5 }, { 1920, 1.75 },
+                                        { 2560, 2 }, { 3440, 2.5 }, { 3840, 2.5 } }) do
+                    do
+                        local W, k = pair[1], pair[2]
+                        local fB = Narrator.fonts(k)
+                        for _, e in ipairs(texts) do
+                            local size = Narrator.measure(e.text, k, W, nil)
+                            local inner = size.w - size.pad * 2
+                            for _, line in ipairs(size.lines) do
+                                local lw = 0
+                                for _, p in ipairs(line) do lw = lw + fB:getWidth(p.text) end
+                                checked = checked + 1
+                                if lw > inner + 1 and #over < 6 then
+                                    over[#over + 1] = string.format("%s k=%s W=%d (+%d px)", e.key, k, W, lw - inner)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        t:check(("nenhuma linha de fala do corvo passa da borda do balão (%d linhas, 5 locales x 8 tamanhos de tela)%s"):format(
+            checked, #over > 0 and (": " .. table.concat(over, " | ")) or ""), #over == 0)
+    end
+
     return t:done()
 end
 
