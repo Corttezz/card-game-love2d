@@ -90,8 +90,9 @@ STILLS = {
         "forward, both scaly bird legs pulled up and tucked under the belly with the black talons curled "
         "closed, hooked claws of the hands held forward, white hair streaming back.")),
     "dusk_bat/fly": dict(desc=(
-        "Change the pose: the giant bat flies with both wings raised high mid wingbeat, the small clawed feet "
-        "pulled up and tucked tight under the belly, ears back, body leaning forward.")),
+        "Change the pose: the giant bat flies with both wings raised up high above its back in a narrow V, "
+        "the wingtips pointing up and staying well inside the frame, narrower than now, the small clawed feet "
+        "pulled up and tucked tight under the belly, ears back, body centered.")),
     "glacier_knight/strideA": dict(desc=(
         "Change the pose: the ice knight takes a heavy step forward toward the viewer, the LEFT armored leg "
         "lifted and stepping forward with the knee bent, the right leg planted behind, the body leaning "
