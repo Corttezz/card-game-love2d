@@ -97,7 +97,7 @@ E.BY_ID = {
         anchor = { name = "pit", at = "stage" },
         fx = { rise = { "dust", "shake1" }, stop = { "dust", "shake2" } },
         sfx = { rise = { "entrance_pit_brute_rise", "sceneStoneThud" }, stop = { "entrance_pit_brute_stop", "enemyBuffRoar" } } },
-    abyss_watcher = { kind = "condensar", clips = { "form" }, extra = 3.5, settle = 2.5,
+    abyss_watcher = { kind = "condensar", clips = { "form", "gaze" }, chain = true, extra = 3.5, settle = 2.5,
         marquee = { hit = "form", burst = "dark", tint = { 0.7, 0.3, 0.9 } },
         anchor = { name = "blot", veil = true, floats = true },
         fx = { start = { "dim" }, stop = { "dark" } },
