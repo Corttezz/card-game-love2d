@@ -102,8 +102,8 @@
     "drift": 0.002
   },
   "moon_gargoyle/awaken": {
-    "status": "submit_failed",
-    "job_id": "14083cd2-5c3d-4dbf-9c1e-442ca2f3df7e",
+    "status": "ok",
+    "job_id": "72f87ff2-0599-46aa-af53-eb6a69445691",
     "tries": [
       {
         "job": "14083cd2-5c3d-4dbf-9c1e-442ca2f3df7e",
@@ -112,13 +112,19 @@
           "CICLO DE COR (branco, roxo, VERMELHO)"
         ],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\moon_gargoyle_awaken_t1"
+      },
+      {
+        "job": "72f87ff2-0599-46aa-af53-eb6a69445691",
+        "drift": 0.025,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\moon_gargoyle_awaken_t2"
       }
     ],
-    "drift": 0.04
+    "drift": 0.025
   },
   "ram_cultist/walk": {
-    "status": "submit_failed",
-    "job_id": "a2731da8-9c93-4c9e-ba2e-430805a53212",
+    "status": "ok",
+    "job_id": "16469ef6-48c6-45a4-a653-56e22e7f5e2a",
     "tries": [
       {
         "job": "a2731da8-9c93-4c9e-ba2e-430805a53212",
@@ -127,9 +133,23 @@
           "QUASE PARADO (nao anda)"
         ],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t1"
+      },
+      {
+        "job": "9de4491b-4c5d-4f18-a98f-7e1b98ffdbdd",
+        "drift": 0.01,
+        "problems": [
+          "AINDA SUTIL"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t2"
+      },
+      {
+        "job": "16469ef6-48c6-45a4-a653-56e22e7f5e2a",
+        "drift": 0.009,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t3"
       }
     ],
-    "drift": 0.006
+    "drift": 0.009
   },
   "storm_harpy/swoop": {
     "status": "ok",
@@ -158,8 +178,8 @@
     "drift": 0.002
   },
   "rune_golem/assemble": {
-    "status": "submit_failed",
-    "job_id": "c749578c-8114-492d-95a3-453ee5e8377c",
+    "status": "ok",
+    "job_id": "8d4cc2df-50d3-4191-a4e2-d1fd519aee1b",
     "tries": [
       {
         "job": "c749578c-8114-492d-95a3-453ee5e8377c",
@@ -168,9 +188,15 @@
           "MONTA EM 1 QUADRO, runas magenta no meio"
         ],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\rune_golem_assemble_t1"
+      },
+      {
+        "job": "8d4cc2df-50d3-4191-a4e2-d1fd519aee1b",
+        "drift": 0.004,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\rune_golem_assemble_t2"
       }
     ],
-    "drift": 0.005
+    "drift": 0.004
   },
   "spectral_knight/form": {
     "status": "ok",
@@ -186,11 +212,99 @@
     "drift": 0.006
   },
   "storm_griffin/swoop": {
-    "status": "submit_failed",
-    "tries": []
+    "status": "ok",
+    "job_id": "9754809b-62ce-4d75-b653-032e181e1479",
+    "tries": [
+      {
+        "job": "9754809b-62ce-4d75-b653-032e181e1479",
+        "drift": 0.015,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\storm_griffin_swoop_t1"
+      }
+    ],
+    "drift": 0.015
   },
   "storm_griffin/land": {
-    "status": "submit_failed",
+    "status": "ok",
+    "job_id": "5ed96165-fc35-4b4f-a168-606a5ca08296",
+    "tries": [
+      {
+        "job": "5ed96165-fc35-4b4f-a168-606a5ca08296",
+        "drift": 0.017,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\storm_griffin_land_t1"
+      }
+    ],
+    "drift": 0.017
+  },
+  "ember_imp/emerge": {
+    "status": "ok",
+    "job_id": "9e928660-3cfd-4fa3-ae16-c85bfb8a1238",
+    "tries": [
+      {
+        "job": "9e928660-3cfd-4fa3-ae16-c85bfb8a1238",
+        "drift": 0.002,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\ember_imp_emerge_t1"
+      }
+    ],
+    "drift": 0.002
+  },
+  "hellhound/charge": {
+    "status": "ok",
+    "job_id": "7ef4a1af-c95d-4895-bdc5-827b48b4a337",
+    "tries": [
+      {
+        "job": "7ef4a1af-c95d-4895-bdc5-827b48b4a337",
+        "drift": 0.01,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\hellhound_charge_t1"
+      }
+    ],
+    "drift": 0.01
+  },
+  "abyss_acolyte/walk": {
+    "status": "ok",
+    "job_id": "dae63106-6903-4ff9-b42e-b5f0bbefe0cd",
+    "tries": [
+      {
+        "job": "dae63106-6903-4ff9-b42e-b5f0bbefe0cd",
+        "drift": 0.003,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\abyss_acolyte_walk_t1"
+      }
+    ],
+    "drift": 0.003
+  },
+  "obsidian_sentinel/awaken": {
+    "status": "ok",
+    "job_id": "49615cc1-6b5e-4275-a3d1-7b0016b4f5e9",
+    "tries": [
+      {
+        "job": "49615cc1-6b5e-4275-a3d1-7b0016b4f5e9",
+        "drift": 0.029,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\obsidian_sentinel_awaken_t1"
+      }
+    ],
+    "drift": 0.029
+  },
+  "pit_brute/emerge": {
+    "status": "ok",
+    "job_id": "8de076b4-8f00-45cc-b204-c45ed90a7fc5",
+    "tries": [
+      {
+        "job": "8de076b4-8f00-45cc-b204-c45ed90a7fc5",
+        "drift": 0.001,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\pit_brute_emerge_t1"
+      }
+    ],
+    "drift": 0.001
+  },
+  "abyss_watcher/form": {
+    "status": "pending",
+    "job_id": "0e5dba85-c80b-4b23-9257-0712c9318a6a",
     "tries": []
   }
 }

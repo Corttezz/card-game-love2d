@@ -123,13 +123,13 @@ CLIPS = {
     },
     "ram_cultist": {
         "walk": dict(frames=8, first="idle", end="idle", action=(
-            "walks toward the viewer with slow heavy steps: the whole body "
-            "bobs up and down with each step, the shoulders rock left and "
-            "right, the long robe hem swings and the boots show under it "
-            "stepping forward one after the other, the censer swings "
-            "widely on its chain trailing violet smoke, head bowed "
-            "chanting, two full steps, then stops and raises its free hand "
-            "open, settling into its standing stance")),
+            "EXAGGERATED slow heavy walk toward the viewer: the whole body "
+            "rocks far to the left then far to the right with each step "
+            "like a lumbering monk, the ram skull head dipping low and "
+            "rising high, the robe hem swinging wide and lifting to show a "
+            "boot stepping forward, the censer swinging in a big arc on "
+            "its chain, two full steps, then stops and raises its free "
+            "hand open, settling into its standing stance")),
     },
     "storm_harpy": {
         "swoop": dict(frames=8, first="idle", end="idle", action=(
