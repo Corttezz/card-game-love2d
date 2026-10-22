@@ -60,7 +60,7 @@ E.BY_ID = {
         anchor = { name = "circle", at = "stage", glow = { 0.6, 0.3, 0.9 } },
         fx = { stop = { "light" } },
         sfx = { stop = { "entrance_ram_cultist_stop", "impactArcane" } } },
-    storm_harpy = { kind = "mergulho", clips = { "swoop", "land" }, extra = 1, settle = 0.6, bounce = true,
+    storm_harpy = { kind = "mergulho", clips = { "swoop", "land" }, chain = true, swoopLoop = true, extra = 1, settle = 0.6, bounce = true,
         fx = { start = { "lightning", "rain" }, stop = { "gust", "dust" } },
         sfx = { start = { "entrance_storm_harpy_start", "impactLightning" }, stop = { "entrance_storm_harpy_stop", "bossWingPass", "sceneRustle" } } },
     rune_golem = { kind = "montar", clips = { "assemble" }, extra = 2, settle = 2,
