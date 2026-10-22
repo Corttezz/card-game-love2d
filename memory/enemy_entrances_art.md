@@ -32,7 +32,7 @@ Roteiro: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Motor:
 | ember_imp | 133x47 | fenda de lava | |
 | pit_brute | 140x55 | fosso com borda de rocha e brasas | |
 | abyss_watcher | 84x109 | borrao de fumaca negra com tentaculos de fumaca | flutua |
-| obsidian_sentinel | ver tabela do ato 3 | plinto | 1a leva: 16 cubos isometricos minusculos (o modelo ignorou a vista), reescrito "wide low front-facing slab" |
+| obsidian_sentinel | 125x32 | plinto largo de obsidiana com veios de lava | 1a leva: cubos isometricos minusculos (o modelo ignorou a vista), reescrito "ONE wide low front-facing slab filling the canvas width" |
 
 ## Resultado por criatura
 
@@ -57,4 +57,22 @@ Roteiro: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Motor:
 | spectral_knight | form | ok | 1 | solidifica em 0-4; depois ergue a espada que CLAREIA (branca) por 3 quadros: le como lampejo espectral, nao regerado |
 | storm_griffin | swoop | ok | 1 | ciclo de asas com raios |
 | storm_griffin | land | ok | 1 | as asas viram RAIO por 3 quadros no pouso (o "pousa com um trovao" do roteiro) e dobram de volta |
+
+### Ato 3
+| criatura | clipe | veredito | tentativas | nota |
+|---|---|---|---|---|
+| ember_imp | emerge | ok | 1 | so juba e ponta da cauda no fundo do canvas, salta, pausa no apice de garras abertas, pousa no idle |
+| hellhound | charge | ok | 1 | ciclo de galope, cabecas baixas |
+| abyss_acolyte | walk | ok | 1 | deslize: tunica e correntes balancam, grimorio sobe e flameja |
+| obsidian_sentinel | awaken | ok | 2 | 1a: veios AMARELOS com estrela de desenho animado no elmo (quadros 2-4); 2a "black to dull red to orange, never yellow, no burst, no star" |
+| pit_brute | emerge | ok | 1 | sobe dos chifres, ica-se, puxa o martelo e finca; o martelo entra pequeno no quadro 5 |
+| abyss_watcher | form | ok | 1 | silhueta clareia, olhos abrem (piscam um pouco nos quadros 2-4), tentaculos ganham cor |
+
+## Gasto e licoes (atos 1 a 3)
+- 27 jobs de animacao (19 clipes + 8 retentativas) e 10 chamadas de `create_image_pro` (9 ancoras + 2 regeracoes "lines only" + 1 do plinto, menos a efigie derivada): ~55 geracoes das 450 da frente.
+- O v3 respeita o pino do ultimo quadro: drift maximo 0,04 (gargula), nenhum clipe precisou de `best_of_3`.
+- O que o modelo erra sozinho e previsivel: "cor voltando" vira ciclo de cor; "acende" vira corpo inteiro brilhando; "ergue a arma" vira flash branco; "monta" monta em um quadro; "entra" faz coisa brotar no ar. O prompt que funciona proibe pelo nome (never yellow, nothing floats, a little more in EVERY frame) e descreve etapas.
+- Tunica longa esconde o passo: walk de figura de tunica (cultista, acolito) sai como deslize; aceitar e deixar o deslocamento com o motor.
+- Vista de ancora: "flat on the ground" sem "seen straight from the front" vira cubo isometrico; "burned into the ground" vira LAJE. Pedir "ONLY glowing lines, no ground, no slab" da a marca pronta para sobrepor na estrada.
+- Dois processos gravando o mesmo `anchor_jobs.json` perdem job (corrida): enfileirar ancoras de UM processo por vez.
 

@@ -278,16 +278,24 @@
   },
   "obsidian_sentinel/awaken": {
     "status": "ok",
-    "job_id": "49615cc1-6b5e-4275-a3d1-7b0016b4f5e9",
+    "job_id": "073ba7a5-aa2b-4a96-8169-138cf5f66074",
     "tries": [
       {
         "job": "49615cc1-6b5e-4275-a3d1-7b0016b4f5e9",
         "drift": 0.029,
-        "problems": [],
+        "problems": [
+          "FLASH AMARELO + estrela no elmo (quadros 2-4)"
+        ],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\obsidian_sentinel_awaken_t1"
+      },
+      {
+        "job": "073ba7a5-aa2b-4a96-8169-138cf5f66074",
+        "drift": 0.014,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\obsidian_sentinel_awaken_t2"
       }
     ],
-    "drift": 0.029
+    "drift": 0.014
   },
   "pit_brute/emerge": {
     "status": "ok",
@@ -303,8 +311,16 @@
     "drift": 0.001
   },
   "abyss_watcher/form": {
-    "status": "pending",
+    "status": "ok",
     "job_id": "0e5dba85-c80b-4b23-9257-0712c9318a6a",
-    "tries": []
+    "tries": [
+      {
+        "job": "0e5dba85-c80b-4b23-9257-0712c9318a6a",
+        "drift": 0.001,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\abyss_watcher_form_t1"
+      }
+    ],
+    "drift": 0.001
   }
 }

@@ -197,11 +197,14 @@ CLIPS = {
     },
     "obsidian_sentinel": {
         "awaken": dict(frames=8, first="unlit", end="idle", action=(
-            "the dead black statue comes alive: the lava seams ignite one "
-            "after another starting at the chest and spreading to the arms "
-            "and legs, the visor lights, the armor shudders, it takes one "
-            "heavy step forward and settles into its standing stance with "
-            "every seam glowing")),
+            "the dead black statue comes alive slowly: the dark seams on "
+            "the armor warm from black to dull dark red and then to the "
+            "orange glow, starting at the chest and spreading to the arms "
+            "and legs a little more in every frame, the visor lights last, "
+            "the armor shudders and it takes one heavy step forward, "
+            "settling into its standing stance; the glow is only ever dull "
+            "red or orange, never yellow, never white, no burst, no "
+            "sparks, no flash, no star shape, the black armor stays black")),
     },
     "pit_brute": {
         "emerge": dict(frames=8, first="sunk:26", end="idle", action=(
