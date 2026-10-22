@@ -46,7 +46,7 @@ E.BY_ID = {
     blight_bull = { kind = "investida", clips = { "charge" }, extra = 0.5, settle = 0.5, lead = 16,
         fx = { skid = { "dust", "shake2" }, stop = { "dust" } },
         sfx = { charge = { "entrance_blight_bull_charge", "sceneStoneThud" }, skid = { "entrance_blight_bull_skid", "bossLandImpact", "sceneStoneThud" }, stop = { "entrance_blight_bull_stop", "enemyBuffRoar" } } },
-    wicker_effigy = { kind = "acordar", clips = { "awaken" }, extra = 4, settle = 3.5, inert = "unlit",
+    wicker_effigy = { kind = "acordar", clips = { "awaken", "roar" }, chain = true, extra = 4, settle = 3.5, inert = "unlit",
         glow = { 1.0, 0.55, 0.2 },
         marquee = { hit = "wake", burst = "embers", tint = { 1.0, 0.55, 0.2 } },
         fx = { wake = { "embers", "light" } },
