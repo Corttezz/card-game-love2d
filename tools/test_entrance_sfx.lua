@@ -8,7 +8,7 @@ M.DUR = { 0.35, 3.0 }
 
 M.BEATS = {
     andar = { stop = true, step = "steps" },
-    investida = { skid = true, stop = true },
+    investida = { charge = true, skid = true, stop = true },
     brotar = { rise = true, stop = true },
     acordar = { wake = true, land = "anchor", stop = true },
     mergulho = { start = true, stop = true },

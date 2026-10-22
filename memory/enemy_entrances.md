@@ -155,3 +155,5 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
 - Rodada 3: com a investida nova (`skid` no inicio dos 0,3 s finais de derrapada, `stop` no fim) o `skid` do touro e do
   cao virou SO o deslizar na terra (0,37 e 0,50 s); som de galope tocado no `skid` cairia com as pernas ja paradas. Bufo e
   rosnado ficam no `stop`. Galopes guardados em `tools/preview_out/entradas_som/raw/*_r2.mp3` para um beat de corrida.
+- Rodada 4: investida tem `charge` (2 unidades depois da crista, ~2,5-3 s antes da parada): touro e cao tocam ali o
+  galope da rodada 2 cortado so nas batidas (`<id>_charge.mp3`); linha do tempo charge -> skid (deslize) -> stop (bufo/rosnado).

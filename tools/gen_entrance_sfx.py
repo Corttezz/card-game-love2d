@@ -63,6 +63,8 @@ GEN = {
     "croc_warrior_stop": (1.4, "huge crocodile hissing and growling low, wet scaled body dragging to a stop in mud"),
     "plague_toad_hop": (0.8, "giant toad hopping and landing on wet swamp ground, soft wet plop"),
     "rune_golem_mid": (1.5, "several boulders rolling and tumbling over hill ground toward one spot, rumble, gravel"),
+    "blight_bull_charge": (1.0, "heavy bull hooves pounding dry dirt at a gallop, thudding hoofbeats getting closer, animal only, no vehicles"),
+    "hellhound_charge": (0.8, "big heavy paws of a huge dog pounding dry dirt at a run, animal only, no vehicles"),
     "glacier_knight_stop": (1.2, "heavy iron armored knight halting, plates settling with a clank, frost crackling on ice"),
 }
 

@@ -110,3 +110,15 @@ da rodada 2 (1,6 s de cascos/patas batendo) tocaria depois que as pernas ja para
 (raspado de terra e pedrisco), cao 0,50 s (patas e garras na terra); o bufo do touro e o rosnado do cao continuam no
 `stop` (rodada 1). Os galopes da rodada 2 ficaram em `raw/blight_bull_gallop_r2.mp3` e `raw/hellhound_run_r2.mp3`,
 prontos se o motor ganhar um beat no inicio da corrida. Creditos: 225 -> 209 (2 geracoes de 0,8 s).
+
+## Rodada 4 (beat `charge` do motor, 2c1d2817)
+
+A investida ganhou `charge`: dispara uma vez quando o bicho correndo esta 2 unidades depois da crista, cerca de 2,5 a 3 s
+antes da parada. Linha do tempo: charge (galope) -> skid (inicio do deslize de 0,3 s) -> stop (fim, bufo/rosnado).
+
+| Criatura | Beat | Arquivo | Dur | Media | O que e | Veredito |
+|---|---|---|---|---|---|---|
+| blight_bull | charge | blight_bull_charge.mp3 | 1,30 s (1,0 s de som) | -23,1 dB | 5 batidas de casco em terra seca (galope da rodada 2, cortado antes do deslize e do bufo) | ruidoso, sem tom, ok |
+| hellhound | charge | hellhound_charge.mp3 | 1,10 s (0,8 s de som) | -24,3 dB | patas pesadas batendo na terra (corrida da rodada 2, cortada antes da derrapada) | ruidoso, ok |
+
+Sem credito novo: reaproveitados os brutos da rodada 2. Fallback do `charge`: `sceneStoneThud`.
