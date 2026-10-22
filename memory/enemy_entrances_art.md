@@ -135,3 +135,32 @@ Ancoras (`assets/sprites/world/anchors/`): frost_troll 110x59 monte de neve com 
 - hollow_farmer walk v3 (dono: "so mexe o pezinho e a coisa na mao"): prompt de 12 quadros ainda saia contido, entao virou CADEIA de poses como o espantalho: dois stills de passada do `create_image_pro` com o idle de character base (`ato1/hollow_farmer_strideA_stills.png`; o lote B saiu em escala menor e foi descartado) e `stages hollow_farmer/walk` idle -> passada 1 -> passada 2 -> idle, 4 quadros cada, todos pinados: terra levanta com o forcado arrastando (1-2), palha caindo (4), corpo arremete e torce, perna manca arrastada (7-9), chapeu inclina com a cabeca, casaco cruza, finca o forcado. Sem o corvo (opcional no pedido).
 - Regra que sai desta rodada: para MAIS movimento, nao peca mais ao animador; DESENHE as poses-chave (stills com o idle de referencia) e deixe o animador so interpolar entre pinos.
 
+
+
+# Rodada mini-chefes e voadores (frente entradas-arte-mini, 22/Out/2026)
+
+Fabrica: `python tools/pixellab_entradas_mini.py still <id> <pose> <seed> | pick <id> <pose> <png> | anim <id> <clip> [variant=x tool=... frames=N] | install <id> <clip> <t1+t2...>`; specs (prompts, cadeias, fixups) em `tools/pixellab_entradas_mini_specs.py`. Tiras 4x e stills em `tools/preview_out/entradas_arte/mini/` (stills escolhidos em `mini/derived/`).
+
+- **Still de pose = `edit_image_pro_flash` (6 geracoes, 1 imagem no canvas nativo)**, nao `create_image_pro` (10-25 por chamada). Muda a pose de verdade mantendo a criatura (bracos erguidos, mergulho, ajoelhado, casulo de asas, sentado). Canvas tem de ser multiplo de 4: o tool acolchoa por cima e recorta de volta.
+- **Contrato de cadeia** (`chain = true` nos dados, motor 4e744e96): `clips` em ordem; quadro 0 do 1o clipe = estado inerte; ultimo quadro do clipe i = quadro 0 do clipe i+1 byte a byte (o install copia o arquivo do still nas duas pontas); so o ultimo termina no idle 0. A trava de costura esta no `test_enemy_entrances`.
+- **Cortar uma tentativa e emendar outra**: quando o modelo acerta o comeco e pula a pose no fim (efigie: bracos subiam so nos 3 ultimos quadros), copie os quadros bons para uma tentativa falsa e gere so o trecho que faltava a partir do ultimo quadro bom (`install <id> <clip> 2+4`).
+- **Nada sai do canvas**: o canvas do clipe e o do idle, entao asa/braco que abre mais que no idle e CORTADO na borda (o morcego cortava 30-40 px de asa). Pedir "never further out to the sides than in the first frame" e um still de voo estreito resolveu. Conferir a borda (`_edges.py`) antes de instalar.
+- **Quadro 0 escondido sem corte**: em vez do idle deslocado e cortado pela borda (a queixa "imagens cortadas"), um still da criatura inteira encolhida (cogumelo gigante no chao, serpe dormente enrolada).
+- O v3 abre os olhos do vigia mesmo com "never open": brilho da regiao dos olhos apagado no install (`FIXUPS`). Branco estourado da efigie recolorido para chama.
+
+| criatura | cadeia | veredito |
+|---|---|---|
+| wicker_effigy | awaken 14 + roar 10 | bom: apagada, brasas, peito, bracos erguidos em labareda, ruge e assenta. Pontas dos chifres/garras tocam a borda de cima em 2-3 quadros |
+| storm_griffin | swoop 13 + land 13 + rear 13 | bom: pernas recolhidas no mergulho e esticadas no freio, agacha no pouso, empina com raio. Pontas das asas raspam a borda (2-8 px) no pico |
+| abyss_watcher | form 13 + gaze 13 | ok: tentaculos abrem em leque, olhos abrem um a um em laranja. Form com olhos apagados a mao |
+| ice_wyrm | emerge 13 + rear 13 + roar 13 | bom: dormente sob o gelo, estoura, sobe em espiral, empina com bafo. O bafo do roar dura so 3 quadros |
+| spore_mother | emerge 13 + spread 13 | bom: cogumelo inteiro no quadro 0, sem corte |
+| fallen_angel | descend 13 + land 13 + rise 13 | bom: casulo de asas que abre, ajoelha com espada fincada e penas, levanta. A espada muda de angulo no rise |
+| storm_harpy | swoop 13 (laco) + land 13 | bom: pernas recolhidas balancam, pousa agachando |
+| dusk_bat | swoop 13 (laco) + land 13 | bom depois do still estreito |
+| spectral_knight | form 13 | ok: figura inteira condensa junto |
+| glacier_knight | walk 13 (cadeia de passadas) | ok; o `form` do nevoeiro foi REJEITADO (silhuetas chapadas lavadas) |
+| frost_troll | stand 13 (quadro 0 sentado) + walk 13 | bom |
+| mire_hag | cackle 11 | ok: dois quadros lavados de branco cortados |
+| dullahan | laugh 13 | bom (still refeito: a 1a cabeca saia pela borda de cima) |
+| blood_duke | form 13 | ok: morcegos e nevoa viram o conde; o rosto no floreio fica mais palido que o idle por 3 quadros |
