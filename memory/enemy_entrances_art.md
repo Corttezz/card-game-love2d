@@ -45,3 +45,38 @@ Roteiro: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Motor:
 | harvest_reaper | form | ok | 2 | 1a: ficava solido no quadro 2 e VOLTAVA a silhueta nos 6-7 (floreio da foice virou arco preto); 2a "brightens a little more in EVERY frame, body still" |
 | blight_bull | charge | ok | 1 | galope com cabeca baixa; a derrapada e do motor (poeira) |
 | wicker_effigy | awaken | ok | 2 | 1a: o corpo INTEIRO virou ouro brilhante nos quadros 2-7; 2a "the wicker stays dark brown wood, only the three fires and the eyes give light" |
+
+# Atos 4 a 6 (frente entradas-arte-b, 22/Out/2026)
+
+Fabrica propria: `python tools/pixellab_entradas_b.py run|run2|run3|poll|strip|install <id>/<clipe> <tentativa>|anchors|anchor_sheet|install_anchor <id> <tentativa> <idx>|status` (mesma estrutura; o lead funde depois). Jobs em `tools/preview_out/entradas_arte/jobs_b.json`, tentativas cruas em `raw_b/` (nao versionado), tiras 4x em `atoN/<id>_<clipe>.png` com UMA linha por tentativa (idle na primeira coluna, metricas no rotulo). Diferenca de contrato: aqui instala-se `retornados[1:N]` + idle 0 real = 8 quadros nos clipes de 8 e 6 nos curtos (`howl`, `land`); o quadro de entrada nao e instalado.
+
+- `brotar`: quadro inicial = idle deslocado para baixo e cortado na borda (`start="down:0.9"`, fracao da altura do conteudo), ultimo pinado no idle. Funcionou de primeira nos 6 (troll 0.55, serpe 0.8, carnical 0.9, sanguessuga 0.9, mae dos esporos 0.6, servo da cova 0.9).
+- `form`, `swoop`, `descend`, `howl`, `land`: inicio = idle, fim pinado. Funcionam.
+- **Ciclos (`walk`, `trot`, `crawl`) nao aceitam o pino**: com o ultimo quadro pinado no idle o modelo quase nao mexe as pernas (`motion` 17 a 30 no xama, cavaleiro, bruxa, dullahan). Sem pino e com "exaggerated, high steps, body bobbing" os passos aparecem; o ultimo quadro instalado continua sendo o idle forcado, entao a parada e um passo para o idle em um quadro.
+- Particula pedida no prompt vira borrao: a neve do espectro do gelo virou mancha branca e o bafo do uivo do lobo virou balao (tentativa 1). Regerado com "no cloud, no vapor, no particles"; particula e do motor.
+- Ancoras: `create_image_pro` com referencia de estilo = props do bioma + a criatura lado a lado numa imagem so, luz do bioma (frost e marsh pela direita, dusk pela esquerda baixa), "no creature"; instaladas recortadas com alfa duro.
+
+| criatura | clipe | veredito | tentativas | nota |
+|---|---|---|---|---|
+| frost_wight | form | ok, sutil | 2 | balanco e cintilar discretos; a opacidade e do motor |
+| frost_wolf | trot | ok | 1 | trote em diagonal, cabeca baixa |
+| frost_wolf | howl | ok | 2 | boca escancarada, cabeca pouco erguida |
+| rime_shaman | walk | ok | 2 | sem pino |
+| glacier_knight | walk | ok | 2 | sem pino, espada balanca com o passo |
+| frost_troll | emerge | ok | 1 | sobe agachado da neve |
+| ice_wyrm | emerge | ok | 1 | cabeca primeiro, lascas de gelo |
+| bog_ghoul | emerge | ok | 1 | mao com torrao de lama antes do corpo |
+| plague_toad | hop | fraco | 3 | agacha e estica pouco, nunca sai do chao: o arco do salto tem de vir do motor |
+| leech_horror | emerge | ok | 1 | |
+| mire_hag | walk | ok | 2 | sem pino, capa balanca |
+| croc_warrior | crawl | ok | 2 | espreita agachado, cauda varre |
+| spore_mother | emerge | ok | 1 | chapeu abre ao subir |
+| dusk_shade | form | ok | 1 | chamas esticam e encolhem |
+| dusk_bat | swoop | ok | 1 | batida alta das asas |
+| grave_thrall | emerge | ok | 1 | terra caindo |
+| blood_duke | form | ok | 1 | floreio da capa, braco no rosto |
+| dullahan | walk | ok | 3 | sem pino |
+| fallen_angel | descend | ok | 1 | asas dobram e abrem |
+| fallen_angel | land | ok, sutil | 2 | asas sobem, joelhos dobram pouco |
+
+Ancoras (`assets/sprites/world/anchors/`): frost_troll 110x59 monte de neve com pedras; ice_wyrm 104x34 lombada de neve rachada; bog_ghoul 82x29 lama com bolhas e osso; leech_horror 102x33 poca com pedras; spore_mother 102x67 moita de cogumelos; grave_thrall 87x40 terra revolvida com lapide; dusk_shade 71x28 poca de sombra com fios roxos.

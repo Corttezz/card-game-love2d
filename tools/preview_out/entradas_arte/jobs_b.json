@@ -293,7 +293,7 @@
   "seed": 7,
   "variant": "v2",
   "pin": false,
-  "status": "downloaded",
+  "status": "installed",
   "t": 1792677816.621983,
   "n": 9
  },
@@ -370,7 +370,8 @@
   "seed": 11,
   "variant": "v2",
   "pin": true,
-  "status": "queued",
-  "t": 1792678435.895779
+  "status": "downloaded",
+  "t": 1792678435.895779,
+  "n": 9
  }
 }
