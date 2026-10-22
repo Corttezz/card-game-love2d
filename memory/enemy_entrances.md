@@ -69,3 +69,23 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
 - Galeria: `lovec . entradas [id]` (setas trocam, R repete, 1-6 ato). Capturas: `CARDGAME_HEADLESS=1 lovec . test_one
   screenshot_entradas [id|atoN]` -> `%APPDATA%/LOVE/<identidade>/entradas/atoN/<id>.png` (tira 6x2), `<id>_handoff.png`
   (recorte 1:1 do ultimo quadro do encontro e do 1o da batalha) e `folha.png`; copiar para `tools/preview_out/entradas/`.
+
+## Som proprio por criatura (22/Out/2026)
+- Dono: "sons genericos... quero sons especificos para cada monstro". 52 mp3 gerados no ElevenLabs (free, 10 creditos por
+  segundo pedido; 826 gastos, 457 sobraram) em `audio/sfx/entrances/<id>_<beat>.mp3`: 36 assinaturas (uma por criatura, no
+  beat principal: skid do touro, wake da efigie, rise de quem sai do chao, stop de quem pousa/condensa) + 16 segundos beats
+  (bull/hound/troll/croc/brute `stop` no lugar do `enemyBuffRoar`, griffin/harpy/anjo `start`, gargula/sentinela/glacier
+  `stop`, golem `mid`, sapo `hop`, ratos `start`, lobo `start`+uivo no `stop`, scarecrow `wake`+`stop`).
+- Registro por SCAN no `main.lua` (`entrance_<arquivo>`, volume `Data.SFX_VOLUME` 0,55, pasta `Data.SFX_DIR`, prefixo
+  `Data.SFX_PREFIX`), igual ao joker-sig; nos dados o som proprio e SEMPRE o 1o codigo da lista do beat e o generico antigo
+  fica atras como fallback (`playFirst` toca o primeiro que `Sfx.has`). Tool sem boot do main.lua cai no generico.
+- Beat tem de EXISTIR no motor para o tipo: andar stop/step, investida skid/stop, brotar rise/stop, acordar wake/stop,
+  mergulho start/stop, condensar start(so swarm)/stop, flanco start/stop/hop, montar mid/stop. O scarecrow tinha `flock`,
+  que nenhum lugar dispara (corvos nunca tocavam): removido. Falta um beat `form` no inicio da condensacao (pedido ao lead);
+  ate la os 5 condensar tocam o proprio no `stop`.
+- Pos-processo (`tools/gen_entrance_sfx.py`: `balance`, `gen`, `post`, `layer`, `measure`, `report`): corte de silencio,
+  media -16 dB com limitador -1,5 dB, reencode se o pico passar de -0,6 dB (mp3 estoura o limitador). Geracao quase muda
+  (media crua < -30 dB) = prompt "close up / continuous" e regerar; "tall grass" devolveu silencio 2x.
+- Trava `test_entrance_sfx`: toda criatura com som proprio, arquivo da criatura e do beat, 1o da lista, fallback conhecido
+  (SOUNDS/CrowSfx/main.lua), beat disparado pelo tipo, mp3 decodifica, 0,35 a 3 s, media -28 a -9 dB, pico < 1,0.
+  Notas por arquivo em `tools/preview_out/entradas_som/LEIA.md` (veredito por envelope/centroide, sem escuta real).

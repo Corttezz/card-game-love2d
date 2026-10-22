@@ -1096,6 +1096,13 @@ function love.load(loveArgs)
                 audioSystem:loadSound("jokerSig_" .. sigId, "audio/sfx/joker-sig/" .. f, 0.52)
             end
         end
+
+        for _, f in ipairs(love.filesystem.getDirectoryItems("audio/sfx/entrances")) do
+            local entId = f:match("^(.+)%.mp3$")
+            if entId then
+                audioSystem:loadSound("entrance_" .. entId, "audio/sfx/entrances/" .. f, 0.55)
+            end
+        end
     end
 
     menu = Menu:new()
