@@ -105,6 +105,14 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
     pulsa devagar, motas escuras subindo, vagalumes apagam; o corpo entra por alpha so no ultimo 1,2 s DENTRO dela e a
     nevoa vira um anel baixo (`mistRing`) que fica na luta. Sem brilho na foice (exigiria saber a ponta: pendente).
   - Som: `ENTRANCE_GAIN = 1,0` neutro (frente de som baixou os arquivos 6 dB).
+- **Rodada 3 (23/Out)**: ancora animada = `anchors/<id>_anchor_0..N.png` (`EE.anchorFrames`, `ANCHOR_FPS` 5, fase pela
+  posicao no mundo; reducedMotion = quadro 0; a PNG unica fica de reserva). Nevoa do ceifador: os quadros sao opacos e
+  quase pretos, entao o motor desenha a `MIST_ALPHA` 0,7 misturada 30 % na cor da neblina do grade; um veu (quadro inteiro,
+  sem esticar) cobre o terco de baixo do corpo so durante a condensacao (pico no meio) e o corpo fica escurecido
+  (`MIST_BODY_TINT` 0,45 -> 1) enquanto o form passa pela silhueta cinza da arte.
+  **Causa do "brilho quadriculado" em quem condensa (ratos, ceifador, vigia...)**: o encontro enviava o corpo como oclusor
+  do `LightEngine` (cor chapada no lightmap de 1/4) mesmo com alpha baixo, acendendo uma mancha em blocos no formato do
+  sprite. Oclusor e contorno de luz (`drawRim`) agora so com o corpo opaco, como na batalha.
 - Beats de som que o motor dispara (contrato com `test_entrance_sfx`): andar stop/step1..3, investida skid/stop, brotar
   rise/stop, acordar wake/land(so espantalho e gargula, 50 % do assentamento)/stop, mergulho start/stop, condensar
   start(enxame em dur-2 s; sem enxame em u1)/form(u1, uma vez)/stop, flanco start/stop/hop, montar mid/stop; investida tambem `charge` (uma vez, quando o corpo passa 2 unidades da crista correndo).

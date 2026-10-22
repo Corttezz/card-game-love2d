@@ -512,6 +512,33 @@ function EE.anchorImage(id, name)
     return img
 end
 
+EE.ANCHOR_FPS = 5
+EE.MIST_ALPHA = 0.7
+EE.MIST_FOG = 0.3
+EE.MIST_VEIL = 0.75
+EE.MIST_BODY_TINT = 0.45
+
+function EE.anchorFrames(id)
+    local key = "frames|" .. tostring(id)
+    local hit = anchorImgs[key]
+    if hit ~= nil then return hit or nil end
+    local list = {}
+    local CS = require("engine.ContactShadow")
+    for i = 0, 31 do
+        local path = Data.ANCHOR_DIR .. tostring(id) .. "_anchor_" .. i .. ".png"
+        if not love.filesystem.getInfo(path) then break end
+        local okd, d = pcall(love.image.newImageData, path)
+        if not okd or not d then break end
+        local ok, im = pcall(love.graphics.newImage, d)
+        if not ok or not im then break end
+        im:setFilter("nearest", "nearest")
+        CS.scan(im, d, nil)
+        list[#list + 1] = im
+    end
+    anchorImgs[key] = (#list > 0) and list or false
+    return anchorImgs[key] or nil
+end
+
 function EE.clearCache()
     anchorImgs = {}
     ratImg = nil
@@ -936,6 +963,9 @@ function K.condensar(S, dt)
         pick(S, "start")
     end
     local mp = spec.anchor and spec.anchor.mist and S.anchorProp
+    if spec.anchor and spec.anchor.mist and a < 1 then
+        S.tintK = EE.MIST_BODY_TINT + (1 - EE.MIST_BODY_TINT) * easeInOut(clamp01(a * 1.4 - 0.25))
+    end
     if mp then
         mp.mistThick = clamp01(0.35 + S.k * 0.9)
         mp.mistRing = ae
@@ -1286,6 +1316,13 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
     local WorldRoad = require("src.ui.WorldRoad")
     local src = p.front and p.ref or p
     local img = EE.anchorImage(src.entrId, src.name)
+    local frames = EE.anchorFrames(src.entrId)
+    local fIdx = 1
+    if frames then
+        fIdx = reducedMotion() and 1
+            or (1 + math.floor((WorldRoad._time or 0) * EE.ANCHOR_FPS + (src.z or 0) * 7.31) % #frames)
+        img = frames[fIdx]
+    end
     if not img then return end
     local Grade = require("engine.SceneGrade")
     local iw, ih = img:getWidth(), img:getHeight()
@@ -1324,7 +1361,12 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
         local thick, ring = src.mistThick or 0.35, src.mistRing or 0
         sx = s * (0.85 + 0.25 * thick) * (1 + 0.12 * ring) * (1 + 0.03 * math.sin(ph * 1.3))
         sy2 = sx * (1 - 0.55 * ring) * (1 + 0.04 * math.sin(ph * 0.9 + 1))
-        alpha = alpha * (0.6 + 0.4 * thick) * (1 - 0.4 * ring)
+        alpha = alpha * EE.MIST_ALPHA * (0.6 + 0.4 * thick) * (1 - 0.4 * ring)
+        local fr, fg, fb = Grade.fogRaw()
+        if fr then
+            local m = EE.MIST_FOG
+            c[1], c[2], c[3] = c[1] * (1 - m) * 0.7 + fr * m, c[2] * (1 - m) * 0.7 + fg * m, c[3] * (1 - m) * 0.7 + fb * m
+        end
     end
     if behind then sy = sy + (1 - em) * ih * s * 0.95 end
     local groundY = src.straddle and (sy + (ih - half) * sy2) or sy
@@ -1357,6 +1399,14 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
         if p.front then
             quad:setViewport(0, half, iw, ih - half, iw, ih)
             love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, 0)
+            local rg = src.mistRing or 0
+            local veil = src.mist and math.min(1, 4 * rg * (1 - rg) * 1.3) or 0
+            if veil > 0.01 then
+                local vimg = frames and frames[1 + (fIdx + 1) % #frames] or img
+                love.graphics.setColor(c[1] * 0.55, c[2] * 0.55, c[3] * 0.6, alpha * EE.MIST_VEIL * veil)
+                love.graphics.draw(vimg, math.floor(pxX), math.floor(sy + (ih - half) * sy2), 0,
+                    sx * 1.05, sx, iw / 2, ih)
+            end
         else
             quad:setViewport(0, 0, iw, half, iw, ih)
             love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, half)

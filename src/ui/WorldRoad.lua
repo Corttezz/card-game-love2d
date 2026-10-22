@@ -4839,7 +4839,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
             { alphaK = 0.9, footPad = e.footPad,
               baseK = e.shadowBaseK, riseK = e.shadowRiseK })
     end
-    if e.anim then
+    if e.anim and (pz.alpha or 1) >= 0.999 then
         require("src.ui.EnemyRenderer").drawRim(function(ox, oy) e.anim:draw(dx0 + ox, dy0 + oy, s) end, cx, s)
     end
     local ec = Scene.Grade.color("enemy", t, LMG.c)
@@ -4856,7 +4856,8 @@ function LMG.drawEncounterFront(g, x, w, camZ)
 
     local oxT, oyT = love.graphics.transformPoint(dx0, dy0)
     local flatColor = Scene.Grade.flatColor("enemy", LMG.fc)
-    if e.anim then
+    if e.anim and (pz.alpha or 1) < 0.999 then
+    elseif e.anim then
         LightEngine.submitOccluder({
             z = rel + 6, flatColor = flatColor, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
             fn = function()
