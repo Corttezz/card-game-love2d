@@ -513,6 +513,41 @@ function EE.anchorImage(id, name)
 end
 
 EE.ANCHOR_FPS = 5
+EE.ANCHOR_SHADOW_A = 1.0
+EE.ANCHOR_SHADOW_BASE = nil
+
+local pendSh, pendN = {}, 0
+function EE.deferShadow(img, x, y, s, t, opts, contactA)
+    pendN = pendN + 1
+    local q = pendSh[pendN]
+    if not q then q = {}; pendSh[pendN] = q end
+    q.img, q.x, q.y, q.s, q.t, q.o, q.ca = img, x, y, s, t, opts, contactA
+end
+
+function EE.flushShadows()
+    if pendN == 0 then return end
+    local SE = require("engine.ShadowEngine")
+    local CS = require("engine.ContactShadow")
+    for i = 1, pendN do
+        local q = pendSh[i]
+        if q.o then SE.queue(q.img, q.x, q.y - 1, q.s, q.o, q.t) end
+        if q.ca then CS.queue(q.img, q.x, q.y, q.s, q.t, q.ca, 1) end
+        q.img, q.o = nil, nil
+    end
+    pendN = 0
+end
+
+function EE.drawBehindAnchors(g, x, w, camZ, band, crest)
+    local WorldRoad = require("src.ui.WorldRoad")
+    for _, p in ipairs(WorldRoad._props) do
+        if p.anchor and not p.front then
+            local rel = p.z - camZ
+            if rel > crest and rel <= crest + band then
+                EE.drawProp(p, g, x, w, 0, rel, camZ, 1 - (rel - crest) / band)
+            end
+        end
+    end
+end
 EE.MIST_ALPHA = 0.7
 EE.MIST_FOG = 0.3
 EE.MIST_VEIL = 0.75
@@ -1372,16 +1407,13 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
     local groundY = src.straddle and (sy + (ih - half) * sy2) or sy
     if not p.front and not behind then
         if EE.TALL_ANCHORS[src.name] and grow >= 0.999 then
-            shadowOpt.smear = iw * s * 0.035
-            shadowOpt.widthK, shadowOpt.lenK, shadowOpt.alphaK = 1, 0.7, 0.75 * alpha
-            shadowOpt.baseK, shadowOpt.riseK, shadowOpt.contentH = 0.3, nil, ih * s
-            require("engine.ShadowEngine").silhouette(pxX, groundY - 1, shadowOpt, function(tint)
-                love.graphics.setColor(tint[1], tint[2], tint[3], tint[4] or 1)
-                love.graphics.draw(img, -iw * s / 2, -ih * s, 0, s, s)
-            end)
-            require("engine.ContactShadow").queue(img, pxX, groundY, s, t, 0.8 * alpha, 1)
+            local o = src._shOpt or {}
+            src._shOpt = o
+            o.alphaK, o.flip, o.footPad = EE.ANCHOR_SHADOW_A * alpha, 1, 0
+            o.baseK, o.riseK, o.lenK = EE.ANCHOR_SHADOW_BASE, nil, nil
+            EE.deferShadow(img, pxX, groundY, s, t, o, 0.8 * alpha)
         elseif EE.CONTACT_ANCHORS[src.name] then
-            require("engine.ContactShadow").queue(img, pxX, groundY, s, t, 0.45 * alpha, 1)
+            EE.deferShadow(img, pxX, groundY, s, t, nil, 0.45 * alpha)
         end
     end
     local rot = 0

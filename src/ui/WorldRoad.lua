@@ -2504,6 +2504,7 @@ local function drawCastle(g, x, w, camZ)
 end
 
 local function drawEncounterBehind(g, x, w, camZ)
+    require("src.ui.EnemyEntrance").drawBehindAnchors(g, x, w, camZ, EMERGE_BAND, REL_CREST)
     local e = WorldRoad._encounter
     if not e or not WorldRoad._travel then return end
     local pz = require("src.ui.EnemyEntrance").pose(e)
@@ -2541,8 +2542,7 @@ local function drawPropsBehind(g, x, w, camZ)
         local roadLum = LuminaireEngine.def(p.bid, p.kind)
         roadLum = roadLum and roadLum.roadside
         if WorldRoad._fork and not roadLum and not PropCut.kinds[p.kind] then fadeA = 0 end
-        if p.anchor and not p.front and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
-            require("src.ui.EnemyEntrance").drawProp(p, g, x, w, 0, rel, camZ, 1 - (rel - REL_CREST) / EMERGE_BAND)
+        if p.anchor then
         elseif fadeA > 0.01 and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
             local em = 1 - (rel - REL_CREST) / EMERGE_BAND
             local pxX = g.cx + p.side * w * (0.11 + p.lane * 0.38)
@@ -4770,6 +4770,7 @@ local function drawProps(g, x, w, camZ)
     end
     if encMark and not encMark.drawn then drawEncounterNow() end
     flushGrassTo(-1)
+    require("src.ui.EnemyEntrance").flushShadows()
     ShadowEngine.endFrame(Scene.Contact.drawAcc)
     Scene.Contact.endFrame()
 end

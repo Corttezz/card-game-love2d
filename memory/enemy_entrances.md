@@ -113,6 +113,17 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   **Causa do "brilho quadriculado" em quem condensa (ratos, ceifador, vigia...)**: o encontro enviava o corpo como oclusor
   do `LightEngine` (cor chapada no lightmap de 1/4) mesmo com alpha baixo, acendendo uma mancha em blocos no formato do
   sprite. Oclusor e contorno de luz (`drawRim`) agora so com o corpo opaco, como na batalha.
+- **Sombra de ancora na batalha (23/Out, dono: "a estaca nao tem sombra")**: a silhueta projetada cai NA FRENTE da ancora
+  (em direcao a camera), sobre chao cuja grama so e desenhada DEPOIS do composite de sombras do meio do quadro (o
+  `ShadowEngine.endFrame` antes do inimigo); a grama cobria a sombra inteira. Solucao: a ancora nao enfileira sombra no
+  desenho; `EE.deferShadow` guarda e `EE.flushShadows()` enfileira tudo logo antes do ultimo `flushGrassTo(-1)` +
+  `endFrame` do `drawProps` (silhueta pelo `ShadowEngine.queue`, como arvore e poste, alpha 1,0; faixa de contato idem).
+  Trava por PIXEL em `test_enemy_entrances` (`M.battleShadow`): cena real apos o handoff, com e sem a ancora, conta pixels
+  >= 3 % mais escuros fora da caixa dela; espantalho (tod 0,85 e 0,62) e gargula >= 1500 (medidos 5841 a 14986; antes
+  ~200, so o monte). A trava antiga contava chamadas e passava com a sombra invisivel.
+- **Ordem na crista**: o `drawEncounterBehind` vinha ANTES do `drawPropsBehind`, entao a estaca era pintada por cima do
+  espantalho. As ancoras sairam do `drawPropsBehind` e sao desenhadas por `EE.drawBehindAnchors` no comeco do
+  `drawEncounterBehind`, antes do corpo. Na frente a ordem ja vinha do z (ancora 0,25 atras do corpo).
 - Beats de som que o motor dispara (contrato com `test_entrance_sfx`): andar stop/step1..3, investida skid/stop, brotar
   rise/stop, acordar wake/land(so espantalho e gargula, 50 % do assentamento)/stop, mergulho start/stop, condensar
   start(enxame em dur-2 s; sem enxame em u1)/form(u1, uma vez)/stop, flanco start/stop/hop, montar mid/stop; investida tambem `charge` (uma vez, quando o corpo passa 2 unidades da crista correndo).

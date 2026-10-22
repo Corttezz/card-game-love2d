@@ -6,6 +6,67 @@ M.FX_NAMES = { dust = true, snow = true, embers = true, straw = true, shards = t
     crows = true, lightning = true, rain = true, blizzard = true, fireflies = true, dim = true }
 M.LAST_FRAME_TOL = 0.02
 M.LEG_MAX_HALF_S = 10
+M.SHADOW_CASES = { { "cursed_scarecrow", 0.85 }, { "cursed_scarecrow", 0.62 }, { "moon_gargoyle", 0.85 } }
+M.SHADOW_MIN_PX = 1500
+
+local function luma(r, g, b) return 0.299 * r + 0.587 * g + 0.114 * b end
+
+function M.battleShadow(id, tod)
+    local Entradas = require("tools.entradas")
+    local GameplayScene = require("src.scenes.GameplayScene")
+    local WorldRoad = require("src.ui.WorldRoad")
+    local EE = require("src.ui.EnemyEntrance")
+    local VW, VH = 1920, 1080
+    local o = { love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions }
+    love.graphics.getWidth = function() return VW end
+    love.graphics.getHeight = function() return VH end
+    love.graphics.getDimensions = function() return VW, VH end
+    local list = Entradas.roster()
+    local DT = 1 / 30
+    local ctx = Entradas.mount(list[Entradas.indexOf(list, id)], { dt = DT, tod = tod })
+    Entradas.startEntrance(ctx, DT)
+    local anchor = EE.state() and EE.state().anchorProp
+    for _ = 1, 600 do
+        GameplayScene.update(DT)
+        if not WorldRoad.isTraveling() then break end
+    end
+    for _ = 1, 40 do GameplayScene.update(DT) end
+    local cv = love.graphics.newCanvas(VW, VH)
+    local function shot()
+        love.graphics.setCanvas(cv)
+        love.graphics.clear(0, 0, 0, 1)
+        GameplayScene.draw()
+        love.graphics.setCanvas()
+        return cv:newImageData()
+    end
+    shot():release()
+    local a = shot()
+    local box = nil
+    for _, he in ipairs(WorldRoad._hitScene) do
+        if he.ref == anchor then box = { he.x1, he.y1, he.x2, he.y2 } end
+    end
+    local keep = anchor and anchor.grow
+    if anchor then anchor.grow = 0 end
+    local b = shot()
+    if anchor then anchor.grow = keep end
+    cv:release()
+    love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = o[1], o[2], o[3]
+    local darker = 0
+    if box then
+        local w = box[3] - box[1]
+        for y = math.max(0, math.floor(box[4] - 40)), math.min(VH - 1, math.floor(box[4] + (box[4] - box[2]) * 1.2)) do
+            for x = math.max(0, math.floor(box[1] - w * 3)), math.min(VW - 1, math.floor(box[3] + w * 3)) do
+                if not (x >= box[1] and x <= box[3] and y >= box[2] and y <= box[4]) then
+                    local r1, g1, b1 = a:getPixel(x, y)
+                    local r2, g2, b2 = b:getPixel(x, y)
+                    if luma(r1, g1, b1) < luma(r2, g2, b2) - 0.03 then darker = darker + 1 end
+                end
+            end
+        end
+    end
+    a:release(); b:release()
+    return box ~= nil, darker
+end
 
 local function roster()
     local out = {}
@@ -189,18 +250,13 @@ function M.run()
                     local img = EE.anchorImage(p.entrId, p.name)
                     local SE = require("engine.ShadowEngine")
                     local CS = require("engine.ContactShadow")
-                    local oSil, oQ = SE.silhouette, CS.queue
+                    local oSQ, oQ = SE.queue, CS.queue
                     local silImg, contact = false, false
-                    SE.silhouette = function(fx, fy, o, fn)
-                        local oDraw = love.graphics.draw
-                        love.graphics.draw = function(im, ...) if im == img then silImg = true end end
-                        fn({ 1, 0, 0, 1 })
-                        love.graphics.draw = oDraw
-                        return true
-                    end
+                    SE.queue = function(im, ...) if im == img then silImg = true end; return true end
                     CS.queue = function(...) local r = oQ(...); if r then contact = true end; return r end
                     local okD, errD = pcall(EE.drawProp, p, WorldRoad.domeGeom(0, 0, 1920, 1080), 0, 1920, 0.5, 9, 0)
-                    SE.silhouette, CS.queue = oSil, oQ
+                    EE.flushShadows()
+                    SE.queue, CS.queue = oSQ, oQ
                     t:truthy(id .. ": ancora desenha " .. tostring(errD or ""), okD)
                     if EE.TALL_ANCHORS[p.name] then
                         t:truthy(id .. ": ancora alta projeta silhueta com a propria imagem (" .. p.name .. ")", silImg)
@@ -219,6 +275,17 @@ function M.run()
         end
     end
     _G.gameSettings = savedSettings
+    WorldRoad._props = {}
+    EE.reset()
+    for _, c in ipairs(M.SHADOW_CASES) do
+        local okS, found, darker = pcall(M.battleShadow, c[1], c[2])
+        t:truthy(string.format("%s tod %.2f: ancora na cena da batalha %s", c[1], c[2], okS and "" or tostring(found)),
+            okS and found)
+        if okS then
+            t:truthy(string.format("%s tod %.2f: sombra da ancora escurece %d px na batalha (min %d)",
+                c[1], c[2], darker or 0, M.SHADOW_MIN_PX), (darker or 0) >= M.SHADOW_MIN_PX)
+        end
+    end
     WorldRoad._props = {}
     EE.reset()
     return t:done()
