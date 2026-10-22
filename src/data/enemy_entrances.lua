@@ -17,6 +17,7 @@ E.ANCHOR_DIR = "assets/sprites/world/anchors/"
 E.SFX_DIR = "audio/sfx/entrances/"
 E.SFX_PREFIX = "entrance_"
 E.SFX_VOLUME = 0.55
+E.ENTRANCE_GAIN = 1.0
 
 E.DEFAULT = { kind = "andar", clips = {}, extra = 0, settle = 0, fx = {}, sfx = {} }
 
@@ -28,15 +29,15 @@ E.BY_ID = {
     hollow_farmer = { kind = "andar", clips = { "walk" }, extra = 0, settle = 0,
         fx = { stop = { "dust", "shake1" } },
         sfx = { stop = { "entrance_hollow_farmer_stop", "sceneStoneThud" } } },
-    plague_rats = { kind = "condensar", clips = { "form" }, extra = 1, settle = 1,
-        swarm = "rats",
+    plague_rats = { kind = "condensar", clips = { "form" }, extra = 3, settle = 1.5,
+        swarm = "rats", swarmLead = 2.7,
         fx = { start = { "grass" }, stop = { "dust" } },
         sfx = { start = { "entrance_plague_rats_start", "sceneRustle" }, stop = { "entrance_plague_rats_stop", "sceneRustle" } } },
     harvest_reaper = { kind = "condensar", clips = { "form" }, extra = 1.5, settle = 1,
-        anchor = { name = "mist", veil = true },
+        anchor = { name = "mist", at = "stage", mist = true },
         fx = { start = { "fireflies" }, stop = { "grass", "dark" } },
         sfx = { form = { "entrance_harvest_reaper_stop", "impactDark" } } },
-    blight_bull = { kind = "investida", clips = { "charge" }, extra = 0.5, settle = 0.5, lead = 5,
+    blight_bull = { kind = "investida", clips = { "charge" }, extra = 0.5, settle = 0.5, lead = 16,
         fx = { skid = { "dust", "shake2" }, stop = { "dust" } },
         sfx = { skid = { "entrance_blight_bull_skid", "bossLandImpact", "sceneStoneThud" }, stop = { "entrance_blight_bull_stop", "enemyBuffRoar" } } },
     wicker_effigy = { kind = "acordar", clips = { "awaken" }, extra = 2, settle = 2, inert = "unlit",
@@ -72,7 +73,7 @@ E.BY_ID = {
         anchor = { name = "crack", at = "stage", glow = { 1.0, 0.45, 0.1 } },
         fx = { rise = { "embers", "light" } },
         sfx = { rise = { "entrance_ember_imp_rise", "impactFire" } } },
-    hellhound = { kind = "investida", clips = { "charge" }, extra = 0.5, settle = 0.5, lead = 5, trail = "embers",
+    hellhound = { kind = "investida", clips = { "charge" }, extra = 0.5, settle = 0.5, lead = 16, trail = "embers",
         fx = { skid = { "embers", "dust", "shake1" } },
         sfx = { skid = { "entrance_hellhound_skid", "sceneStoneThud" }, stop = { "entrance_hellhound_stop", "enemyBuffRoar" } } },
     abyss_acolyte = { kind = "andar", clips = { "walk" }, extra = 0.5, settle = 0.5,

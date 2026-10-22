@@ -16,6 +16,7 @@ local soundsLoaded = false
 local quad = nil
 local tmpColor = {}
 local shadowOpt = {}
+local ratImg = nil
 
 EE.lastBounce = false
 EE._last = nil
@@ -81,7 +82,10 @@ local function playFirst(list)
             return code
         end
         if Sfx.has(code) then
-            Sfx.playWithVariation(code, 1.0, 0.05)
+            local a = _G.audioSystem
+            if a and a.play then
+                a:play(code, { pitch = 1 + (love.math.random() * 2 - 1) * 0.05, gain = Data.ENTRANCE_GAIN or 1 })
+            end
             return code
         end
     end
@@ -476,10 +480,13 @@ function EE.anchorImage(id, name)
     local hit = anchorImgs[key]
     if hit ~= nil then return hit or nil end
     local path = Data.ANCHOR_DIR .. tostring(id) .. "_anchor.png"
-    local img = nil
+    local img, data = nil, nil
     if love.filesystem.getInfo(path) then
-        local ok, im = pcall(love.graphics.newImage, path)
-        if ok and im then img = im end
+        local okd, d = pcall(love.image.newImageData, path)
+        if okd and d then
+            local ok, im = pcall(love.graphics.newImage, d)
+            if ok and im then img, data = im, d end
+        end
     end
     if not img then
         local sz = ANCHOR_SIZE[name]
@@ -491,18 +498,23 @@ function EE.anchorImage(id, name)
             paintAnchor(name, sz[1], sz[2])
             love.graphics.setCanvas()
             love.graphics.pop()
-            local ok, im = pcall(love.graphics.newImage, cv:newImageData())
+            local d = cv:newImageData()
+            local ok, im = pcall(love.graphics.newImage, d)
             cv:release()
-            if ok and im then img = im end
+            if ok and im then img, data = im, d end
         end
     end
-    if img then img:setFilter("nearest", "nearest") end
+    if img then
+        img:setFilter("nearest", "nearest")
+        require("engine.ContactShadow").scan(img, data, nil)
+    end
     anchorImgs[key] = img or false
     return img
 end
 
 function EE.clearCache()
     anchorImgs = {}
+    ratImg = nil
 end
 
 local function spawnAnchor(S, opts)
@@ -576,6 +588,7 @@ function EE.begin(enc, opts)
     end
     S.view = setmetatable({ st = S, currentFrame = 1, enemyId = id, entrance = true }, View)
     S.img = S.idleImg or S.staticImg
+    S.stride = EE.strideUnits(enc)
     st = S
     EE.lastBounce = false
     spawnAnchor(S, opts)
@@ -606,8 +619,30 @@ local function grassPoke(S, dxFrac)
     require("engine.GrassField").pokeAt((S.footX - r.x) / math.max(1, r.w) + (dxFrac or 0), S.enc.z, WorldRoad._time)
 end
 
-local function walkFeel(S, u, cycles)
-    local spd = clamp01(4 * u * (1 - u))
+EE.WALK_DIST = 10
+EE.CHARGE_DIST = 16
+EE.SKID = 0.3
+EE.CHARGE_SEEN_REL = 24
+EE.STRIDE_K = 0.8
+
+function EE.strideUnits(enc)
+    local WorldRoad = require("src.ui.WorldRoad")
+    local r = WorldRoad._lastRect
+    local h = r and r.h or 1000
+    local g = WorldRoad.domeGeom(0, 0, r and r.w or 1920, h)
+    local tB = g.tOf(WorldRoad.BATTLE_REL) or 0.5
+    local unitPx = math.max(1, g.scaleAt(1, tB, 1))
+    local bodyPx = (enc.iw or 96) * 0.8 * (enc.targetScale or 2.5)
+        * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(h)
+    return math.max(1.2, math.min(6, EE.STRIDE_K * bodyPx / unitPx))
+end
+
+local function legCycles(S, dist)
+    return math.max(1, math.floor(dist / math.max(0.5, S.stride or 3) + 0.5))
+end
+
+local function walkFeel(S, spd, cycles)
+    spd = clamp01(spd)
     S.crouch = 0.03 * spd
     if cycles then
         S.pose.liftK = S.pose.liftK + math.abs(math.sin(cycles * math.pi)) * 0.012 * spd
@@ -620,12 +655,12 @@ function K.andar(S, dt)
     local spec = S.spec
     local walk = S.clips.walk
     local u = clamp01(S.t / math.max(0.01, S.dur - S.lead))
-    local prog = easeInOutCubic(u)
-    local WorldRoad = require("src.ui.WorldRoad")
-    local tr = WorldRoad._travel
-    local cyc = math.max(1, math.floor(tr and tr.dist / 2.4 + 0.5 or 8))
-    if not S.stopped and walk and prog < 1 then
-        S.img = loopFrame(walk, cyc * prog)
+    local D = S.red and 2 or (spec.walkDist or EE.WALK_DIST)
+    local f = 1 - (1 - u) * (1 - u)
+    S.pose.relOff = D * (1 - f)
+    local cyc = legCycles(S, D) * f
+    if walk and u < 1 then
+        S.img = loopFrame(walk, cyc)
         S.used.walk = true
         S.view.currentFrame = 1
     elseif walk then
@@ -634,7 +669,7 @@ function K.andar(S, dt)
     else
         S.img = idleImage(S, dt, true)
     end
-    if prog < 1 then walkFeel(S, u, walk and cyc * prog or nil) end
+    if u < 1 then walkFeel(S, 1 - u, walk and cyc or nil) end
     if S.stopped and S.settle > 0 and not S.fired.settleSq then
         S.fired.settleSq = true
         squashPulse(S, 0.035, 0.22)
@@ -666,34 +701,52 @@ end
 
 function K.investida(S, dt)
     local spec = S.spec
-    local lead = S.red and 2 or (spec.lead or 7)
-    local win = S.red and 1.0 or 2.2
-    local u0 = S.dur - win
-    local c = clamp01((S.t - u0) / math.max(0.01, win + S.settle - S.lead))
-    local ce = easeOutQuart(c)
-    S.pose.relOff = lead * (1 - ce)
+    local L = S.red and 3 or (spec.lead or EE.CHARGE_DIST)
+    local T = math.max(0.01, S.total - S.lead)
+    local us = clamp01(1 - (S.red and 0.15 or EE.SKID) / T)
+    local u = clamp01(S.t / T)
+    local v = 1 / (us + (1 - us) * 0.5)
+    local f
+    if u <= us then
+        f = v * u
+    else
+        local x = u - us
+        f = v * us + v * x - v * x * x / (2 * math.max(1e-3, 1 - us))
+    end
+    f = math.min(1, f)
+    S.pose.relOff = L * (1 - f)
+    local fRun = v * us
+    local cyc = legCycles(S, L * fRun) * math.min(1, f / math.max(1e-3, fRun))
     local charge = S.clips.charge
-    if S.t < u0 then
-        S.img = idleImage(S, dt, charge ~= false, u0)
-    elseif charge then
-        local cyc = math.floor(6 * (win + S.settle) + 0.5)
-        S.img = loopFrame(charge, cyc * ce)
+    local skidding = u > us and u < 1
+    if charge and u < 1 then
+        S.img = loopFrame(charge, cyc)
         S.used.charge = true
         S.view.currentFrame = 1
-        if c >= 1 then S.img = idleFrame1(S); S.endFrame1 = true end
+    elseif charge then
+        S.img = idleFrame1(S)
+        S.endFrame1 = true
     else
         S.img = idleImage(S, dt, true)
-        S.pose.liftK = math.abs(math.sin(ce * 6 * math.pi * 2)) * 0.035 * (1 - c)
+        if u < us then S.pose.liftK = math.abs(math.sin(cyc * math.pi)) * 0.03 end
     end
-    if c > 0.05 and c < 0.9 and not S.red then
+    if u < us then walkFeel(S, 1, nil) end
+    if S.rel and S.rel < EE.CHARGE_SEEN_REL and u < us then pick(S, "charge") end
+    if not S.red and u > 0.02 and u < 1 then
         S.trailT = (S.trailT or 0) + dt
-        if S.trailT >= 0.11 then
+        if S.trailT >= (skidding and 0.05 or 0.14) then
             S.trailT = 0
-            burst(spec.trail or "dust", 0.35)
+            burst(skidding and "dust" or (spec.trail or "dust"), skidding and 0.55 or 0.3)
         end
     end
-    if c >= 0.55 then pick(S, "skid") end
-    if c >= 1 then pick(S, "stop") end
+    if skidding then
+        local sk = (u - us) / math.max(1e-3, 1 - us)
+        S.crouch = 0.06 * math.sin(sk * math.pi)
+        pick(S, "skid")
+    end
+    if u >= 1 then
+        if pick(S, "stop") and not S.red then squashPulse(S, -0.35, 0.28) end
+    end
 end
 
 function K.brotar(S, dt)
@@ -875,19 +928,18 @@ function K.condensar(S, dt)
     S.pose.shadowA = ae
     S.veilA = (spec.anchor and spec.anchor.veil) and clamp01(S.k * 1.6) * (1 - ae) or 0
     if spec.swarm then
-        local sw0 = S.dur - (S.red and 0.6 or 2.0)
+        local sw0 = S.dur - (S.red and 0.6 or (spec.swarmLead or 2.0))
+        S.swarmT0, S.swarmT1 = sw0, u1 + (S.red and 0.1 or 0.3)
         S.swarmK = clamp01((S.t - sw0) / math.max(0.01, S.total - S.lead - sw0))
         if S.t >= sw0 then pick(S, "start") end
-        if spec.swarm == "rats" and S.swarmK > 0 and S.swarmK < 1 then
-            S.pokeT = S.pokeT + dt
-            if S.pokeT >= 0.22 then
-                S.pokeT = 0
-                S.pokeSide = -S.pokeSide
-                grassPoke(S, S.pokeSide * 0.24 * (1 - S.swarmK * 0.6))
-            end
-        end
     elseif S.t >= u1 then
         pick(S, "start")
+    end
+    local mp = spec.anchor and spec.anchor.mist and S.anchorProp
+    if mp then
+        mp.mistThick = clamp01(0.35 + S.k * 0.9)
+        mp.mistRing = ae
+        if S.k > 0.25 then EE.wxSet("ff", 1) end
     end
     if spec.lantern then S.lanternK = clamp01(0.25 + S.k * 0.9) end
     if spec.snow and not S.red and a > 0 and a < 1 then
@@ -926,7 +978,8 @@ function K.flanco(S, dt)
     local m = clamp01((S.t - u0) / math.max(0.001, arriveT - u0))
     local me = easeInOut(m)
     S.sideFrac = 1 - me
-    if not spec.hops then walkFeel(S, m, (S.clips.trot or S.clips.crawl) and m * 4 or nil) end
+    local fcyc = legCycles(S, spec.flankDist or 4) * me
+    if not spec.hops then walkFeel(S, 6 * m * (1 - m), (S.clips.trot or S.clips.crawl) and fcyc or nil) end
     local move = S.clips.trot or S.clips.crawl or S.clips.hop
     local moveName = S.clips.trot and "trot" or (S.clips.crawl and "crawl" or (S.clips.hop and "hop" or nil))
     local settleK = S.sKL
@@ -941,7 +994,7 @@ function K.flanco(S, dt)
         S.view.currentFrame = 1
         if m >= 0.4 then S.endFrame1 = true end
     elseif move and m < 1 then
-        S.img = loopFrame(move, m * 4)
+        S.img = loopFrame(move, spec.hops and (m * spec.hops) or fcyc)
         S.used[moveName] = true
         S.view.currentFrame = 1
     elseif move then
@@ -1062,6 +1115,82 @@ function EE.endsWithLanding()
     return EE.lastBounce
 end
 
+EE.RATS = 10
+EE.RAT_RUN = 1.0
+EE.RAT_QUAD = { 4, 58, 42, 38 }
+EE.RAT_RUMP = { cx = 33, cy = 19, rx = 9, ry = 15 }
+
+function EE.ratImage(id)
+    if ratImg ~= nil then return ratImg or nil end
+    local path = "assets/sprites/characters/enemies/" .. id .. "/animations/form/south/0.png"
+    if not love.filesystem.getInfo(path) then
+        path = "assets/sprites/characters/enemies/" .. id .. "/animations/idle/south/0.png"
+    end
+    local ok, src = pcall(love.image.newImageData, path)
+    if not ok or not src then ratImg = false; return nil end
+    local q, R = EE.RAT_QUAD, EE.RAT_RUMP
+    local d = love.image.newImageData(q[3], q[4])
+    d:paste(src, 0, 0, q[1], q[2], q[3], q[4])
+    local function inside(x, y)
+        if x < R.cx then return true end
+        local dx, dy = (x - R.cx) / R.rx, (y - R.cy) / R.ry
+        return dx * dx + dy * dy <= 1
+    end
+    for y = 0, q[4] - 1 do
+        for x = 0, q[3] - 1 do
+            if not inside(x, y) then d:setPixel(x, y, 0, 0, 0, 0) end
+        end
+    end
+    for y = 0, q[4] - 1 do
+        for x = R.cx, q[3] - 1 do
+            local _, _, _, a = d:getPixel(x, y)
+            if a > 0.5 and (not inside(x + 1, y) or not inside(x, y - 1) or not inside(x, y + 1)) then
+                d:setPixel(x, y, 0.09, 0.07, 0.06, 1)
+            end
+        end
+    end
+    local okI, img = pcall(love.graphics.newImage, d)
+    ratImg = okI and img or false
+    if ratImg then ratImg:setFilter("nearest", "nearest") end
+    return ratImg or nil
+end
+
+function EE.drawRats(S, e, g, w, cx, sy, s, t)
+    local src = EE.ratImage(S.id)
+    if not src then return end
+    local Grade = require("engine.SceneGrade")
+    local q = EE.RAT_QUAD
+    local c = Grade.color("enemy", t, tmpColor)
+    local n = S.red and 4 or EE.RATS
+    local span = math.max(0.1, (S.swarmT1 or S.dur) - S.swarmT0 - EE.RAT_RUN)
+    local fade = 1 - S.alpha
+    S.ratPoke = S.ratPoke or {}
+    for i = 1, n do
+        local sd = (i % 2 == 0) and 1 or -1
+        local t0 = S.swarmT0 + ((i * 0.618) % 1) * span
+        local k = clamp01((S.t - t0) / EE.RAT_RUN)
+        if k > 0 then
+            local ke = easeOutCubic(k)
+            local x0 = g.cx + sd * (w * 0.5 + q[3] * s)
+            local spot = ((i * 0.381) % 1 - 0.5) * e.iw * s * 0.6
+            local x1 = cx + spot
+            local px = x0 + (x1 - x0) * ke
+            local arc = math.sin(k * math.pi) * (((i * 0.53) % 1) - 0.5) * e.ih * s * 0.18
+            local hop = (k < 1) and math.abs(math.sin(k * math.pi * 7)) * 2.5 * s or 0
+            local py = sy + ((i * 0.29) % 1 - 0.5) * 22 * s + arc - hop
+            local face = -sd
+            love.graphics.setColor(c[1], c[2], c[3], fade)
+            love.graphics.draw(src, math.floor(px), math.floor(py), 0, s * face, s, q[3] / 2, q[4])
+            if k > 0.35 and not S.ratPoke[i] and S.footX then
+                S.ratPoke[i] = true
+                local r = require("src.ui.WorldRoad")._lastRect
+                if r then grassPoke(S, (px - S.footX) / math.max(1, r.w)) end
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 function EE.drawUnder(e, g, w, cx, sy, s, t, lift)
     local S = st
     if not S or S.enc ~= e then return end
@@ -1091,7 +1220,9 @@ function EE.drawUnder(e, g, w, cx, sy, s, t, lift)
         love.graphics.ellipse("fill", px0, sy - 2, iw * 0.55, ih * 0.09)
         love.graphics.setColor(1, 1, 1, 1)
     end
-    if S.swarmK > 0 and S.img then
+    if spec.swarm == "rats" and S.swarmT0 and S.t >= S.swarmT0 and S.alpha < 1 then
+        EE.drawRats(S, e, g, w, cx, sy, s, t)
+    elseif S.swarmK > 0 and S.img and spec.swarm ~= "rats" then
         local sw = spec.swarm
         local n = sw == "bats" and 9 or 14
         local c = Grade.color("enemy", t, tmpColor)
@@ -1136,7 +1267,7 @@ function EE.drawUnder(e, g, w, cx, sy, s, t, lift)
     end
 end
 
-function EE.drawProp(p, g, x, w, t, rel, camZ)
+function EE.drawProp(p, g, x, w, t, rel, camZ, em)
     local WorldRoad = require("src.ui.WorldRoad")
     local src = p.front and p.ref or p
     local img = EE.anchorImage(src.entrId, src.name)
@@ -1170,14 +1301,27 @@ function EE.drawProp(p, g, x, w, t, rel, camZ)
         return
     end
     local c = Grade.color("prop", t, tmpColor)
-    local ShadowEngine = require("engine.ShadowEngine")
     local half = src.straddle and math.floor(ih / 2) or ih
-    local groundY = src.straddle and (sy + (ih - half) * s) or sy
-    if not p.front then
+    local behind = em ~= nil
+    local sx, sy2 = s, s * grow
+    if src.mist then
+        local ph = WorldRoad._time or 0
+        local thick, ring = src.mistThick or 0.35, src.mistRing or 0
+        sx = s * (0.85 + 0.25 * thick) * (1 + 0.12 * ring) * (1 + 0.03 * math.sin(ph * 1.3))
+        sy2 = sx * (1 - 0.55 * ring) * (1 + 0.04 * math.sin(ph * 0.9 + 1))
+        alpha = alpha * (0.6 + 0.4 * thick) * (1 - 0.4 * ring)
+    end
+    if behind then sy = sy + (1 - em) * ih * s * 0.95 end
+    local groundY = src.straddle and (sy + (ih - half) * sy2) or sy
+    if not p.front and not behind then
         if EE.TALL_ANCHORS[src.name] and grow >= 0.999 then
-            shadowOpt.alphaK, shadowOpt.flip, shadowOpt.footPad = 0.75 * alpha, 1, 0
-            shadowOpt.baseK, shadowOpt.riseK, shadowOpt.lenK = nil, nil, nil
-            ShadowEngine.queue(img, pxX, groundY - 1, s, shadowOpt, t)
+            shadowOpt.smear = iw * s * 0.035
+            shadowOpt.widthK, shadowOpt.lenK, shadowOpt.alphaK = 1, 0.7, 0.75 * alpha
+            shadowOpt.baseK, shadowOpt.riseK, shadowOpt.contentH = 0.3, nil, ih * s
+            require("engine.ShadowEngine").silhouette(pxX, groundY - 1, shadowOpt, function(tint)
+                love.graphics.setColor(tint[1], tint[2], tint[3], tint[4] or 1)
+                love.graphics.draw(img, -iw * s / 2, -ih * s, 0, s, s)
+            end)
             require("engine.ContactShadow").queue(img, pxX, groundY, s, t, 0.8 * alpha, 1)
         elseif EE.CONTACT_ANCHORS[src.name] then
             require("engine.ContactShadow").queue(img, pxX, groundY, s, t, 0.45 * alpha, 1)
@@ -1185,33 +1329,47 @@ function EE.drawProp(p, g, x, w, t, rel, camZ)
     end
     local rot = 0
     local t0 = src._pokeT
-    if t0 then
+    if t0 and not behind then
         local el = WorldRoad._time - t0
         if el >= 1.3 then src._pokeT = nil
         else rot = math.sin(el * 16) * (EE.TALL_ANCHORS[src.name] and 0.05 or 0.012) * math.exp(-el * 3.4) end
     end
     love.graphics.setColor(c[1], c[2], c[3], alpha)
-    local y0 = sy - ih * s * grow
-    if src.straddle then
+    local y0 = sy - ih * sy2
+    if src.straddle and not behind then
         quad = quad or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
-        y0 = sy - half * s
+        y0 = sy - half * sy2
         if p.front then
             quad:setViewport(0, half, iw, ih - half, iw, ih)
-            love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, s, s, iw / 2, 0)
+            love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, 0)
         else
             quad:setViewport(0, 0, iw, half, iw, ih)
-            love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, s, s, iw / 2, half)
+            love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, half)
         end
+    elseif src.straddle then
+        love.graphics.draw(img, math.floor(pxX), math.floor(sy), 0, sx, sy2, iw / 2, half)
     else
-        love.graphics.draw(img, math.floor(pxX), math.floor(sy), rot, s, s * grow, iw / 2, ih)
+        love.graphics.draw(img, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, ih)
+    end
+    if src.mist and not p.front and not behind and not reducedMotion() then
+        local ph = WorldRoad._time or 0
+        local thick, ring = src.mistThick or 0.35, src.mistRing or 0
+        local u = math.max(1, math.floor(s * 1.5))
+        for i = 1, 12 do
+            local q = (ph * 0.22 + i * 0.137) % 1
+            local hx = ((i * 0.618) % 1 - 0.5) * iw * sx * 0.9 + math.sin(ph * 0.7 + i) * 4 * s
+            local a = math.sin(q * math.pi) * 0.55 * thick * (1 - 0.7 * ring) * alpha
+            love.graphics.setColor(c[1] * 0.25, c[2] * 0.22, c[3] * 0.3, a)
+            love.graphics.rectangle("fill", math.floor(pxX + hx), math.floor(sy - q * ih * s * 1.8), u, u)
+        end
     end
     love.graphics.setColor(1, 1, 1, 1)
     local hsn = WorldRoad._hitScene
-    if hsn and not p.front then
-        hsn[#hsn + 1] = { x1 = pxX - iw * s / 2, y1 = y0, x2 = pxX + iw * s / 2, y2 = src.straddle and (sy + (ih - math.floor(ih / 2)) * s) or sy,
+    if hsn and not p.front and not behind then
+        hsn[#hsn + 1] = { x1 = pxX - iw * sx / 2, y1 = y0, x2 = pxX + iw * sx / 2, y2 = src.straddle and (sy + (ih - half) * sy2) or sy,
             ref = p, kind = "anchor", s = s }
     end
-    if EE._trace then EE._trace(p, pxX, sy, t, s, alpha) end
+    if EE._trace then EE._trace(p, pxX, sy, behind and 0 or t, s, alpha) end
 end
 
 function EE.info()

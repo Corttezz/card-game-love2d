@@ -85,9 +85,28 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   chatas (lama, poca, cova, lombada, poca da sombra, fosso, rachadura): so faixa de contato a 0,45; circulo/sigilo nada
   (sao brilho). Toda ancora entra em `WorldRoad._hitScene` como `kind = "anchor"`: clique = `EE.poke` (balanco
   amortecido como o `pokeRot` das arvores, particula e som por nome: palha na estaca, lascas na pedra, neve no monte).
+- **Rodada 2 do dono (23/Out)**:
+  - Ancora visivel desde a crista: `drawPropsBehind` desenha a ancora (PNG inteiro, afundada `(1-em)*ih*s*0,95` como o
+    corpo) na faixa de emergencia antes do domo; na frente a mesma posicao em t = 0, sem pop.
+  - Sombra de ancora: a PNG passa por `ContactShadow.scan` ao carregar (sem o scan a faixa de contato era descartada em
+    silencio) e a projetada usa `ShadowEngine.silhouette` com a propria imagem (o `queue` nao aparecia). Trava em
+    `test_enemy_entrances` (silhueta com a imagem da ancora alta, contato em toda ancora alta/chata).
+  - Pernas pela distancia: quem anda/investe ANDA no mundo (`relOff` de `WALK_DIST` 10 / `CHARGE_DIST` 16 unidades ate 0),
+    quadro do clipe = distancia / passada, passada = 0,8 x largura do corpo em unidades do mundo no palco
+    (`EE.strideUnits`), arredondada para o ciclo terminar inteiro (pe no idle). Antes o quadro seguia o ease da camera:
+    parado longe, rajada no meio (pico 3x a media), parado no fim. Andar: posicao ease-out quad (comeca andando, freia).
+    Investida: velocidade constante e os ultimos 0,3 s (`SKID`) derrapando com as pernas paradas, poeira a cada 0,05 s
+    e um estica-agacha (cabecada) no `stop`. Flanco: ciclos = `flankDist` (4) / passada sobre a posicao eased.
+  - Ratos: 10 ratos (recorte `RAT_QUAD` do quadro 0 do `form`, escala do bicho, cor do grade) correm das bordas da tela
+    em arco ate pontos do monte, escalonados entre `dur-2,7` e `u1+0,3`, cada um cutuca a grama ao passar; somem com o
+    alpha do monte. Emissivo dos olhos dos ratos removido de `enemy_emissives` (era o "brilho quadriculado").
+  - Ceifador: a nevoa virou ancora de palco (`mist = true`, abraca os pes): engrossa com a aproximacao (`mistThick`),
+    pulsa devagar, motas escuras subindo, vagalumes apagam; o corpo entra por alpha so no ultimo 1,2 s DENTRO dela e a
+    nevoa vira um anel baixo (`mistRing`) que fica na luta. Sem brilho na foice (exigiria saber a ponta: pendente).
+  - Som: `ENTRANCE_GAIN = 1,0` neutro (frente de som baixou os arquivos 6 dB).
 - Beats de som que o motor dispara (contrato com `test_entrance_sfx`): andar stop/step1..3, investida skid/stop, brotar
   rise/stop, acordar wake/land(so espantalho e gargula, 50 % do assentamento)/stop, mergulho start/stop, condensar
-  start(enxame em dur-2 s; sem enxame em u1)/form(u1, uma vez)/stop, flanco start/stop/hop, montar mid/stop.
+  start(enxame em dur-2 s; sem enxame em u1)/form(u1, uma vez)/stop, flanco start/stop/hop, montar mid/stop; investida tambem `charge` (uma vez, quando o corpo passa 2 unidades da crista correndo).
 
 ## Ancoras
 - Prop `kind = "anchor"` em `WorldRoad._props` criado no `begin` em `stopZ + BATTLE_REL + 0.25` (atras do bicho na

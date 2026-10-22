@@ -2541,7 +2541,9 @@ local function drawPropsBehind(g, x, w, camZ)
         local roadLum = LuminaireEngine.def(p.bid, p.kind)
         roadLum = roadLum and roadLum.roadside
         if WorldRoad._fork and not roadLum and not PropCut.kinds[p.kind] then fadeA = 0 end
-        if fadeA > 0.01 and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
+        if p.anchor and not p.front and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
+            require("src.ui.EnemyEntrance").drawProp(p, g, x, w, 0, rel, camZ, 1 - (rel - REL_CREST) / EMERGE_BAND)
+        elseif fadeA > 0.01 and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
             local em = 1 - (rel - REL_CREST) / EMERGE_BAND
             local pxX = g.cx + p.side * w * (0.11 + p.lane * 0.38)
             local edef = LuminaireEngine.def(p.bid, p.kind)

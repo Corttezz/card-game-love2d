@@ -60,7 +60,13 @@ function M.capture(entry, cv, small, font)
         love.graphics.setCanvas(small)
         love.graphics.clear(0, 0, 0, 1)
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(cv, 0, 0, 0, M.CELL_W / M.VW, M.CELL_H / M.VH)
+        local r = WorldRoad._lastRect
+        if M.CREST and r then
+            local g = WorldRoad.domeGeom(r.x, r.y, r.w, r.h)
+            love.graphics.draw(cv, -math.floor(g.cx - M.CELL_W / 2), -math.floor(g.crestApexY + (M.CROP_DY or 0) - M.CELL_H * 0.45))
+        else
+            love.graphics.draw(cv, 0, 0, 0, M.CELL_W / M.VW, M.CELL_H / M.VH)
+        end
         love.graphics.setFont(font)
         love.graphics.setColor(0, 0, 0, 0.7)
         love.graphics.rectangle("fill", 0, 0, font:getWidth(label) + 10, font:getHeight() + 6)
@@ -133,6 +139,14 @@ function M.run(arg)
     I18n.setLocale("en", true)
     require("src.ui.PixelCanvas").enableNearest()
     require("src.systems.ScreenShake").install()
+    M.CREST = os.getenv("ENTRADAS_CREST") == "1"
+    M.CROP_DY = tonumber(os.getenv("ENTRADAS_CROP_DY") or "") or 0
+    local fr = os.getenv("ENTRADAS_FRACS")
+    if fr and fr ~= "" then
+        local list = {}
+        for v in fr:gmatch("[%d%.]+") do list[#list + 1] = tonumber(v) end
+        if #list > 0 then M.FRACS = list end
+    end
     local rw, rh = (os.getenv("ENTRADAS_RES") or ""):match("^(%d+)x(%d+)$")
     if rw then M.VW, M.VH = tonumber(rw), tonumber(rh) end
     local Entradas = require("tools.entradas")

@@ -5,6 +5,7 @@ M.FX_NAMES = { dust = true, snow = true, embers = true, straw = true, shards = t
     feathers = true, dark = true, light = true, shake1 = true, shake2 = true, grass = true, gust = true,
     crows = true, lightning = true, rain = true, blizzard = true, fireflies = true, dim = true }
 M.LAST_FRAME_TOL = 0.02
+M.LEG_MAX_HALF_S = 10
 
 local function roster()
     local out = {}
@@ -129,6 +130,7 @@ function M.run()
         local DT = 1 / 30
         local steps, done = 0, false
         local minAlpha, maxLift = 1, 0
+        local legs, lastF, changes = 0, nil, {}
         while not done and steps < 2000 do
             tr.t = tr.t + DT
             local k = math.min(1, tr.t / dur)
@@ -138,6 +140,16 @@ function M.run()
             if pz.alpha < minAlpha then minAlpha = pz.alpha end
             if math.abs(pz.liftK) > maxLift then maxLift = math.abs(pz.liftK) end
             steps = steps + 1
+            local S0 = EE.state()
+            local clip = S0 and (S0.clips.walk or S0.clips.charge)
+            if clip then
+                local f = clip.currentFrame
+                changes[steps] = (lastF ~= nil and f ~= lastF) and 1 or 0
+                lastF = f
+                local win = 0
+                for j = math.max(1, steps - 14), steps do win = win + (changes[j] or 0) end
+                if win > legs then legs = win end
+            end
         end
         local pz = EE.pose(enc)
         local endPose = { relOff = pz.relOff, liftK = pz.liftK, hidden = pz.hidden, alpha = pz.alpha, shadowA = pz.shadowA }
@@ -147,7 +159,7 @@ function M.run()
         local handoff = EE.finish()
         local info = EE._last
         WorldRoad._travel = nil
-        return { done = done, total = tr.duration + settle, endPose = endPose, endShift = endShift,
+        return { legs = legs, done = done, total = tr.duration + settle, endPose = endPose, endShift = endShift,
             riseK = riseK, handoff = handoff, info = info, steps = steps, dur = dur, settle = settle }
     end
 
@@ -163,12 +175,40 @@ function M.run()
                 math.abs(ep.relOff) < 1e-6 and math.abs(ep.liftK) < 1e-6 and not ep.hidden
                 and ep.alpha >= 0.999 and ep.shadowA >= 0.999 and res.endShift < 1e-6 and res.riseK >= 0.999)
             t:truthy(id .. ": handoff devolve um idle", res.handoff ~= nil and res.handoff.animation == "idle")
+            t:truthy(string.format("%s: pernas sem rajada (%d quadros em 0,5 s, max %d)", id, res.legs, M.LEG_MAX_HALF_S),
+                res.legs <= M.LEG_MAX_HALF_S)
             if res.info and res.info.endFrame1 then
                 t:eq(id .. ": handoff no quadro 0 do idle", res.handoff.currentFrame, 1)
             end
             local spec = Data.BY_ID[id] or Data.DEFAULT
             if spec.anchor and not spec.anchor.veil then
-                t:truthy(id .. ": ancora nasce como prop", res.info.anchor ~= nil and res.info.anchor.anchor == true)
+                local p = res.info.anchor
+                t:truthy(id .. ": ancora nasce como prop", p ~= nil and p.anchor == true)
+                if p then
+                    p.grow = 1
+                    local img = EE.anchorImage(p.entrId, p.name)
+                    local SE = require("engine.ShadowEngine")
+                    local CS = require("engine.ContactShadow")
+                    local oSil, oQ = SE.silhouette, CS.queue
+                    local silImg, contact = false, false
+                    SE.silhouette = function(fx, fy, o, fn)
+                        local oDraw = love.graphics.draw
+                        love.graphics.draw = function(im, ...) if im == img then silImg = true end end
+                        fn({ 1, 0, 0, 1 })
+                        love.graphics.draw = oDraw
+                        return true
+                    end
+                    CS.queue = function(...) local r = oQ(...); if r then contact = true end; return r end
+                    local okD, errD = pcall(EE.drawProp, p, WorldRoad.domeGeom(0, 0, 1920, 1080), 0, 1920, 0.5, 9, 0)
+                    SE.silhouette, CS.queue = oSil, oQ
+                    t:truthy(id .. ": ancora desenha " .. tostring(errD or ""), okD)
+                    if EE.TALL_ANCHORS[p.name] then
+                        t:truthy(id .. ": ancora alta projeta silhueta com a propria imagem (" .. p.name .. ")", silImg)
+                    end
+                    if EE.TALL_ANCHORS[p.name] or EE.CONTACT_ANCHORS[p.name] then
+                        t:truthy(id .. ": ancora tem faixa de contato (" .. p.name .. ")", contact)
+                    end
+                end
             end
         end
         local red = dryRun(id, true)
