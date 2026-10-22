@@ -130,7 +130,26 @@ function M.capture(entry, cv, small, font)
         end
         if firstBattleAt and elapsed > firstBattleAt + 3 then break end
     end
-    return strip, hand, info
+    local anchorCrop = nil
+    local ap = info and info.anchor
+    if ap then
+        for _, he in ipairs(WorldRoad._hitScene or {}) do
+            if he.ref == ap then
+                local bw, bh = he.x2 - he.x1, he.y2 - he.y1
+                local x0 = math.floor(math.max(0, he.x1 - bw * 0.9))
+                local y0 = math.floor(math.max(0, he.y1 - bh * 0.4))
+                local x1 = math.floor(math.min(M.VW, he.x2 + bw * 0.9))
+                local y1 = math.floor(math.min(M.VH, he.y2 + bh * 0.9))
+                if x1 > x0 and y1 > y0 then
+                    local full = cv:newImageData()
+                    anchorCrop = love.image.newImageData(x1 - x0, y1 - y0)
+                    anchorCrop:paste(full, 0, 0, x0, y0, x1 - x0, y1 - y0)
+                    full:release()
+                end
+            end
+        end
+    end
+    return strip, hand, info, anchorCrop
 end
 
 function M.run(arg)
@@ -150,6 +169,13 @@ function M.run(arg)
     local rw, rh = (os.getenv("ENTRADAS_RES") or ""):match("^(%d+)x(%d+)$")
     if rw then M.VW, M.VH = tonumber(rw), tonumber(rh) end
     local Entradas = require("tools.entradas")
+    local forcedTod = tonumber(os.getenv("ENTRADAS_TOD") or "")
+    local WR = require("src.ui.WorldRoad")
+    local origTod = WR.setTimeOfDay
+    if forcedTod then
+        M.TOD_TAG = "_tod" .. tostring(forcedTod)
+        WR.setTimeOfDay = function(_, instant) return origTod(forcedTod, instant) end
+    end
     local list = Entradas.roster()
     local sel = {}
     local actOnly = arg and arg:match("^ato(%d)$")
@@ -170,7 +196,7 @@ function M.run(arg)
     local sheets = {}
     local okAll = true
     for _, r in ipairs(sel) do
-        local ok, strip, hand, info = pcall(M.capture, r, cv, small, font)
+        local ok, strip, hand, info, anchorCrop = pcall(M.capture, r, cv, small, font)
         if not ok then
             okAll = false
             print("[FAIL] " .. r.id .. ": " .. tostring(strip))
@@ -179,6 +205,10 @@ function M.run(arg)
             love.filesystem.createDirectory(dir)
             strip:encode("png", dir .. "/" .. r.id .. ".png")
             hand:encode("png", dir .. "/" .. r.id .. "_handoff.png")
+            if anchorCrop then
+                anchorCrop:encode("png", dir .. "/" .. r.id .. "_ancora" .. (M.TOD_TAG or "") .. ".png")
+                anchorCrop:release()
+            end
             hand:release()
             sheets[r.act] = sheets[r.act] or {}
             table.insert(sheets[r.act], strip)
@@ -202,6 +232,7 @@ function M.run(arg)
     end
     cv:release()
     small:release()
+    WR.setTimeOfDay = origTod
     restore()
     love.window.setVSync(vsync)
     print(string.format("TOTAL %d criaturas capturadas em %s", #sel, love.filesystem.getSaveDirectory() .. "/entradas"))

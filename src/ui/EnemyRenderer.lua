@@ -836,7 +836,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
 
     local targetHeight = 250
-    if game.enemy and game.enemy.isBoss then targetHeight = 330 end
+    if game.enemy and game.enemy.isBoss then targetHeight = 330
+    else targetHeight = targetHeight * require("src.ui.EnemyEntrance").sizeK(id) end
     targetHeight = targetHeight * ((opts and opts.sizeK) or 1)
     local idleM = clipMetrics(id, "idle")
     local refH = (idleM.h > 0) and idleM.h or ih
@@ -1307,7 +1308,8 @@ function EnemyRenderer.getEncounterBillboard(enemy)
         if not img then return nil end
         iw, ih = img:getWidth(), img:getHeight()
     end
-    local targetHeight = enemy.isBoss and 330 or 250
+    local targetHeight = enemy.isBoss and 330
+        or 250 * require("src.ui.EnemyEntrance").sizeK(enemy.spriteId)
     local ts = targetHeight / ih
     if ih <= 80 then ts = math.max(4, math.floor(ts)) end
     local offX, footPad = contentOffsets(enemy.spriteId)

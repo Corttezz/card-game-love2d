@@ -128,6 +128,54 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   rise/stop, acordar wake/land(so espantalho e gargula, 50 % do assentamento)/stop, mergulho start/stop, condensar
   start(enxame em dur-2 s; sem enxame em u1)/form(u1, uma vez)/stop, flanco start/stop/hop, montar mid/stop; investida tambem `charge` (uma vez, quando o corpo passa 2 unidades da crista correndo).
 
+- **Rodada 4 (24/Out, feedback do dono atos 1 a 6)**:
+  - **Flash do corpo no palco** (todas as criaturas): o quadro em que o andar ja mudou e a viagem ainda nao comecou
+    desenhava o corpo de BATALHA no palco. `GameplayScene.travelPending()` (andar mudou e a viagem nao comecou, ou 1a luta
+    pedida por `requestArrival`) conta como viagem no `draw`: nenhum `EnemyRenderer.draw` antes da entrada. A galeria
+    (`tools/entradas.lua mount`) ja deixa o andar 3 pendente. Trava `M.firstFrames` em `test_enemy_entrances`.
+  - **Ancora chata e decalque de chao** (`EE.FLAT_ANCHORS`: circulo, sigilo, rachadura, fosso, lombada, lama, poca, cova,
+    poca da sombra, nevoa): a metade de tras e desenhada por `EE.drawFlatUnder` no `drawEncounterFront` ANTES do corpo
+    sempre que o painter a desenharia depois (bicho atras dela andando); o painter pula (`p._early`). A ancora de palco e
+    POSICIONADA no z do corpo (`stopZ + BATTLE_REL`), o +0,25 so ordena: com o +0,25 a borda da frente subia acima dos pes
+    (pes "cortados" do bruto, da sanguessuga, pes "afundados" do ceifador). A metade da frente comeca na linha do chao e
+    so cobre os 2 px do `FOOT_SINK`.
+  - Trava por PIXEL (`M.flatOcclusion`): a cada 4 quadros da chegada e 6 da batalha, 4 capturas da cena (com ancora, corpo
+    magenta, corpo verde, sem ancora; relogio congelado); mascara do corpo = onde magenta e verde diferem (corpo opaco,
+    erodido 1 px); falha se a ancora muda QUALQUER pixel do corpo acima da linha do chao - 2 px. Amostras com corpo
+    translucido (condensar) ou veu da nevoa ficam de fora. Medido 0 px nas 10 criaturas.
+  - **Sombra de ancora alta**: perfil de pegada por ancora (`EE.ANCHOR_SHADOW_PROFILE`, rocha 0,30/0,48 como
+    `WorldRoad.SHADOW_PROFILE`) e a propria ancora entra como MASCARA do `ShadowEngine` (`maskAdd` + `deferShadow(..., mk)`,
+    quads proprios por ancora), entao a sombra adiada nao pinta a pedra/monte/plinto/cogumelos. Estaca sem perfil (aprovada).
+  - **Quem sai do chao fica 100% escondido na viagem** (`K.brotar`): so a ancora treme (`_pokeT`) e solta particula a cada
+    0,7 s nos ultimos 2,6 s; na parada o corpo sobe da linha do chao (`riseK` em 40 % da subida) com o clipe emerge junto.
+    Sombra nasce em 0 na parada.
+  - Golem: o quadro 0 do `assemble` (pilha de entulho, lia como um bloco) virou 7 FRAGMENTOS irregulares (Voronoi com ruido
+    sobre os pixels do proprio quadro, `EE.fragments`) que rolam das bordas girando em passos de 90 graus e se encaixam
+    exatamente no quadro 0 na parada; o corpo so aparece ali.
+  - Sentinela: plinto na BEIRA (`at = "side"`), desce e salta para o centro como o espantalho.
+  - Troll: `sit = { clip, stand, walk, inset }` (`sitFlank`): sentado de pernas cruzadas ao lado do monte (quadro 0 do
+    `stand` da frente de arte; `sit` se um dia existir), na parada levanta e ruge no `stand` (50 % do assentamento), anda
+    ao centro com o `walk` pela distancia e o `stop` toca o rugido. Lado fixo pela pose da arte: troll vem da esquerda,
+    lobo e crocodilo da direita.
+  - `stopClip` (andar): clipe tocado no assentamento depois da caminhada: `laugh` do dullahan (ergue a cabeca e ri),
+    `cackle` da bruxa (gargalha de mao erguida).
+  - Cavaleiro da geleira refeito (`fogbank`): nevasca grossa na viagem, silhueta escura que ganha cor e opacidade andando,
+    rodamoinho de geada e grama cutucada, 3 passos com geada e tremor, nevasca afina na parada e fica uma nevoa de geada.
+  - Bruxa: `wisps` (fogos-fatuos em pixel, aditivo, orbitando o corpo, `EE.drawOver` depois do corpo) que mergulham na mao
+    no assentamento, cena escurece na viagem e clareia na parada, passos com respingo e junco.
+  - Duque: gotas de sangue girando com o enxame, cena escurece, na parada lampejo carmesim (`spec.flash`), petalas de sangue
+    no chao (`blood`), floreio da capa (`flourish`). Dullahan: rastro de fogo-fantasma roxo (cor da arte), 3 passos pesados,
+    lampejo roxo na parada.
+  - **Mini-chefes marcantes** (`spec.marquee`, so tier mini_boss, `EE.isMini`): extra ate `MAX_EXTRA_MINI` 5 s; cena
+    escurece 1,6 s antes da parada; no beat `marquee.hit` tremor forte, rajada na grama em 7 pontos, particulas do tema e
+    lampejo da cor do bicho; camera EMPURRA ate +6 % no assentamento e volta a 1 antes do handoff (`EE.worldZoom`, aplicado
+    no `GameplayScene` como o zoom do chefe); cartao de nome (`end_screen.enemy.<id>` + `bestiary.creature.<id>.epithet`,
+    sem string nova) a 30 % do assentamento por 1,6 s no relogio do jogo (`WorldRoad._time`), a 87 % da altura (abaixo dos pes, na faixa da mao que esta escondida), pulavel com Enter/Espaco/clique
+    (`EE.skipCard`). Corpo 15 % maior (`EE.sizeK`: billboard, batalha, sombra e HUD juntos); cavaleiro da geleira +10 %.
+  - **Cadeia de clipes** (`chain = true`, contrato com a frente de arte): `clips` ordenada, so o ultimo termina no idle 0 e
+    `last(i) == first(i+1)` (trava). `chainFrame` toca a cadeia por fase; no mergulho com cadeia o 1o clipe toca UMA vez no
+    ar, o pouso comeca em 60 % e o toque no chao em 70 % (beat `touch`).
+
 ## Ancoras
 - Prop `kind = "anchor"` em `WorldRoad._props` criado no `begin` em `stopZ + BATTLE_REL + 0.25` (atras do bicho na
   profundidade: o decalque fica sob os pes), `side = 0` (palco) ou `+-1` (beira: estaca, pedra, monte de neve, espigao).

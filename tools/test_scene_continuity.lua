@@ -519,9 +519,10 @@ function M.analyze(log)
     local Data = require("src.data.enemy_entrances")
     for _, tr in ipairs(log.travels or {}) do
         local info = tr.info
-        if tr.secs > Data.BASE + Data.MAX_EXTRA + 2 * DT + 1e-6 then
+        local cap = Data.BASE + require("src.ui.EnemyEntrance").maxExtra(info and info.id)
+        if tr.secs > cap + 2 * DT + 1e-6 then
             pops[#pops + 1] = { uid = 0, kind = "entrada", frame = tr.f1, how = "longa",
-                a0 = tr.secs, a1 = Data.BASE + Data.MAX_EXTRA, phase = "travel", at = { t = 0, x = 0, y = 0 } }
+                a0 = tr.secs, a1 = cap, phase = "travel", at = { t = 0, x = 0, y = 0 } }
         end
         if info and info.endFrame1 and tr.firstBattleFrame and tr.firstBattleFrame ~= 1 then
             pops[#pops + 1] = { uid = 0, kind = "entrada", frame = tr.f1 + 1, how = "quadro",

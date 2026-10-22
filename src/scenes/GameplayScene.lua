@@ -131,6 +131,19 @@ function GameplayScene.resumeWorld(g)
 end
 
 function GameplayScene.requestArrival() pendingArrival = true end
+
+function GameplayScene.travelPending()
+    if GameplayScene.SCENE_MODE ~= "worldroad" or not game or WorldRoad.isTraveling() then return false end
+    local run = game.runManager and game.runManager.currentRun
+    local key
+    if run then
+        key = (run.actNumber or 1) .. ":" .. (run.floorInAct or 1)
+    else
+        key = "classic:" .. (game.currentPhase or 1)
+    end
+    if lastFloorKey == nil then return pendingArrival end
+    return key ~= lastFloorKey
+end
 function GameplayScene.hasPendingArrival() return pendingArrival end
 
 function GameplayScene.getGame() return game end
@@ -428,7 +441,7 @@ function GameplayScene.draw()
         and GameplayScene.isInteriorNode(nodeType, bossEntered)
 
     local traveling = GameplayScene.SCENE_MODE == "worldroad"
-        and not interior and WorldRoad.isTraveling()
+        and not interior and (WorldRoad.isTraveling() or GameplayScene.travelPending())
     local worldBattle = GameplayScene.SCENE_MODE == "worldroad"
         and not interior and not traveling and not entering
     local enemyBbox, enemyCx, enemyCy
@@ -444,6 +457,7 @@ function GameplayScene.draw()
     local height = love.graphics.getHeight()
     local worldPass = BossCinematic.beginWorldPass()
     local zk, zcx, zcy = BossCinematic.worldZoom()
+    if not zk then zk, zcx, zcy = require("src.ui.EnemyEntrance").worldZoom() end
     if zk then
         love.graphics.push()
         love.graphics.translate(math.floor(zcx - zcx * zk), math.floor(zcy - zcy * zk))
@@ -565,6 +579,7 @@ function GameplayScene.draw()
         WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
     end
     if zk then love.graphics.pop() end
+    require("src.ui.EnemyEntrance").drawFlash(width, height)
     if worldPass then BossCinematic.endWorldPass() end
     end)
     if GameplayScene.WORLD_ONLY then return end
@@ -748,6 +763,7 @@ function GameplayScene.draw()
     end
 
     BossCinematic.drawUI()
+    require("src.ui.EnemyEntrance").drawCard()
 
     if interiorFade > 0 then
         local a = interiorFade * interiorFade
@@ -1011,6 +1027,10 @@ function GameplayScene.mousepressed(x, y, button)
         if button == 1 then BossCinematic.skip() end
         return true
     end
+    if button == 1 and require("src.ui.EnemyEntrance").cardVisible() then
+        require("src.ui.EnemyEntrance").skipCard()
+        return true
+    end
     if topBar:mousepressed(x, y, button) then return true end
 
     if HandDeal.isBusy() then return false end
@@ -1113,6 +1133,11 @@ function GameplayScene.keypressed(key)
         if key == "return" or key == "kpenter" or key == "space" then
             BossCinematic.skip()
         end
+        return
+    end
+    if (key == "return" or key == "kpenter" or key == "space")
+        and require("src.ui.EnemyEntrance").cardVisible() then
+        require("src.ui.EnemyEntrance").skipCard()
         return
     end
     if game and game.isRunMode then return end

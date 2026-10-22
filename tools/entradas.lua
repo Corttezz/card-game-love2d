@@ -72,6 +72,7 @@ function M.mount(entry, opts)
     WorldRoad.setTimeOfDay(opts.tod or M.TOD, true)
     love.math.setRandomSeed(opts.seed or M.SEED)
     GameplayScene.update(opts.dt or 1 / 30)
+    run.floorInAct = 3
     return { game = game, run = run, entry = entry }
 end
 

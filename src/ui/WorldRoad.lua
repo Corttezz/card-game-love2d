@@ -4794,6 +4794,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     cx = cx - math.floor((e.offX or 0) * s) + math.floor(lat)
     local entLift = pz.liftK * e.ih * s
     EE.notePos(cx, sy, s, rel)
+    EE.drawFlatUnder(g, x, w, camZ, rel)
     if pz.hidden then
         EE.drawUnder(e, g, w, cx, sy, s, t, entLift)
         return
@@ -4854,6 +4855,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     else
         love.graphics.draw(e.img, dx0, dy0, 0, s, s)
     end
+    EE.drawOver(e, s, dx0, dy0)
 
     local oxT, oyT = love.graphics.transformPoint(dx0, dy0)
     local flatColor = Scene.Grade.flatColor("enemy", LMG.fc)
