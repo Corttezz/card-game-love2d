@@ -1,6 +1,6 @@
 local CastleDrift = {}
 
-CastleDrift.SIGN = 1
+CastleDrift.SIGN = -1
 CastleDrift.STEP = 0.025
 CastleDrift.MAX = 0.035
 CastleDrift.KEEP = 0.45

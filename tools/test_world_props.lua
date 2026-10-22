@@ -316,7 +316,7 @@ function M.run()
                 frame(1 / 30)
             end
             local dxL = frame(1 / 30)
-            t:truthy(("ramo da esquerda puxa o castelo um pouco para o lado do ramo (dx %.1f)"):format(dxL),
+            t:truthy(("ramo da esquerda leva o castelo um pouco para a direita, como quem vira (dx %.1f)"):format(dxL),
                 dxL * CD.SIGN < -W * 0.01 and math.abs(dxL) <= W * CD.MAX + 1)
             local moved = 0
             for _ = 1, 30 do moved = math.max(moved, math.abs(frame(1 / 60) - dxL)) end
