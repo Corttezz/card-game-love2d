@@ -58,12 +58,17 @@ function M.run()
         t:eq("chão do domo com câmera parada: malha não reconstruída",
             WorldRoad._domeBuilds or 0, domeBefore)
 
-        collectgarbage("collect")
-        collectgarbage("stop")
-        local k0 = collectgarbage("count")
-        for _ = 1, 30 do frame(1) end
-        local perKB = (collectgarbage("count") - k0) / 30
-        collectgarbage("restart")
+        local samples = {}
+        for r = 1, 3 do
+            collectgarbage("collect")
+            collectgarbage("stop")
+            local k0 = collectgarbage("count")
+            for _ = 1, 30 do frame(1) end
+            samples[r] = (collectgarbage("count") - k0) / 30
+            collectgarbage("restart")
+        end
+        table.sort(samples)
+        local perKB = samples[2]
         t:check(("alocação por frame ≤ %d KB (obtido %.1f KB)"):format(ALLOC_BUDGET_KB, perKB),
             perKB <= ALLOC_BUDGET_KB)
 
