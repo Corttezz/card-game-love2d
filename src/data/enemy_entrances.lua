@@ -121,7 +121,7 @@ E.BY_ID = {
         anchor = { name = "snowmound", at = "side" },
         fx = { start = { "snow", "shake2" }, stop = { "snow", "shake1" } },
         sfx = { start = { "entrance_frost_troll_start", "bossFrostShatter", "impactIce" }, stop = { "entrance_frost_troll_stop", "enemyBuffRoar" } } },
-    ice_wyrm = { kind = "brotar", clips = { "emerge" }, extra = 4.5, settle = 3.5,
+    ice_wyrm = { kind = "brotar", clips = { "emerge", "rear", "roar" }, chain = true, extra = 4.5, settle = 3.5,
         marquee = { hit = "rise", burst = "snow", tint = { 0.7, 0.9, 1.0 } },
         anchor = { name = "snowbump", at = "stage" },
         fx = { rise = { "snow", "shake2", "blizzard" }, stop = { "snow" } },
