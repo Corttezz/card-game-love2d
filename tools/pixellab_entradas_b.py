@@ -204,6 +204,71 @@ V3 = {
         "again, then recovers to the squat.")),
 }
 
+V4 = {
+    "rime_shaman/walk": dict(tag="v4", pin=False, frames=12, action=(
+        "Full walking cycle in place, two complete strides: each foot lifts "
+        "high with a bent knee, swings forward and plants flat with a clear "
+        "weight shift onto it, hips and shoulders counter-rotate, the body "
+        "rises on the passing leg and sinks on contact, the heavy white fur "
+        "cloak swings and lags behind every step, the bone necklace and skull "
+        "charm bounce, the totem staff plants with a thump every other step "
+        "and its ice crystal flickers, the free hand pumps, the ears bob.")),
+    "glacier_knight/walk": dict(tag="v4", pin=False, frames=12, action=(
+        "Heavy armored walking cycle in place, two complete strides: each "
+        "armored leg lifts with a bent knee and stomps down flat, the whole "
+        "body dropping with the weight on every footfall and rising between "
+        "steps, shoulders rocking opposite the hips, pauldrons and chest "
+        "plates shifting, the greatsword held low swinging with the stride "
+        "and its tip dipping, the icy flame wisps on the armor streaming back "
+        "on each stomp, small frost puffs bursting at each footfall.")),
+    "mire_hag/walk": dict(tag="v4", pin=False, frames=12, action=(
+        "Full walking cycle in place, two complete strides: each boot lifts, "
+        "swings forward and plants with a weight shift, hips swaying, the "
+        "body bobbing, the long green cloak billowing and lagging behind each "
+        "step, the wide hat brim bouncing, the bone charms on the hat and "
+        "belt swinging, the grey hair swaying, both empty hands swinging "
+        "loosely at her sides, shoulders rolling.")),
+    "dullahan/walk": dict(tag="v4", pin=False, frames=12, action=(
+        "Full armored walking cycle in place, two complete strides: each leg "
+        "lifts and plants with weight, the body bobbing, the long dark red "
+        "cape swinging wide and billowing behind with every step, the held "
+        "helmeted head raised higher in the left hand with its violet eyes "
+        "flaring brighter, the tall violet neck flame leaning back and "
+        "flickering, the curved blade swinging low in the right hand, "
+        "armor plates shifting.")),
+    "frost_wolf/trot": dict(tag="v4", pin=False, frames=12, action=(
+        "Full four-legged trot cycle in place, two complete strides: the "
+        "diagonal leg pairs lift and plant alternately with clear paw "
+        "contacts, the spine flexing, the head bobbing low and forward, the "
+        "shaggy fur rippling along the back, chest and legs, the icicles "
+        "swinging from the jaw, the tail swaying, small puffs of kicked snow "
+        "at the hind paws, ears flicking, frosty breath puffing in rhythm.")),
+    "croc_warrior/crawl": dict(tag="v4", pin=False, frames=12, action=(
+        "Low prowling crawl cycle in place, two complete strides: crouched "
+        "deep with bent knees and the body leaning forward, each clawed foot "
+        "lifts, reaches forward and plants with weight, the body swaying "
+        "side to side, the long thick tail dragging on the ground and "
+        "sweeping left and right, water dripping from the scales and the "
+        "turtle shield rim, the spear held low bobbing with the stride, the "
+        "snout swinging slightly, feathers and bone trinkets swaying.")),
+    "plague_toad/hop": dict(tag="v4", pin=False, frames=12, action=(
+        "One complete hop, exaggerated squash and stretch: for the first "
+        "frames the toad crouches lower and lower, squashing wide and flat "
+        "with the legs folding under it, then it springs up: the body "
+        "STRETCHES tall and narrow with the hind legs fully extended "
+        "straight down and the front legs tucked up to the chest, the throat "
+        "sac puffing, slime flying from the mouth, then it comes down and "
+        "lands with a heavy wide squash, belly flattening and rippling, "
+        "pustules jiggling, then slowly rises back into the squat.")),
+    "dusk_bat/swoop": dict(tag="v4", pin=True, frames=12, action=(
+        "Erratic swooping flight in place: three big wing beats, the "
+        "leathery wings sweeping fully down below the body and up high "
+        "above the head, membranes flexing and rippling, the body tilting "
+        "left then right and dipping forward into a dive, the ears "
+        "flattening and flicking, the clawed feet swinging, then it rears "
+        "back flaring the wings wide to brake and settles into the hover.")),
+}
+
 DIORAMA = (" Treat it as a small pixel art diorama, not a flat texture: every mass has thickness "
            "with a lit face and a shadow face, parts in front overlap the parts behind, small "
            "irregular dotted shadows fall from upper parts onto lower parts, the front has a crisp "
@@ -328,7 +393,7 @@ def queue(keys, seed=None, variant=None):
         args = {
             "action": (alt["action"] if alt else spec["action"]) + KEEP + (END if pin else ""),
             "first_frame_base64": img_b64(first),
-            "frame_count": spec["frames"],
+            "frame_count": (alt.get("frames") if alt else None) or spec["frames"],
         }
         if pin:
             args["last_frame_base64"] = b64_of(idle_path(eid))
@@ -345,7 +410,8 @@ def queue(keys, seed=None, variant=None):
         att = next_attempt(key)
         os.makedirs(attempt_dir(key, att), exist_ok=True)
         J[f"{key}#{att}"] = {"key": key, "attempt": att, "job": jid, "seed": seed,
-                             "variant": "v2" if alt else "v1", "pin": pin,
+                             "variant": (alt.get("tag") if alt else None) or ("v2" if alt else "v1"), "pin": pin,
+                             "frames": args["frame_count"],
                              "status": "queued", "t": time.time()}
         save_jobs(J)
         submitted.append(key)
@@ -488,22 +554,24 @@ def strip(keys):
             continue
         rows = []
         for j in sorted(atts, key=lambda x: x["attempt"]):
-            fr = frames_of(key, j["attempt"])
+            fr = [idle] + frames_of(key, j["attempt"])
             m = measure(key, j["attempt"])
-            rows.append((f"#{j['attempt']} {m}", [idle] + fr))
+            for off in range(0, len(fr), 7):
+                rows.append((f"#{j['attempt']} {m}" if off == 0 else f"#{j['attempt']} (cont.)", fr[off:off + 7], off))
         cw = idle.width * K + 6
         ch = idle.height * K + 18
-        W = cw * max(len(r[1]) for r in rows) + 12
+        W = cw * 7 + 12
         H = ch * len(rows) + 12
         out = Image.new("RGBA", (W, H), (70, 74, 66, 255))
         d = ImageDraw.Draw(out)
-        for ri, (label, fr) in enumerate(rows):
+        for ri, (label, fr, off) in enumerate(rows):
             y = 12 + ri * ch
             d.text((8, y - 10), label, fill=(255, 250, 230, 255))
             for i, f in enumerate(fr):
                 big = f.resize((f.width * K, f.height * K), Image.NEAREST)
                 out.alpha_composite(big, (8 + i * cw, y + 8))
-                d.text((8 + i * cw, y + 8 + big.height - 12), "idle" if i == 0 else str(i - 1), fill=(255, 220, 120, 255))
+                n = off + i
+                d.text((8 + i * cw, y + 8 + big.height - 12), "idle" if n == 0 else str(n - 1), fill=(255, 220, 120, 255))
         p = os.path.join(OUT, f"ato{ACT_OF[eid]}", f"{eid}_{clip}.png")
         os.makedirs(os.path.dirname(p), exist_ok=True)
         out.save(p)
@@ -610,6 +678,8 @@ if __name__ == "__main__":
         run(rest or list(V2), seed, V2)
     elif cmd == "run3":
         run(rest or list(V3), seed, V3)
+    elif cmd == "run4":
+        run(rest or list(V4), seed, V4)
     elif cmd == "queue_act":
         queue([k for k in CLIPS if ACT_OF[k.split("/")[0]] == int(rest[0])], seed)
     elif cmd == "anchors":

@@ -76,7 +76,7 @@
   "attempt": 1,
   "job": "c4aeb1aa-fe04-4d62-a8cf-db3df374fd94",
   "seed": null,
-  "status": "installed",
+  "status": "downloaded",
   "t": 1792676582.1258311,
   "n": 9
  },
@@ -202,7 +202,7 @@
   "attempt": 1,
   "job": "771291a3-bdc2-4d67-9cd5-079a3258761f",
   "seed": null,
-  "status": "installed",
+  "status": "downloaded",
   "t": 1792676992.0980246,
   "n": 9
  },
@@ -271,7 +271,7 @@
   "seed": 7,
   "variant": "v2",
   "pin": false,
-  "status": "installed",
+  "status": "downloaded",
   "t": 1792677806.3325028,
   "n": 9
  },
@@ -282,7 +282,7 @@
   "seed": 7,
   "variant": "v2",
   "pin": false,
-  "status": "installed",
+  "status": "downloaded",
   "t": 1792677810.8634577,
   "n": 9
  },
@@ -304,7 +304,7 @@
   "seed": 7,
   "variant": "v2",
   "pin": false,
-  "status": "installed",
+  "status": "downloaded",
   "t": 1792677827.6640909,
   "n": 9
  },
@@ -315,7 +315,7 @@
   "seed": 7,
   "variant": "v2",
   "pin": false,
-  "status": "installed",
+  "status": "downloaded",
   "t": 1792677831.237062,
   "n": 9
  },
@@ -348,7 +348,7 @@
   "seed": 7,
   "variant": "v2",
   "pin": false,
-  "status": "installed",
+  "status": "downloaded",
   "t": 1792677958.2822242,
   "n": 9
  },
@@ -373,5 +373,113 @@
   "status": "downloaded",
   "t": 1792678435.895779,
   "n": 9
+ },
+ "rime_shaman/walk#3": {
+  "key": "rime_shaman/walk",
+  "attempt": 3,
+  "job": "6c9ecf50-8c9d-4fe2-a9a9-d1d242c01515",
+  "seed": null,
+  "variant": "v1",
+  "pin": true,
+  "frames": 8,
+  "status": "downloaded",
+  "t": 1792683348.7935607,
+  "n": 9
+ },
+ "rime_shaman/walk#4": {
+  "key": "rime_shaman/walk",
+  "attempt": 4,
+  "job": "78c4aedd-cfe3-4255-8730-7ed75b740852",
+  "seed": 23,
+  "variant": "v4",
+  "pin": false,
+  "frames": 12,
+  "status": "installed",
+  "t": 1792683362.7275474,
+  "n": 13
+ },
+ "glacier_knight/walk#3": {
+  "key": "glacier_knight/walk",
+  "attempt": 3,
+  "job": "43891706-5b37-4edd-ae96-ed807a4968e0",
+  "seed": 23,
+  "variant": "v4",
+  "pin": false,
+  "frames": 12,
+  "status": "installed",
+  "t": 1792683367.0188274,
+  "n": 13
+ },
+ "mire_hag/walk#3": {
+  "key": "mire_hag/walk",
+  "attempt": 3,
+  "job": "1f97815f-dfde-42f4-9d07-8f6ef76ef07d",
+  "seed": 23,
+  "variant": "v4",
+  "pin": false,
+  "frames": 12,
+  "status": "installed",
+  "t": 1792683374.5558572,
+  "n": 13
+ },
+ "dullahan/walk#4": {
+  "key": "dullahan/walk",
+  "attempt": 4,
+  "job": "26ac1c58-6f5c-44a5-9d41-5662264d59b5",
+  "seed": 23,
+  "variant": "v4",
+  "pin": false,
+  "frames": 12,
+  "status": "installed",
+  "t": 1792683379.6941242,
+  "n": 13
+ },
+ "frost_wolf/trot#2": {
+  "key": "frost_wolf/trot",
+  "attempt": 2,
+  "job": "dc6ab0bd-f5ef-44d7-bf59-d4b4e886b552",
+  "seed": 23,
+  "variant": "v4",
+  "pin": false,
+  "frames": 12,
+  "status": "installed",
+  "t": 1792683385.0840857,
+  "n": 13
+ },
+ "croc_warrior/crawl#4": {
+  "key": "croc_warrior/crawl",
+  "attempt": 4,
+  "job": "b1f18094-f2e8-4339-819d-f4cb27c54fcb",
+  "seed": 23,
+  "variant": "v4",
+  "pin": false,
+  "frames": 12,
+  "status": "installed",
+  "t": 1792683397.2918365,
+  "n": 13
+ },
+ "plague_toad/hop#4": {
+  "key": "plague_toad/hop",
+  "attempt": 4,
+  "job": "07db2f12-b0d0-4a69-a342-049e42552949",
+  "seed": 23,
+  "variant": "v4",
+  "pin": false,
+  "frames": 12,
+  "status": "downloaded",
+  "t": 1792683614.492523,
+  "n": 13
+ },
+ "dusk_bat/swoop#2": {
+  "key": "dusk_bat/swoop",
+  "attempt": 2,
+  "job": "638fb8af-dced-4e7b-a40d-5724c5942c22",
+  "seed": 23,
+  "variant": "v4",
+  "pin": true,
+  "frames": 12,
+  "status": "installed",
+  "t": 1792684018.6023724,
+  "n": 13
  }
 }

@@ -91,3 +91,38 @@ Os seis clipes de movimento foram REGERADOS a 12 quadros (13 instalados, ultimo 
 Espantalho awaken v4 = DUAS ETAPAS (`stages cursed_scarecrow/awaken`): pendurado -> agachado (still `derived/cursed_scarecrow_crouch.png`, `create_image_pro` com o idle de character base, `ato1/cursed_scarecrow_crouch_stills.png`) em 6 quadros, agachado -> idle em 6; 13 quadros, drift 0,010: olhos acendem no 2, cai e crava as garras no chao (4-6), palha voando, levanta (7-11).
 Gasto da rodada: 6 clipes x 2 geracoes (12q a ~100 px) + still do agachamento + 2 etapas = ~16; frente ~90 das 450.
 
+
+# Atos 4 a 6 (frente entradas-arte-b, 22/Out/2026)
+
+Fabrica propria: `python tools/pixellab_entradas_b.py run|run2|run3|poll|strip|install <id>/<clipe> <tentativa>|anchors|anchor_sheet|install_anchor <id> <tentativa> <idx>|status` (mesma estrutura; o lead funde depois). Jobs em `tools/preview_out/entradas_arte/jobs_b.json`, tentativas cruas em `raw_b/` (nao versionado), tiras 4x em `atoN/<id>_<clipe>.png` com UMA linha por tentativa (idle na primeira coluna, metricas no rotulo). Diferenca de contrato: aqui instala-se `retornados[1:N]` + idle 0 real = 8 quadros nos clipes de 8 e 6 nos curtos (`howl`, `land`); o quadro de entrada nao e instalado. **Revisao do dono (22/Out, 'os que vem andando tem que ficar mais naturais'):** os 8 clipes de movimento (walk x4, trot, crawl, hop, swoop) foram regerados a 12 quadros (`V4`, `run4`; `frame_count=12` funciona ate ~133 px de canvas) com duas passadas completas e movimento secundario (capa, pelo, cauda, chama); 7 instalados a 12q, o sapo ficou a 8q.
+
+- `brotar`: quadro inicial = idle deslocado para baixo e cortado na borda (`start="down:0.9"`, fracao da altura do conteudo), ultimo pinado no idle. Funcionou de primeira nos 6 (troll 0.55, serpe 0.8, carnical 0.9, sanguessuga 0.9, mae dos esporos 0.6, servo da cova 0.9).
+- `form`, `swoop`, `descend`, `howl`, `land`: inicio = idle, fim pinado. Funcionam.
+- **Ciclos (`walk`, `trot`, `crawl`) nao aceitam o pino**: com o ultimo quadro pinado no idle o modelo quase nao mexe as pernas (`motion` 17 a 30 no xama, cavaleiro, bruxa, dullahan). Sem pino e com "exaggerated, high steps, body bobbing" os passos aparecem; o ultimo quadro instalado continua sendo o idle forcado, entao a parada e um passo para o idle em um quadro.
+- Particula pedida no prompt vira borrao: a neve do espectro do gelo virou mancha branca e o bafo do uivo do lobo virou balao (tentativa 1). Regerado com "no cloud, no vapor, no particles"; particula e do motor.
+- Ancoras: `create_image_pro` com referencia de estilo = props do bioma + a criatura lado a lado numa imagem so, luz do bioma (frost e marsh pela direita, dusk pela esquerda baixa), "no creature"; instaladas recortadas com alfa duro.
+
+| criatura | clipe | veredito | tentativas | nota |
+|---|---|---|---|---|
+| frost_wight | form | ok, sutil | 2 | balanco e cintilar discretos; a opacidade e do motor |
+| frost_wolf | trot | ok | 2 | 12q sem pino: duas passadas, patas alternam, pelo ondula, bafo em ritmo |
+| frost_wolf | howl | ok | 2 | boca escancarada, cabeca pouco erguida |
+| rime_shaman | walk | ok | 4 | 12q sem pino: passos com joelho, agacha e sobe, capa de pele atrasa |
+| glacier_knight | walk | ok | 3 | 12q sem pino: pernas alternam de verdade, corpo cai no pisao, espada balanca |
+| frost_troll | emerge | ok | 1 | sobe agachado da neve |
+| ice_wyrm | emerge | ok | 1 | cabeca primeiro, lascas de gelo |
+| bog_ghoul | emerge | ok | 1 | mao com torrao de lama antes do corpo |
+| plague_toad | hop | fraco | 4 | 8q (2a tentativa): agacha e estica pouco, nunca sai do chao; a 4a (12q) virou lingua de gosma amarela e foi descartada. O canvas do idle tem 3 px acima da cabeca, nao ha espaco para salto dentro do quadro: o arco vertical tem de vir do motor (o EnemyRenderer desenha pelo canto superior com a escala do idle, quadro mais alto desalinha) |
+| leech_horror | emerge | ok | 1 | |
+| mire_hag | walk | ok | 3 | 12q sem pino: botas levantam, capa e aba do chapeu balancam; maos vazias (lampiao no prompt faria aparecer objeto que o idle nao tem) |
+| croc_warrior | crawl | ok | 4 | 12q sem pino: espreita agachado com passos, cauda arrasta; 'water dripping' virou 3 pixels brancos soltos perto da cauda nos quadros 7 a 10 |
+| spore_mother | emerge | ok | 1 | chapeu abre ao subir |
+| dusk_shade | form | ok | 1 | chamas esticam e encolhem |
+| dusk_bat | swoop | ok | 2 | 12q pinado: tres batidas, dobra as asas num mergulho inclinado e abre para frear |
+| grave_thrall | emerge | ok | 1 | terra caindo |
+| blood_duke | form | ok | 1 | floreio da capa, braco no rosto |
+| dullahan | walk | ok | 4 | 12q sem pino: capa abre larga, passos visiveis, cabeca na mao sobe pouco |
+| fallen_angel | descend | ok | 1 | asas dobram e abrem |
+| fallen_angel | land | ok, sutil | 2 | asas sobem, joelhos dobram pouco |
+
+Ancoras (`assets/sprites/world/anchors/`): frost_troll 110x59 monte de neve com pedras; ice_wyrm 104x34 lombada de neve rachada; bog_ghoul 82x29 lama com bolhas e osso; leech_horror 102x33 poca com pedras; spore_mother 102x67 moita de cogumelos; grave_thrall 87x40 terra revolvida com lapide; dusk_shade 71x28 poca de sombra com fios roxos.
