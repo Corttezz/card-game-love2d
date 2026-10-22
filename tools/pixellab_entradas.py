@@ -55,13 +55,15 @@ SUFFIX = (" Palette, colors, proportions, face and every piece of clothing "
 
 CLIPS = {
     "cursed_scarecrow": {
-        "awaken": dict(frames=8, first="idle", end="idle", action=(
-            "hangs completely limp and motionless like a real scarecrow on "
-            "its pole for the first two frames, then jolts alive: the whole "
-            "body shudders violently, head snaps up, ember eyes flare, claw "
-            "arms jerk and flail, loose straw bursts out of the collar and "
-            "shoulders, it tears itself free and lurches forward with one "
-            "small hop, then settles into its standing stance")),
+        "awaken": dict(frames=8, first="file:tools/preview_out/entradas_arte/ato1/derived/cursed_scarecrow_limp.png",
+                       end="idle", action=(
+            "the lifeless scarecrow hanging limp with both arms spread out "
+            "sideways, head drooped and legs dangling suddenly JERKS alive: "
+            "the head snaps up and the ember eyes ignite, the whole body "
+            "convulses, the arms rip down off the crossbar with straw "
+            "bursting from the shoulders and collar, it drops and lands in "
+            "a low crouch with the claws on the ground, then rises up into "
+            "its standing stance, arms hanging")),
     },
     "hollow_farmer": {
         "walk": dict(frames=8, first="idle", end="idle", action=(
@@ -336,6 +338,8 @@ def derive(eid, kind):
     px = im.load()
     if kind == "idle":
         return im
+    if kind.startswith("file:"):
+        return Image.open(os.path.join(ROOT, kind[5:])).convert("RGBA")
     if kind.startswith("sunk:"):
         visible = int(kind.split(":")[1])
         bb = im.getbbox()
@@ -578,6 +582,64 @@ def _submit_next(eid, clip):
     return True
 
 
+POSES = {
+    "cursed_scarecrow/limp": dict(frames=8, action=(
+        "goes completely limp and lifeless like a real scarecrow hung on "
+        "a pole: both arms rise and spread straight out sideways at "
+        "shoulder height as if resting on a crossbar, the head droops "
+        "forward and to one side with the eyes going dark, the body "
+        "sags, the legs hang straight down and dangle loosely with the "
+        "feet pointing down, and it stays frozen in that hanging pose")),
+}
+
+
+def pose(key):
+    eid, name = key.split("/")
+    spec = POSES[key]
+    prompt = f"{spec['action']}. It keeps its {F.ENEMIES[eid]['keep']}." + SUFFIX
+    args = {"action": prompt[:1000], "first_frame_base64": b64file(F.idle_frame_path(eid)),
+            "frame_count": spec["frames"]}
+    text = F.tool_text(F.rpc("tools/call", {"name": "animate_image", "arguments": args}))
+    m = re.search(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", text)
+    if not m:
+        print(f"[pose] {key}: SEM JOB ID {text[:200]}", flush=True)
+        return
+    job_id = m.group(1)
+    print(f"[pose] {key} -> job {job_id}", flush=True)
+    result = "wait"
+    for _ in range(72):
+        time.sleep(10)
+        result = F.poll_download(eid, "_pose_" + name, job_id)
+        if result != "wait":
+            break
+    if result != "done":
+        print(f"[pose] {key}: {result}", flush=True)
+        return
+    d = F.anim_dir(eid, "_pose_" + name)
+    files = frame_files(d)
+    dd = derived_dir(eid)
+    for i, f in enumerate(files):
+        Image.open(os.path.join(d, f)).save(os.path.join(dd, f"{eid}_{name}_{i}.png"))
+        os.remove(os.path.join(d, f))
+    os.rmdir(d)
+    strip_files([os.path.join(dd, f"{eid}_{name}_{i}.png") for i in range(len(files))],
+                os.path.join(OUT, f"ato{act_of(eid)}", f"{eid}_pose_{name}.png"))
+    print(f"[pose] {key}: {len(files)} quadros em {dd}", flush=True)
+
+
+def strip_files(paths, out, scale=4):
+    ims = [Image.open(p_).convert("RGBA") for p_ in paths]
+    cw = max(im.width for im in ims) * scale
+    ch = max(im.height for im in ims) * scale
+    gap = 6
+    sheet = Image.new("RGBA", (len(ims) * (cw + gap) + gap, ch + 2 * gap), (58, 52, 50, 255))
+    for i, im in enumerate(ims):
+        big = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+        sheet.paste(big, (gap + i * (cw + gap) + (cw - big.width) // 2, gap + ch - big.height), big)
+    sheet.save(out)
+    print(out)
+
+
 def targets(args):
     ids = []
     for a in args or [str(k) for k in ACTS]:
@@ -806,6 +868,8 @@ if __name__ == "__main__":
     rest = sys.argv[2:]
     if cmd == "run":
         run(rest)
+    elif cmd == "pose":
+        pose(rest[0])
     elif cmd == "submit1":
         sd = int(rest[2])
         jid = submit(rest[0], rest[1], seed=None if sd < 0 else sd)

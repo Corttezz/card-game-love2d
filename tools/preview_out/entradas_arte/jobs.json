@@ -1,16 +1,24 @@
 {
   "cursed_scarecrow/awaken": {
     "status": "ok",
-    "job_id": "668d6242-4d20-416b-9a3c-cb30c01c7d63",
+    "job_id": "b1a3c10d-3d31-4662-94fe-2024c575c840",
     "tries": [
       {
         "job": "668d6242-4d20-416b-9a3c-cb30c01c7d63",
         "drift": 0.002,
-        "problems": [],
+        "problems": [
+          "SUTIL DEMAIS (lead): quadro 0 agora = pose pendurada gerada"
+        ],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\cursed_scarecrow_awaken_t1"
+      },
+      {
+        "job": "b1a3c10d-3d31-4662-94fe-2024c575c840",
+        "drift": 0.004,
+        "problems": [],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\cursed_scarecrow_awaken_t2"
       }
     ],
-    "drift": 0.002
+    "drift": 0.004
   },
   "hollow_farmer/walk": {
     "status": "ok",

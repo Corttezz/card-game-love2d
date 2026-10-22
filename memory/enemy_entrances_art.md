@@ -39,7 +39,7 @@ Roteiro: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Motor:
 ### Ato 1 (commit do ato)
 | criatura | clipe | veredito | tentativas | nota |
 |---|---|---|---|---|
-| cursed_scarecrow | awaken | ok, sutil | 1 | arranca-se com um pulo pequeno (quadro 5), palha voando; a amplitude e modesta, o motor soma o deslocamento |
+| cursed_scarecrow | awaken | ok | 3 | v1/v2 (quadro 0 = idle) liam como idle com palha; o lead pediu o despertar de verdade. O v3 NAO ergue os bracos a partir do idle (`pose cursed_scarecrow/limp` so baixou a cabeca), entao a pose pendurada veio de `create_image_pro` com o idle como "character base" (4 candidatas, identidade intacta: `ato1/cursed_scarecrow_limp_stills.png`), gravada em `derived/cursed_scarecrow_limp.png` e usada como quadro 0 (`first="file:..."`): 3 quadros inerte de olhos apagados, cabeca sobe no 3, convulsao com palha nos 5-6, assenta no idle. Na cena (`screenshot_entradas ato1`) ele pende na frente do poste a esquerda da estrada e pula para o centro no assentamento |
 | hollow_farmer | walk | ok | 1 | forcado baixa e arrasta no meio do clipe, volta a ficar em pe no fim |
 | plague_rats | form | ok | 2 | 1a: rato brotava NO AR acima da pilha (quadros 1-2); 2a com "every rat touches the ground or another rat" |
 | harvest_reaper | form | ok | 2 | 1a: ficava solido no quadro 2 e VOLTAVA a silhueta nos 6-7 (floreio da foice virou arco preto); 2a "brightens a little more in EVERY frame, body still" |
@@ -72,6 +72,7 @@ Roteiro: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Motor:
 - 27 jobs de animacao (19 clipes + 8 retentativas) e 10 chamadas de `create_image_pro` (9 ancoras + 2 regeracoes "lines only" + 1 do plinto, menos a efigie derivada): ~55 geracoes das 450 da frente.
 - O v3 respeita o pino do ultimo quadro: drift maximo 0,04 (gargula), nenhum clipe precisou de `best_of_3`.
 - O que o modelo erra sozinho e previsivel: "cor voltando" vira ciclo de cor; "acende" vira corpo inteiro brilhando; "ergue a arma" vira flash branco; "monta" monta em um quadro; "entra" faz coisa brotar no ar. O prompt que funciona proibe pelo nome (never yellow, nothing floats, a little more in EVERY frame) e descreve etapas.
+- Pose de partida que o idle nao alcanca (bracos erguidos, pendurado): o animador nao a inventa; gere a pose como still em `create_image_pro` com o idle de "character base" e anime still -> idle pinado.
 - Tunica longa esconde o passo: walk de figura de tunica (cultista, acolito) sai como deslize; aceitar e deixar o deslocamento com o motor.
 - Vista de ancora: "flat on the ground" sem "seen straight from the front" vira cubo isometrico; "burned into the ground" vira LAJE. Pedir "ONLY glowing lines, no ground, no slab" da a marca pronta para sobrepor na estrada.
 - Dois processos gravando o mesmo `anchor_jobs.json` perdem job (corrida): enfileirar ancoras de UM processo por vez.
