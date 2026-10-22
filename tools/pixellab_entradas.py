@@ -74,36 +74,23 @@ CLIPS = {
     },
     "hollow_farmer": {
         "walk": dict(frames=12, first="idle", end="idle", action=(
-            "limping walk toward the viewer, TWO full strides over the clip: each foot lifts clearly off the ground and plants again with a visible weight shift onto that side, the body dips lower on the lame leg, the pitchfork is dragged along the ground scraping, then lifted and planted upright at the end with a thud, the torn apron and ragged sleeves swing with every step, the straw hat brim bobs, small dust puffs at the feet, then it settles into its hunched stance")),
+            "a laboured limping walk toward the viewer with the WHOLE body, two full strides: the good leg steps and plants, then the lame leg drags behind and the body lurches down onto it, the shoulders tilt and rock with every step, the head bobs and sways, the torso twists toward the stepping side, the wide straw hat brim bounces and flaps, the patched coat and torn apron swing out and back, loose straw bits and dust shake off his clothes, the pitchfork tines drag along the ground kicking up little clods of dirt; at the end he heaves the pitchfork upright and plants it with a thud, settling into his hunched stance")),
     },
     "plague_rats": {
         "form": dict(frames=12, first="rats_bottom", end="idle", action=(
-            "many plague rats converge from both sides along the ground: rats run in from the left and from the right, climbing over the rats already there, tails whipping, heads twitching, some squeak with open mouths, the heap grows a little taller in every frame as rats scramble on top of each other, loose rats at the edges still crawling and twitching, until the full stacked heap is formed and settles still; every rat always touches the ground or another rat, nothing floats, nothing drops from above")),
+            "a frantic pile-up: more rats appear crawling up from behind the two rats on the ground and climb over each other onto them, every rat drawn whole and fully inside the frame, none cut by the edges, claws gripping fur, bodies squirming, bald pink tails whipping and curling, heads twisting, red eyes glinting, mouths opening to squeak, the heap grows taller rat by rat in every frame, the rats underneath shifting under the weight, until the full stacked heap is formed and settles; every rat always touches the ground or another rat, nothing floats, nothing drops from above")),
     },
     "harvest_reaper": {
-        "form": dict(frames=8, first="mist", end="idle", action=(
-            "materialises slowly out of a dark shapeless mist: the black "
-            "shadow brightens a little more in EVERY frame, steadily and "
-            "gradually from the first frame to the last, never getting "
-            "darker again, the hood, wheat straw shoulders and the long "
-            "scythe resolving with color returning from the center outward, "
-            "the body perfectly still, ending fully solid in its standing "
-            "stance")),
+        "form": dict(frames=12, first="ghost", end="idle", action=(
+            "the reaper slowly materialises inside dark mist: in the first frames only a faint dark ghostly outline is visible, then frame by frame the shape grows a little more solid and detailed, the hood, the golden wheat straw shoulders and the robe filling in with colour from the centre outward, the long scythe solidifying last, the body perfectly still, the colours never get brighter than the final frame and the wheat shoulders never glow, only one thin glint of light runs along the scythe blade in the final frames, ending fully solid in its standing stance")),
     },
     "blight_bull": {
         "charge": dict(frames=12, first="idle", end="idle", action=(
             "heavy gallop straight toward the viewer, two full gallop strides: the front hooves reach forward and slam down, then the hind hooves, the massive shoulders and hump rise and fall with each bound, the head swings low with the horns forward, loose rotting hide flaps, the wheat stalks tangled in the hide whip about, steam bursts from the nostrils with every breath, dust kicks up at the hooves; at the end it skids to a stop with the front legs braced stiff, the head tossing up with a snort, then settles into its standing stance")),
     },
     "wicker_effigy": {
-        "awaken": dict(frames=8, first="unlit", end="idle", action=(
-            "the dark unlit wicker giant ignites from the inside: a single "
-            "small ember glows in the woven chest, a small fire grows in "
-            "the ribcage, then small flames catch on both shoulders and the "
-            "skull eyes light up, the body straightens and the long arms "
-            "spread slightly as it comes alive, then settles into its "
-            "standing stance; the woven wicker body itself stays dark "
-            "brown wood in every frame, it never glows, never turns yellow "
-            "or bright, only the three small fires and the eyes give light")),
+        "awaken": dict(frames=12, first="unlit", end="idle", action=(
+            "the dark unlit wicker giant ignites: a few glowing embers drift onto it, then a small flame catches inside the woven chest, fire spreads up through the weave in licking red-orange tongues with thin dark smoke, the flames burst onto both shoulders, the skull eye sockets ignite, it straightens and lifts its long arms as the fire roars inside, burning straw sparks falling, then it settles into its standing stance; the fire is real fire: red, orange and yellow flames only, never white, never blown out, with dark smoke; the woven wicker stays dark brown wood and is never painted gold or bright")),
     },
     "moon_gargoyle": {
         "awaken": dict(frames=8, first="statue", end="idle", action=(
@@ -336,7 +323,10 @@ def derive(eid, kind):
             r, g, b, a = px[x, y]
             if a == 0:
                 continue
-            if kind == "mist":
+            if kind == "ghost":
+                k = 0.12
+                po[x, y] = (int(r * k + 18), int(g * k + 14), int(b * k + 24), int(a * 0.35))
+            elif kind == "mist":
                 k = 0.14
                 po[x, y] = (int(r * k + 16), int(g * k + 12), int(b * k + 22), a)
             elif kind == "dark":
@@ -576,6 +566,26 @@ POSES = {
 
 
 STAGES = {
+    "hollow_farmer/walk": [
+        dict(first="idle", last="file:tools/preview_out/entradas_arte/ato1/derived/hollow_farmer_stride1.png",
+             frames=4, action=(
+                 "lurches forward into a heavy limping step: the good leg strides out and plants, the "
+                 "body pitches forward and down, the shoulders roll, the head bobs, the hat brim "
+                 "bounces, the coat and torn apron swing back, straw bits and dust shake off, the "
+                 "pitchfork tips down and its tines drag on the ground kicking up dirt")),
+        dict(first="file:tools/preview_out/entradas_arte/ato1/derived/hollow_farmer_stride1.png",
+             last="file:tools/preview_out/entradas_arte/ato1/derived/hollow_farmer_stride2.png",
+             frames=4, action=(
+                 "drags the lame leg through and heaves into the next limping step: the torso twists "
+                 "to the other side, the shoulders rock, the head lolls and bobs, the hat brim flaps, "
+                 "the coat and apron swing across, the pitchfork tines scrape along the ground "
+                 "kicking up clods of dirt, dust puffing at the feet")),
+        dict(first="file:tools/preview_out/entradas_arte/ato1/derived/hollow_farmer_stride2.png",
+             last="idle", frames=4, action=(
+                 "drags the lame leg up beside the other and stops, heaving the pitchfork upright and "
+                 "planting it with a thud, dust puffing, the coat and apron swinging and settling, "
+                 "the hat brim bouncing once, settling into its hunched stance")),
+    ],
     "cursed_scarecrow/awaken": [
         dict(first="file:tools/preview_out/entradas_arte/ato1/derived/cursed_scarecrow_limp.png",
              last="file:tools/preview_out/entradas_arte/ato1/derived/cursed_scarecrow_crouch.png",

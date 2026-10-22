@@ -28,10 +28,10 @@
   },
   "hollow_farmer/walk": {
     "status": "ok",
-    "job_id": "0e592e5c-09bd-4972-a379-53e34f3b48d9",
+    "job_id": "d616ad1b-d427-428c-b380-921c8a3b2595",
     "tries": [
       {
-        "job": "0e592e5c-09bd-4972-a379-53e34f3b48d9",
+        "job": "d616ad1b-d427-428c-b380-921c8a3b2595",
         "drift": 0.002,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\hollow_farmer_walk_t1"
@@ -41,31 +41,39 @@
   },
   "plague_rats/form": {
     "status": "ok",
-    "job_id": "683b0b3f-9a5d-4090-89c2-95f8379355c0",
+    "job_id": "caad3b51-27e5-4f69-9f9b-c2f6225442b2",
     "tries": [
       {
-        "job": "683b0b3f-9a5d-4090-89c2-95f8379355c0",
+        "job": "6432af1e-c38b-4e7f-ae36-fe43f430c859",
+        "drift": 0.004,
+        "problems": [
+          "RATOS CORTADOS PELA BORDA (1,3) + cabeca solta (1)"
+        ],
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t1"
+      },
+      {
+        "job": "caad3b51-27e5-4f69-9f9b-c2f6225442b2",
         "drift": 0.001,
         "problems": [],
-        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t1"
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t2"
       }
     ],
     "drift": 0.001
   },
   "harvest_reaper/form": {
     "status": "ok",
-    "job_id": "0d36bbcc-c54d-406b-8688-c3f78edc173b",
+    "job_id": "00db2c3a-677d-4bfd-aec2-9bdd71beac7d",
     "tries": [
       {
-        "job": "3e7a1683-7bbf-4de9-8b2b-f47efb59f248",
+        "job": "c4292d87-a6eb-40f3-b598-bd1e7bf8e217",
         "drift": 0.005,
         "problems": [
-          "FLICKER (volta a escuro no meio)"
+          "TRIGO/MANTO AMARELO ESTOURADO (6-10)"
         ],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\harvest_reaper_form_t1"
       },
       {
-        "job": "0d36bbcc-c54d-406b-8688-c3f78edc173b",
+        "job": "00db2c3a-677d-4bfd-aec2-9bdd71beac7d",
         "drift": 0.004,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\harvest_reaper_form_t2"
@@ -88,24 +96,24 @@
   },
   "wicker_effigy/awaken": {
     "status": "ok",
-    "job_id": "18857370-c310-45c4-acf6-f07f4ab7a873",
+    "job_id": "bc10f638-bf58-4311-bd41-c9e74295799b",
     "tries": [
       {
-        "job": "7ab12b44-e1f7-4b8c-ba9b-2c6ccd93f813",
-        "drift": 0.018,
+        "job": "6e39effe-db72-4932-a772-4cef91a770c3",
+        "drift": 0.005,
         "problems": [
-          "CORPO INTEIRO BRILHANDO (quadros 2-7)"
+          "BRANCO ESTOURADO nos ombros (7-9)"
         ],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\wicker_effigy_awaken_t1"
       },
       {
-        "job": "18857370-c310-45c4-acf6-f07f4ab7a873",
-        "drift": 0.002,
+        "job": "bc10f638-bf58-4311-bd41-c9e74295799b",
+        "drift": 0.014,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\wicker_effigy_awaken_t2"
       }
     ],
-    "drift": 0.002
+    "drift": 0.014
   },
   "moon_gargoyle/awaken": {
     "status": "ok",

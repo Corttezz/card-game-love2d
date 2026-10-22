@@ -126,3 +126,7 @@ Fabrica propria: `python tools/pixellab_entradas_b.py run|run2|run3|poll|strip|i
 | fallen_angel | land | ok, sutil | 2 | asas sobem, joelhos dobram pouco |
 
 Ancoras (`assets/sprites/world/anchors/`): frost_troll 110x59 monte de neve com pedras; ice_wyrm 104x34 lombada de neve rachada; bog_ghoul 82x29 lama com bolhas e osso; leech_horror 102x33 poca com pedras; spore_mother 102x67 moita de cogumelos; grave_thrall 87x40 terra revolvida com lapide; dusk_shade 71x28 poca de sombra com fios roxos.
+
+## Rodada 3 (dono, ato 1: "quase nada de detalhe", "o 6 fraco")
+- plague_rats: o motor passa a correr ratos avulsos dos lados. Pecas: `animations/rat_run/south/0..5.png` (48x32, UM rato de perfil olhando para a DIREITA, corrida no lugar, loop de 6 quadros: espelhe para o lado esquerdo), still escolhido entre 36 candidatas do `create_image_pro` (`ato1/rat_stills.png`, o 24) e animado com o primeiro e o ultimo quadro pinados no mesmo still. `form` virou empilhamento de 12 quadros: 1a tentativa trazia ratos CORTADOS pela borda do canvas (o modelo os fez entrar de fora) e uma cabeca solta; 2a com "every rat drawn whole and fully inside the frame" saiu limpa (de 2 ratos no chao a pilha, um por quadro, caudas chicoteando).
+
