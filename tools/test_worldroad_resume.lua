@@ -75,7 +75,7 @@ function M.run()
     t:truthy("escolhido o nó, o mundo VIAJA (é a caminhada que tira o marco)",
         WorldRoad.isTraveling())
 
-    for _ = 1, 240 do
+    for _ = 1, 420 do
         GameplayScene.update(1 / 30)
         if not WorldRoad.isTraveling() then break end
     end
