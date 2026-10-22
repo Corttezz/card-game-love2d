@@ -441,6 +441,7 @@ marqueeHit = function(S)
 end
 
 EE.FLASH = 0.45
+EE.MARQUEE_FLASH_K = 0.16
 
 function EE.showCard(id)
     if not id then return end
@@ -531,7 +532,7 @@ end
 function EE.flashAlpha()
     local S = st
     if not S or not S.flashT or S.flashT <= 0 then return 0 end
-    return (S.flashT / EE.FLASH) * (S.spec.flashK or 0.35)
+    return (S.flashT / EE.FLASH) * (S.spec.flashK or EE.MARQUEE_FLASH_K)
 end
 
 function EE.drawFlash(w, h)
@@ -1102,6 +1103,11 @@ function K.brotar(S, dt)
     local emerge = S.clips.emerge
     local rise = S.settle > 0 and clamp01(S.sT / (S.settle * 0.75)) or (S.stopped and 1 or 0)
     S.img = idleFrame1(S)
+    if not S.stopped and spec.inertStart and emerge then
+        S.img = chainFrame(S, "emerge", 0)
+        S.view.currentFrame = 1
+        return
+    end
     if not S.stopped then
         S.pose.hidden = true
         S.pose.shadowA = 0
@@ -1126,8 +1132,10 @@ function K.brotar(S, dt)
     else
         S.endFrame1 = true
     end
-    S.riseK = easeOutCubic(clamp01(rise / EE.BURROW_REVEAL))
-    S.pose.shadowA = clamp01(rise / EE.BURROW_REVEAL)
+    if not spec.inertStart then
+        S.riseK = easeOutCubic(clamp01(rise / EE.BURROW_REVEAL))
+        S.pose.shadowA = clamp01(rise / EE.BURROW_REVEAL)
+    end
     pick(S, "rise")
     if spec.hop and not S.red then
         local h = clamp01((S.sKL - 0.6) / 0.4)
@@ -1246,7 +1254,7 @@ function K.mergulho(S, dt)
         S.view.currentFrame = 1
         if d >= 1 then S.endFrame1 = true end
     elseif swoop and not landing and chain then
-        S.img = clipFrame(swoop, d / landAt)
+        S.img = spec.swoopLoop and loopFrame(swoop, (S.t - u0) * 1.5) or clipFrame(swoop, d / landAt)
         S.used[S.clips.swoop and "swoop" or "descend"] = true
         S.view.currentFrame = 1
     elseif swoop and not landing then
@@ -1488,7 +1496,7 @@ function EE.fragments(id, clip)
             local _, _, _, a = d:getPixel(x, y)
             if a > 0.05 then
                 local best, bd = 1, 1e9
-                local nz = (hash2(math.floor(x / 3), math.floor(y / 3)) - 0.5) * cell * 0.5
+                local nz = (hash2(math.floor(x / 7), math.floor(y / 7)) - 0.5) * cell * 0.22
                 for i, sd in ipairs(seeds) do
                     local dd = math.sqrt((x - sd.x) ^ 2 + (y - sd.y) ^ 2) + nz * ((i % 2) * 2 - 1)
                     if dd < bd then best, bd = i, dd end
@@ -1611,7 +1619,7 @@ function EE.finish()
     else
         handoff = S.idle
     end
-    EE.lastBounce = S.spec.bounce and true or false
+    EE.lastBounce = (S.spec.bounce and not S.spec.chain) and true or false
     EE.wxClear()
     EE._last = {
         id = S.id, kind = S.kind, used = S.used, clips = S.clips, total = S.total, settle = S.settle,
@@ -1811,7 +1819,7 @@ function EE.drawUnder(e, g, w, cx, sy, s, t, lift)
             love.graphics.draw(f.img, math.floor(hx + sd * dist), math.floor(hy - hop), -rot, s, s, f.cx, f.cy)
         end
         love.graphics.setColor(1, 1, 1, 1)
-    elseif S.rocksK > 0 and (S.rocksA or 1) > 0.01 then
+    elseif not S.frags and S.rocksK > 0 and (S.rocksA or 1) > 0.01 then
         local a = S.rocksA or 1
         local c = Grade.color("prop", t, tmpColor)
         for i = 1, 4 do

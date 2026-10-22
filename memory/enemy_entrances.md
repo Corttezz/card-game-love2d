@@ -146,7 +146,7 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   - **Sombra de ancora alta**: perfil de pegada por ancora (`EE.ANCHOR_SHADOW_PROFILE`, rocha 0,30/0,48 como
     `WorldRoad.SHADOW_PROFILE`) e a propria ancora entra como MASCARA do `ShadowEngine` (`maskAdd` + `deferShadow(..., mk)`,
     quads proprios por ancora), entao a sombra adiada nao pinta a pedra/monte/plinto/cogumelos. Estaca sem perfil (aprovada).
-  - **Quem sai do chao fica 100% escondido na viagem** (`K.brotar`): so a ancora treme (`_pokeT`) e solta particula a cada
+  - **Quem sai do chao fica 100% escondido na viagem** (`K.brotar`; excecao `inertStart`: a mae dos esporos, cujo quadro 0 e a propria moita de cogumelos, aparece desde a crista e a ancora de cogumelos saiu porque cobria as pernas dela): so a ancora treme (`_pokeT`) e solta particula a cada
     0,7 s nos ultimos 2,6 s; na parada o corpo sobe da linha do chao (`riseK` em 40 % da subida) com o clipe emerge junto.
     Sombra nasce em 0 na parada.
   - Golem: o quadro 0 do `assemble` (pilha de entulho, lia como um bloco) virou 7 FRAGMENTOS irregulares (Voronoi com ruido
@@ -174,7 +174,7 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
     (`EE.skipCard`). Corpo 15 % maior (`EE.sizeK`: billboard, batalha, sombra e HUD juntos); cavaleiro da geleira +10 %.
   - **Cadeia de clipes** (`chain = true`, contrato com a frente de arte): `clips` ordenada, so o ultimo termina no idle 0 e
     `last(i) == first(i+1)` (trava). `chainFrame` toca a cadeia por fase; no mergulho com cadeia o 1o clipe toca UMA vez no
-    ar, o pouso comeca em 60 % e o toque no chao em 70 % (beat `touch`).
+    ar (em laco com `swoopLoop = true`, voo loopavel da harpia e do morcego), o pouso comeca em 60 % e o toque no chao em 70 % (beat `touch`).
 
 ## Ancoras
 - Prop `kind = "anchor"` em `WorldRoad._props` criado no `begin` em `stopZ + BATTLE_REL + 0.25` (atras do bicho na
