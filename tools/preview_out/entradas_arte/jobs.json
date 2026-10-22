@@ -61,7 +61,7 @@
     "drift": 0.001
   },
   "harvest_reaper/form": {
-    "status": "ok",
+    "status": "ok_pixminimax",
     "job_id": "00db2c3a-677d-4bfd-aec2-9bdd71beac7d",
     "tries": [
       {
@@ -77,9 +77,14 @@
         "drift": 0.004,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\harvest_reaper_form_t2"
+      },
+      {
+        "tool": "animate_image_pixminimax",
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\harvest_reaper_form_pmm",
+        "problems": []
       }
     ],
-    "drift": 0.004
+    "drift": 0.0
   },
   "blight_bull/charge": {
     "status": "ok",
@@ -95,7 +100,7 @@
     "drift": 0.002
   },
   "wicker_effigy/awaken": {
-    "status": "ok",
+    "status": "ok_pixminimax",
     "job_id": "bc10f638-bf58-4311-bd41-c9e74295799b",
     "tries": [
       {
@@ -111,9 +116,14 @@
         "drift": 0.014,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\wicker_effigy_awaken_t2"
+      },
+      {
+        "tool": "animate_image_pixminimax",
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\wicker_effigy_awaken_pmm",
+        "problems": []
       }
     ],
-    "drift": 0.014
+    "drift": 0.0
   },
   "moon_gargoyle/awaken": {
     "status": "ok",
