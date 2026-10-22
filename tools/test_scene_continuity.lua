@@ -479,7 +479,7 @@ function M.analyze(log)
         local first = nil
         for k = 1, log.frames do
             local c, p = A.f[k], A.f[k - 1]
-            if c and c.a > 0.02 and not first then
+            if c and not first then
                 first = c
                 if c.t >= 0.05 then
                     pops[#pops + 1] = { uid = uid, kind = "ancora_" .. A.name, frame = k, how = "surge",

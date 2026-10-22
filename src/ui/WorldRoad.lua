@@ -1877,8 +1877,10 @@ function WorldRoad.update(dt)
             local enc = WorldRoad._encounter
             if enc and enc.anim then
                 local EE = require("src.ui.EnemyEntrance")
-                local handoff = EE.isActive() and EE.finish() or enc.anim
-                require("src.ui.EnemyRenderer")._handoff = handoff
+                local handoff
+                if EE.isActive() then handoff = EE.finish()
+                elseif not enc.anim.entrance then handoff = enc.anim end
+                if handoff then require("src.ui.EnemyRenderer")._handoff = handoff end
             end
             WorldRoad._encounter = nil
             if tr.onComplete then tr.onComplete() end
@@ -4863,7 +4865,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
             LightEngine.submitMicro(
                 oxT + a.xr * e.iw * s, oyT + a.yr * e.ih * s,
                 a.r * e.ih * s, a.color,
-                (a.intensity or 0.35) * 0.8 * pulse * (pz.alpha or 1), rel)
+                (a.intensity or 0.35) * 0.8 * pulse * (pz.alpha or 1), math.min(rel, 9))
         end
     end
 end

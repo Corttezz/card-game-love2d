@@ -295,5 +295,7 @@ end
 function LightEngine._lastEntry() return queue[#queue] end
 function LightEngine._entryAt(i) return queue[i] end
 function LightEngine.queued() return #queue end
+function LightEngine.microQueued() return #microQueue end
+function LightEngine._microAt(i) return microQueue[i] end
 
 return LightEngine

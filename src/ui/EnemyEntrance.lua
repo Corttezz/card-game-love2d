@@ -36,6 +36,14 @@ local function easeInOut(v)
     return v * v * (3 - 2 * v)
 end
 local function easeInQuad(v) v = clamp01(v); return v * v end
+local function easeInOutCubic(v)
+    v = clamp01(v)
+    if v < 0.5 then return 4 * v * v * v end
+    local f = 2 * v - 2
+    return 1 + f * f * f / 2
+end
+
+EE.END_LEAD = 0.12
 
 local function warnOnce(key, msg)
     if warned[key] then return end
@@ -147,14 +155,15 @@ local function loopFrame(clip, cycles)
     return clip.frames[f]
 end
 
-local function idleImage(S, dt, freezeAt1)
+local function idleImage(S, dt, freezeAt1, freezeAt)
     local idle = S.idle
     if not idle then
         S.view.currentFrame = 1
         return S.staticImg
     end
+    local left = freezeAt and (freezeAt - S.t) or S.left
     if not S.frozen then
-        if freezeAt1 and S.left <= EE.FREEZE_WIN and idle.currentFrame == 1 then
+        if freezeAt1 and left <= EE.FREEZE_WIN and idle.currentFrame == 1 then
             S.frozen = true
         else
             idle:update(dt)
@@ -403,7 +412,7 @@ local function spawnAnchor(S, opts)
         bid = opts.bid, side = (anc.at == "side") and S.side or 0, lane = 0, variant = 0,
         big = 1, jitter = 0, uid = WorldRoad._uid, ts = S.enc.targetScale or 4,
         glow = anc.glow and 0 or nil, grow = anc.grow and 0 or 1, glowColor = anc.glow,
-        z = opts.stopZ + WorldRoad.BATTLE_REL + 0.25, stopZ = opts.stopZ,
+        z = opts.stopZ + WorldRoad.BATTLE_REL + 0.25, stopZ = opts.stopZ, offX = S.enc.offX or 0,
     }
     local img = EE.anchorImage(S.id, anc.name)
     S.anchorHalfW = img and img:getWidth() * 0.5 or 0
@@ -473,10 +482,10 @@ local K = {}
 function K.andar(S, dt)
     local spec = S.spec
     local walk = S.clips.walk
-    if not S.stopped and walk then
+    local prog = easeInOutCubic(S.t / math.max(0.01, S.dur - S.lead))
+    if not S.stopped and walk and prog < 1 then
         local WorldRoad = require("src.ui.WorldRoad")
         local tr = WorldRoad._travel
-        local prog = tr and clamp01((WorldRoad._camZ - tr.from) / math.max(0.001, tr.dist)) or 1
         local cyc = math.max(1, math.floor(tr and tr.dist / 2.4 + 0.5 or 8))
         S.img = loopFrame(walk, cyc * prog)
         S.used.walk = true
@@ -517,12 +526,12 @@ function K.investida(S, dt)
     local lead = S.red and 2 or (spec.lead or 7)
     local win = S.red and 1.0 or 2.2
     local u0 = S.dur - win
-    local c = clamp01((S.t - u0) / (win + S.settle))
+    local c = clamp01((S.t - u0) / math.max(0.01, win + S.settle - S.lead))
     local ce = easeOutQuart(c)
     S.pose.relOff = lead * (1 - ce)
     local charge = S.clips.charge
     if S.t < u0 then
-        S.img = idleImage(S, dt, false)
+        S.img = idleImage(S, dt, charge ~= false, u0)
     elseif charge then
         local cyc = math.floor(6 * (win + S.settle) + 0.5)
         S.img = loopFrame(charge, cyc * ce)
@@ -560,10 +569,10 @@ function K.brotar(S, dt)
         S.pose.hidden = not S.stopped
         S.riseK = easeOutCubic(rise)
     end
-    S.pose.shadowA = S.stopped and clamp01(0.35 + rise) or 1
+    S.pose.shadowA = clamp01(0.35 + rise)
     if S.stopped then pick(S, "rise") end
     if spec.hop and S.stopped and not S.red then
-        local h = clamp01((S.sK - 0.6) / 0.4)
+        local h = clamp01((S.sKL - 0.6) / 0.4)
         S.pose.liftK = math.sin(h * math.pi) * 0.18
     end
     if S.sK >= 1 then pick(S, "stop") end
@@ -584,15 +593,17 @@ function K.acordar(S, dt)
             S.sideFrac = 1
             S.pose.liftK = lift / ih
         end
+        if spec.step then S.pose.relOff = spec.step end
         return
     end
     pick(S, "wake")
-    local wake = clamp01(S.sK / 0.5)
+    local sK = S.sKL
+    local wake = clamp01(sK / 0.5)
     if awaken then
-        S.img = clipFrame(awaken, S.sK)
+        S.img = clipFrame(awaken, sK)
         S.used.awaken = true
         S.view.currentFrame = 1
-        if S.sK >= 1 then S.endFrame1 = true end
+        if sK >= 1 then S.endFrame1 = true end
     else
         S.img = idleFrame1(S)
         S.endFrame1 = true
@@ -600,17 +611,17 @@ function K.acordar(S, dt)
         S.tintK = base + (1 - base) * wake
         if not S.red and wake < 1 then S.dxK = math.sin(S.sT * 48) * 0.012 * (1 - wake) else S.dxK = 0 end
     end
-    if spec.glow then S.glowK = easeInOut(S.sK) end
+    if spec.glow then S.glowK = easeInOut(sK) end
     if spec.anchor and spec.anchor.at == "side" then
-        local h = easeInOut(clamp01((S.sK - 0.5) / 0.5))
+        local h = easeInOut(clamp01((sK - 0.5) / 0.5))
         S.sideFrac = 1 - h
         S.pose.liftK = (lift / ih) * (1 - h) + math.sin(h * math.pi) * 0.22
     end
     if spec.step then
-        local sp = clamp01((S.sK - 0.4) / 0.6)
+        local sp = clamp01((sK - 0.4) / 0.6)
         S.pose.relOff = spec.step * (1 - easeOutCubic(sp))
     end
-    if S.sK >= 1 then
+    if sK >= 1 then
         S.sideFrac, S.pose.liftK, S.pose.relOff, S.dxK, S.tintK = 0, 0, 0, 0, 1
         pick(S, "stop")
     end
@@ -633,7 +644,7 @@ function K.mergulho(S, dt)
     S.passK = -1
     S.pose.hidden = false
     pick(S, "start")
-    local d = clamp01((S.t - u0) / (S.total - u0))
+    local d = clamp01((S.t - u0) / math.max(0.01, S.total - S.lead - u0))
     local land = S.clips.land
     local swoop = S.clips.swoop or S.clips.descend
     local landing = d >= 0.75
@@ -668,7 +679,7 @@ function K.condensar(S, dt)
     local spec = S.spec
     local win = S.red and 0.4 or 1.2
     local u1 = S.dur - win
-    local a = clamp01((S.t - u1) / (S.total - u1))
+    local a = clamp01((S.t - u1) / math.max(0.01, S.total - S.lead - u1))
     local ae = easeInOut(a)
     local form = S.clips.form
     if form then
@@ -687,7 +698,7 @@ function K.condensar(S, dt)
     S.veilA = (spec.anchor and spec.anchor.veil) and clamp01(S.k * 1.6) * (1 - ae) or 0
     if spec.swarm then
         local sw0 = S.dur - (S.red and 0.6 or 2.0)
-        S.swarmK = clamp01((S.t - sw0) / (S.total - sw0))
+        S.swarmK = clamp01((S.t - sw0) / math.max(0.01, S.total - S.lead - sw0))
         if S.t >= sw0 then pick(S, "start") end
     end
     if spec.lantern then S.lanternK = clamp01(0.25 + S.k * 0.9) end
@@ -706,34 +717,38 @@ function K.flanco(S, dt)
     local spec = S.spec
     local win = S.red and 0.5 or 1.8
     local u0 = S.dur - win
+    local fromAnchor = spec.anchor and spec.anchor.at == "side"
+    local burrowed = fromAnchor and S.clips.emerge or nil
     if S.t < u0 then
-        S.pose.hidden = true
-        S.img = S.idleImg or S.staticImg
+        S.pose.hidden = not burrowed
+        S.img = burrowed and clipFrame(burrowed, 0) or (S.idleImg or S.staticImg)
+        if burrowed then S.sideFrac = 1; S.used.emerge = true; S.view.currentFrame = 1 end
         return
     end
     S.pose.hidden = false
-    if pick(S, "start") and spec.anchor then
-        S.burstFromAnchor = true
-    end
-    local m = clamp01((S.t - u0) / (S.total - u0))
+    pick(S, "start")
+    local howl = S.clips.howl
+    local arriveT = (howl and S.settle > 0) and S.dur or (S.total - S.lead)
+    local m = clamp01((S.t - u0) / math.max(0.001, arriveT - u0))
     local me = easeInOut(m)
-    local fromAnchor = spec.anchor and spec.anchor.at == "side"
     if fromAnchor then
         S.sideFrac = 1 - me
     else
         S.offFrac = 1 - me
     end
-    local move = S.clips.trot or S.clips.crawl or S.clips.hop or S.clips.emerge
-    local moveName = S.clips.trot and "trot" or (S.clips.crawl and "crawl" or (S.clips.hop and "hop" or (S.clips.emerge and "emerge" or nil)))
-    local howl = S.clips.howl
-    local settleK = S.settle > 0 and clamp01(S.sT / S.settle) or (S.stopped and 1 or 0)
-    local arriveT = howl and (S.total - S.settle) or S.total
-    local arrived = S.t >= arriveT - 1e-6 and me >= 0.999
-    if howl and S.stopped and S.sK > 0 and (S.sideFrac == 0 and S.offFrac == 0 or m >= 1) then
+    local move = S.clips.trot or S.clips.crawl or S.clips.hop
+    local moveName = S.clips.trot and "trot" or (S.clips.crawl and "crawl" or (S.clips.hop and "hop" or nil))
+    local settleK = S.sKL
+    if howl and m >= 1 then
         S.img = clipFrame(howl, settleK)
         S.used.howl = true
         S.view.currentFrame = 1
         if settleK >= 1 then S.endFrame1 = true end
+    elseif burrowed then
+        S.img = m < 0.4 and clipFrame(burrowed, m / 0.4) or idleFrame1(S)
+        S.used.emerge = true
+        S.view.currentFrame = 1
+        if m >= 0.4 then S.endFrame1 = true end
     elseif move and m < 1 then
         S.img = loopFrame(move, m * 4)
         S.used[moveName] = true
@@ -780,9 +795,9 @@ function K.montar(S, dt)
         S.riseK = easeOutCubic(rise)
         S.rocksA = 1 - S.riseK
     end
-    S.pose.shadowA = S.stopped and clamp01(0.3 + rise) or 1
+    S.pose.shadowA = clamp01(0.3 + rise)
     if S.t >= r0 + rw * 0.5 then pick(S, "mid") end
-    if spec.glow then S.glowK = S.stopped and easeInOut(clamp01((S.sK - 0.6) / 0.4)) or 0 end
+    if spec.glow then S.glowK = S.stopped and easeInOut(clamp01((S.sKL - 0.6) / 0.4)) or 0 end
     if S.sK >= 1 then pick(S, "stop") end
 end
 
@@ -794,6 +809,8 @@ function EE.update(dt, tr)
     S.stopped = tr.t >= tr.duration
     S.sT = math.max(0, tr.t - tr.duration)
     S.sK = S.settle > 0 and clamp01(S.sT / S.settle) or (S.stopped and 1 or 0)
+    S.lead = math.min(EE.END_LEAD, S.settle > 0 and S.settle * 0.3 or EE.END_LEAD)
+    S.sKL = S.settle > 0 and clamp01(S.sT / math.max(0.01, S.settle - S.lead)) or (S.stopped and 1 or 0)
     S.tail = tr.duration - tr.t
     S.left = S.total - tr.t
     S.pose.relOff, S.pose.hidden, S.pose.liftK, S.pose.shadowA = 0, false, 0, 1
@@ -935,7 +952,7 @@ function EE.drawProp(p, g, x, w, t, rel, camZ)
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tB)))
     local s = p.ts * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
     local wob = WorldRoad._roadWobble and WorldRoad._roadWobble(p.z, t, w) or 0
-    local pxX = g.cx + wob
+    local pxX = g.cx + wob - math.floor((p.offX or 0) * s)
     local sy
     if p.side ~= 0 then
         pxX = pxX + sideX(g, w, t, p.side, iw * s * 0.5)

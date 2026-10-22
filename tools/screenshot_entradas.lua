@@ -52,7 +52,8 @@ function M.capture(entry, cv, small, font)
     local info = EE.info()
     local total = info and info.total or WorldRoad.TRAVEL_DURATION
     local strip = love.image.newImageData(M.CELL_W * M.COLS, M.CELL_H * M.ROWS)
-    local hand = love.image.newImageData(M.CROP_W * 2, M.CROP_H)
+    local hand = love.image.newImageData(M.CROP_W * 3, M.CROP_H)
+    local midDone = false
     local n = 0
     local function snap(label)
         if n >= M.COLS * M.ROWS then return end
@@ -92,12 +93,19 @@ function M.capture(entry, cv, small, font)
         local lastEnc = tr ~= nil and (tr.t + DT >= tr.duration + (tr.settle or 0) - 1e-6)
         local firstBattle = wasTraveling and not WorldRoad.isTraveling()
         local ph = Entradas.phase()
+        if not midDone and elapsed >= 0.80 * total then
+            midDone = true
+            local full = cv:newImageData()
+            local f = lastFoot or { x = M.VW / 2, y = M.VH * 0.6 }
+            cropInto(hand, full, f.x, f.y, 0)
+            full:release()
+        end
         if lastEnc and fi <= #M.FRACS + 1 then
             fi = #M.FRACS + 2
             snap(string.format("%.2fs fim da viagem (ultimo quadro do encontro)", elapsed))
             local full = cv:newImageData()
             local f = lastFoot or { x = M.VW / 2, y = M.VH * 0.6 }
-            cropInto(hand, full, f.x, f.y, 0)
+            cropInto(hand, full, f.x, f.y, M.CROP_W)
             full:release()
         elseif firstBattle then
             firstBattleAt = elapsed
@@ -105,7 +113,7 @@ function M.capture(entry, cv, small, font)
             snap(string.format("%.2fs 1o quadro da batalha (idle %d)", elapsed, lf and lf.frame or 0))
             local full = cv:newImageData()
             local f = lastFoot or { x = M.VW / 2, y = M.VH * 0.6 }
-            cropInto(hand, full, f.x, f.y, M.CROP_W)
+            cropInto(hand, full, f.x, f.y, M.CROP_W * 2)
             full:release()
         elseif firstBattleAt and afterI <= #M.AFTER and elapsed >= firstBattleAt + M.AFTER[afterI] then
             afterI = afterI + 1

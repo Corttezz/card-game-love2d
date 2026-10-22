@@ -36,8 +36,21 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   entrada pelo lado, alpha, investida com derrapada, estatua que acende, pedras que se juntam) e feito pelo motor, o clipe
   so melhora. Sem clipe o idle congela no quadro 1 na janela final (`FREEZE_WIN`) quando alcanca; senao o handoff
   continua no quadro corrente (continuidade garantida pelo `adoptHandoff`).
-- Clipes em loop (walk/charge/trot/crawl/hop/swoop) sao dirigidos por FASE (andar = distancia da camera, investida =
-  ease da derrapada), nunca por relogio solto, para terminarem exatamente no quadro final.
+- Clipes em loop (walk/charge/trot/crawl/hop/swoop) sao dirigidos por FASE (andar = ease da viagem, investida =
+  ease da derrapada), nunca por relogio solto. O laco roda nos quadros 1..n-1 e no fim segura o quadro n (= idle 0):
+  as duas convencoes convivem (frente A: 9 quadros, primeiro e ultimo = idle; frente B: 8 quadros, so o ultimo = idle).
+- `EE.END_LEAD` (0,12 s, ou 30 % do assentamento se for menor): toda fase chega a 1 esse tanto ANTES do handoff, entao o
+  ultimo quadro do clipe e de fato exibido e parado antes da troca (sem isso o quadro na tela na troca era o n-1: a
+  gargula trocava do olho roxo para o idle). O mesmo lead zera relOff/lift/deslocamento.
+- Emissivos do bilhete do encontro em `z = min(rel, 9)` (a batalha usa 9), para a luz do bicho nao mudar na troca.
+- Troll (flanco com clipe `emerge` e monte de neve na beira): quadro 0 congelado SOBRE o monte durante a viagem, emerge
+  uma vez nos primeiros 40 % do caminho e segue no idle ate o palco; nunca em loop.
+- Investida: `lead = 5` unidades (7 deixava o touro invisivel ate o 4o segundo).
+- Sombra de quem sai do chao (brotar/montar): `shadowA = 0,35 + rise` do comeco ao fim, nunca "1 na viagem e 0,35 na
+  parada" (a trava `::entradas` pegou o salto de alpha no quadro da parada em 8 criaturas). Sentinela: o passo
+  (`step`) ja vale durante a viagem (relOff = step), senao a estatua pula 0,6 unidade na parada.
+- Ancora que CRESCE (espigao do xama) nasce na crista com altura 0 e e tracada com alpha 0: a trava considera o
+  primeiro traco (qualquer alpha) como nascimento.
 
 ## Ancoras
 - Prop `kind = "anchor"` em `WorldRoad._props` criado no `begin` em `stopZ + BATTLE_REL + 0.25` (atras do bicho na
