@@ -17,22 +17,22 @@ cruzados com o que o prompt pediu. Arquivos cuja geracao saiu quase muda (media 
 | Criatura | Beat | Arquivo | Dur | Media | O que e | Veredito |
 |---|---|---|---|---|---|---|
 | cursed_scarecrow | wake | cursed_scarecrow_wake.mp3 | 1,02 s | -23,6 dB | corda estalando, estaca de madeira, palha (regerado; a 1a saiu muda) | agudo (7,5 kHz), pico em 0,44 s: estalo no meio do tremor, ok |
-| cursed_scarecrow | stop | cursed_scarecrow_stop.mp3 | 1,06 s | -20,4 dB | corpo de palha caindo na terra, corvos batendo asa | ataque em 0,09 s, cauda curta, ok |
+| cursed_scarecrow | land | cursed_scarecrow_stop.mp3 | 1,06 s | -20,4 dB | corpo de palha caindo na terra, corvos batendo asa | ataque em 0,09 s, cauda curta, ok |
 | hollow_farmer | stop | hollow_farmer_stop.mp3 | 0,81 s | -17,4 dB | forcado riscando a terra e fincando com baque | ataque seco, agudo do risco + baque, ok |
 | plague_rats | start | plague_rats_start.mp3 | 1,60 s | -18,9 dB | muitos roedores correndo e guinchando (regerado 2x; o modelo devolvia silencio com "tall grass") | agudo continuo ate 1,5 s, ok |
 | plague_rats | stop | plague_rats_stop.mp3 | 0,88 s | -16,9 dB | pilha de ratos se mexendo, guinchos | curto e agudo, ok |
-| harvest_reaper | stop | harvest_reaper_stop.mp3 | 1,48 s | -16,5 dB | foice cantando no ar, vento em trigo seco | pico tardio (1,18 s) = a lamina desce no fim, combina com o form terminando, ok |
+| harvest_reaper | form | harvest_reaper_stop.mp3 | 1,48 s | -16,5 dB | foice cantando no ar, vento em trigo seco | pico tardio (1,18 s) = a lamina desce no fim, combina com o form terminando, ok |
 | blight_bull | skid | blight_bull_skid.mp3 | 1,38 s | -16,4 dB | touro investindo e derrapando na terra, cascos, bufo | ataque em 0,14 s, corpo cheio, ok |
 | blight_bull | stop | blight_bull_stop.mp3 | 0,85 s | -18,2 dB | bufo e casco batendo | curto, ok |
 | wicker_effigy | wake | wicker_effigy_wake.mp3 | 1,96 s | -17,2 dB | vime e palha pegando fogo por dentro, crepitar, brasas | agudo (8,5 kHz) crescendo ate 1,2 s: fogo tomando, ok |
 | moon_gargoyle | wake | moon_gargoyle_wake.mp3 | 1,76 s | -16,3 dB | pedra rachando continuamente, lascas, baque no fim (regerado; a 1a era um estalo so) | cheio ate 0,95 s, ok |
-| moon_gargoyle | stop | moon_gargoyle_stop.mp3 | 0,77 s | -18,2 dB | criatura de pedra pousando, baque, pedrinhas | ataque imediato, ok |
+| moon_gargoyle | land | moon_gargoyle_stop.mp3 | 0,77 s | -18,2 dB | criatura de pedra pousando, baque, pedrinhas | ataque imediato, ok |
 | ram_cultist | stop | ram_cultist_stop.mp3 | 1,30 s | -16,6 dB | circulo runico acendendo roxo, zumbido | sustentado ate 1,1 s, ok |
 | storm_harpy | start | storm_harpy_start.mp3 | 0,98 s | -17,4 dB | trovao seco e asas mergulhando na chuva | ok |
 | storm_harpy | stop | storm_harpy_stop.mp3 | 1,21 s | -17,8 dB | asas batendo forte e pouso, rajada na grama | ok |
 | rune_golem | mid | rune_golem_mid.mp3 | 1,23 s | -19,7 dB | pedras rolando pela colina | grave-medio continuo, ok |
 | rune_golem | stop | rune_golem_stop.mp3 | 2,00 s | -16,4 dB | pedras batendo e se empilhando, baque, poeira | ok (sem a runa acendendo: fica para o fallback visual) |
-| spectral_knight | stop | spectral_knight_stop.mp3 | 0,58 s | -18,8 dB | armadura fantasma assentando, clank abafado com reverb | curto, aceitavel para uma parada |
+| spectral_knight | form | spectral_knight_stop.mp3 | 0,58 s | -18,8 dB | armadura fantasma assentando, clank abafado com reverb | curto, aceitavel para uma parada |
 | storm_griffin | start | storm_griffin_start.mp3 | 1,12 s | -16,5 dB | asas enormes passando baixo, trovao distante | grave (176 Hz), ok |
 | storm_griffin | stop | storm_griffin_stop.mp3 | 1,50 s | -16,4 dB | pouso pesado com trovao, asas dobrando | grave, ataque imediato, ok |
 | ember_imp | rise | ember_imp_rise.mp3 | 1,13 s | -17,1 dB | rachadura incandescente abrindo, jato de brasas | inicio em 0,37 s (sobe com o bicho), ok |
@@ -43,8 +43,8 @@ cruzados com o que o prompt pediu. Arquivos cuja geracao saiu quase muda (media 
 | obsidian_sentinel | stop | obsidian_sentinel_stop.mp3 | 0,55 s | -17,6 dB | um passo de pedra e metal | curto, ok |
 | pit_brute | rise | pit_brute_rise.mp3 | 1,85 s | -23,3 dB | pedras e cascalho caindo, maos raspando rocha, respiracao (regerado) | continuo ate 1,6 s, um pouco baixo, aceitavel |
 | pit_brute | stop | pit_brute_stop.mp3 | 0,50 s | -17,9 dB | corpo pesado caindo na rocha, grunhido | curto, ok |
-| abyss_watcher | stop | abyss_watcher_stop.mp3 | 1,93 s | -16,4 dB | zumbido grave de entidade flutuante, drone | grave (128 Hz) 1,6 s; ideal seria no inicio do form (hook pedido ao lead) |
-| frost_wight | stop | frost_wight_stop.mp3 | 1,60 s | -17,0 dB | vento artico condensando, gelo estalando | pico em 0,95 s, ok |
+| abyss_watcher | form | abyss_watcher_stop.mp3 | 1,93 s | -16,4 dB | zumbido grave de entidade flutuante, drone | grave (128 Hz) 1,6 s; ideal seria no inicio do form (hook pedido ao lead) |
+| frost_wight | form | frost_wight_stop.mp3 | 1,60 s | -17,0 dB | vento artico condensando, gelo estalando | pico em 0,95 s, ok |
 | frost_wolf | start | frost_wolf_start.mp3 | 1,15 s | -18,8 dB | lobo trotando na neve, galhos soltando neve | agudo (neve), ok |
 | frost_wolf | stop | frost_wolf_stop.mp3 | 1,81 s | -16,4 dB | um uivo longo na nevasca | grave-medio (493 Hz) sustentado, ok |
 | rime_shaman | stop | rime_shaman_stop.mp3 | 1,26 s | -22,3 dB | cajado fincado na neve, espigao de gelo crescendo | agudo crescente, ok |
@@ -61,7 +61,7 @@ cruzados com o que o prompt pediu. Arquivos cuja geracao saiu quase muda (media 
 | croc_warrior | start | croc_warrior_start.mp3 | 1,55 s | -19,3 dB | crocodilo saindo da agua, respingo, agua escorrendo | ok |
 | croc_warrior | stop | croc_warrior_stop.mp3 | 1,36 s | -16,4 dB | silvo e rosnado de crocodilo, corpo se arrastando | ok |
 | spore_mother | rise | spore_mother_rise.mp3 | 1,87 s | -17,6 dB | cogumelo inchando com rangidos e abrindo com estalo umido, esporos (regerado) | cheio ate 1,67 s, ok |
-| dusk_shade | stop | dusk_shade_stop.mp3 | 1,28 s | -17,2 dB | sombra condensando, sopro frio, chiado | ok |
+| dusk_shade | form | dusk_shade_stop.mp3 | 1,28 s | -17,2 dB | sombra condensando, sopro frio, chiado | ok |
 | dusk_bat | stop | dusk_bat_stop.mp3 | 0,85 s | -16,5 dB | morcego gigante pairando, asas de couro (regerado) | grave (123 Hz) de batida de asa, ok |
 | grave_thrall | rise | grave_thrall_rise.mp3 | 1,40 s | -26,1 dB | terra de cova quebrando, garras, torroes caindo (regerado) | agudo; media baixa por pico unico, aceitavel |
 | blood_duke | stop | blood_duke_stop.mp3 | 1,00 s | -20,5 dB | enxame de morcegos fechando em um corpo, floreio de capa | agudo (9 kHz) de asas, ok |
@@ -75,6 +75,6 @@ regerar 8 fracas; a API fechou em 961 creditos gastos (contador atualiza com atr
 pitch por criatura) ficou pronto como plano B (`python tools/gen_entrance_sfx.py layer <id_beat>`), nao foi usado.
 
 ## Pendente
-- Hook `form` no `K.condensar` (pedido ao lead) para o zumbido do vigia, a nevoa do ceifador, o vento do espectro,
-  o clank do cavaleiro e o sopro da sombra comecarem com a condensacao, nao no fim dela.
+- (feito em 56bb1837 + este commit) `form` no `K.condensar`: vigia, ceifador, espectro, cavaleiro e sombra agora soam
+  no inicio da condensacao; espantalho e gargula ganharam `land` (corpo no chao) entre `wake` e `stop`.
 - Licenca: tudo no plano FREE do ElevenLabs (sem uso comercial), igual aos outros SFX; regerar antes de vender.

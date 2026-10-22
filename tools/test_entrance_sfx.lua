@@ -10,9 +10,9 @@ M.BEATS = {
     andar = { stop = true, step = "steps" },
     investida = { skid = true, stop = true },
     brotar = { rise = true, stop = true },
-    acordar = { wake = true, stop = true },
+    acordar = { wake = true, land = "anchor", stop = true },
     mergulho = { start = true, stop = true },
-    condensar = { start = "swarm", stop = true },
+    condensar = { start = true, form = true, stop = true },
     flanco = { start = true, stop = true, hop = "hops" },
     montar = { mid = true, stop = true },
 }
@@ -88,7 +88,9 @@ function M.run()
                         t:eq(r.id .. ": som proprio vem primeiro em '" .. mark .. "'", i, 1)
                         t:truthy(r.id .. ": arquivo " .. base .. ".mp3 existe", files[base] ~= nil)
                         t:truthy(r.id .. ": arquivo " .. base .. " e desta criatura", base:sub(1, #r.id + 1) == r.id .. "_")
-                        t:eq(r.id .. ": arquivo " .. base .. " e do beat", base:sub(#r.id + 2), mark)
+                        local fileBeat = base:sub(#r.id + 2)
+                        t:truthy(r.id .. ": arquivo " .. base .. " e do beat " .. mark,
+                            fileBeat == mark or (mark == "land" and fileBeat == "stop") or (mark == "form" and fileBeat == "stop"))
                         files[base] = true
                     else
                         fallback = true
@@ -99,6 +101,9 @@ function M.run()
                 t:truthy(r.id .. ": '" .. mark .. "' tem fallback generico", fallback)
             end
             t:truthy(r.id .. ": ao menos um som proprio", own >= 1)
+            if spec.kind == "condensar" and spec.sfx then
+                t:falsy(r.id .. ": start e form nao coincidem (som dobrado)", spec.sfx.start and spec.sfx.form and not spec.swarm)
+            end
         end
     end
 

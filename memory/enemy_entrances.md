@@ -118,8 +118,10 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   fica atras como fallback (`playFirst` toca o primeiro que `Sfx.has`). Tool sem boot do main.lua cai no generico.
 - Beat tem de EXISTIR no motor para o tipo: andar stop/step, investida skid/stop, brotar rise/stop, acordar wake/stop,
   mergulho start/stop, condensar start(so swarm)/stop, flanco start/stop/hop, montar mid/stop. O scarecrow tinha `flock`,
-  que nenhum lugar dispara (corvos nunca tocavam): removido. Falta um beat `form` no inicio da condensacao (pedido ao lead);
-  ate la os 5 condensar tocam o proprio no `stop`.
+  que nenhum lugar dispara (corvos nunca tocavam): removido. Desde 56bb1837 o motor dispara `form` (condensar, em u1, quando
+  o corpo comeca a aparecer; `start` tambem dispara ai para quem nao tem enxame, entao so UM dos dois por criatura) e `land`
+  (espantalho e gargula, 50 % do assentamento, corpo no chao): ceifador/cavaleiro espectral/vigia/espectro/sombra usam
+  `form`; espantalho = wake (corda) → land (corpo na terra) → stop (crowFlock); gargula = wake → land (baque) → stop.
 - Pos-processo (`tools/gen_entrance_sfx.py`: `balance`, `gen`, `post`, `layer`, `measure`, `report`): corte de silencio,
   media -16 dB com limitador -1,5 dB, reencode se o pico passar de -0,6 dB (mp3 estoura o limitador). Geracao quase muda
   (media crua < -30 dB) = prompt "close up / continuous" e regerar; "tall grass" devolveu silencio 2x.
