@@ -155,7 +155,7 @@ E.BY_ID = {
         anchor = { name = "shadepool", at = "stage" },
         fx = { stop = { "dark" } },
         sfx = { form = { "entrance_dusk_shade_stop", "impactDark" } } },
-    dusk_bat = { kind = "mergulho", clips = { "swoop" }, extra = 0.5, settle = 0.5, zigzag = true,
+    dusk_bat = { kind = "mergulho", clips = { "swoop", "land" }, chain = true, swoopLoop = true, extra = 0.5, settle = 0.5, zigzag = true,
         fx = {},
         sfx = { stop = { "entrance_dusk_bat_stop", "bossWingPass", "sceneRustle" } } },
     grave_thrall = { kind = "brotar", clips = { "emerge" }, extra = 1.5, settle = 1.5,
