@@ -128,3 +128,7 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
 - Trava `test_entrance_sfx`: toda criatura com som proprio, arquivo da criatura e do beat, 1o da lista, fallback conhecido
   (SOUNDS/CrowSfx/main.lua), beat disparado pelo tipo, mp3 decodifica, 0,35 a 3 s, media -28 a -9 dB, pico < 1,0.
   Notas por arquivo em `tools/preview_out/entradas_som/LEIA.md` (veredito por envelope/centroide, sem escuta real).
+- Rodada 2 (dono: "altos demais", touro/cao "parecem carro manobrando"): arquivos 6 dB abaixo (media -22 dB, pico
+  <= -6,6 dB; trava -36..-15 dB e pico <= 0,5), ganho por categoria do motor neutro. Touro e cao regerados como cascos/patas
+  em terra seca ("animal only, no vehicles, no rubber"). Detector de "cara de maquina": `gen_entrance_sfx.py tonal` (flatness
+  espectral < 0,02 = tom sustentado de motor/rotor/turbina); grifo start, morcego e sentinela wake regerados por isso.

@@ -8,8 +8,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "audio", "sfx", "entrances")
 RAW_DIR = os.environ.get("ENTRANCE_RAW_DIR") or os.path.join(ROOT, "tools", "preview_out", "entradas_som", "raw")
 API = "https://api.elevenlabs.io/v1/sound-generation"
-TARGET_MEAN_DB = -16.0
-PEAK_CEIL_DB = -1.0
+TARGET_MEAN_DB = -22.0
+PEAK_CEIL_DB = -7.0
 
 GEN = {
     "wicker_effigy_wake": (2.0, "dry wicker and straw figure catching fire from inside, whoosh of flames taking hold, crackling twigs, embers popping, night field"),
@@ -19,10 +19,10 @@ GEN = {
     "spore_mother_rise": (2.0, "giant wet mushroom cap slowly swelling with stretching creaks, then splitting open with a wet tearing pop and a long hiss of spores"),
     "fallen_angel_stop": (2.2, "large feathered wings folding with a soft heavy whump, feathers fluttering down, faint deep holy resonance tail"),
     "harvest_reaper_stop": (1.6, "long scythe blade singing through cold air, metallic ring swinging down, dark whisper of wind in dry wheat"),
-    "blight_bull_skid": (1.8, "massive bull charging and skidding to a halt on dirt road, heavy hooves, gravel sliding, loud snort"),
+    "blight_bull_skid": (1.8, "heavy bull hooves pounding dry dirt at a gallop, four thudding hoofbeats getting closer, then hooves sliding in loose soil and gravel to a stop with a dust puff and a loud snort, animal only, no vehicles, no rubber"),
     "rune_golem_stop": (2.0, "heavy boulders slamming and grinding together into a stack, stone on stone, deep thud, dust settling"),
     "spectral_knight_stop": (1.6, "ghostly plate armor stepping and settling, muffled hollow metal clank with eerie reverb, cold fog"),
-    "obsidian_sentinel_wake": (1.8, "volcanic glass statue awakening, stone grinding, metal joints creaking, one heavy stone footstep, deep thud"),
+    "obsidian_sentinel_wake": (1.8, "close up continuous dry rock grating and cracking for one second as a big stone statue shifts, gravel trickling, then one heavy stone footstep thud, natural rock only, no machinery"),
     "pit_brute_rise": (2.0, "continuous rocks and gravel tumbling as something huge hauls itself over a rocky ledge, hands scraping stone, heavy breathing, cavern echo"),
     "glacier_knight_step": (1.0, "single very heavy iron armored footstep on hard ice, frost crunch, metal plates clank, low thud"),
     "frost_troll_start": (1.8, "snow mound bursting open as a huge troll breaks out, snow explosion, ice chunks tumbling, deep rumble"),
@@ -37,7 +37,7 @@ GEN = {
     "ram_cultist_stop": (1.4, "arcane rune circle igniting with purple energy, low magical hum, robes settling on hill grass"),
     "storm_harpy_stop": (1.6, "large bird of prey wings flapping hard then landing, gust of wind through grass, rain"),
     "ember_imp_rise": (1.4, "fiery crack in the ground bursting open, jet of embers, small creature leaping out, cinders"),
-    "hellhound_skid": (1.6, "large hound skidding to a halt on volcanic rock, claws scraping, embers hissing, deep growl"),
+    "hellhound_skid": (1.6, "big heavy paws of a huge dog pounding dry dirt at a run, then paws sliding in loose soil to a stop with a dust skid and a deep chest growl, animal only, no vehicles, no squeal"),
     "abyss_acolyte_stop": (1.4, "dark sigil igniting on cavern floor, low eerie hum, pages of a floating book fluttering"),
     "frost_wight_stop": (1.6, "howling arctic wind condensing with icy crackle, frost forming, ghostly whoosh"),
     "frost_wolf_start": (1.6, "large wolf trotting through deep snow toward the road, paws crunching, snow falling from branches"),
@@ -46,7 +46,7 @@ GEN = {
     "plague_toad_stop": (1.2, "giant toad landing in swamp puddle with a big wet splash, mud slap"),
     "leech_horror_rise": (1.8, "slimy mass gushing out of a stagnant pool, wet suction, slime dripping, bubbles"),
     "dusk_shade_stop": (1.6, "shadow condensing from the ground with a cold airy whoosh, flickering dark hiss"),
-    "dusk_bat_stop": (1.2, "giant bat hovering in place, continuous fast leathery wing beats, close up, twilight field"),
+    "dusk_bat_stop": (1.2, "giant bat flapping leathery wings, distinct separate soft wing flaps, cloth-like flutter, small high squeak, no helicopter, no motor"),
     "grave_thrall_rise": (1.8, "continuous packed grave soil breaking and crumbling, claws scraping dirt, clods of earth falling, body dragging out, low groan"),
     "cursed_scarecrow_stop": (1.4, "straw stuffed body dropping onto a dirt road with a wooden clatter, straw scattering, several crows flapping away"),
     "plague_rats_stop": (1.0, "pile of rats squirming together, many squeaks, tiny claws scratching"),
@@ -56,7 +56,7 @@ GEN = {
     "pit_brute_stop": (1.2, "huge heavy body landing on cavern rock, rubble scattering, deep chest grunt"),
     "moon_gargoyle_stop": (1.0, "stone creature landing on hard ground, heavy stone thud, pebbles scattering"),
     "obsidian_sentinel_stop": (1.0, "single massive stone and metal footstep on volcanic rock, deep impact, gravel"),
-    "storm_griffin_start": (1.5, "huge feathered wings swooping low overhead, powerful whoosh, distant thunder rumble, rain"),
+    "storm_griffin_start": (1.5, "huge bird wings beating twice overhead, feathered flaps and air whoosh, rain falling, natural thunder rolling in the distance, no jet, no engine"),
     "storm_harpy_start": (1.5, "sharp thunder crack then large wings diving fast through rain, whoosh"),
     "fallen_angel_start": (2.0, "column of warm light opening from the sky, deep resonant tonal shimmer like a distant organ, no vocals, air pressure"),
     "frost_troll_stop": (1.2, "massive foot stomping onto a frozen road, snow crunch, deep rough grunt"),
@@ -170,10 +170,10 @@ def finish(src, name, maxdur=None):
     out = os.path.join(OUT_DIR, name + ".mp3")
     for _ in range(4):
         subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", tmp, "-af",
-                        "volume=%.2fdB,alimiter=limit=0.84:attack=4:release=60:level=0" % gain,
+                        "volume=%.2fdB,alimiter=limit=0.42:attack=4:release=60:level=0" % gain,
                         "-codec:a", "libmp3lame", "-b:a", "128k", out], check=True)
         m2, p2 = volume(out)
-        if p2 is not None and p2 <= -0.6:
+        if p2 is not None and p2 <= PEAK_CEIL_DB + 0.4:
             break
         gain -= 1.5
     os.remove(tmp)
@@ -239,6 +239,47 @@ def envelope(path):
     return onset, tpeak, tail, cen
 
 
+def tonal(names):
+    print("%-28s %6s %6s %6s %6s" % ("arquivo", "flatMd", "tonal%", "entrMd", "cenCV"))
+    rows = []
+    for n in names:
+        path = os.path.join(OUT_DIR, n + ".mp3")
+        out = subprocess.run(["ffmpeg", "-hide_banner", "-i", path, "-af",
+                              "astats=metadata=1:reset=1:length=0.05,aspectralstats=win_size=2048:measure=flatness+entropy+centroid,ametadata=mode=print:file=-",
+                              "-f", "null", "-"], capture_output=True, text=True).stdout
+        frames, cur = [], {}
+        for line in out.splitlines():
+            if line.startswith("frame:"):
+                if cur:
+                    frames.append(cur)
+                cur = {}
+            elif "Overall.RMS_level=" in line:
+                v = line.split("=")[1]
+                cur["rms"] = float(v) if v not in ("-inf", "inf", "nan") else -99.0
+            elif "1.flatness=" in line:
+                cur["f"] = float(line.split("=")[1])
+            elif "1.entropy=" in line:
+                cur["e"] = float(line.split("=")[1])
+            elif "1.centroid=" in line:
+                cur["c"] = float(line.split("=")[1])
+        if cur:
+            frames.append(cur)
+        top = max((f.get("rms", -99) for f in frames), default=-99)
+        loud = [f for f in frames if f.get("rms", -99) >= top - 18 and "f" in f]
+        if not loud:
+            continue
+        fl = sorted(f["f"] for f in loud)
+        en = sorted(f.get("e", 0) for f in loud)
+        cs = [f.get("c", 0) for f in loud]
+        mean_c = sum(cs) / len(cs)
+        cv = (sum((c - mean_c) ** 2 for c in cs) / len(cs)) ** 0.5 / max(1.0, mean_c)
+        tonal_frac = sum(1 for f in loud if f["f"] < 0.02) / len(loud)
+        rows.append((n, fl[len(fl) // 2], tonal_frac, en[len(en) // 2], cv))
+    rows.sort(key=lambda r: (-r[2], r[1]))
+    for n, fm, tf, em, cv in rows:
+        print("%-28s %6.3f %6.0f %6.3f %6.2f" % (n, fm, tf * 100, em, cv))
+
+
 def report(names):
     print("%-28s %5s %6s %6s | %5s %6s %6s | %5s %5s %5s %6s" % ("arquivo", "raw_s", "rawMn", "rawPk", "out_s", "mean", "peak", "onset", "pico", "cauda", "centr"))
     for n in names:
@@ -272,6 +313,8 @@ def main(argv):
             layer(n)
     elif cmd == "measure":
         measure()
+    elif cmd == "tonal":
+        tonal(argv[2:] or sorted(f[:-4] for f in os.listdir(OUT_DIR) if f.endswith(".mp3")))
     elif cmd == "report":
         report(argv[2:] or sorted(f[:-4] for f in os.listdir(OUT_DIR) if f.endswith(".mp3")))
     else:

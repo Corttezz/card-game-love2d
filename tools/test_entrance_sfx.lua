@@ -2,8 +2,8 @@ local TK = require("tools.testkit")
 
 local M = {}
 
-M.MEAN_DB = { -28, -9 }
-M.PEAK_MAX = 1.0
+M.MEAN_DB = { -36, -15 }
+M.PEAK_MAX = 0.5
 M.DUR = { 0.35, 3.0 }
 
 M.BEATS = {
@@ -121,7 +121,7 @@ function M.run()
         if m then
             t:truthy(string.format("%s: duracao %.2fs em [%.2f, %.2f]", base, m.dur, M.DUR[1], M.DUR[2]),
                 m.dur >= M.DUR[1] and m.dur <= M.DUR[2])
-            t:truthy(string.format("%s: volume medio %.1f dB na faixa dos corvos [%d, %d]", base, m.db, M.MEAN_DB[1], M.MEAN_DB[2]),
+            t:truthy(string.format("%s: volume medio %.1f dB 6 dB abaixo dos corvos [%d, %d]", base, m.db, M.MEAN_DB[1], M.MEAN_DB[2]),
                 m.db >= M.MEAN_DB[1] and m.db <= M.MEAN_DB[2])
             t:truthy(string.format("%s: pico %.3f sem clipping", base, m.peak), m.peak <= M.PEAK_MAX)
             if m.db < worst.db then worst = m end
