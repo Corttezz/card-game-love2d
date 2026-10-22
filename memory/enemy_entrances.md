@@ -138,7 +138,10 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
     sempre que o painter a desenharia depois (bicho atras dela andando); o painter pula (`p._early`). A ancora de palco e
     POSICIONADA no z do corpo (`stopZ + BATTLE_REL`), o +0,25 so ordena: com o +0,25 a borda da frente subia acima dos pes
     (pes "cortados" do bruto, da sanguessuga, pes "afundados" do ceifador). A metade da frente comeca na linha do chao e
-    so cobre os 2 px do `FOOT_SINK`.
+    so cobre os 2 px do `FOOT_SINK`. Ordenacao: a ancora de palco (straddle) fica em `stopZ + BATTLE_REL +- EE.STRADDLE_DZ`
+    (0,01), principal logo atras e frente logo na frente do corpo, entao um poste MAIS PERTO sempre a cobre (com 0,5 a
+    frente do sigilo passava por cima do pe do poste: `test_poste_profundidade` ato 3, 3,9 %); na batalha a principal vai
+    sempre para a lista `behind` e a frente para a `front` do `_enemyDraw`.
   - Trava por PIXEL (`M.flatOcclusion`): a cada 4 quadros da chegada e 6 da batalha, 4 capturas da cena (com ancora, corpo
     magenta, corpo verde, sem ancora; relogio congelado); mascara do corpo = onde magenta e verde diferem (corpo opaco,
     erodido 1 px); falha se a ancora muda QUALQUER pixel do corpo acima da linha do chao - 2 px. Amostras com corpo

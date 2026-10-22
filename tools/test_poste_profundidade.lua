@@ -48,7 +48,7 @@ function M.check(act, stage)
     local run = game.runManager.currentRun
     run.actNumber, run.floorInAct, run.currentNode = act, 3, { type = "battle" }
     local WALKERS = { "hollow_farmer", "ram_cultist", "abyss_acolyte", "rime_shaman", "mire_hag", "dullahan" }
-    local spriteId = (stage == "chegada") and WALKERS[act] or EnemyRenderer.resolveSpriteId(act, "battle")
+    local spriteId = WALKERS[act]
     game.enemy = EnemyRoster.spawn(Enemy, spriteId, ActSystem.getEnemyStats(act, 3, "battle"))
     _G.game = game
     local topBar = TopBar:new()
@@ -80,7 +80,10 @@ function M.check(act, stage)
         while WorldRoad.isTraveling() and i < 2000 do
             WorldRoad.update(DT); EnemyRenderer.update(DT); i = i + 1
         end
+        local EE = require("src.ui.EnemyEntrance")
         for _ = 1, 90 do WorldRoad.update(DT); EnemyRenderer.update(DT) end
+        local j = 0
+        while EE.isActive() and j < 600 do WorldRoad.update(DT); EnemyRenderer.update(DT); j = j + 1 end
         enemyZ = WorldRoad._camZ + WorldRoad.BATTLE_REL
     end
     local bid = ({ "fields", "highlands", "abyss", "frost", "marsh", "dusk" })[act]

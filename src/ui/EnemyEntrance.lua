@@ -821,6 +821,8 @@ function EE.clearCache()
     ratImg = nil
 end
 
+EE.STRADDLE_DZ = 0.01
+
 local function spawnAnchor(S, opts)
     local anc = S.spec.anchor
     if not anc or anc.veil then return end
@@ -841,9 +843,10 @@ local function spawnAnchor(S, opts)
     WorldRoad._props[#WorldRoad._props + 1] = p
     if p.side == 0 and p.back == 0 then
         p.straddle = true
+        p.z = opts.stopZ + WorldRoad.BATTLE_REL + EE.STRADDLE_DZ
         WorldRoad._uid = WorldRoad._uid + 1
         local pf = { kind = "anchor", anchor = true, front = true, ref = p, bid = opts.bid, side = 0, lane = 0,
-            variant = 0, big = 1, jitter = 0, uid = WorldRoad._uid, z = p.z - 0.5 }
+            variant = 0, big = 1, jitter = 0, uid = WorldRoad._uid, z = opts.stopZ + WorldRoad.BATTLE_REL - EE.STRADDLE_DZ }
         S.anchorFront = pf
         WorldRoad._props[#WorldRoad._props + 1] = pf
     end
@@ -1592,9 +1595,9 @@ function EE.update(dt, tr)
     local p = S.anchorProp
     if p then
         local WorldRoad = require("src.ui.WorldRoad")
-        p.z = p.stopZ + WorldRoad.BATTLE_REL + 0.25 + (p.back or 0)
+        p.z = p.stopZ + WorldRoad.BATTLE_REL + (p.straddle and EE.STRADDLE_DZ or (0.25 + (p.back or 0)))
         local pf = S.anchorFront
-        if pf then pf.z = p.z - 0.5 end
+        if pf then pf.z = p.stopZ + WorldRoad.BATTLE_REL - EE.STRADDLE_DZ end
         local present, presentF = false, pf == nil
         for i = 1, #WorldRoad._props do
             local q = WorldRoad._props[i]

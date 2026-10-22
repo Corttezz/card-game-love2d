@@ -4730,13 +4730,13 @@ local function drawProps(g, x, w, camZ)
         for _, p in ipairs(farPass) do
             local pt = g.tOf(p.z - camZ)
             local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
-            if py >= baseY - 2 then front[#front + 1] = p
+            if (py >= baseY - 2 and not (p.anchor and not p.front)) or (p.anchor and p.front) then front[#front + 1] = p
             else behind[#behind + 1] = p end
         end
         for _, p in ipairs(nearPass) do
             local pt = g.tOf(p.z - camZ)
             local py = pt and pt >= 0 and g.latY(0, pt) or -1e9
-            if py >= baseY - 2 then front[#front + 1] = p
+            if (py >= baseY - 2 and not (p.anchor and not p.front)) or (p.anchor and p.front) then front[#front + 1] = p
             else behind[#behind + 1] = p end
         end
         if require("src.core.Release").isDev() and os.getenv("GF_DEBUG") then
