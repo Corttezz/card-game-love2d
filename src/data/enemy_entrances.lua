@@ -145,7 +145,7 @@ E.BY_ID = {
     croc_warrior = { kind = "flanco", clips = { "crawl" }, extra = 1.5, settle = 1.5, side = "right",
         fx = { start = { "splash" }, stop = { "splash" } },
         sfx = { start = { "entrance_croc_warrior_start", "impactPoison" }, stop = { "entrance_croc_warrior_stop", "enemyBuffRoar" } } },
-    spore_mother = { kind = "brotar", clips = { "emerge" }, extra = 4, settle = 3,
+    spore_mother = { kind = "brotar", clips = { "emerge", "spread" }, chain = true, extra = 4, settle = 3,
         marquee = { hit = "rise", burst = "spores", tint = { 0.6, 0.9, 0.4 } },
         anchor = { name = "mushrooms", at = "stage" },
         fx = { rise = { "spores" }, stop = { "spores" } },
