@@ -97,7 +97,8 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
     parado longe, rajada no meio (pico 3x a media), parado no fim. Andar: posicao ease-out quad (comeca andando, freia).
     Investida: velocidade constante e os ultimos 0,3 s (`SKID`) derrapando com as pernas paradas, poeira a cada 0,05 s
     e um estica-agacha (cabecada) no `stop`. Flanco: ciclos = `flankDist` (4) / passada sobre a posicao eased.
-  - Ratos: 10 ratos (recorte `RAT_QUAD` do quadro 0 do `form`, escala do bicho, cor do grade) correm das bordas da tela
+  - Ratos: 10 ratos (clipe `rat_run` da frente de arte, quadro pela distancia corrida, passada 1,2 x largura do rato;
+    reserva = recorte `RAT_QUAD` do `form` com anca arredondada) correm das bordas da tela
     em arco ate pontos do monte, escalonados entre `dur-2,7` e `u1+0,3`, cada um cutuca a grama ao passar; somem com o
     alpha do monte. Emissivo dos olhos dos ratos removido de `enemy_emissives` (era o "brilho quadriculado").
   - Ceifador: a nevoa virou ancora de palco (`mist = true`, abraca os pes): engrossa com a aproximacao (`mistThick`),

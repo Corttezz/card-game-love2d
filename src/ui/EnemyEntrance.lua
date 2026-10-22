@@ -1116,7 +1116,7 @@ function EE.endsWithLanding()
 end
 
 EE.RATS = 10
-EE.RAT_RUN = 1.0
+EE.RAT_RUN = 1.3
 EE.RAT_QUAD = { 4, 58, 42, 38 }
 EE.RAT_RUMP = { cx = 33, cy = 19, rx = 9, ry = 15 }
 
@@ -1155,11 +1155,18 @@ function EE.ratImage(id)
     return ratImg or nil
 end
 
+EE.RAT_STRIDE_K = 1.2
+
 function EE.drawRats(S, e, g, w, cx, sy, s, t)
-    local src = EE.ratImage(S.id)
-    if not src then return end
+    if S.ratRun == nil then
+        S.ratRun = SpriteAnimation.exists(S.id, "rat_run", "south")
+            and SpriteAnimation.new(S.id, "rat_run", "south", 10, { loop = true }) or false
+    end
+    local run = S.ratRun
+    local src = (not run) and EE.ratImage(S.id) or nil
+    if not run and not src then return end
     local Grade = require("engine.SceneGrade")
-    local q = EE.RAT_QUAD
+    local q = run and { 0, 0, run.frames[1]:getWidth(), run.frames[1]:getHeight() } or EE.RAT_QUAD
     local c = Grade.color("enemy", t, tmpColor)
     local n = S.red and 4 or EE.RATS
     local span = math.max(0.1, (S.swarmT1 or S.dur) - S.swarmT0 - EE.RAT_RUN)
@@ -1178,9 +1185,17 @@ function EE.drawRats(S, e, g, w, cx, sy, s, t)
             local arc = math.sin(k * math.pi) * (((i * 0.53) % 1) - 0.5) * e.ih * s * 0.18
             local hop = (k < 1) and math.abs(math.sin(k * math.pi * 7)) * 2.5 * s or 0
             local py = sy + ((i * 0.29) % 1 - 0.5) * 22 * s + arc - hop
-            local face = -sd
+            local face = run and sd * -1 or -sd
+            local img = src
+            if run then
+                local nf = #run.frames
+                local runPx = math.abs(x1 - x0) * ke
+                local cyc = runPx / math.max(1, EE.RAT_STRIDE_K * q[3] * s)
+                img = (k < 1) and run.frames[1 + math.floor(cyc * nf) % nf] or run.frames[1]
+                face = (sd < 0) and 1 or -1
+            end
             love.graphics.setColor(c[1], c[2], c[3], fade)
-            love.graphics.draw(src, math.floor(px), math.floor(py), 0, s * face, s, q[3] / 2, q[4])
+            love.graphics.draw(img, math.floor(px), math.floor(py), 0, s * face, s, q[3] / 2, q[4])
             if k > 0.35 and not S.ratPoke[i] and S.footX then
                 S.ratPoke[i] = true
                 local r = require("src.ui.WorldRoad")._lastRect

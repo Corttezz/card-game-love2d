@@ -30,7 +30,7 @@ E.BY_ID = {
         fx = { stop = { "dust", "shake1" } },
         sfx = { stop = { "entrance_hollow_farmer_stop", "sceneStoneThud" } } },
     plague_rats = { kind = "condensar", clips = { "form" }, extra = 3, settle = 1.5,
-        swarm = "rats", swarmLead = 2.7,
+        swarm = "rats", swarmLead = 3.0,
         fx = { start = { "grass" }, stop = { "dust" } },
         sfx = { start = { "entrance_plague_rats_start", "sceneRustle" }, stop = { "entrance_plague_rats_stop", "sceneRustle" } } },
     harvest_reaper = { kind = "condensar", clips = { "form" }, extra = 1.5, settle = 1,
