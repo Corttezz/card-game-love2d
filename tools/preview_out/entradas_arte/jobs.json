@@ -27,7 +27,7 @@
     "drift": 0.01
   },
   "hollow_farmer/walk": {
-    "status": "ok",
+    "status": "stages",
     "job_id": "d616ad1b-d427-428c-b380-921c8a3b2595",
     "tries": [
       {
@@ -35,6 +35,12 @@
         "drift": 0.002,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\hollow_farmer_walk_t1"
+      },
+      {
+        "stages": true,
+        "drift": 0.002,
+        "problems": [],
+        "prev": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\hollow_farmer_walk_t2"
       }
     ],
     "drift": 0.002
