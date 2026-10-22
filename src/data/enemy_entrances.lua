@@ -71,9 +71,9 @@ E.BY_ID = {
         lantern = { 1.0, 0.85, 0.5 },
         fx = { stop = { "light" } },
         sfx = { form = { "entrance_spectral_knight_stop", "sceneStoneThud" } } },
-    storm_griffin = { kind = "mergulho", clips = { "swoop", "land" }, extra = 4, settle = 2, bounce = true,
+    storm_griffin = { kind = "mergulho", clips = { "swoop", "land", "rear" }, chain = true, extra = 4, settle = 2, bounce = true,
         passes = 2,
-        marquee = { hit = "stop", burst = "dust", tint = { 0.75, 0.85, 1.0 } },
+        marquee = { hit = "touch", burst = "dust", tint = { 0.75, 0.85, 1.0 } },
         fx = { start = { "lightning", "rain" }, stop = { "gust", "dust", "shake2" } },
         sfx = { start = { "entrance_storm_griffin_start", "impactLightning" }, stop = { "entrance_storm_griffin_stop", "bossLandImpact", "sceneStoneThud" } } },
 
