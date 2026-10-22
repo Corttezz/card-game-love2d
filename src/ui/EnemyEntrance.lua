@@ -102,13 +102,24 @@ function View:draw(x, y, s, tint)
         love.graphics.setColor(S.tintK, S.tintK, S.tintK, a)
     end
     local iw, ih = img:getWidth(), img:getHeight()
+    local sx, sy = s, s
+    if S.squash ~= 0 then
+        local q = S.squash * 0.35
+        sx, sy = s * (1 + q), s * (1 - q)
+        x = x - iw * s * q * 0.5
+        y = y + ih * s * q
+    end
+    if S.crouch ~= 0 then
+        sy = sy * (1 - S.crouch)
+        y = y + ih * s * S.crouch
+    end
     if S.riseK < 1 then
         local vh = math.max(1, math.floor(ih * S.riseK + 0.5))
         quad = quad or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
         quad:setViewport(0, 0, iw, vh, iw, ih)
-        love.graphics.draw(img, quad, math.floor(x), math.floor(y + (ih - vh) * s), 0, s, s)
+        love.graphics.draw(img, quad, math.floor(x), math.floor(y + (ih - vh) * sy), 0, sx, sy)
     else
-        love.graphics.draw(img, math.floor(x), math.floor(y), 0, s, s)
+        love.graphics.draw(img, math.floor(x), math.floor(y), 0, sx, sy)
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -227,9 +238,68 @@ local function burst(name, k)
     })
 end
 
+local wx = { rain = 0, blizzard = 0, ff = 0, dim = 0 }
+local wxTgt = { rain = 0, blizzard = 0, ff = 0, dim = 0 }
+local wxAmb = { 1, 1, 1 }
+local wxLast = nil
+EE.WX_RATE = 1 / 0.7
+EE.WX_RAIN = 0.5
+EE.WX_DIM = 0.45
+
+local function wxTick(dt)
+    local any = false
+    for k, v in pairs(wx) do
+        local t = wxTgt[k]
+        if v < t then v = math.min(t, v + dt * EE.WX_RATE)
+        elseif v > t then v = math.max(t, v - dt * EE.WX_RATE) end
+        wx[k] = v
+        if v > 0 then any = true end
+    end
+    local WeatherEngine = require("engine.WeatherEngine")
+    local boost = math.max(wx.rain, wx.blizzard)
+    if boost > 0 then
+        WeatherEngine.setIntensityOverride(nil)
+        local base = WeatherEngine.intensity()
+        WeatherEngine.setIntensityOverride(math.min(1, base + EE.WX_RAIN * boost))
+    elseif wxLast and wxLast > 0 then
+        WeatherEngine.setIntensityOverride(nil)
+    end
+    wxLast = boost
+    WeatherEngine.ffMute = wx.ff
+    return any
+end
+
+function EE.wxSet(name, v)
+    if wxTgt[name] == nil then return end
+    wxTgt[name] = v
+end
+
+function EE.wxClear()
+    for k in pairs(wxTgt) do wxTgt[k] = 0 end
+end
+
+function EE.wx(name) return wx[name] or 0 end
+
+function EE.dimAmbient(amb)
+    if not st then
+        local dt = love.timer and love.timer.getDelta() or 1 / 60
+        wxTick(math.min(dt, 0.1))
+    end
+    if wx.dim <= 0 then return amb end
+    local k = 1 - EE.WX_DIM * wx.dim
+    wxAmb[1], wxAmb[2], wxAmb[3] = (amb[1] or 1) * k, (amb[2] or 1) * k, (amb[3] or 1) * k
+    return wxAmb
+end
+
+local WX_FX = { rain = "rain", blizzard = "blizzard", fireflies = "ff", dim = "dim" }
+
 function EE.fx(name, k)
     if not st then return end
     if COLOURS[name] then burst(name, k); return end
+    if WX_FX[name] then
+        if not st.red or name == "fireflies" or name == "dim" then wxTgt[WX_FX[name]] = 1 end
+        return
+    end
     if st.red then return end
     if name == "shake1" then
         require("src.systems.ScreenShake").trigger(3, 0.18)
@@ -298,9 +368,39 @@ local ANCHOR_SIZE = {
     sigil = { 136, 44 }, plinth = { 112, 52 }, crack = { 136, 48 }, pit = { 140, 60 },
     blot = { 120, 120 }, snowmound = { 120, 70 }, snowbump = { 140, 40 }, mud = { 140, 48 },
     pool = { 140, 48 }, mushrooms = { 120, 56 }, grave = { 140, 44 }, icespike = { 48, 120 },
+    shadepool = { 72, 28 },
 }
 EE.ANCHOR_SIZE = ANCHOR_SIZE
 EE.TALL_ANCHORS = { pole = true, perch = true, plinth = true, snowmound = true, mushrooms = true, icespike = true }
+EE.CONTACT_ANCHORS = { mud = true, pool = true, grave = true, snowbump = true, shadepool = true, pit = true, crack = true }
+EE.POKE_FX = { pole = "straw", perch = "shards", plinth = "shards", snowmound = "snow", icespike = "snow",
+    mushrooms = "spores", snowbump = "snow", mud = "splash", pool = "splash", grave = "dust", pit = "dust",
+    crack = "embers", shadepool = "dark", circle = "dark", sigil = "embers" }
+EE.POKE_SFX = { pole = "sceneWoodKnock", perch = "sceneStoneThud", plinth = "sceneStoneThud", snowmound = "sceneCloudPoof",
+    icespike = "impactIce", mushrooms = "sceneRustle", snowbump = "sceneCloudPoof", mud = "impactPoison",
+    pool = "impactPoison", grave = "sceneStoneThud", pit = "sceneStoneThud", crack = "impactFire", shadepool = "impactDark",
+    circle = "impactArcane", sigil = "impactArcane" }
+
+function EE.poke(p, mx, my)
+    local src = p.front and p.ref or p
+    if not src then return end
+    src._pokeT = require("src.ui.WorldRoad")._time
+    local fxName = EE.POKE_FX[src.name]
+    local cfg = fxName and PHYS[fxName]
+    if cfg and not reducedMotion() then
+        local ok, PM = pcall(require, "engine.ParticlesManager")
+        if ok then
+            local uk = require("src.ui.UiScale").k()
+            PM.spawn(mx / uk, my / uk, 0, 0, {
+                timer = 0.012, lifespan = cfg.life, scale = 0.38, speed = cfg.speed * 0.6,
+                colours = COLOURS[fxName], pulse_max = math.floor(cfg.n * 0.5 + 0.5),
+                vel_variation = 0.7, gravity = cfg.gravity, layer = 7,
+            })
+        end
+    end
+    local snd = EE.POKE_SFX[src.name]
+    if snd and Sfx.has(snd) then Sfx.playWithVariation(snd, 1.0, 0.08) end
+end
 
 local function px(x, y, w, h) love.graphics.rectangle("fill", x, y, w, h) end
 
@@ -365,6 +465,9 @@ local function paintAnchor(name, w, h)
     elseif name == "icespike" then
         g.setColor(0.7, 0.88, 1.0, 1); g.polygon("fill", 6, h, w - 6, h, w / 2 + 4, 0)
         g.setColor(0.9, 0.97, 1.0, 1); g.polygon("fill", 14, h, w / 2 - 2, h, w / 2 - 2, 20)
+    elseif name == "shadepool" then
+        g.setColor(0.08, 0.04, 0.12, 1); g.ellipse("fill", w / 2, h / 2, w / 2 - 2, h / 2 - 2)
+        g.setColor(0.3, 0.12, 0.4, 1); g.ellipse("fill", w / 2, h / 2, w / 2 - 14, h / 2 - 8)
     end
 end
 
@@ -412,13 +515,22 @@ local function spawnAnchor(S, opts)
         bid = opts.bid, side = (anc.at == "side") and S.side or 0, lane = 0, variant = 0,
         big = 1, jitter = 0, uid = WorldRoad._uid, ts = S.enc.targetScale or 4,
         glow = anc.glow and 0 or nil, grow = anc.grow and 0 or 1, glowColor = anc.glow,
-        z = opts.stopZ + WorldRoad.BATTLE_REL + 0.25, stopZ = opts.stopZ, offX = S.enc.offX or 0,
+        z = opts.stopZ + WorldRoad.BATTLE_REL + 0.25 + (anc.back or 0), stopZ = opts.stopZ, offX = S.enc.offX or 0,
+        back = anc.back or 0,
     }
     local img = EE.anchorImage(S.id, anc.name)
     S.anchorHalfW = img and img:getWidth() * 0.5 or 0
     S.anchorH = img and img:getHeight() or 0
     S.anchorProp = p
     WorldRoad._props[#WorldRoad._props + 1] = p
+    if p.side == 0 and p.back == 0 then
+        p.straddle = true
+        WorldRoad._uid = WorldRoad._uid + 1
+        local pf = { kind = "anchor", anchor = true, front = true, ref = p, bid = opts.bid, side = 0, lane = 0,
+            variant = 0, big = 1, jitter = 0, uid = WorldRoad._uid, z = p.z - 0.5 }
+        S.anchorFront = pf
+        WorldRoad._props[#WorldRoad._props + 1] = pf
+    end
 end
 
 function EE.begin(enc, opts)
@@ -451,6 +563,7 @@ function EE.begin(enc, opts)
         alpha = 1, tintK = 1, riseK = 1, frozen = false,
         sideFrac = 0, offFrac = 0, dxK = 0, anchorHalfW = 0, anchorH = 0,
         glowK = 0, veilA = 0, lanternK = 0, columnK = 0, swarmK = 0, rocksK = 0, passK = -1,
+        squash = 0, squashT = 0, squashDur = 0.2, squashAmp = 0, pokeT = 0, landed = 0, crouch = 0, pokeSide = 1,
         endFrame1 = false,
         pose = { relOff = 0, hidden = false, liftK = 0, shadowA = 1, alpha = 1 },
     }
@@ -466,6 +579,9 @@ function EE.begin(enc, opts)
     st = S
     EE.lastBounce = false
     spawnAnchor(S, opts)
+    if S.kind == "flanco" and not S.anchorProp then
+        S.anchorHalfW = (enc.iw or 96) * 0.45
+    end
     return dur, settle
 end
 
@@ -475,6 +591,27 @@ end
 
 function EE.reset()
     st = nil
+    EE.wxClear()
+end
+
+local function squashPulse(S, amp, dur)
+    S.squashAmp, S.squashDur, S.squashT = amp, dur, dur
+end
+
+local function grassPoke(S, dxFrac)
+    if S.red or not S.footX then return end
+    local WorldRoad = require("src.ui.WorldRoad")
+    local r = WorldRoad._lastRect
+    if not r then return end
+    require("engine.GrassField").pokeAt((S.footX - r.x) / math.max(1, r.w) + (dxFrac or 0), S.enc.z, WorldRoad._time)
+end
+
+local function walkFeel(S, u, cycles)
+    local spd = clamp01(4 * u * (1 - u))
+    S.crouch = 0.03 * spd
+    if cycles then
+        S.pose.liftK = S.pose.liftK + math.abs(math.sin(cycles * math.pi)) * 0.012 * spd
+    end
 end
 
 local K = {}
@@ -482,11 +619,12 @@ local K = {}
 function K.andar(S, dt)
     local spec = S.spec
     local walk = S.clips.walk
-    local prog = easeInOutCubic(S.t / math.max(0.01, S.dur - S.lead))
+    local u = clamp01(S.t / math.max(0.01, S.dur - S.lead))
+    local prog = easeInOutCubic(u)
+    local WorldRoad = require("src.ui.WorldRoad")
+    local tr = WorldRoad._travel
+    local cyc = math.max(1, math.floor(tr and tr.dist / 2.4 + 0.5 or 8))
     if not S.stopped and walk and prog < 1 then
-        local WorldRoad = require("src.ui.WorldRoad")
-        local tr = WorldRoad._travel
-        local cyc = math.max(1, math.floor(tr and tr.dist / 2.4 + 0.5 or 8))
         S.img = loopFrame(walk, cyc * prog)
         S.used.walk = true
         S.view.currentFrame = 1
@@ -495,6 +633,11 @@ function K.andar(S, dt)
         S.endFrame1 = true
     else
         S.img = idleImage(S, dt, true)
+    end
+    if prog < 1 then walkFeel(S, u, walk and cyc * prog or nil) end
+    if S.stopped and S.settle > 0 and not S.fired.settleSq then
+        S.fired.settleSq = true
+        squashPulse(S, 0.035, 0.22)
     end
     if spec.lantern then
         S.alpha = clamp01(0.22 + S.k * 1.6)
@@ -594,6 +737,7 @@ function K.acordar(S, dt)
             S.pose.liftK = lift / ih
         end
         if spec.step then S.pose.relOff = spec.step end
+        if spec.anchor and spec.anchor.back then S.pose.liftK = lift / ih end
         return
     end
     pick(S, "wake")
@@ -613,13 +757,46 @@ function K.acordar(S, dt)
     end
     if spec.glow then S.glowK = easeInOut(sK) end
     if spec.anchor and spec.anchor.at == "side" then
-        local h = easeInOut(clamp01((sK - 0.5) / 0.5))
-        S.sideFrac = 1 - h
-        S.pose.liftK = (lift / ih) * (1 - h) + math.sin(h * math.pi) * 0.22
+        local L = lift / ih
+        if sK < 0.3 then
+            S.sideFrac = 1
+            S.pose.liftK = L
+            S.crouch = 0.08 * easeInOut(sK / 0.3)
+        elseif sK < 0.5 then
+            S.sideFrac = 1
+            local fk = (sK - 0.3) / 0.2
+            S.pose.liftK = L * (1 - easeInQuad(fk))
+            S.squash = -0.18 * math.sin(fk * math.pi)
+        else
+            if pick(S, "land") then
+                squashPulse(S, 0.45, 0.22)
+                burst("dust", 0.6)
+            end
+            local hk = clamp01((sK - 0.58) / 0.42)
+            local h = easeInOut(hk)
+            S.sideFrac = 1 - h
+            S.pose.liftK = math.sin(h * math.pi) * 0.2
+            if hk > 0 and hk < 1 then
+                S.squash = -0.22 * math.sin(hk * math.pi)
+            elseif hk >= 1 and not S.fired.hopSq then
+                S.fired.hopSq = true
+                squashPulse(S, 0.4, 0.2)
+                burst("dust", 0.5)
+            end
+        end
     end
     if spec.step then
         local sp = clamp01((sK - 0.4) / 0.6)
         S.pose.relOff = spec.step * (1 - easeOutCubic(sp))
+        if spec.anchor and spec.anchor.back then
+            local dk = clamp01(sp * 1.6)
+            S.pose.liftK = (lift / ih) * (1 - easeInQuad(dk))
+            if dk >= 1 and not S.fired.stepSq then
+                S.fired.stepSq = true
+                squashPulse(S, 0.2, 0.2)
+                burst("dust", 0.5)
+            end
+        end
     end
     if sK >= 1 then
         S.sideFrac, S.pose.liftK, S.pose.relOff, S.dxK, S.tintK = 0, 0, 0, 0, 1
@@ -680,6 +857,7 @@ function K.condensar(S, dt)
     local win = S.red and 0.4 or 1.2
     local u1 = S.dur - win
     local a = clamp01((S.t - u1) / math.max(0.01, S.total - S.lead - u1))
+    if a > 0 then pick(S, "form") end
     local ae = easeInOut(a)
     local form = S.clips.form
     if form then
@@ -700,6 +878,16 @@ function K.condensar(S, dt)
         local sw0 = S.dur - (S.red and 0.6 or 2.0)
         S.swarmK = clamp01((S.t - sw0) / math.max(0.01, S.total - S.lead - sw0))
         if S.t >= sw0 then pick(S, "start") end
+        if spec.swarm == "rats" and S.swarmK > 0 and S.swarmK < 1 then
+            S.pokeT = S.pokeT + dt
+            if S.pokeT >= 0.22 then
+                S.pokeT = 0
+                S.pokeSide = -S.pokeSide
+                grassPoke(S, S.pokeSide * 0.24 * (1 - S.swarmK * 0.6))
+            end
+        end
+    elseif S.t >= u1 then
+        pick(S, "start")
     end
     if spec.lantern then S.lanternK = clamp01(0.25 + S.k * 0.9) end
     if spec.snow and not S.red and a > 0 and a < 1 then
@@ -720,9 +908,15 @@ function K.flanco(S, dt)
     local fromAnchor = spec.anchor and spec.anchor.at == "side"
     local burrowed = fromAnchor and S.clips.emerge or nil
     if S.t < u0 then
-        S.pose.hidden = not burrowed
-        S.img = burrowed and clipFrame(burrowed, 0) or (S.idleImg or S.staticImg)
-        if burrowed then S.sideFrac = 1; S.used.emerge = true; S.view.currentFrame = 1 end
+        S.pose.hidden = false
+        S.sideFrac = 1
+        if burrowed then
+            S.img = clipFrame(burrowed, 0)
+            S.used.emerge = true
+            S.view.currentFrame = 1
+        else
+            S.img = idleImage(S, dt, true, u0)
+        end
         return
     end
     S.pose.hidden = false
@@ -731,11 +925,8 @@ function K.flanco(S, dt)
     local arriveT = (howl and S.settle > 0) and S.dur or (S.total - S.lead)
     local m = clamp01((S.t - u0) / math.max(0.001, arriveT - u0))
     local me = easeInOut(m)
-    if fromAnchor then
-        S.sideFrac = 1 - me
-    else
-        S.offFrac = 1 - me
-    end
+    S.sideFrac = 1 - me
+    if not spec.hops then walkFeel(S, m, (S.clips.trot or S.clips.crawl) and m * 4 or nil) end
     local move = S.clips.trot or S.clips.crawl or S.clips.hop
     local moveName = S.clips.trot and "trot" or (S.clips.crawl and "crawl" or (S.clips.hop and "hop" or nil))
     local settleK = S.sKL
@@ -767,6 +958,7 @@ function K.flanco(S, dt)
             S.fired["hop" .. hi] = true
             if spec.sfx.hop then playFirst(spec.sfx.hop) end
             burst("splash", 0.35)
+            if hi < spec.hops then squashPulse(S, 0.5, 0.16) end
         end
     end
     if m >= 1 then
@@ -814,20 +1006,30 @@ function EE.update(dt, tr)
     S.tail = tr.duration - tr.t
     S.left = S.total - tr.t
     S.pose.relOff, S.pose.hidden, S.pose.liftK, S.pose.shadowA = 0, false, 0, 1
-    S.alpha, S.tintK, S.riseK = 1, 1, 1
+    S.alpha, S.tintK, S.riseK, S.crouch, S.squash = 1, 1, 1, 0, 0
     S.sideFrac, S.offFrac, S.dxK = 0, 0, 0
     local fn = K[S.kind] or K.andar
     fn(S, dt)
+    if S.squashT > 0 then
+        S.squashT = math.max(0, S.squashT - dt)
+        S.squash = S.squashAmp * (S.squashT / S.squashDur)
+    end
+    wxTick(dt)
     S.pose.alpha = S.alpha
     local p = S.anchorProp
     if p then
         local WorldRoad = require("src.ui.WorldRoad")
-        p.z = p.stopZ + WorldRoad.BATTLE_REL + 0.25
-        local present = false
+        p.z = p.stopZ + WorldRoad.BATTLE_REL + 0.25 + (p.back or 0)
+        local pf = S.anchorFront
+        if pf then pf.z = p.z - 0.5 end
+        local present, presentF = false, pf == nil
         for i = 1, #WorldRoad._props do
-            if WorldRoad._props[i] == p then present = true; break end
+            local q = WorldRoad._props[i]
+            if q == p then present = true end
+            if q == pf then presentF = true end
         end
         if not present then WorldRoad._props[#WorldRoad._props + 1] = p end
+        if not presentF then WorldRoad._props[#WorldRoad._props + 1] = pf end
     end
     return tr.t >= S.total
 end
@@ -845,6 +1047,7 @@ function EE.finish()
         handoff = S.idle
     end
     EE.lastBounce = S.spec.bounce and true or false
+    EE.wxClear()
     EE._last = {
         id = S.id, kind = S.kind, used = S.used, clips = S.clips, total = S.total, settle = S.settle,
         dur = S.dur, side = S.side, endFrame1 = S.endFrame1, bounce = EE.lastBounce,
@@ -889,15 +1092,17 @@ function EE.drawUnder(e, g, w, cx, sy, s, t, lift)
         love.graphics.setColor(1, 1, 1, 1)
     end
     if S.swarmK > 0 and S.img then
-        local n = 7
-        local c = Grade.color("enemy", t, tmpColor)
         local sw = spec.swarm
+        local n = sw == "bats" and 9 or 14
+        local c = Grade.color("enemy", t, tmpColor)
         for i = 1, n do
             local sd = (i % 2 == 0) and 1 or -1
             local ph = i * 1.7
-            local k = clamp01(S.swarmK * 1.15 - (i % 3) * 0.05)
+            local k = clamp01(S.swarmK * 1.25 - (i % 4) * 0.07)
             local ke = easeInOut(k)
-            local x0 = sd * (w * 0.5 + 20) * (1 - ke) + math.sin(ph + S.t * 9) * iw * 0.12 * (1 - ke)
+            local lane = ((i * 7) % 5 - 2) * 0.09
+            local x0 = sd * (w * 0.5 + 40 + (i % 3) * 30) * (1 - ke)
+                + sd * lane * iw * ke + math.sin(ph + S.t * 9) * iw * 0.10 * (1 - ke)
             local a = (1 - S.alpha) * 0.95
             if sw == "bats" then
                 local y0 = sy - ih * (0.4 + 0.5 * (1 - ke)) + math.sin(S.t * 11 + ph) * ih * 0.06
@@ -905,10 +1110,10 @@ function EE.drawUnder(e, g, w, cx, sy, s, t, lift)
                 local flap = math.abs(math.sin(S.t * 18 + ph)) * 6 * s * 0.5
                 love.graphics.polygon("fill", cx + x0 - 7 * s, y0 - flap, cx + x0, y0 + 2 * s, cx + x0 + 7 * s, y0 - flap, cx + x0, y0 + 5 * s)
             else
-                local ms = s * 0.34
-                local y0 = sy + math.sin(ph + S.t * 13) * 2
-                love.graphics.setColor(c[1], c[2], c[3], a)
-                love.graphics.draw(S.img, math.floor(cx + x0 - e.iw * ms / 2), math.floor(y0 - e.ih * ms), 0, ms * sd, ms)
+                local ms = s * (0.30 + (i % 3) * 0.05)
+                local y0 = sy + ((i * 3) % 4 - 1.5) * 3 * s + math.abs(math.sin(ph + S.t * 14)) * -3 * s * (1 - ke)
+                love.graphics.setColor(c[1] * 0.45, c[2] * 0.42, c[3] * 0.45, a)
+                love.graphics.draw(S.idleImg or S.img, math.floor(cx + x0 - e.iw * ms / 2), math.floor(y0 - e.ih * ms), 0, ms * sd, ms)
             end
         end
         love.graphics.setColor(1, 1, 1, 1)
@@ -929,33 +1134,28 @@ function EE.drawUnder(e, g, w, cx, sy, s, t, lift)
         end
         love.graphics.setColor(1, 1, 1, 1)
     end
-    local tx, ty = love.graphics.transformPoint(cx, sy)
-    if S.lanternK > 0 and spec.lantern then
-        LightEngine.submitMicro(tx, ty - ih * 0.55, ih * 0.9, spec.lantern, 0.55 * S.lanternK, S.rel or 9)
-    end
-    if S.glowK > 0 and spec.glow then
-        LightEngine.submitMicro(tx, ty - ih * 0.78, ih * 0.7, spec.glow, 0.5 * S.glowK, S.rel or 9)
-        LightEngine.submitMicro(tx, ty - 4, ih * 0.55, spec.glow, 0.35 * S.glowK, S.rel or 9)
-    end
-    if S.columnK > 0 and spec.column then
-        LightEngine.submitMicro(tx, ty - ih * 0.5, ih * 1.6, spec.column, 0.45 * S.columnK, S.rel or 9)
-    end
 end
 
 function EE.drawProp(p, g, x, w, t, rel, camZ)
     local WorldRoad = require("src.ui.WorldRoad")
-    local img = EE.anchorImage(p.entrId, p.name)
+    local src = p.front and p.ref or p
+    local img = EE.anchorImage(src.entrId, src.name)
     if not img then return end
     local Grade = require("engine.SceneGrade")
     local iw, ih = img:getWidth(), img:getHeight()
+    if p.front then
+        rel = src.z - camZ
+        t = g.tOf(rel)
+        if not t then return end
+    end
     local tB = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tB)))
-    local s = p.ts * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
-    local wob = WorldRoad._roadWobble and WorldRoad._roadWobble(p.z, t, w) or 0
-    local pxX = g.cx + wob - math.floor((p.offX or 0) * s)
+    local s = src.ts * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
+    local wob = WorldRoad._roadWobble and WorldRoad._roadWobble(src.z, t, w) or 0
+    local pxX = g.cx + wob - math.floor((src.offX or 0) * s)
     local sy
-    if p.side ~= 0 then
-        pxX = pxX + sideX(g, w, t, p.side, iw * s * 0.5)
+    if src.side ~= 0 then
+        pxX = pxX + sideX(g, w, t, src.side, iw * s * 0.5)
         sy = g.latY(pxX - g.cx, t)
     else
         sy = g.crestApexY + (g.bottomY - g.crestApexY) * t
@@ -964,29 +1164,51 @@ function EE.drawProp(p, g, x, w, t, rel, camZ)
     local f = WorldRoad._fork
     if f and not f.converge then alpha = alpha * (1 - (f.animIn or 1)) end
     if f and f.converge then alpha = 0 end
-    local grow = p.grow or 1
+    local grow = src.grow or 1
     if alpha <= 0.01 or grow <= 0.001 then
         if EE._trace then EE._trace(p, pxX, sy, t, s, 0) end
         return
     end
     local c = Grade.color("prop", t, tmpColor)
     local ShadowEngine = require("engine.ShadowEngine")
-    if EE.TALL_ANCHORS[p.name] and grow >= 0.999 then
-        shadowOpt.alphaK, shadowOpt.flip, shadowOpt.footPad = 0.75 * alpha, 1, 0
-        shadowOpt.baseK, shadowOpt.riseK, shadowOpt.lenK = nil, nil, nil
-        ShadowEngine.queue(img, pxX, sy - 1, s, shadowOpt, t)
-        require("engine.ContactShadow").queue(img, pxX, sy, s, t, 0.8 * alpha, 1)
+    local half = src.straddle and math.floor(ih / 2) or ih
+    local groundY = src.straddle and (sy + (ih - half) * s) or sy
+    if not p.front then
+        if EE.TALL_ANCHORS[src.name] and grow >= 0.999 then
+            shadowOpt.alphaK, shadowOpt.flip, shadowOpt.footPad = 0.75 * alpha, 1, 0
+            shadowOpt.baseK, shadowOpt.riseK, shadowOpt.lenK = nil, nil, nil
+            ShadowEngine.queue(img, pxX, groundY - 1, s, shadowOpt, t)
+            require("engine.ContactShadow").queue(img, pxX, groundY, s, t, 0.8 * alpha, 1)
+        elseif EE.CONTACT_ANCHORS[src.name] then
+            require("engine.ContactShadow").queue(img, pxX, groundY, s, t, 0.45 * alpha, 1)
+        end
+    end
+    local rot = 0
+    local t0 = src._pokeT
+    if t0 then
+        local el = WorldRoad._time - t0
+        if el >= 1.3 then src._pokeT = nil
+        else rot = math.sin(el * 16) * (EE.TALL_ANCHORS[src.name] and 0.05 or 0.012) * math.exp(-el * 3.4) end
     end
     love.graphics.setColor(c[1], c[2], c[3], alpha)
-    love.graphics.draw(img, math.floor(pxX - iw * s / 2), math.floor(sy - ih * s * grow), 0, s, s * grow)
-    love.graphics.setColor(1, 1, 1, 1)
-    if p.glow and p.glow > 0 and p.glowColor then
-        local tx, ty = love.graphics.transformPoint(pxX, sy - ih * s * 0.5)
-        require("engine.LightEngine").submitMicro(tx, ty, iw * s * 0.55, p.glowColor, 0.5 * p.glow * alpha, rel + 0.1)
+    local y0 = sy - ih * s * grow
+    if src.straddle then
+        quad = quad or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
+        y0 = sy - half * s
+        if p.front then
+            quad:setViewport(0, half, iw, ih - half, iw, ih)
+            love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, s, s, iw / 2, 0)
+        else
+            quad:setViewport(0, 0, iw, half, iw, ih)
+            love.graphics.draw(img, quad, math.floor(pxX), math.floor(sy), rot, s, s, iw / 2, half)
+        end
+    else
+        love.graphics.draw(img, math.floor(pxX), math.floor(sy), rot, s, s * grow, iw / 2, ih)
     end
+    love.graphics.setColor(1, 1, 1, 1)
     local hsn = WorldRoad._hitScene
-    if hsn then
-        hsn[#hsn + 1] = { x1 = pxX - iw * s / 2, y1 = sy - ih * s * grow, x2 = pxX + iw * s / 2, y2 = sy,
+    if hsn and not p.front then
+        hsn[#hsn + 1] = { x1 = pxX - iw * s / 2, y1 = y0, x2 = pxX + iw * s / 2, y2 = src.straddle and (sy + (ih - math.floor(ih / 2)) * s) or sy,
             ref = p, kind = "anchor", s = s }
     end
     if EE._trace then EE._trace(p, pxX, sy, t, s, alpha) end

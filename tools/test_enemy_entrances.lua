@@ -3,7 +3,7 @@ local M = {}
 
 M.FX_NAMES = { dust = true, snow = true, embers = true, straw = true, shards = true, spores = true, splash = true,
     feathers = true, dark = true, light = true, shake1 = true, shake2 = true, grass = true, gust = true,
-    crows = true, lightning = true }
+    crows = true, lightning = true, rain = true, blizzard = true, fireflies = true, dim = true }
 M.LAST_FRAME_TOL = 0.02
 
 local function roster()

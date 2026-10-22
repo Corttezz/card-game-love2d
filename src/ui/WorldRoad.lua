@@ -1718,6 +1718,10 @@ function WorldRoad.pokeSceneAt(mx, my)
             if b.kind == "fence" and b.ref.perched and not b.ref.flown then
                 b.ref._scareBirds = true
             end
+            if b.kind == "anchor" then
+                require("src.ui.EnemyEntrance").poke(b.ref, mx, my)
+                return true
+            end
             local byBid = b.ref.bid and POKE_SOUND_BIOME[b.ref.bid]
             local snd = (byBid and byBid[b.kind]) or POKE_SOUND[b.kind]
             if snd then
@@ -1903,12 +1907,13 @@ function WorldRoad.update(dt)
 
     for i = #WorldRoad._props, 1, -1 do
         local p = WorldRoad._props[i]
-        if p.reserved and p.z - WorldRoad._camZ < -7 then table.remove(WorldRoad._props, i) end
+        if (p.reserved and p.z - WorldRoad._camZ < -7) or (p.anchor and p.z - WorldRoad._camZ < -3.5) then
+            table.remove(WorldRoad._props, i)
+        end
     end
     for _, p in ipairs(WorldRoad._props) do
         local rd = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
         if not p.ghost and p.z - WorldRoad._camZ < ((rd and rd.roadside) and -7 or -3.5) then
-            p.anchor, p.glow, p.grow, p.glowColor, p.ts, p.stopZ, p.entrId, p.name = nil, nil, nil, nil, nil, nil, nil, nil
             local wasWall = p.wall
             rollProp(p, WorldRoad._camZ + REL_CREST + EMERGE_BAND * 0.6
                         + WorldRoad._rng:random() * 2, p.side, wasWall)
@@ -2508,17 +2513,20 @@ local function drawEncounterBehind(g, x, w, camZ)
     if rel > REL_CREST + EMERGE_BAND then return end
 
     local em = 1 - (rel - REL_CREST) / EMERGE_BAND
+    local EE = require("src.ui.EnemyEntrance")
     local cx = g.cx + roadWobble(e.z, 0, w)
-    local crest = g.crestYAt(cx)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local s = e.targetScale * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h)
         * (g.persp(0) / math.max(0.01, g.persp(tBattle)))
-    cx = cx - math.floor((e.offX or 0) * s)
-    local feetY = crest + e.ih * s * (1 - em) * 0.95
+    local lat = EE.dxPx(e, g, w, 0, s)
+    cx = cx - math.floor((e.offX or 0) * s) + math.floor(lat)
+    local crest = g.crestYAt(cx)
+    local feetY = crest + e.ih * s * (1 - em) * 0.95 - pz.liftK * e.ih * s
     love.graphics.setColor(1, 1, 1, 1)
     local bx0 = math.floor(cx - e.iw * s / 2)
     local by0 = math.floor(feetY - e.ih * s)
         + math.floor((e.footPad or 0) * s)
+    if WorldRoad._traceEnemy then WorldRoad._traceEnemy(bx0, by0, "behind", lat) end
     if e.anim then
         e.anim:draw(bx0, by0, s)
     else
@@ -4775,11 +4783,12 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     if not t then return end
 
     local cx = g.cx + roadWobble(e.z, t, w)
-    local sy = g.crestApexY + (g.bottomY - g.crestApexY) * t
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     local s = e.targetScale * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
-    cx = cx - math.floor((e.offX or 0) * s) + math.floor(EE.dxPx(e, g, w, t, s))
+    local lat = EE.dxPx(e, g, w, t, s)
+    local sy = g.latY(lat, t)
+    cx = cx - math.floor((e.offX or 0) * s) + math.floor(lat)
     local entLift = pz.liftK * e.ih * s
     EE.notePos(cx, sy, s, rel)
     if pz.hidden then
@@ -4809,7 +4818,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     EE.drawUnder(e, g, w, cx, sy, s, t, lift)
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = sy - e.ih * s + footY - lift
-    if WorldRoad._traceEnemy then WorldRoad._traceEnemy(dx0, dy0, "encounter") end
+    if WorldRoad._traceEnemy then WorldRoad._traceEnemy(dx0, dy0, "encounter", lat) end
     if e.anim then
         local drawn = ShadowEngine.silhouette(shX, sy - 1 + lift * 0.16, { smear = e.iw * s * 0.035 * (es.smearK or 1),
                 widthK = es.widthK, lenK = es.lenK, alphaK = (es.alphaK or 1) * pz.shadowA,
@@ -4832,6 +4841,8 @@ function LMG.drawEncounterFront(g, x, w, camZ)
         require("src.ui.EnemyRenderer").drawRim(function(ox, oy) e.anim:draw(dx0 + ox, dy0 + oy, s) end, cx, s)
     end
     local ec = Scene.Grade.color("enemy", t, LMG.c)
+    local pulse = 0.94 + (math.sin(love.timer.getTime() * 1.1) * 0.5 + 0.5) * 0.06
+    ec[1], ec[2], ec[3] = ec[1] * pulse, ec[2] * pulse, ec[3] * pulse
     local t4 = LMG.tint4
     t4[1], t4[2], t4[3], t4[4] = ec[1], ec[2], ec[3], 1
     love.graphics.setColor(ec[1], ec[2], ec[3], 1)
@@ -4899,7 +4910,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     local hs = WorldRoad._hitScene
     for i = #hs, 1, -1 do hs[i] = nil end
 
-    local amb = WeatherEngine.modulateAmbient(currentLightAmbient())
+    local amb = require("src.ui.EnemyEntrance").dimAmbient(WeatherEngine.modulateAmbient(currentLightAmbient()))
     local bk = 1
     if WorldRoad._blend then
         local k = math.min(1, WorldRoad._blend.t / WorldRoad._blend.duration)

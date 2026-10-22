@@ -90,6 +90,7 @@ local function veilAlphaAt(t) return SceneGrade.fogAlpha(t) * WeatherEngine.VEIL
 WeatherEngine._veilAlphaAt = veilAlphaAt
 
 WeatherEngine.disabled = false
+WeatherEngine.ffMute = 0
 WeatherEngine.stats = { particles = 0, quads = 0, flushes = 0, veilBands = 0, lowFogBands = 0 }
 
 local function reduced()
@@ -224,7 +225,7 @@ local function ffGlow(p, style)
     end
     local life = p.life / max(0.01, p.life0)
     local fade = min(1, (1 - life) * 4) * min(1, life * 4)
-    return b * fade
+    return b * fade * (1 - (WeatherEngine.ffMute or 0))
 end
 
 local function addParticle(tag, camZ)
@@ -967,6 +968,7 @@ function WeatherEngine.reset()
     nP = 0
     prefill = true
     strike, thunderAt, pendingThunder, pendingBlink = nil, nil, nil, nil
+    WeatherEngine.ffMute = 0
     curId, cur = nil, nil
     geo = nil
     veilCur = 0

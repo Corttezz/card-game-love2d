@@ -50,7 +50,44 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   parada" (a trava `::entradas` pegou o salto de alpha no quadro da parada em 8 criaturas). Sentinela: o passo
   (`step`) ja vale durante a viagem (relOff = step), senao a estatua pula 0,6 unidade na parada.
 - Ancora que CRESCE (espigao do xama) nasce na crista com altura 0 e e tracada com alpha 0: a trava considera o
-  primeiro traco (qualquer alpha) como nascimento.
+  primeiro traco (qualquer alpha) como nascimento. O espigao e o `frost_crystal_0` recortado
+  (`anchors/rime_shaman_anchor.png`), nao um placeholder.
+- **Sem micro-luz na entrada** (dono, 22/Out: "blocos quadrados de luz" em volta do bicho que somem no handoff): o motor
+  NAO chama `LightEngine.submitMicro` para brilho/lanterna/coluna nem para a ancora; luz do bicho e so o emissivo dele
+  (`EnemyEmissives`), que a batalha tambem desenha. Os campos `glow/lantern/column` dos dados ficaram inertes.
+- **Ancora de palco ABRACA a linha dos pes** (dono: "sai na frente do buraco"): o prop principal desenha a metade de
+  cima da PNG atras do corpo (z = palco + 0,25) e um segundo prop `front` (z = palco - 0,5, `ref` = o principal) desenha
+  a metade de baixo POR CIMA dos pes, na viagem e na batalha. O bicho sai do meio do buraco/poca/circulo e fica dentro
+  dele. Ancoras de beira (estaca, pedra, monte, espigao) nao abracam.
+- **Andar com peso**: inclinacao (`crouch` 3 % na velocidade maxima), balanco vertical sincronizado com o ciclo do walk,
+  quadro do walk preso a fase eased da viagem (pe nao desliza), e um assentamento de 1-2 px (`squashPulse`) na parada
+  quando ha assentamento. Flanco vem da linha das arvores em diagonal (`relOff` 1,4 -> 0) e nao em deslize lateral.
+- Sapo: 3 saltos pelo motor (o clipe `hop` so agacha) com esmagamento nos pousos intermediarios; o ultimo pouso e a
+  quicada de chegada. Espantalho/gargula: tremem na estaca (0-30 % do assentamento), CAEM (30-50 %, ease-in),
+  esmagam ao pousar com poeira, e pulam para o centro (58-100 %).
+- Clima pelo `wx` do motor (ramps de 0,7 s, decaem sozinhos depois do handoff pelo tick em `dimAmbient`):
+  `rain`/`blizzard` = `WeatherEngine.setIntensityOverride(base + 0,5)`, `fireflies` = `WeatherEngine.ffMute`
+  (vagalumes do ceifador apagam), `dim` = ambiente x 0,55 (vigia). Relampago da harpia/grifo por `WeatherEngine.strike`.
+- Ratos: 14 copias escuras do idle a 0,30-0,40 convergindo das duas bordas da tela, grama cutucada alternando os lados a
+  cada 0,22 s. Sombra do crepusculo tem poca propria (`dusk_shade_anchor.png`, frente B), que abraca os pes e fica.
+- O motor nao assume numero de quadros: `clipFrame`/`loopFrame` leem `#frames` (as frentes regeraram walk/charge/form/
+  awaken/trot/crawl/hop/swoop com 12-13 quadros em 22/Out). Sentinela: plinto (`plinth`, `back = 0,6`, `lift = 22`) atras
+  do palco; a estatua fica EM CIMA dele e desce ao chao no passo (`step`), com esmagamento e poeira.
+- **Lado desde o primeiro pixel** (dono: "teleporta" para a estaca): `drawEncounterBehind` aplica o mesmo `dxPx` do caminho
+  da frente (t = 0) e o lift do poleiro; o chao do corpo na frente e `g.latY(lat, t)` (igual ao da estaca), nao a formula
+  do centro da estrada. Flanco (lobo, sapo, croc, troll) nasce VISIVEL na faixa lateral (`sideFrac = 1`, meio sprite
+  fora da borda da estrada) e anda em diagonal ate o centro; nada mais nasce escondido fora da tela. A trava `::entradas`
+  compara o `lat` (x relativo ao centro da estrada) quadro a quadro, atras e na frente da crista.
+- Brilho igual na troca: o caminho do encontro aplica a mesma respiracao de tom do `EnemyRenderer` (0,94 a 1,0), senao
+  o handoff escurece 3 %. Salto da estaca com antecipacao (agacha 8 % nos 30 % iniciais), estica no ar (`squash` negativo)
+  e esmaga no pouso (beat `land`) e de novo ao chegar ao centro, com poeira nos dois.
+- Ancoras altas (estaca, pedra, plinto, monte, cogumelos, espigao): silhueta pelo `ShadowEngine.queue` + faixa de contato;
+  chatas (lama, poca, cova, lombada, poca da sombra, fosso, rachadura): so faixa de contato a 0,45; circulo/sigilo nada
+  (sao brilho). Toda ancora entra em `WorldRoad._hitScene` como `kind = "anchor"`: clique = `EE.poke` (balanco
+  amortecido como o `pokeRot` das arvores, particula e som por nome: palha na estaca, lascas na pedra, neve no monte).
+- Beats de som que o motor dispara (contrato com `test_entrance_sfx`): andar stop/step1..3, investida skid/stop, brotar
+  rise/stop, acordar wake/land(so espantalho e gargula, 50 % do assentamento)/stop, mergulho start/stop, condensar
+  start(enxame em dur-2 s; sem enxame em u1)/form(u1, uma vez)/stop, flanco start/stop/hop, montar mid/stop.
 
 ## Ancoras
 - Prop `kind = "anchor"` em `WorldRoad._props` criado no `begin` em `stopZ + BATTLE_REL + 0.25` (atras do bicho na

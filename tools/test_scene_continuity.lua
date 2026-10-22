@@ -200,8 +200,8 @@ function M.capture(act, seed, scenario, saveDir, creature)
         end
         return origSil(fx, fy, o, fn)
     end
-    WorldRoad._traceEnemy = function(x, y, src)
-        log.body[frame] = { x = x, y = y, src = src, phase = phase }
+    WorldRoad._traceEnemy = function(x, y, src, lat)
+        log.body[frame] = { x = x, y = y, src = src, phase = phase, lat = lat }
     end
     local LE = require("engine.LuminaireEngine")
     WorldRoad._trace = function(p, x, y, a, t, src, h, w, roadC, roadHalf)
@@ -467,11 +467,22 @@ function M.analyze(log)
             local nx = log.body[k + 1]
             local refN = nx and dist(nx, c) or 0
             local cross = c.src ~= p.src
+            local behindCross = cross and (c.src == "behind" or p.src == "behind")
             local tol = cross and 6 or 10
-            if dp > tol and dp > 2.5 * math.max(ref, cross and 0 or refN) + tol then
+            if not behindCross and dp > tol and dp > 2.5 * math.max(ref, cross and 0 or refN) + tol then
                 shadowJumps[#shadowJumps + 1] = { frame = k, src0 = string.format("corpo %s(%.0f,%.0f)", p.src, p.x, p.y),
                     src1 = string.format("%s(%.0f,%.0f)", c.src, c.x, c.y),
                     rl = 0, rw = 0, da = 0, dp = dp, phase = c.phase }
+            end
+            if c.lat and p.lat then
+                local dl = math.abs(c.lat - p.lat)
+                local refL = pp and pp.lat and math.abs(p.lat - pp.lat) or 0
+                local refLN = nx and nx.lat and math.abs(nx.lat - c.lat) or 0
+                if dl > 6 and dl > 2.5 * math.max(refL, refLN) + 6 then
+                    shadowJumps[#shadowJumps + 1] = { frame = k, src0 = string.format("lateral %s(%.0f)", p.src, p.lat),
+                        src1 = string.format("%s(%.0f)", c.src, c.lat),
+                        rl = 0, rw = 0, da = 0, dp = dl, phase = c.phase }
+                end
             end
         end
     end
