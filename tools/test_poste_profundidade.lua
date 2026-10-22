@@ -56,7 +56,7 @@ function M.check(act, stage)
     GameplayScene.init({ game = game, topBar = topBar, gameUI = GameUI:new(),
         playButton = Button:new(VW * 0.8, VH * 0.8, 150, 46, "Jogar") })
     if game.messageSystem then game.messageSystem.messages = {} end
-    WorldRoad.restoreProgress(act, 3)
+    GameplayScene.resumeWorld(game)
     WorldRoad._rng:setSeed(4242)
     WorldRoad._props = {}
     WorldRoad.setBiome(act)
