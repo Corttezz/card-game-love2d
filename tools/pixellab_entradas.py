@@ -53,6 +53,13 @@ SUFFIX = (" Palette, colors, proportions, face and every piece of clothing "
           "and equipment stay unchanged in every frame. Nothing new appears, "
           "background stays empty and transparent.")
 
+FIRST_HOLLOW_FARMER = "idle"
+FIRST_RAM_CULTIST = "idle"
+FIRST_ABYSS_ACOLYTE = "idle"
+FIRST_BLIGHT_BULL = "idle"
+FIRST_HELLHOUND = "idle"
+FIRST_PLAGUE_RATS = "rats_bottom"
+
 CLIPS = {
     "cursed_scarecrow": {
         "awaken": dict(frames=8, first="file:tools/preview_out/entradas_arte/ato1/derived/cursed_scarecrow_limp.png",
@@ -66,21 +73,12 @@ CLIPS = {
             "its standing stance, arms hanging")),
     },
     "hollow_farmer": {
-        "walk": dict(frames=8, first="idle", end="idle", action=(
-            "walks slowly toward the viewer with a stiff limping shuffle, "
-            "one leg dragging, the pitchfork dragged along the ground beside "
-            "it, hat brim bobbing, two full steps, then stops and plants the "
-            "pitchfork upright with a thud, settling into its hunched "
-            "stance")),
+        "walk": dict(frames=12, first="idle", end="idle", action=(
+            "limping walk toward the viewer, TWO full strides over the clip: each foot lifts clearly off the ground and plants again with a visible weight shift onto that side, the body dips lower on the lame leg, the pitchfork is dragged along the ground scraping, then lifted and planted upright at the end with a thud, the torn apron and ragged sleeves swing with every step, the straw hat brim bobs, small dust puffs at the feet, then it settles into its hunched stance")),
     },
     "plague_rats": {
-        "form": dict(frames=8, first="rats_bottom", end="idle", action=(
-            "more plague rats crawl in from the left and right sides along "
-            "the ground and climb up onto the backs of the rats at the "
-            "bottom, scrambling over each other, tails whipping, until the "
-            "full heap of rats is stacked up, then the pile settles still; "
-            "every rat always touches the ground or another rat, nothing "
-            "floats in the air, nothing drops from above")),
+        "form": dict(frames=12, first="rats_bottom", end="idle", action=(
+            "many plague rats converge from both sides along the ground: rats run in from the left and from the right, climbing over the rats already there, tails whipping, heads twitching, some squeak with open mouths, the heap grows a little taller in every frame as rats scramble on top of each other, loose rats at the edges still crawling and twitching, until the full stacked heap is formed and settles still; every rat always touches the ground or another rat, nothing floats, nothing drops from above")),
     },
     "harvest_reaper": {
         "form": dict(frames=8, first="mist", end="idle", action=(
@@ -93,12 +91,8 @@ CLIPS = {
             "stance")),
     },
     "blight_bull": {
-        "charge": dict(frames=8, first="idle", end="idle", action=(
-            "gallops straight toward the viewer at full speed, head lowered "
-            "with the horns forward, hooves pounding in a running cycle, "
-            "wheat stalks and steam streaming, then skids to a hard stop, "
-            "front hooves braced, head tossing up with a snort, settling "
-            "into its standing stance")),
+        "charge": dict(frames=12, first="idle", end="idle", action=(
+            "heavy gallop straight toward the viewer, two full gallop strides: the front hooves reach forward and slam down, then the hind hooves, the massive shoulders and hump rise and fall with each bound, the head swings low with the horns forward, loose rotting hide flaps, the wheat stalks tangled in the hide whip about, steam bursts from the nostrils with every breath, dust kicks up at the hooves; at the end it skids to a stop with the front legs braced stiff, the head tossing up with a snort, then settles into its standing stance")),
     },
     "wicker_effigy": {
         "awaken": dict(frames=8, first="unlit", end="idle", action=(
@@ -124,14 +118,8 @@ CLIPS = {
             "other than grey, lavender and purple")),
     },
     "ram_cultist": {
-        "walk": dict(frames=8, first="idle", end="idle", action=(
-            "EXAGGERATED slow heavy walk toward the viewer: the whole body "
-            "rocks far to the left then far to the right with each step "
-            "like a lumbering monk, the ram skull head dipping low and "
-            "rising high, the robe hem swinging wide and lifting to show a "
-            "boot stepping forward, the censer swinging in a big arc on "
-            "its chain, two full steps, then stops and raises its free "
-            "hand open, settling into its standing stance")),
+        "walk": dict(frames=12, first="idle", end="idle", action=(
+            "slow procession walk toward the viewer, two full strides: with each step the long robe hem swings aside and lifts to reveal a boot stepping forward and planting, the body shifts its weight side to side and bobs up and down, the shoulders rock, the sash tails and the bone charms swing, the censer swings in a wide arc on its chain trailing violet smoke, the horned skull dips and rises with the steps; at the end it stops and raises its free hand open, settling into its stance")),
     },
     "storm_harpy": {
         "swoop": dict(frames=8, first="idle", end="idle", action=(
@@ -184,18 +172,12 @@ CLIPS = {
             "paws and settles into its crouched stance")),
     },
     "hellhound": {
-        "charge": dict(frames=8, first="idle", end="idle", action=(
-            "bounds straight toward the viewer at full gallop, both heads "
-            "low and snarling, flame manes streaming back, four legs in a "
-            "running cycle, then skids to a hard stop with the claws digging "
-            "in, both heads snapping up, settling into its standing stance")),
+        "charge": dict(frames=12, first="idle", end="idle", action=(
+            "full gallop straight toward the viewer, two full bounding strides: the front paws reach and slam down then the hind legs drive, the body stretches and bunches, both heads low and snarling with jaws open, the flame manes stretch back and flicker, the lava cracks pulse brighter on each bound, the tail flame whips; at the end it skids to a stop with the claws digging in, both heads snapping up snarling, then settles into its standing stance")),
     },
     "abyss_acolyte": {
-        "walk": dict(frames=8, first="idle", end="idle", action=(
-            "glides forward toward the viewer in a slow ominous walk, robes "
-            "and chains swaying, the burning grimoire held open, two full "
-            "steps, then stops and lifts the grimoire higher with the flame "
-            "flaring, settling into its standing stance")),
+        "walk": dict(frames=12, first="idle", end="idle", action=(
+            "slow menacing walk toward the viewer, two full strides: with each step the long robes swing aside to reveal a foot stepping forward and planting, the body shifts its weight side to side and bobs, the shoulders rock, the chains around the body swing and sway, the glowing ember hem flickers, the grimoire flame flickers and leans back, the raised clawed hand drifts; at the end it stops and lifts the grimoire higher with the flame flaring, settling into its stance")),
     },
     "obsidian_sentinel": {
         "awaken": dict(frames=8, first="unlit", end="idle", action=(
@@ -593,6 +575,98 @@ POSES = {
 }
 
 
+STAGES = {
+    "cursed_scarecrow/awaken": [
+        dict(first="file:tools/preview_out/entradas_arte/ato1/derived/cursed_scarecrow_limp.png",
+             last="file:tools/preview_out/entradas_arte/ato1/derived/cursed_scarecrow_crouch.png",
+             frames=6, action=(
+                 "the lifeless scarecrow hanging limp with both arms spread "
+                 "sideways, head drooped and legs dangling suddenly JERKS "
+                 "alive: the head snaps up and the ember eyes ignite, the "
+                 "whole body convulses, the arms rip down with straw bursting "
+                 "from the shoulders and collar, it drops down and lands hard "
+                 "in a deep low crouch with both claw hands slammed on the "
+                 "ground, straw and dust flying up around it")),
+        dict(first="file:tools/preview_out/entradas_arte/ato1/derived/cursed_scarecrow_crouch.png",
+             last="idle", frames=6, action=(
+                 "from its deep low crouch with both claws on the ground it "
+                 "pushes up slowly and rises to its feet, straw settling, "
+                 "shoulders rolling back, head coming up with the grin wide, "
+                 "the claw arms lifting off the ground and hanging at its "
+                 "sides, ending in its standing stance")),
+    ],
+}
+
+
+def _anim_submit(eid, first_path, last_path, frames, action, seed=None):
+    prompt = f"{action}. It keeps its {F.ENEMIES[eid]['keep']}." + SUFFIX
+    args = {"action": prompt[:1000], "first_frame_base64": b64file(first_path),
+            "frame_count": frames}
+    if last_path:
+        args["last_frame_base64"] = b64file(last_path)
+    if seed is not None:
+        args["seed"] = seed
+    text = F.tool_text(F.rpc("tools/call", {"name": "animate_image", "arguments": args}))
+    m = re.search(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", text)
+    return m.group(1) if m else None
+
+
+def _path_of(eid, kind):
+    if kind == "idle":
+        return F.idle_frame_path(eid)
+    if kind.startswith("file:"):
+        return os.path.join(ROOT, kind[5:])
+    p = os.path.join(derived_dir(eid), f"{eid}_{kind.replace(':', '')}_stage.png")
+    derive(eid, kind).save(p)
+    return p
+
+
+def stages(key, seed=None):
+    eid, clip = key.split("/")
+    parts = []
+    for n, st in enumerate(STAGES[key]):
+        job = None
+        for _ in range(30):
+            job = _anim_submit(eid, _path_of(eid, st["first"]), _path_of(eid, st["last"]),
+                               st["frames"], st["action"], seed)
+            if job:
+                break
+            time.sleep(20)
+        print(f"[stages] {key} etapa {n + 1} -> job {job}", flush=True)
+        tmp = "_stage%d_%s" % (n, clip)
+        result = "wait"
+        for _ in range(72):
+            time.sleep(10)
+            result = F.poll_download(eid, tmp, job)
+            if result != "wait":
+                break
+        if result != "done":
+            print(f"[stages] {key} etapa {n + 1}: {result}", flush=True)
+            return
+        d = F.anim_dir(eid, tmp)
+        ims = [Image.open(os.path.join(d, f)).convert("RGBA") for f in frame_files(d)]
+        for f in frame_files(d):
+            os.remove(os.path.join(d, f))
+        os.rmdir(d)
+        parts.append(ims)
+    frames = parts[0] + [im for ims in parts[1:] for im in ims[1:]]
+    jobs = load_jobs()
+    st = jobs.get(key, {})
+    keep = snapshot(eid, clip, f"t{len(st.get('tries', [])) + 1}")
+    d = F.anim_dir(eid, clip)
+    for f in frame_files(d):
+        os.remove(os.path.join(d, f))
+    for i, im in enumerate(frames):
+        im.save(os.path.join(d, f"{i}.png"))
+    probs, drift = tripwires(eid, clip)
+    pin_end(eid, clip)
+    jobs[key] = dict(st, status="stages", drift=round(drift, 3),
+                     tries=st.get("tries", []) + [dict(stages=True, drift=round(drift, 3), problems=probs, prev=keep)])
+    save_jobs(jobs)
+    strip(eid, clip)
+    print(f"[stages] {key}: {len(frames)} quadros, drift {drift:.3f} {probs}", flush=True)
+
+
 def pose(key):
     eid, name = key.split("/")
     spec = POSES[key]
@@ -870,6 +944,8 @@ if __name__ == "__main__":
         run(rest)
     elif cmd == "pose":
         pose(rest[0])
+    elif cmd == "stages":
+        stages(rest[0])
     elif cmd == "submit1":
         sd = int(rest[2])
         jid = submit(rest[0], rest[1], seed=None if sd < 0 else sd)

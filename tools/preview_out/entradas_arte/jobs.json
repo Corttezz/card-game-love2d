@@ -1,6 +1,6 @@
 {
   "cursed_scarecrow/awaken": {
-    "status": "ok",
+    "status": "stages",
     "job_id": "b1a3c10d-3d31-4662-94fe-2024c575c840",
     "tries": [
       {
@@ -16,16 +16,22 @@
         "drift": 0.004,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\cursed_scarecrow_awaken_t2"
+      },
+      {
+        "stages": true,
+        "drift": 0.01,
+        "problems": [],
+        "prev": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\cursed_scarecrow_awaken_t3"
       }
     ],
-    "drift": 0.004
+    "drift": 0.01
   },
   "hollow_farmer/walk": {
     "status": "ok",
-    "job_id": "1ff1bb78-d1e3-45fd-8a6b-9026f93a3359",
+    "job_id": "0e592e5c-09bd-4972-a379-53e34f3b48d9",
     "tries": [
       {
-        "job": "1ff1bb78-d1e3-45fd-8a6b-9026f93a3359",
+        "job": "0e592e5c-09bd-4972-a379-53e34f3b48d9",
         "drift": 0.002,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\hollow_farmer_walk_t1"
@@ -35,24 +41,16 @@
   },
   "plague_rats/form": {
     "status": "ok",
-    "job_id": "cdb970d8-dbf0-477b-883d-da54a07dc032",
+    "job_id": "683b0b3f-9a5d-4090-89c2-95f8379355c0",
     "tries": [
       {
-        "job": "8433c1e9-5c9d-4a7d-9942-aac7fef94a68",
-        "drift": 0.003,
-        "problems": [
-          "RATO NO AR (quadros 1-2)"
-        ],
-        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t1"
-      },
-      {
-        "job": "cdb970d8-dbf0-477b-883d-da54a07dc032",
-        "drift": 0.003,
+        "job": "683b0b3f-9a5d-4090-89c2-95f8379355c0",
+        "drift": 0.001,
         "problems": [],
-        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t2"
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\plague_rats_form_t1"
       }
     ],
-    "drift": 0.003
+    "drift": 0.001
   },
   "harvest_reaper/form": {
     "status": "ok",
@@ -77,16 +75,16 @@
   },
   "blight_bull/charge": {
     "status": "ok",
-    "job_id": "47af205b-a036-44e6-9074-9071fda8ca9b",
+    "job_id": "96a42ad9-05e5-424b-a630-68c09352a3f5",
     "tries": [
       {
-        "job": "47af205b-a036-44e6-9074-9071fda8ca9b",
-        "drift": 0.001,
+        "job": "96a42ad9-05e5-424b-a630-68c09352a3f5",
+        "drift": 0.002,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato1\\tries\\blight_bull_charge_t1"
       }
     ],
-    "drift": 0.001
+    "drift": 0.002
   },
   "wicker_effigy/awaken": {
     "status": "ok",
@@ -132,32 +130,16 @@
   },
   "ram_cultist/walk": {
     "status": "ok",
-    "job_id": "16469ef6-48c6-45a4-a653-56e22e7f5e2a",
+    "job_id": "37459d69-df89-4e15-a2d0-41c738a9ab0e",
     "tries": [
       {
-        "job": "a2731da8-9c93-4c9e-ba2e-430805a53212",
-        "drift": 0.006,
-        "problems": [
-          "QUASE PARADO (nao anda)"
-        ],
-        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t1"
-      },
-      {
-        "job": "9de4491b-4c5d-4f18-a98f-7e1b98ffdbdd",
-        "drift": 0.01,
-        "problems": [
-          "AINDA SUTIL"
-        ],
-        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t2"
-      },
-      {
-        "job": "16469ef6-48c6-45a4-a653-56e22e7f5e2a",
-        "drift": 0.009,
+        "job": "37459d69-df89-4e15-a2d0-41c738a9ab0e",
+        "drift": 0.011,
         "problems": [],
-        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t3"
+        "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato2\\tries\\ram_cultist_walk_t1"
       }
     ],
-    "drift": 0.009
+    "drift": 0.011
   },
   "storm_harpy/swoop": {
     "status": "ok",
@@ -260,29 +242,29 @@
   },
   "hellhound/charge": {
     "status": "ok",
-    "job_id": "7ef4a1af-c95d-4895-bdc5-827b48b4a337",
+    "job_id": "dc91b6e5-0479-48a4-8e7e-5df039c9d6a8",
     "tries": [
       {
-        "job": "7ef4a1af-c95d-4895-bdc5-827b48b4a337",
-        "drift": 0.01,
+        "job": "dc91b6e5-0479-48a4-8e7e-5df039c9d6a8",
+        "drift": 0.007,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\hellhound_charge_t1"
       }
     ],
-    "drift": 0.01
+    "drift": 0.007
   },
   "abyss_acolyte/walk": {
     "status": "ok",
-    "job_id": "dae63106-6903-4ff9-b42e-b5f0bbefe0cd",
+    "job_id": "0950f32f-ec45-4958-8d98-e3186c0efc42",
     "tries": [
       {
-        "job": "dae63106-6903-4ff9-b42e-b5f0bbefe0cd",
-        "drift": 0.003,
+        "job": "0950f32f-ec45-4958-8d98-e3186c0efc42",
+        "drift": 0.002,
         "problems": [],
         "dir": "E:\\dev\\projects\\card-game-love2d\\.claude\\worktrees\\agent-a9a074daa6de42e97\\tools/preview_out/entradas_arte\\ato3\\tries\\abyss_acolyte_walk_t1"
       }
     ],
-    "drift": 0.003
+    "drift": 0.002
   },
   "obsidian_sentinel/awaken": {
     "status": "ok",

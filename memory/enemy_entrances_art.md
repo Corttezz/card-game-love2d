@@ -77,3 +77,17 @@ Roteiro: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Motor:
 - Vista de ancora: "flat on the ground" sem "seen straight from the front" vira cubo isometrico; "burned into the ground" vira LAJE. Pedir "ONLY glowing lines, no ground, no slab" da a marca pronta para sobrepor na estrada.
 - Dois processos gravando o mesmo `anchor_jobs.json` perdem job (corrida): enfileirar ancoras de UM processo por vez.
 
+## Rodada 2: naturalidade dos que andam (dono: "os que vem andando tem que ficar mais naturais... abusar do pixel art")
+Os seis clipes de movimento foram REGERADOS a 12 quadros (13 instalados, ultimo = idle 0) com prompt de "duas passadas completas" + movimento secundario nomeado (pe sobe e planta, peso muda de lado, barra/corrente/palha/chama/vapor), ainda `animate_image` (o esqueleto nao foi preciso: com 12 quadros e passada descrita o v3 mexe as pernas). v1 de 8 quadros guardado em `atoN/tries/<id>_<clip>_v1/`.
+| clipe | antes (8q) | depois (12q) |
+|---|---|---|
+| hollow_farmer/walk | forcado baixa e sobe, pernas quase paradas | joelho sobe e pe planta alternando, corpo afunda na perna manca, forcado arrasta no chao (4-7) e finca, avental e mangas balancam |
+| ram_cultist/walk | arrastado | procissao: barra da tunica abre e levanta mostrando a bota (4-7), faixa chicoteia, peso de um lado pro outro, turibulo em arco |
+| abyss_acolyte/walk | deslize | barra abre mostrando o pe (3-6), correntes balancam, grimorio sobe e flameja no fim; o mais quieto dos tres (a arte nao tem perna) |
+| blight_bull/charge | galope curto | duas passadas: dianteiras alcancam e batem, traseiras empurram, ombros sobem e descem, espigas e costelas chacoalham; freada no fim e sutil |
+| hellhound/charge | ciclo curto | passada de salto completa (estica e junta), jubas esticadas com brasas brancas, veios pulsam |
+| plague_rats/form | 3 ratos chegando | de 2 ratos no chao a pilha cheia, um rato novo sobe por quadro, tudo encostado, nada no ar |
+
+Espantalho awaken v4 = DUAS ETAPAS (`stages cursed_scarecrow/awaken`): pendurado -> agachado (still `derived/cursed_scarecrow_crouch.png`, `create_image_pro` com o idle de character base, `ato1/cursed_scarecrow_crouch_stills.png`) em 6 quadros, agachado -> idle em 6; 13 quadros, drift 0,010: olhos acendem no 2, cai e crava as garras no chao (4-6), palha voando, levanta (7-11).
+Gasto da rodada: 6 clipes x 2 geracoes (12q a ~100 px) + still do agachamento + 2 etapas = ~16; frente ~90 das 450.
+
