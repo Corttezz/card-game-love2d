@@ -72,7 +72,7 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
 
 ## Som proprio por criatura (22/Out/2026)
 - Dono: "sons genericos... quero sons especificos para cada monstro". 52 mp3 gerados no ElevenLabs (free, 10 creditos por
-  segundo pedido; 826 gastos, 457 sobraram) em `audio/sfx/entrances/<id>_<beat>.mp3`: 36 assinaturas (uma por criatura, no
+  segundo pedido; 961 gastos, 322 sobraram) em `audio/sfx/entrances/<id>_<beat>.mp3`: 36 assinaturas (uma por criatura, no
   beat principal: skid do touro, wake da efigie, rise de quem sai do chao, stop de quem pousa/condensa) + 16 segundos beats
   (bull/hound/troll/croc/brute `stop` no lugar do `enemyBuffRoar`, griffin/harpy/anjo `start`, gargula/sentinela/glacier
   `stop`, golem `mid`, sapo `hop`, ratos `start`, lobo `start`+uivo no `stop`, scarecrow `wake`+`stop`).

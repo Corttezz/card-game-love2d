@@ -71,7 +71,7 @@ cruzados com o que o prompt pediu. Arquivos cuja geracao saiu quase muda (media 
 
 ## Fallback por camadas
 Nenhum. O orcamento (1.283 creditos no inicio) deu para gerar as 52 pecas (36 assinaturas + 16 segundos beats) e
-regerar 8 fracas; sobraram 457. O catalogo `LAYER` do `tools/gen_entrance_sfx.py` (mistura de 3 sons existentes com
+regerar 8 fracas; a API fechou em 961 creditos gastos (contador atualiza com atraso), sobraram 322. O catalogo `LAYER` do `tools/gen_entrance_sfx.py` (mistura de 3 sons existentes com
 pitch por criatura) ficou pronto como plano B (`python tools/gen_entrance_sfx.py layer <id_beat>`), nao foi usado.
 
 ## Pendente
