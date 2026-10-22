@@ -132,3 +132,6 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   <= -6,6 dB; trava -36..-15 dB e pico <= 0,5), ganho por categoria do motor neutro. Touro e cao regerados como cascos/patas
   em terra seca ("animal only, no vehicles, no rubber"). Detector de "cara de maquina": `gen_entrance_sfx.py tonal` (flatness
   espectral < 0,02 = tom sustentado de motor/rotor/turbina); grifo start, morcego e sentinela wake regerados por isso.
+- Rodada 3: com a investida nova (`skid` no inicio dos 0,3 s finais de derrapada, `stop` no fim) o `skid` do touro e do
+  cao virou SO o deslizar na terra (0,37 e 0,50 s); som de galope tocado no `skid` cairia com as pernas ja paradas. Bufo e
+  rosnado ficam no `stop`. Galopes guardados em `tools/preview_out/entradas_som/raw/*_r2.mp3` para um beat de corrida.

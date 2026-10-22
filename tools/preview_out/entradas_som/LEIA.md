@@ -22,7 +22,7 @@ cruzados com o que o prompt pediu. Arquivos cuja geracao saiu quase muda (media 
 | plague_rats | start | plague_rats_start.mp3 | 1,60 s | -18,9 dB | muitos roedores correndo e guinchando (regerado 2x; o modelo devolvia silencio com "tall grass") | agudo continuo ate 1,5 s, ok |
 | plague_rats | stop | plague_rats_stop.mp3 | 0,88 s | -16,9 dB | pilha de ratos se mexendo, guinchos | curto e agudo, ok |
 | harvest_reaper | form | harvest_reaper_stop.mp3 | 1,48 s | -16,5 dB | foice cantando no ar, vento em trigo seco | pico tardio (1,18 s) = a lamina desce no fim, combina com o form terminando, ok |
-| blight_bull | skid | blight_bull_skid.mp3 | 1,62 s | -22,6 dB | cascos pesados em terra seca, derrapada de poeira, bufo (rodada 2) | 4 batidas crescendo, pico 0,93 s, ruidoso, ok |
+| blight_bull | skid | blight_bull_skid.mp3 | 0,37 s | -26,0 dB | cascos fendidos derrapando em terra solta e pedrisco, poeira (rodada 3) | raspado ruidoso de 0,3 s, 0 % tonal; o bufo fica no `stop` |
 | blight_bull | stop | blight_bull_stop.mp3 | 0,85 s | -18,2 dB | bufo e casco batendo | curto, ok |
 | wicker_effigy | wake | wicker_effigy_wake.mp3 | 1,96 s | -17,2 dB | vime e palha pegando fogo por dentro, crepitar, brasas | agudo (8,5 kHz) crescendo ate 1,2 s: fogo tomando, ok |
 | moon_gargoyle | wake | moon_gargoyle_wake.mp3 | 1,76 s | -16,3 dB | pedra rachando continuamente, lascas, baque no fim (regerado; a 1a era um estalo so) | cheio ate 0,95 s, ok |
@@ -36,7 +36,7 @@ cruzados com o que o prompt pediu. Arquivos cuja geracao saiu quase muda (media 
 | storm_griffin | start | storm_griffin_start.mp3 | 1,12 s | -16,5 dB | asas enormes passando baixo, trovao distante | grave (176 Hz), ok |
 | storm_griffin | stop | storm_griffin_stop.mp3 | 1,50 s | -16,4 dB | pouso pesado com trovao, asas dobrando | grave, ataque imediato, ok |
 | ember_imp | rise | ember_imp_rise.mp3 | 1,13 s | -17,1 dB | rachadura incandescente abrindo, jato de brasas | inicio em 0,37 s (sobe com o bicho), ok |
-| hellhound | skid | hellhound_skid.mp3 | 1,31 s | -24,1 dB | patas grandes em terra seca, derrapada de poeira, rosnado (rodada 2) | pico 0,37 s, 7 % tonal (rosnado), ok |
+| hellhound | skid | hellhound_skid.mp3 | 0,50 s | -23,9 dB | patas e garras derrapando em terra solta e cascalho, poeira (rodada 3) | cresce ate 0,35 s, 0 % tonal; o rosnado fica no `stop` |
 | hellhound | stop | hellhound_stop.mp3 | 0,72 s | -16,5 dB | rosnado grave, brasas chiando | grave (281 Hz), ok |
 | abyss_acolyte | stop | abyss_acolyte_stop.mp3 | 1,18 s | -16,8 dB | sigilo acendendo, zumbido, paginas | grave sustentado, ok |
 | obsidian_sentinel | wake | obsidian_sentinel_wake.mp3 | 1,76 s | -16,7 dB | estatua de obsidiana despertando, pedra e metal rangendo | grave (175 Hz) continuo, ok |
@@ -101,3 +101,12 @@ pitch por criatura) ficou pronto como plano B (`python tools/gen_entrance_sfx.py
    Mesma ressalva da rodada 1: veredito por medida (tonalidade, envelope, centroide), sem escuta real neste processo.
 
 Creditos: 322 -> 225 (rodada 2: 6 geracoes, 97 creditos).
+
+## Rodada 3 (motor novo da investida)
+
+O entradas-motor mudou a investida: corrida em velocidade constante desde a crista, e so os ULTIMOS 0,3 s sao uma
+derrapada real (pernas paradas, poeira a cada 0,05 s); `skid` dispara no INICIO desses 0,3 s e `stop` no fim. O galope
+da rodada 2 (1,6 s de cascos/patas batendo) tocaria depois que as pernas ja pararam. Regerado so o deslizar: touro 0,37 s
+(raspado de terra e pedrisco), cao 0,50 s (patas e garras na terra); o bufo do touro e o rosnado do cao continuam no
+`stop` (rodada 1). Os galopes da rodada 2 ficaram em `raw/blight_bull_gallop_r2.mp3` e `raw/hellhound_run_r2.mp3`,
+prontos se o motor ganhar um beat no inicio da corrida. Creditos: 225 -> 209 (2 geracoes de 0,8 s).
