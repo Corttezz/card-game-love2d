@@ -43,6 +43,7 @@ M.TOOL_RESULT_PRINTERS = {
     "tools/screenshot_pause.lua", "tools/screenshot_relic_art.lua", "tools/screenshot_resume_boss.lua",
     "tools/screenshot_rewards.lua", "tools/screenshot_round_eval.lua", "tools/screenshot_shop.lua",
     "tools/screenshot_shop_diag.lua", "tools/screenshot_sombras_mundo.lua", "tools/screenshot_topbar_gear.lua",
+    "tools/screenshot_entradas.lua", "tools/entradas.lua",
     "tools/screenshot_turnbanner.lua", "tools/screenshot_tutorial.lua", "tools/screenshot_ui.lua",
     "tools/screenshot_uiscale.lua", "tools/screenshot_uiscale_battle.lua", "tools/screenshot_unlock_showcase.lua",
     "tools/screenshot_unlocks.lua", "tools/screenshot_upgrades.lua", "tools/screenshot_weather.lua",

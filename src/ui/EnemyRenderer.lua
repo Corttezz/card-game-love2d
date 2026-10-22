@@ -206,13 +206,19 @@ function EnemyRenderer.debugState()
 end
 
 local arrivalT = 0
-function EnemyRenderer.triggerArrival(handoffAnim)
+local arrivalStill = false
+function EnemyRenderer.triggerArrival(handoffAnim, opts)
     arrivalT = 0.55
+    arrivalStill = (opts and opts.still) and true or false
     if handoffAnim then EnemyRenderer._handoff = handoffAnim end
 end
 
+function EnemyRenderer.isArriving()
+    return arrivalT > 0
+end
+
 function EnemyRenderer.getArrivalOffset()
-    if arrivalT <= 0 then return 0 end
+    if arrivalT <= 0 or arrivalStill then return 0 end
     local k = arrivalT / 0.55
     return -math.abs(math.sin(k * math.pi * 2.2)) * 14 * k * k
 end

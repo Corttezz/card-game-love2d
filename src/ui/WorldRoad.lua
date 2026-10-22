@@ -872,7 +872,9 @@ local function getSprite(kind, variant, bid)
     if not img then
         local rng = love.math.newRandomGenerator(#key * 7919 + variant * 131)
         local b = BIOME_BY_ID[bid] or rawBiome()
-        if kind == "cloud" then
+        if kind == "anchor" then
+            img = false
+        elseif kind == "cloud" then
             img = makeCloud(variant, rng)
         elseif kind == "castle" then
             img = makeCastle(b, rng)
@@ -1254,7 +1256,16 @@ function WorldRoad.travel(opts)
             contentH = e.contentH, shadow = e.shadow,
             z = WorldRoad._camZ + dist + WorldRoad.BATTLE_REL,
         }
+        if e.spriteId then
+            local EE = require("src.ui.EnemyEntrance")
+            local dur, settle = EE.begin(WorldRoad._encounter,
+                { bid = rawBiome().id, stopZ = WorldRoad._camZ + dist, duration = opts.duration })
+            WorldRoad._travel.duration = dur
+            WorldRoad._travel.settle = settle
+            WorldRoad._encounter.anim = EE.view()
+        end
     else
+        require("src.ui.EnemyEntrance").reset()
         WorldRoad._encounter = nil
     end
 end
@@ -1269,6 +1280,7 @@ local function roadWobble(worldZ, t, w)
         + math.sin(worldZ * 0.71 + 0.7) * 0.18)
         * w * 0.045 * (0.28 + 0.72 * t)
 end
+WorldRoad._roadWobble = roadWobble
 
 function WorldRoad.setBattleEnemyDraw(fn, baseY)
     WorldRoad._enemyDraw = fn
@@ -1743,10 +1755,6 @@ function WorldRoad.update(dt)
         end
     end
 
-    local encA = WorldRoad._encounter
-    if encA and encA.anim and WorldRoad._travel then
-        encA.anim:update(dt)
-    end
 
     local f = WorldRoad._fork
     if f then
@@ -1856,14 +1864,21 @@ function WorldRoad.update(dt)
         tr.t = tr.t + dt
         local k = math.min(1, tr.t / tr.duration)
         WorldRoad._camZ = tr.from + tr.dist * easeInOutCubic(k)
+        local done = k >= 1
         if WorldRoad._encounter then
             WorldRoad._encounter.z = tr.from + tr.dist + WorldRoad.BATTLE_REL
+            local EE = require("src.ui.EnemyEntrance")
+            if EE.isActive() then
+                done = EE.update(dt, tr)
+            end
         end
-        if k >= 1 then
+        if done then
             WorldRoad._travel = nil
             local enc = WorldRoad._encounter
             if enc and enc.anim then
-                require("src.ui.EnemyRenderer")._handoff = enc.anim
+                local EE = require("src.ui.EnemyEntrance")
+                local handoff = EE.isActive() and EE.finish() or enc.anim
+                require("src.ui.EnemyRenderer")._handoff = handoff
             end
             WorldRoad._encounter = nil
             if tr.onComplete then tr.onComplete() end
@@ -1891,6 +1906,7 @@ function WorldRoad.update(dt)
     for _, p in ipairs(WorldRoad._props) do
         local rd = not p.ghost and LuminaireEngine.def(p.bid, p.kind)
         if not p.ghost and p.z - WorldRoad._camZ < ((rd and rd.roadside) and -7 or -3.5) then
+            p.anchor, p.glow, p.grow, p.glowColor, p.ts, p.stopZ, p.entrId, p.name = nil, nil, nil, nil, nil, nil, nil, nil
             local wasWall = p.wall
             rollProp(p, WorldRoad._camZ + REL_CREST + EMERGE_BAND * 0.6
                         + WorldRoad._rng:random() * 2, p.side, wasWall)
@@ -2483,7 +2499,9 @@ end
 local function drawEncounterBehind(g, x, w, camZ)
     local e = WorldRoad._encounter
     if not e or not WorldRoad._travel then return end
-    local rel = e.z - camZ
+    local pz = require("src.ui.EnemyEntrance").pose(e)
+    if pz.hidden then return end
+    local rel = e.z - camZ + pz.relOff
     if rel <= REL_CREST then return end
     if rel > REL_CREST + EMERGE_BAND then return end
 
@@ -4129,10 +4147,11 @@ local function drawProps(g, x, w, camZ)
     local encMark = nil
     do
         local e = WorldRoad._encounter
-        if e and WorldRoad._travel and e.z - camZ <= REL_CREST and g.tOf(e.z - camZ) then
+        local eRel = e and (e.z - camZ + require("src.ui.EnemyEntrance").relOff()) or nil
+        if e and WorldRoad._travel and eRel <= REL_CREST and g.tOf(eRel) then
             encMark = LMG.encMark or {}
             LMG.encMark = encMark
-            encMark.rel, encMark.drawn = e.z - camZ, false
+            encMark.rel, encMark.drawn = eRel, false
         end
     end
     local function drawEncounterNow()
@@ -4346,7 +4365,8 @@ local function drawProps(g, x, w, camZ)
             local sy = g.latY(pxX - g.cx, t) + over * g.h * 0.13
 
             if p.clutter then Scene.Clutter.draw(p, LMG.cEnv) end
-            local img = not p.clutter and getSprite(p.kind, p.variant, p.bid) or nil
+            if p.anchor then require("src.ui.EnemyEntrance").drawProp(p, g, x, w, t, rel, camZ) end
+            local img = not p.clutter and not p.anchor and getSprite(p.kind, p.variant, p.bid) or nil
             local fadeA = propFadeK(p) * PropCut.hideK(p)
             local roadLum = rdef and rdef.roadside
             if img and not roadLum and not PropCut.kinds[p.kind] then
@@ -4745,7 +4765,9 @@ end
 function LMG.drawEncounterFront(g, x, w, camZ)
     local e = WorldRoad._encounter
     if not e or not WorldRoad._travel then return end
-    local rel = e.z - camZ
+    local EE = require("src.ui.EnemyEntrance")
+    local pz = EE.pose(e)
+    local rel = e.z - camZ + pz.relOff
     if rel > REL_CREST then return end
     local t = g.tOf(rel)
     if not t then return end
@@ -4755,7 +4777,13 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     local tBattle = g.tOf(WorldRoad.BATTLE_REL) or 0.3
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     local s = e.targetScale * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
-    cx = cx - math.floor((e.offX or 0) * s)
+    cx = cx - math.floor((e.offX or 0) * s) + math.floor(EE.dxPx(e, g, w, t, s))
+    local entLift = pz.liftK * e.ih * s
+    EE.notePos(cx, sy, s, rel)
+    if pz.hidden then
+        EE.drawUnder(e, g, w, cx, sy, s, t, entLift)
+        return
+    end
     local pad = e.footPad or 0
     if e.framePads and e.anim and e.framePads[e.anim.currentFrame] then
         pad = e.framePads[e.anim.currentFrame]
@@ -4772,12 +4800,17 @@ function LMG.drawEncounterFront(g, x, w, camZ)
         cx = cx + ER.poseOffsetX(e.spriteId, e.ih * s, now, 0)
         shX = shX + ER.poseOffsetX(e.spriteId, e.ih * s, now, 0)
     end
+    if entLift ~= 0 then
+        shX = shX + ShadowEngine.tipShiftAt(cx) * entLift * 0.55
+        lift = lift + entLift
+    end
+    EE.drawUnder(e, g, w, cx, sy, s, t, lift)
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = sy - e.ih * s + footY - lift
     if WorldRoad._traceEnemy then WorldRoad._traceEnemy(dx0, dy0, "encounter") end
     if e.anim then
         local drawn = ShadowEngine.silhouette(shX, sy - 1 + lift * 0.16, { smear = e.iw * s * 0.035 * (es.smearK or 1),
-                widthK = es.widthK, lenK = es.lenK, alphaK = es.alphaK,
+                widthK = es.widthK, lenK = es.lenK, alphaK = (es.alphaK or 1) * pz.shadowA,
                 baseK = e.shadowBaseK, riseK = e.shadowRiseK,
                 contentH = (e.contentH or (e.ih - pad)) * s },
             function(tint)
@@ -4830,7 +4863,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
             LightEngine.submitMicro(
                 oxT + a.xr * e.iw * s, oyT + a.yr * e.ih * s,
                 a.r * e.ih * s, a.color,
-                (a.intensity or 0.35) * 0.8 * pulse, rel)
+                (a.intensity or 0.35) * 0.8 * pulse * (pz.alpha or 1), rel)
         end
     end
 end
@@ -5079,6 +5112,7 @@ function WorldRoad.resetRun()
     WorldRoad._travel = nil
     WorldRoad._entry = nil
     WorldRoad._encounter = nil
+    require("src.ui.EnemyEntrance").reset()
     WorldRoad._fork = nil
     WorldRoad._wallVar = nil
     WorldRoad._landmark = nil
@@ -5210,6 +5244,8 @@ function WorldRoad.clearCache()
     WorldRoad._blend = nil
     WorldRoad._prevBiomeIndex = nil
     WorldRoad._encounter = nil
+    require("src.ui.EnemyEntrance").reset()
+    require("src.ui.EnemyEntrance").clearCache()
     WorldRoad._nextLumZ = nil
     WorldRoad._fork = nil
     WorldRoad._landmark = nil

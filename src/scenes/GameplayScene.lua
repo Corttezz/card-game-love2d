@@ -80,6 +80,7 @@ function GameplayScene.isQuiet()
     if EnemyRenderer.getArrivalOffset and EnemyRenderer.getArrivalOffset() ~= 0 then
         return false
     end
+    if EnemyRenderer.isArriving and EnemyRenderer.isArriving() then return false end
     return true
 end
 
@@ -860,7 +861,10 @@ function GameplayScene.update(dt)
             else
                 WorldRoad.travel({
                     encounter = EnemyRenderer.getEncounterBillboard(game.enemy),
-                    onComplete = function() EnemyRenderer.triggerArrival() end,
+                    onComplete = function()
+                        EnemyRenderer.triggerArrival(nil,
+                            { still = not require("src.ui.EnemyEntrance").endsWithLanding() })
+                    end,
                 })
             end
         end
@@ -875,8 +879,9 @@ function GameplayScene.update(dt)
         local wr = GameplayScene.SCENE_MODE == "worldroad"
         local entering = wr and WorldRoad.isEntering()
         local bossWait = wr and ntH == "boss" and not bossEntered
-        local arriving = EnemyRenderer.getArrivalOffset
-            and EnemyRenderer.getArrivalOffset() ~= 0
+        local arriving = (EnemyRenderer.getArrivalOffset
+            and EnemyRenderer.getArrivalOffset() ~= 0)
+            or (EnemyRenderer.isArriving and EnemyRenderer.isArriving())
         local down = (wr and WorldRoad.isTraveling()) or entering or bossWait
             or BossCinematic.isActive() or arriving or false
         HandDeal.setCurtain(down, game,

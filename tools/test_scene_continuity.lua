@@ -36,7 +36,7 @@ M.SCENARIOS = {
     resumefork = { resume = true, forkNow = { "battle", "event", "shop" } },
 }
 
-function M.capture(act, seed, scenario, saveDir)
+function M.capture(act, seed, scenario, saveDir, creature)
     local I18n = require("src.i18n.I18n")
     I18n.init()
     I18n.setLocale("en", true)
@@ -65,9 +65,9 @@ function M.capture(act, seed, scenario, saveDir)
     local run = game.runManager.currentRun
     run.actNumber = act
     run.floorInAct = floor
-    run.currentNode = { type = "battle" }
+    run.currentNode = { type = (creature and creature.node) or "battle" }
     local function spawn()
-        local sid = EnemyRenderer.resolveSpriteId(act, "battle")
+        local sid = (creature and creature.id) or EnemyRenderer.resolveSpriteId(act, "battle")
         game.enemy = EnemyRoster.spawn(Enemy, sid, ActSystem.getEnemyStats(act, floor, "battle"))
         game.enemy.isBoss = false
     end
@@ -176,8 +176,16 @@ function M.capture(act, seed, scenario, saveDir)
         local lf = EnemyRenderer.getLastFoot()
         if lf and phase == "arrival" or (lf and phase == "travel" and not WorldRoad._travel) then
             log.body[frame] = { x = lf.drawX, y = lf.drawY - EnemyRenderer.getArrivalOffset(), src = "battle", phase = phase }
+            if not log.firstBattleFrame then log.firstBattleFrame = lf.frame end
         end
         return r
+    end
+    log.anchor = {}
+    local EE = require("src.ui.EnemyEntrance")
+    EE._trace = function(p, px, py, t, s, a)
+        local A = log.anchor[p.uid]
+        if not A then A = { name = p.name, f = {} }; log.anchor[p.uid] = A end
+        A.f[frame] = { x = px, y = py, t = t, s = s, a = a, phase = phase }
     end
     local origSil = ShadowEngine.silhouette
     ShadowEngine.silhouette = function(fx, fy, o, fn)
@@ -250,13 +258,21 @@ function M.capture(act, seed, scenario, saveDir)
     local function travelBattle()
         spawn()
         phase = "travel"
+        log.firstBattleFrame = nil
+        local f0 = frame + 1
         WorldRoad.travel({
             encounter = EnemyRenderer.getEncounterBillboard(game.enemy),
-            onComplete = function() EnemyRenderer.triggerArrival() end,
+            onComplete = function()
+                EnemyRenderer.triggerArrival(nil, { still = not EE.endsWithLanding() })
+            end,
         })
         step(nil, function() return WorldRoad.isTraveling() end)
+        log.travels = log.travels or {}
+        log.travels[#log.travels + 1] = { f0 = f0, f1 = frame, secs = (frame - f0 + 1) * DT,
+            info = EE._last, firstBattleFrame = nil }
         phase = "arrival"
         step(60)
+        log.travels[#log.travels].firstBattleFrame = log.firstBattleFrame
     end
 
     local ok, err = pcall(function()
@@ -268,6 +284,13 @@ function M.capture(act, seed, scenario, saveDir)
             step(nil, function() return WorldRoad.isTraveling() end)
             phase = "stop"
             step(20)
+        elseif scenario == "entradas" then
+            travelBattle()
+            phase = "battle"
+            step(15)
+            phase = "fork"
+            WorldRoad.showFork(nodesFor({ "shop", "event" }), function() end)
+            step(25)
         else
             travelBattle()
             phase = "battle"
@@ -308,6 +331,7 @@ function M.capture(act, seed, scenario, saveDir)
     ShadowEngine.silhouette = origSil
     WorldRoad._trace = nil
     WorldRoad._traceEnemy = nil
+    EE._trace = nil
     restore()
     love.window.setVSync(vsync)
     cv:release()
@@ -436,15 +460,61 @@ function M.analyze(log)
     end
     for k = 2, log.frames do
         local c, p = log.body[k], log.body[k - 1]
-        if c and p and c.src ~= p.src then
+        if c and p then
             local dp = dist(c, p)
             local pp = log.body[k - 2]
             local ref = pp and dist(p, pp) or 0
-            if dp > 6 and dp > 2.5 * ref + 6 then
+            local nx = log.body[k + 1]
+            local refN = nx and dist(nx, c) or 0
+            local cross = c.src ~= p.src
+            local tol = cross and 6 or 10
+            if dp > tol and dp > 2.5 * math.max(ref, cross and 0 or refN) + tol then
                 shadowJumps[#shadowJumps + 1] = { frame = k, src0 = string.format("corpo %s(%.0f,%.0f)", p.src, p.x, p.y),
                     src1 = string.format("%s(%.0f,%.0f)", c.src, c.x, c.y),
                     rl = 0, rw = 0, da = 0, dp = dp, phase = c.phase }
             end
+        end
+    end
+    for uid, A in pairs(log.anchor or {}) do
+        local first = nil
+        for k = 1, log.frames do
+            local c, p = A.f[k], A.f[k - 1]
+            if c and c.a > 0.02 and not first then
+                first = c
+                if c.t >= 0.05 then
+                    pops[#pops + 1] = { uid = uid, kind = "ancora_" .. A.name, frame = k, how = "surge",
+                        a0 = 0, a1 = c.a, phase = c.phase, at = c }
+                end
+            end
+            if c and p and c.a > 0.02 and p.a > 0.02 then
+                local d = dist(c, p)
+                local pp = A.f[k - 2]
+                local ref = pp and pp.a > 0.02 and dist(p, pp) or 0
+                if d > 4 and d > 2.5 * ref + 4 then
+                    jumps[#jumps + 1] = { uid = uid, kind = "ancora_" .. A.name, frame = k, d = d, ref = ref,
+                        phase = c.phase, from = { x = p.x, y = p.y, z = 0, lane = 0, src = "front", t = p.t },
+                        to = { x = c.x, y = c.y, z = 0, lane = 0, src = "front", t = c.t } }
+                end
+                if math.abs(c.a - p.a) > 0.5 then
+                    pops[#pops + 1] = { uid = uid, kind = "ancora_" .. A.name, frame = k, how = "alpha",
+                        a0 = p.a, a1 = c.a, phase = c.phase, at = c }
+                end
+            elseif c and p and (c.a > 0.02) ~= (p.a > 0.02) and p.a > 0.5 and c.phase ~= "fork" then
+                pops[#pops + 1] = { uid = uid, kind = "ancora_" .. A.name, frame = k, how = "some",
+                    a0 = p.a, a1 = c.a, phase = c.phase, at = c }
+            end
+        end
+    end
+    local Data = require("src.data.enemy_entrances")
+    for _, tr in ipairs(log.travels or {}) do
+        local info = tr.info
+        if tr.secs > Data.BASE + Data.MAX_EXTRA + 2 * DT + 1e-6 then
+            pops[#pops + 1] = { uid = 0, kind = "entrada", frame = tr.f1, how = "longa",
+                a0 = tr.secs, a1 = Data.BASE + Data.MAX_EXTRA, phase = "travel", at = { t = 0, x = 0, y = 0 } }
+        end
+        if info and info.endFrame1 and tr.firstBattleFrame and tr.firstBattleFrame ~= 1 then
+            pops[#pops + 1] = { uid = 0, kind = "entrada", frame = tr.f1 + 1, how = "quadro",
+                a0 = tr.firstBattleFrame, a1 = 1, phase = "arrival", at = { t = 0, x = 0, y = 0 } }
         end
     end
     return jumps, pops, shadowJumps
@@ -508,13 +578,24 @@ function M.run(arg)
     end
     local verbose = os.getenv("CONT_VERBOSE") == "1"
     local total, bad = 0, 0
+    local onlyId = os.getenv("CONT_ID")
+    local function creaturesFor(act, sc)
+        if sc ~= "entradas" then return { false } end
+        local out = {}
+        for _, r in ipairs(require("tools.entradas").roster()) do
+            if r.act == act and (not onlyId or onlyId == "" or r.id == onlyId) then out[#out + 1] = r end
+        end
+        return out
+    end
     for _, act in ipairs(acts) do
         for _, seed in ipairs(seeds) do
             for _, sc in ipairs(scenarios) do
-                local tag = string.format("a%d/%s/%d", act, sc, seed)
-                local dir = saveTag and string.format("continuidade/%s/%d_%s_%d", os.getenv("CONT_TAG") or "run", act, sc, seed) or nil
+            for _, cr in ipairs(creaturesFor(act, sc)) do
+                local tag = string.format("a%d/%s/%d", act, cr and (sc .. "/" .. cr.id) or sc, seed)
+                local dir = saveTag and string.format("continuidade/%s/%d_%s_%d", os.getenv("CONT_TAG") or "run", act,
+                    cr and (sc .. "_" .. cr.id) or sc, seed) or nil
                 if dir then love.filesystem.createDirectory(dir) end
-                local log = M.capture(act, seed, sc, dir and { dir = dir, png = saveTag == "png" })
+                local log = M.capture(act, seed, sc, dir and { dir = dir, png = saveTag == "png" }, cr or nil)
                 if dir then writeCsv(dir .. "/trace.csv", log) end
                 local j, p, s = M.analyze(log)
                 local n = #j + #p + #s
@@ -540,6 +621,7 @@ function M.run(arg)
                     print(string.format("  mem lua=%.0fMB tex=%.0fMB canvases=%d images=%d", collectgarbage("count") / 1024,
                         st.texturememory / 1048576, st.canvases, st.images))
                 end
+            end
             end
         end
     end

@@ -1420,6 +1420,9 @@ function love.load(loveArgs)
     if loveArgs and loveArgs[1] == "boss_rooms" then
         require("tools.boss_rooms").run(loveArgs[2])
     end
+    if loveArgs and loveArgs[1] == "entradas" then
+        require("tools.entradas").run(loveArgs[2])
+    end
     if loveArgs and loveArgs[1] == "demo_worldroad" then
         require("tools.demo_worldroad").run(loveArgs[2])
     end
