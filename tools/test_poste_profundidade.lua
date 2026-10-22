@@ -47,8 +47,9 @@ function M.check(act, stage)
     game:startGame()
     local run = game.runManager.currentRun
     run.actNumber, run.floorInAct, run.currentNode = act, 3, { type = "battle" }
-    game.enemy = EnemyRoster.spawn(Enemy, EnemyRenderer.resolveSpriteId(act, "battle"),
-        ActSystem.getEnemyStats(act, 3, "battle"))
+    local WALKERS = { "hollow_farmer", "ram_cultist", "abyss_acolyte", "rime_shaman", "mire_hag", "dullahan" }
+    local spriteId = (stage == "chegada") and WALKERS[act] or EnemyRenderer.resolveSpriteId(act, "battle")
+    game.enemy = EnemyRoster.spawn(Enemy, spriteId, ActSystem.getEnemyStats(act, 3, "battle"))
     _G.game = game
     local topBar = TopBar:new()
     topBar:setGame(game)
