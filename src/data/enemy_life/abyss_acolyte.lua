@@ -11,5 +11,6 @@ return {
     },
     states = {
         poison = { clip = "state_poison", fps = 8 },
+        weak = { clip = "state_weak", fps = 7 },
     },
 }
