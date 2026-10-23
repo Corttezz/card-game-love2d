@@ -63,6 +63,10 @@ function M.run()
     local ids = {}
     for id in (os.getenv("VIDA_IDS") or "ember_imp,bog_ghoul,frost_wight"):gmatch("[%w_]+") do ids[#ids + 1] = id end
     local useFixture = os.getenv("VIDA_FIXTURE") == "1"
+    local timeline = {}
+    for n in (os.getenv("VIDA_TIMELINE") or ""):gmatch("[%a_]+") do timeline[#timeline + 1] = n end
+    local nFrames = (#timeline > 0) and 110 or 60
+    local sheetRows = {}
     local outDir = "vida_idle/runtime"
     love.filesystem.createDirectory(outDir)
     local tag = vw .. "x" .. vh
@@ -112,8 +116,19 @@ function M.run()
         local ch = math.min(vh - cy0, math.floor(bh + m + 30))
         local frames, labels = {}, {}
         local full = nil
-        for f = 0, 59 do
+        local sawFidget, aOn, bOn, aSeen = false, nil, nil, nil
+        for f = 0, nFrames - 1 do
             if f == 10 and fidgetName then EnemyLife.force(1) end
+            if EnemyLife.isFidget(ER.debugState().animName) then sawFidget = true end
+            if not aOn and timeline[1] and f >= 26 and (sawFidget or not fidgetName or f >= 44) and not EnemyLife.isFidget(ER.debugState().animName) then
+                EnemyLife.States.force({ timeline[1] })
+                aOn = f
+            end
+            if aOn and EnemyLife.isStateClip(ER.debugState().animName) then aSeen = (aSeen or 0) + 1 end
+            if aOn and not bOn and timeline[2] and ((aSeen or 0) >= 12 or f >= aOn + 40) then
+                EnemyLife.States.force({ timeline[2] })
+                bOn = f
+            end
             for _ = 1, 6 do Vida.step(1 / 60, entry); draw() end
             local img = vcanvas:newImageData()
             if f == 0 then full = img end
@@ -180,9 +195,56 @@ function M.run()
         end
         print(string.format("[vida] %s %s clips %s  fx vivas %d  -> %s/%s_%s_*.png", id, tag,
             table.concat(summary, " "), EnemyLife.liveCount(), outDir, id, tag))
+        if #timeline > 0 then
+            local pick2 = { 5 }
+            local function firstFrom(i0, pred)
+                for i = i0, #labels do if pred(labels[i]) then return i end end
+                return nil
+            end
+            local fi = firstFrom(11, function(l) return EnemyLife.isFidget(l) end)
+            if fi then pick2[#pick2 + 1] = math.min(#frames, fi + 3) end
+            local ai = firstFrom(27, function(l) return EnemyLife.isStateClip(l) end) or 46
+            pick2[#pick2 + 1] = math.min(#frames, ai + 3)
+            pick2[#pick2 + 1] = math.min(#frames, ai + 9)
+            local bi = firstFrom(ai + 1, function(l) return l ~= labels[ai] and EnemyLife.isStateClip(l) end) or math.min(#labels, ai + 25)
+            pick2[#pick2 + 1] = math.min(#frames, bi + 3)
+            pick2[#pick2 + 1] = math.min(#frames, bi + 9)
+            local cells, names = {}, {}
+            for _, i in ipairs(pick2) do cells[#cells + 1] = frames[i]; names[#names + 1] = string.format("%.1fs:%s", (i - 1) * 0.1, tostring(labels[i])) end
+            sheetRows[#sheetRows + 1] = { id = id, cells = cells, cw = cw, ch = ch, names = names }
+            print(string.format("[vida] folha %s: %s", id, table.concat(names, " ")))
+        end
         if fixture then removeFixture(id, fixture) end
         EnemyLife.States.force(nil)
         EnemyLife._setData(id, nil)
+    end
+    if #sheetRows > 0 then
+        local cellW, cellH = 0, 0
+        for _, r in ipairs(sheetRows) do
+            if r.cw > cellW then cellW = r.cw end
+            if r.ch > cellH then cellH = r.ch end
+        end
+        local nc = 0
+        for _, r in ipairs(sheetRows) do if #r.cells > nc then nc = #r.cells end end
+        local sheet = love.image.newImageData(cellW * nc * 2, cellH * #sheetRows * 2)
+        for ri, r in ipairs(sheetRows) do
+            for ci, c in ipairs(r.cells) do
+                local ox = (ci - 1) * cellW * 2 + math.floor((cellW - r.cw))
+                local oy = (ri - 1) * cellH * 2 + math.floor((cellH - r.ch)) * 2
+                for y = 0, r.ch - 1 do
+                    for x = 0, r.cw - 1 do
+                        local cr, cg, cb, ca = c:getPixel(x, y)
+                        sheet:setPixel(ox + 2 * x, oy + 2 * y, cr, cg, cb, ca)
+                        sheet:setPixel(ox + 2 * x + 1, oy + 2 * y, cr, cg, cb, ca)
+                        sheet:setPixel(ox + 2 * x, oy + 2 * y + 1, cr, cg, cb, ca)
+                        sheet:setPixel(ox + 2 * x + 1, oy + 2 * y + 1, cr, cg, cb, ca)
+                    end
+                end
+            end
+        end
+        local name = outDir .. "/folha_6_atos_" .. tag .. "_" .. table.concat(timeline, "-") .. "_2x.png"
+        sheet:encode("png", name)
+        print("[vida] folha -> " .. name)
     end
     love.event.quit()
     return true

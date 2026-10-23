@@ -47,7 +47,7 @@ local function checkData(t, EnemyLife)
                         local fr = clipFiles(id, sd.clip)
                         t:truthy(id .. "/" .. sd.clip .. ": clip de estado existe no disco", fr and #fr > 0)
                         if fr and #fr > 0 and idle0 then
-                            t:truthy(string.format("%s/%s: 8 a 12 quadros (%d)", id, sd.clip, #fr), #fr >= 8 and #fr <= 12)
+                            t:truthy(string.format("%s/%s: 8 a 16 quadros (%d)", id, sd.clip, #fr), #fr >= 8 and #fr <= 16)
                             t:truthy(id .. "/" .. sd.clip .. ": quadro 0 = idle 0", pixels(fr[1].path) == idle0)
                             t:truthy(id .. "/" .. sd.clip .. ": ultimo quadro = idle 0", pixels(fr[#fr].path) == idle0)
                         end

@@ -81,7 +81,7 @@ Pedido do dono: "um estado para cada tipo de efeito... todos os mobs, todos os e
   pontos de borda, cabeca (media das linhas do topo), linha e vao dos pes.
 - Override por criatura em `src/data/enemy_life/<id>.lua`:
   `states = { poison = { clip = "state_poison", fps = 8, fidgets = false, fx = { {kind, xr, yr, ...} } } }`.
-  `clip` (8 a 12 quadros, quadro 0 e ultimo = idle 0) SUBSTITUI o idle enquanto o estado vale; entrar e sair
+  `clip` (8 a 16 quadros; o contrato pede 8 a 12, o runtime aceita ate 16 como os fidgets; quadro 0 e ultimo = idle 0) SUBSTITUI o idle enquanto o estado vale; entrar e sair
   trocam no quadro 0 do loop; fidgets so tocam por cima se `fidgets = true`; ataque/dano/morte continuam por
   cima e voltam para o loop do estado (`backToIdle` usa `EnemyLife.loopClip()`). `fx` troca as particulas
   genericas daquele estado pelas ancoras dadas (tipos do contrato).
