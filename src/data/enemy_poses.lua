@@ -20,7 +20,7 @@ EnemyPoses.BY_ID = {
     glacier_knight    = { pose = "grounded" },
     grave_slime       = { pose = "grounded", shadowBaseK = 0.30 },
     harvest_reaper    = { pose = "grounded" },
-    mire_hag          = { pose = "grounded" },
+    mire_hag          = { pose = "grounded", idle = { fps = 6, cycle = true } },
     moon_gargoyle     = { pose = "grounded", shadowBaseK = 0.15 },
     obsidian_sentinel = { pose = "grounded" },
     rot_colossus      = { pose = "grounded",
@@ -59,7 +59,8 @@ EnemyPoses.BY_ID = {
 
     dusk_shade   = { pose = "floating",
                      hover = 0.09, bob = 0.020, bobSpeed = 0.95,
-                     shadowK = 0.58, shadowA = 0.48 },
+                     shadowK = 0.58, shadowA = 0.48,
+                     idle = { fps = 7, cycle = true } },
 
     carrion_king = { pose = "floating",
                      hover = 0.07, bob = 0.012, bobSpeed = 4.19,
