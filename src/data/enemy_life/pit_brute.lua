@@ -8,4 +8,7 @@ return {
         { kind = "embers", xr = 0.5, yr = 0.38, rate = 0.8, spread = 0.45, dir = "up" },
         { kind = "smoke", xr = 0.51, yr = 0.24, rate = 0.4, spread = 0.05, dir = "up" },
     },
+    states = {
+        enraged = { clip = "state_enraged", fps = 11, fx = { { kind = "smoke", xr = 0.51, yr = 0.15, rate = 0.8, spread = 0.06, dir = "up" } } },
+    },
 }
