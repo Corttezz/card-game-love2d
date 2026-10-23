@@ -270,9 +270,9 @@ SPECS = {
               "ground"),
         idle=dict(frames=12, action=(
             "a griffin standing and breathing, the chest swells and sinks, the raised wings "
-            "flex slowly and the long feathers ripple in the wind, the thin cyan lightning lines "
-            "along the wings flicker and change shape, the lion tail swishes, the beak stays "
-            "open panting" + IDLE)),
+            "flex slowly and the long feathers ripple in the wind, the lion tail swishes, the "
+            "beak stays open panting; the few thin cyan lightning lines on the wings stay thin "
+            "one-pixel cyan lines, never white, never thick blocks, never more of them" + IDLE)),
         fidgets={
             "fidget_screech": dict(frames=10, action=(
                 "throws its eagle head forward and screeches with the beak wide open, then pulls "

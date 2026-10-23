@@ -25,7 +25,7 @@ EnemyPoses.BY_ID = {
     obsidian_sentinel = { pose = "grounded" },
     rot_colossus      = { pose = "grounded",
                           idle = { fps = 5, cycle = true } },
-    rune_golem        = { pose = "grounded" },
+    rune_golem        = { pose = "grounded", idle = { fps = 5, cycle = true } },
     stone_golem       = { pose = "grounded" },
     winter_monarch    = { pose = "grounded", axisX = 56,
                           idle = { fps = 6, cycle = true } },
