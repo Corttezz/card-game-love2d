@@ -1624,18 +1624,66 @@
   "installed": 1
  },
  "harvest_reaper/fidget_gust": {
-  "status": "pending",
-  "job": "63f7e09a-62f3-4a1c-ab39-9a39cc82db9c",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "63f7e09a-62f3-4a1c-ab39-9a39cc82db9c",
+    "n": 1,
+    "size": 1.053,
+    "eye": 0.951,
+    "step": 0.398,
+    "motion": 0.528,
+    "end": 0.005,
+    "problems": []
+   }
+  ],
+  "installed": 1
  },
  "blight_bull/fidget_shake": {
-  "status": "pending",
-  "job": "372bd3c6-f43e-4d5a-a340-81f6252adaec",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "372bd3c6-f43e-4d5a-a340-81f6252adaec",
+    "n": 1,
+    "size": 0.85,
+    "eye": 0.468,
+    "step": 0.213,
+    "motion": 0.301,
+    "end": 0.002,
+    "problems": [
+     "olho 0.47"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "wicker_effigy/fidget_creak": {
+  "status": "installed",
+  "job": "1552b7b4-9176-468a-a0bf-678e9644ca15",
+  "tries": [
+   {
+    "job": "b7b82d6a-7695-482e-b21f-f872c28e0cb3",
+    "n": 1,
+    "size": 1.28,
+    "eye": 1.0,
+    "step": 0.427,
+    "motion": 0.527,
+    "end": 0.003,
+    "problems": [
+     "tamanho 1.28"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "carrion_king/fidget_ruffle": {
   "status": "pending",
-  "job": "b7b82d6a-7695-482e-b21f-f872c28e0cb3",
+  "job": "9526e1e0-9150-4988-8069-78e8ddf2a601",
+  "tries": []
+ },
+ "moon_gargoyle/fidget_snarl": {
+  "status": "pending",
+  "job": "736e6d10-7322-48d8-b573-7b0000d6e00a",
   "tries": []
  }
 }
