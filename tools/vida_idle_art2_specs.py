@@ -226,4 +226,5 @@ FIXUPS = {
     ("ember_imp", "idle", 3): [("unflame", (0, 44, 40, 58))],
     ("abyss_watcher", "idle", 1): [("transplant", (34, 24, 82, 58))],
     ("glacier_knight", "idle", 1): [("transplant", (31, 28, 48, 40))],
+    ("obsidian_sentinel", "fidget_look", 2): [("unflame", (28, 0, 72, 22))],
 }
