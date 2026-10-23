@@ -576,8 +576,8 @@ function WeatherEngine.beginFrame(f)
                         local gsx, gsy = love.graphics.transformPoint(px, gy)
                         LightEngine.submit({
                             x = (sx + gsx) * 0.5, y = (sy + gsy) * 0.5 + 2,
-                            radius = pr.ff.radius * 8 * ps * hk + 10,
-                            color = col, intensity = min(1, pr.ff.light * 2.2 * b),
+                            radius = pr.ff.radius * 2.4 * ps * hk + 4,
+                            color = col, intensity = min(1, pr.ff.light * 1.4 * b),
                             dither = true, ditherAmt = 0.28, levels = 6,
                             z = rel,
                         })

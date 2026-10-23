@@ -1,5 +1,7 @@
 # Estrada central: 18 variantes para escolher (23/Out/2026)
 
+Histórico. O dono escolheu 1A, 2A, 3A, 4A, 5B e 6A; a chave de variante saiu do jogo. Resultado em `tools/preview_out/estrada_final/` e `memory/roadwear_engine.md`.
+
 O jogo continua com a estrada atual. As variantes só aparecem se você pedir:
 
 - **No jogo (modo cheat, DEV):** `love . cheat` ou `jogar_cheat.bat`, depois **Home** (próxima) e **End** (anterior). A ordem é atual, A, B, C, e um aviso mostra o nome da variante do ato.

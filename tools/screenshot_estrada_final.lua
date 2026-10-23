@@ -9,6 +9,16 @@ local function virtual()
     return vw, vh
 end
 
+local function forkNodes(n)
+    local MM = require("src.systems.MapManager")
+    local types = n == 2 and { "battle", "shop" } or { "battle", "rest", "shop" }
+    local nodes = {}
+    for i, ty in ipairs(types) do
+        nodes[i] = { type = ty, label = MM.labelFor(ty), desc = MM.descFor(ty) }
+    end
+    return nodes
+end
+
 local function setup(WorldRoad, bio, scene, width, height, topBarH, canvas, tod)
     WorldRoad.resetRun()
     love.math.setRandomSeed(7)
@@ -34,37 +44,30 @@ local function setup(WorldRoad, bio, scene, width, height, topBarH, canvas, tod)
     end
     WorldRoad._camZ = 5.5
     tick(30, true)
-    if scene == "fork" then
-        require("src.i18n.I18n").init()
-        require("src.i18n.I18n").setLocale("en", true)
-        local MM = require("src.systems.MapManager")
-        local nodes = {}
-        for i, ty in ipairs({ "battle", "rest", "shop" }) do
-            nodes[i] = { type = ty, label = MM.labelFor(ty), desc = MM.descFor(ty) }
-        end
-        WorldRoad.showFork(nodes, function() end)
+    require("src.i18n.I18n").init()
+    require("src.i18n.I18n").setLocale("en", true)
+    if scene == "fork3" or scene == "fork2" or scene == "converge" or scene == "chegada" then
+        WorldRoad.showFork(forkNodes(scene == "fork2" and 2 or 3), function() end)
         tick(60, true)
-    elseif scene == "battle" then
-        local EnemyRenderer = require("src.ui.EnemyRenderer")
-        local sid = EnemyRenderer.resolveSpriteId(bio, "battle")
-        WorldRoad.travel({
-            encounter = EnemyRenderer.getEncounterBillboard({ spriteId = sid }),
-        })
-        local guard = 0
-        while WorldRoad.isTraveling() and guard < 900 do
-            tick(1)
-            EnemyRenderer.update(1 / 30)
-            guard = guard + 1
+        if scene == "converge" or scene == "chegada" then
+            local f = WorldRoad._fork
+            local b = f.markBoxes[3]
+            if b then
+                WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
+            end
+            if scene == "converge" then
+                tick(32, true)
+            else
+                tick(64, true)
+            end
         end
-        tick(45, true)
-    elseif scene == "viagem" then
-        local EnemyRenderer = require("src.ui.EnemyRenderer")
-        WorldRoad.travel({
-            encounter = EnemyRenderer.getEncounterBillboard({ spriteId = EnemyRenderer.resolveSpriteId(bio, "battle") }),
-        })
-        tick(70)
-    else
-        tick(60, true)
+    elseif scene == "continuar" then
+        WorldRoad.resetRun()
+        WorldRoad.restoreProgress(bio, 4)
+        WorldRoad.setTimeOfDay(tod, true)
+        tick(4, true)
+        WorldRoad.showFork(forkNodes(3), function() end)
+        tick(8, true)
     end
     WorldRoad._blend = nil
     WorldRoad._prevBiomeIndex = nil
@@ -122,21 +125,20 @@ function M.run(arg)
     local canvas = love.graphics.newCanvas(width, height)
     require("src.ui.PixelCanvas").enableNearest()
     local WorldRoad = require("src.ui.WorldRoad")
-    local RoadVariants = require("engine.RoadVariants")
-    local bios, vars, scenes = tostring(arg or ""):match("^([%d,]*):?([%a,]*):?([%a,]*)$")
-    local bl, vl, sl = {}, {}, {}
+    local bios, scenes = tostring(arg or ""):match("^([%d,]*):?([%a%d,]*)$")
+    local bl, sl = {}, {}
     for b in ((bios and bios ~= "") and bios or "1,2,3,4,5,6"):gmatch("%d+") do bl[#bl + 1] = tonumber(b) end
-    for v in ((vars and vars ~= "") and vars or "atual,A,B,C"):gmatch("%a+") do vl[#vl + 1] = v end
-    for s in ((scenes and scenes ~= "") and scenes or "fork,battle"):gmatch("%a+") do sl[#sl + 1] = s end
+    for s in ((scenes and scenes ~= "") and scenes or "fork3,fork2,converge,battle"):gmatch("[%a%d]+") do
+        sl[#sl + 1] = s
+    end
     local tod = tonumber(os.getenv("ESTRADA_TOD") or "0.65")
-    local tag = os.getenv("ESTRADA_TAG") or string.format("tod%02d", math.floor(tod * 100 + 0.5))
-    local dir = "estrada_variantes/" .. tag
+    local tag = os.getenv("ESTRADA_TAG") or "depois"
+    local dir = "estrada_final/" .. tag
     love.filesystem.createDirectory(dir)
     local realTime = love.timer.getTime
     local clock = 100
     love.timer.getTime = function() return clock end
     local topBarH = 80
-    local g = WorldRoad.domeGeom(0, topBarH, width, height - topBarH)
     local n = 0
     WorldRoad.clearCache()
     for _, bio in ipairs(bl) do
@@ -146,34 +148,24 @@ function M.run(arg)
                 local GS = battleSetup(bio, tod)
                 drawFn = function() GS.draw() end
             else
-                RoadVariants.use("atual")
                 setup(WorldRoad, bio, scene, width, height, topBarH, canvas, tod)
-                WorldRoad.update(1 / 30)
                 drawFn = function()
                     WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
                     WorldRoad.drawOverlays(0, topBarH, width, height - topBarH)
                 end
             end
-            for _, v in ipairs(vl) do
-                RoadVariants.use(v)
-                for _ = 1, 2 do
-                    love.graphics.setCanvas(canvas)
-                    love.graphics.clear(0, 0, 0, 1)
-                    drawFn()
-                    love.graphics.setCanvas()
-                end
-                local path = string.format("%s/ato%d_%s_%s.png", dir, bio, scene, v)
-                canvas:newImageData():encode("png", path)
-                n = n + 1
+            for _ = 1, 2 do
+                love.graphics.setCanvas(canvas)
+                love.graphics.clear(0, 0, 0, 1)
+                drawFn()
+                love.graphics.setCanvas()
             end
+            local path = string.format("%s/ato%d_%s_%dx%d.png", dir, bio, scene, width, height)
+            canvas:newImageData():encode("png", path)
+            n = n + 1
             if scene == "battle" then require("src.scenes.GameplayScene").WORLD_ONLY = nil end
         end
     end
-    RoadVariants.use("atual")
-    local f = love.filesystem.newFile(dir .. "/meta.txt", "w")
-    f:write(string.format("crest %d bottom %d cx %d w %d h %d", math.floor(g.crestApexY),
-        math.floor(g.bottomY), math.floor(g.cx), width, height))
-    f:close()
     print(love.filesystem.getSaveDirectory() .. "/" .. dir .. " " .. n)
     love.timer.getTime = realTime
     canvas:release()
