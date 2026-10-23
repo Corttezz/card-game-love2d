@@ -239,3 +239,8 @@ O WorldRoad passa ao `submitOccluder` tabelas de um POOL por frame (era 1
 tabela nova por árvore por frame). Contrato: o motor só lê o oclusor até o
 `composite` do MESMO frame — nunca guarde a referência entre frames
 (o slot é reescrito no frame seguinte). Mesma regra vale pro `ShadowEngine`.
+
+**Franja colorida do CRT no monstro (22/Out/2026, mesma queixa, segunda causa).** O `crt.glsl` deslocava o
+vermelho e o azul 0,9 px na tela INTEIRA (`caB`), o que desenhava contorno ciano/vermelho em toda silhueta
+escura sobre fundo claro (asas no céu do pôr do sol). Saiu: sobra só a convergência radial, ~zero no centro,
+onde ficam os monstros, e crescendo para a borda do tubo. Trava em `test_crt_levels` (centro sem franja).

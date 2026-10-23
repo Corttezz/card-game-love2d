@@ -120,8 +120,10 @@ function M.run()
             widths.normal2560 <= widths.normal1920 + 1)
         t:truthy("normal: desvio de cor em 1440p ~ igual ao de 1080p (aberracao em px, nao em fracao da tela)",
             math.abs(amps.normal2560 - amps.normal1920) < 0.12)
-        t:truthy(("low: desvio de cor menor que normal (%.2f < %.2f)"):format(amps.low1920, amps.normal1920),
-            amps.low1920 < amps.normal1920 - 0.05)
+        t:truthy(("low: desvio de cor nao maior que normal (%.2f <= %.2f)"):format(amps.low1920, amps.normal1920),
+            amps.low1920 <= amps.normal1920 + 0.01)
+        t:truthy(("centro da tela sem franja de cor em monstro (desvio %.2f <= 0,08)"):format(amps.normal1920),
+            amps.normal1920 <= 0.08)
 
         fakeWindow(1920, 1080)
         CRTShader.setLevel("off")

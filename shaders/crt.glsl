@@ -266,8 +266,7 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 px) {
     float convAmt = strength * caScale * caBoost * steady;
     vec2 offR = (dir * conv * 2.6 + vec2(0.0, -conv * 0.7)) * ipx * convAmt * resK;
     vec2 offB = (-dir * conv * 2.2 + vec2(conv * 0.3, conv * 0.7)) * ipx * convAmt * resK;
-    vec2 caB = vec2(0.9 * convAmt * ipx.x, 0.0);
-    vec3 rgb = vec3(Texel(tex, suv + offR + caB).r, Texel(tex, suv).g, Texel(tex, suv + offB - caB).b);
+    vec3 rgb = vec3(Texel(tex, suv + offR).r, Texel(tex, suv).g, Texel(tex, suv + offB).b);
 
     float blurK = smoothstep(0.07, 0.48, r2) * steady;
     if (blurK > 0.002) {
