@@ -275,7 +275,9 @@ def processed(eid, clip, t):
             im = im.resize(ref.size, Image.NEAREST)
         s, far = snap(im, pal, cache)
         for fx in SP.FIXUPS.get((eid, clip, t), []):
-            s = fixup(s, ref, fx)
+            if len(fx) > 2 and len(out) not in fx[2]:
+                continue
+            s = fixup(s, ref, fx[:2])
         out.append(s)
         fars.append(far)
     return out, (round(max(fars), 3) if fars else 0)
@@ -328,6 +330,9 @@ def fixup(im, ref, fx):
             elif kind == "unglow":
                 if a >= 128 and lum((r, g, b)) > cap:
                     px[x, y] = rp[x, y]
+            elif kind == "erase_new":
+                if a >= 128 and rp[x, y][3] < 128:
+                    px[x, y] = (0, 0, 0, 0)
             elif kind == "restore":
                 px[x, y] = rp[x, y]
     return im

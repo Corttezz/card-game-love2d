@@ -1,0 +1,10 @@
+return {
+    fidgets = {
+        { clip = "fidget_cape", fps = 10, weight = 2 },
+    },
+    gap = { 3, 7 },
+    fx = {
+        { kind = "glint", xr = 0.16, yr = 0.17, rate = 0.8, spread = 0.05 },
+        { kind = "frost", xr = 0.5, yr = 0.4, rate = 0.8, spread = 0.5, dir = "down" },
+    },
+}
