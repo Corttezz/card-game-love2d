@@ -44,7 +44,7 @@ EnemyPoses.BY_ID = {
     storm_griffin     = { pose = "grounded", shadowBaseK = 0.15, idle = { fps = 6, cycle = true } },
     hellhound         = { pose = "grounded", axisX = 45, shadowBaseK = 0.18, idle = { fps = 10, cycle = true } },
     abyss_acolyte     = { pose = "grounded", idle = { fps = 9, cycle = true } },
-    pit_brute         = { pose = "grounded", idle = { fps = 5, cycle = true } },
+    pit_brute         = { pose = "grounded", idle = { fps = 8, cycle = true } },
     frost_wolf        = { pose = "grounded", shadowBaseK = 0.18, idle = { fps = 9, cycle = true } },
     rime_shaman       = { pose = "grounded", axisX = 47, idle = { fps = 9, cycle = true } },
     frost_troll       = { pose = "grounded", idle = { fps = 8, cycle = true } },
