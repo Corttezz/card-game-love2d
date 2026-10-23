@@ -234,8 +234,9 @@ SPECS = {
             "wave, the fists hang heavy" + IDLE)),
         fidgets={
             "fidget_runes": dict(frames=10, action=(
-                "the purple runes flare brighter one after another from the chest outward to the "
-                "arms, then dim back to normal")),
+                "the magenta-purple rune lines pulse a little brighter one after another from the "
+                "chest outward to the arms, they always stay magenta-purple, never white, never "
+                "silver, the grey stone stays the same grey, then the runes dim back to normal")),
             "fidget_fists": dict(frames=10, action=(
                 "clenches its massive stone fists and lifts them slightly, grinding, then "
                 "relaxes them")),
@@ -256,8 +257,10 @@ SPECS = {
             "violet sword blade glow pulses softly, the shield stays planted" + IDLE)),
         fidgets={
             "fidget_sword": dict(frames=10, action=(
-                "shifts its grip on the longsword, turning the blade slightly so it catches the "
-                "light, then returns it to the same diagonal position")),
+                "shifts its grip on the longsword: the hands tighten and the blade tilts a few "
+                "degrees up and back down, the blade keeps its exact violet color and thin shape, "
+                "no flash, no glow burst, no white, no motion blur, then it returns to the same "
+                "diagonal position")),
             "fidget_helm": dict(frames=10, action=(
                 "turns its horned helm slowly to one side and back, the violet eye lights "
                 "following")),

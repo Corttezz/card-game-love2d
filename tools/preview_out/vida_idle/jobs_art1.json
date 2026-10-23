@@ -631,13 +631,46 @@
   ]
  },
  "rune_golem/fidget_fists": {
-  "status": "pending",
-  "job": "8143c2dd-a426-4977-848a-b996a7ccbea5",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "8143c2dd-a426-4977-848a-b996a7ccbea5",
+    "n": 1,
+    "size": 1.125,
+    "eye": 0.758,
+    "step": 0.467,
+    "motion": 0.63,
+    "end": 0.005,
+    "problems": [
+     "chuvisco 0.47"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "spectral_knight/fidget_sword": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "c0ff404d-1987-4d4f-84b5-fa7c43cd239d",
+    "n": 1,
+    "size": 0.929,
+    "eye": 0.767,
+    "step": 0.365,
+    "motion": 0.467,
+    "end": 0.006,
+    "problems": []
+   }
+  ]
+ },
+ "spectral_knight/fidget_helm": {
   "status": "pending",
-  "job": "c0ff404d-1987-4d4f-84b5-fa7c43cd239d",
+  "job": "07bcc50f-4d77-43d2-b3cd-9a239d39fa08",
+  "tries": []
+ },
+ "storm_griffin/fidget_screech": {
+  "status": "pending",
+  "job": "13b27162-74c1-46ed-aeb5-e701fc213545",
   "tries": []
  }
 }
