@@ -22,3 +22,6 @@ tools/vendor/
 
 # Amostras de audio para o dono ouvir (copias dos instalados, fora do git)
 audio/_amostras_corvo/
+
+# Tentativas cruas da frente vida-arte-3 (tools/pixellab_vida_c.py)
+tools/preview_out/vida_idle/tries_c/

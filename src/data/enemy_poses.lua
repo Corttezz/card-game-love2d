@@ -13,7 +13,7 @@ EnemyPoses.BY_ID = {
     abyss_tyrant      = { pose = "grounded",
                           idle = { fps = 6, cycle = true } },
     blood_duke        = { pose = "grounded" },
-    bog_ghoul         = { pose = "grounded" },
+    bog_ghoul         = { pose = "grounded", idle = { fps = 6, cycle = true } },
     cursed_scarecrow  = { pose = "grounded" },
     ember_imp         = { pose = "grounded", shadowBaseK = 0.18,
                           idle = { fps = 10, cycle = true } },
@@ -23,7 +23,7 @@ EnemyPoses.BY_ID = {
                           idle = { fps = 8, cycle = true } },
     grave_slime       = { pose = "grounded", shadowBaseK = 0.30 },
     harvest_reaper    = { pose = "grounded" },
-    mire_hag          = { pose = "grounded" },
+    mire_hag          = { pose = "grounded", idle = { fps = 6, cycle = true } },
     moon_gargoyle     = { pose = "grounded", shadowBaseK = 0.15 },
     obsidian_sentinel = { pose = "grounded",
                           idle = { fps = 8, cycle = true } },
@@ -63,7 +63,8 @@ EnemyPoses.BY_ID = {
 
     dusk_shade   = { pose = "floating",
                      hover = 0.09, bob = 0.020, bobSpeed = 0.95,
-                     shadowK = 0.58, shadowA = 0.48 },
+                     shadowK = 0.58, shadowA = 0.48,
+                     idle = { fps = 7, cycle = true } },
 
     carrion_king = { pose = "floating",
                      hover = 0.07, bob = 0.012, bobSpeed = 4.19,
