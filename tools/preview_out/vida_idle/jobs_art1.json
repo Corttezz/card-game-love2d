@@ -1352,8 +1352,7 @@
   "installed": 1
  },
  "rune_golem/state_poison": {
-  "status": "pending",
-  "job": "00c737a6-18ca-461f-bedb-1a79ff4a6359",
+  "status": "installed",
   "tries": [
    {
     "job": "00e60069-d229-41e0-bde8-14c85b6074d2",
@@ -1366,8 +1365,21 @@
     "problems": [
      "chuvisco 0.54"
     ]
+   },
+   {
+    "job": "00c737a6-18ca-461f-bedb-1a79ff4a6359",
+    "n": 2,
+    "size": 0.929,
+    "eye": 0.706,
+    "step": 0.443,
+    "motion": 0.608,
+    "end": 0.007,
+    "problems": [
+     "olho 0.71"
+    ]
    }
-  ]
+  ],
+  "installed": 2
  },
  "rune_golem/state_weak": {
   "status": "installed",
@@ -1489,7 +1501,7 @@
   "installed": 1
  },
  "storm_griffin/state_enraged": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "c319b40b-5b1c-4cb6-bd34-b9915e52f9bb",
@@ -1503,16 +1515,77 @@
      "olho 0.39"
     ]
    }
-  ]
+  ],
+  "installed": 1
  },
  "tower_lich/state_poison": {
-  "status": "pending",
-  "job": "3e161f5d-65e8-480d-9e97-8c6dde92fd28",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "3e161f5d-65e8-480d-9e97-8c6dde92fd28",
+    "n": 1,
+    "size": 1.071,
+    "eye": 0.742,
+    "step": 0.528,
+    "motion": 0.719,
+    "end": 0.005,
+    "problems": [
+     "olho 0.74",
+     "chuvisco 0.53"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "tower_lich/state_weak": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "38ca7579-2416-4792-8d72-9412f8829234",
+    "n": 1,
+    "size": 1.08,
+    "eye": 0.743,
+    "step": 0.569,
+    "motion": 0.715,
+    "end": 0.008,
+    "problems": [
+     "olho 0.74",
+     "chuvisco 0.57"
+    ]
+   }
+  ]
+ },
+ "tower_lich/state_enraged": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "ecd3d8ca-c8a4-46c3-9d51-f55dfe3ac102",
+    "n": 1,
+    "size": 1.089,
+    "eye": 0.794,
+    "step": 0.61,
+    "motion": 0.829,
+    "end": 0.006,
+    "problems": [
+     "chuvisco 0.61"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "cursed_scarecrow/fidget_gust": {
   "status": "pending",
-  "job": "38ca7579-2416-4792-8d72-9412f8829234",
+  "job": "2daf496d-9a43-45f1-8df2-84fad0a7d58a",
+  "tries": []
+ },
+ "hollow_farmer/fidget_twitch": {
+  "status": "pending",
+  "job": "55b58000-33ee-4572-824b-560eab15d684",
+  "tries": []
+ },
+ "plague_rats/fidget_hiss": {
+  "status": "pending",
+  "job": "4df99824-737c-47e8-ae73-fd68ebb9d1c6",
   "tries": []
  }
 }
