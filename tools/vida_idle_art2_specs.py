@@ -10,8 +10,9 @@ FLOAT_TAIL = (" Floats in place, same pose. Subtle seamless loop, last frame flo
 SPECS = {
     "ember_imp": dict(act=3, eyes=[4, 5], idle=dict(frames=16, fps=10, action=(
         "idle breathing loop of a crouching lava imp: the flame mane on its head flickers and licks upward in tongues of fire that change shape every frame, "
-        "the curled tail sways slowly and its flame tip flickers, the small loose flame beside it flickers, chest heaves with quick impish breaths, shoulders rise and fall. "
-        "The black body and the thin orange lava seams keep exactly their colors and brightness in every frame, no flashing, no yellow, no white, only the fire moves")),
+        "the curled tail sways slowly and its flame tip flickers, chest heaves with quick impish breaths, shoulders rise and fall. "
+        "The mouth stays closed in its grin, nothing comes out of the mouth, no breath, no smoke, no puff. "
+        "The black body and the thin orange lava seams keep exactly their colors in every frame, no flashing, no white, only the fire moves")),
         fidgets=dict(
             fidget_tailflick=dict(frames=10, fps=12, weight=3, action=(
                 "the imp flicks its tail: the long curled tail whips to the side and snaps back, the flame tip trailing and flaring, then the tail curls back into place")),
