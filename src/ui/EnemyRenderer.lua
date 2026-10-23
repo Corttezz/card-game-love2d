@@ -7,6 +7,7 @@ local EnemyEmissives = require("src.data.enemy_emissives")
 local EnemyPoses = require("src.data.enemy_poses")
 local BossAura = require("src.ui.BossAura")
 local BossTokens = require("src.ui.BossTokens")
+local EnemyLife = require("src.ui.EnemyLife")
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -133,9 +134,16 @@ local function ensureAnim(enemyId, animName)
     end
 
     local function backToIdle()
-        local ifps, iopts = idleSpec(enemyId)
-        currentAnim = SpriteAnimation.new(enemyId, "idle", "south", ifps, iopts)
-        currentAnimName = "idle"
+        local ln, lfps = EnemyLife.loopClip()
+        local la = (ln ~= "idle") and SpriteAnimation.new(enemyId, ln, "south", lfps or 8, { loop = true }) or nil
+        if la then
+            currentAnim, currentAnimName = la, ln
+        else
+            local ifps, iopts = idleSpec(enemyId)
+            currentAnim = SpriteAnimation.new(enemyId, "idle", "south", ifps, iopts)
+            currentAnimName = "idle"
+        end
+        if EnemyLife.isFidget(animName) then EnemyLife.resumeIdle(currentAnim) end
     end
 
     local fps, opts = idleSpec(enemyId)
@@ -195,6 +203,7 @@ function EnemyRenderer.clearCache()
     ambientParticles = {}
     BossAura.reset()
     BossTokens.reset()
+    EnemyLife.clearCache()
     if EnemyRenderer._clearClipMetrics then EnemyRenderer._clearClipMetrics() end
 end
 
@@ -282,12 +291,36 @@ function EnemyRenderer.resetRun()
     auraId = nil
     BossAura.reset()
     BossTokens.reset()
+    EnemyLife.reset()
     currentAnim = nil
     currentEnemyId = nil
     currentAnimName = nil
 end
 
+function EnemyRenderer._playLoop(name, fps)
+    if not currentEnemyId or currentAnimName == "death" then return false end
+    local a
+    if name == "idle" then
+        local ifps, iopts = idleSpec(currentEnemyId)
+        a = SpriteAnimation.new(currentEnemyId, "idle", "south", ifps, iopts)
+    else
+        a = SpriteAnimation.new(currentEnemyId, name, "south", fps or 8, { loop = true })
+    end
+    if not a then return false end
+    currentAnim, currentAnimName = a, name
+    return true
+end
+
+function EnemyRenderer._dropFidget()
+    if currentAnim and currentEnemyId and EnemyLife.isFidget(currentAnimName) then
+        local ifps, iopts = idleSpec(currentEnemyId)
+        currentAnim = SpriteAnimation.new(currentEnemyId, "idle", "south", ifps, iopts)
+        currentAnimName = "idle"
+    end
+end
+
 function EnemyRenderer.triggerAttack(kind, onApex, opts)
+    EnemyRenderer._dropFidget()
     local dove = (opts and opts.swarm and auraId
         and BossAura.dive(auraId, ATK_WINDUP + ATK_LUNGE, ATK_RECOIL)) or false
     local struck = (not dove and opts and opts.strike and auraId
@@ -323,10 +356,12 @@ end
 function EnemyRenderer.triggerPoison() poisonTime = 0.5 end
 
 function EnemyRenderer.triggerDefend()
+    EnemyRenderer._dropFidget()
     defendTime = DEFEND_DUR
 end
 
 function EnemyRenderer.triggerBuff()
+    EnemyRenderer._dropFidget()
     buffTime = BUFF_DUR
     buffParticles = {}
     for _ = 1, 14 do
@@ -344,7 +379,7 @@ end
 
 function EnemyRenderer.isBusy()
     return attackFx ~= nil or hurtTime > 0 or knockTime > 0
-        or (currentAnimName ~= nil and currentAnimName ~= "idle")
+        or (currentAnimName ~= nil and not EnemyLife.isIdleLike(currentAnimName))
 end
 
 function EnemyRenderer.musicBreath(power)
@@ -373,6 +408,7 @@ end
 
 function EnemyRenderer.triggerHurt()
     if currentAnimName == "death" then return end
+    EnemyRenderer._dropFidget()
     hurtTime = 0.20
     knockTime = 0.25
     if currentEnemyId and SpriteAnimation.exists(currentEnemyId, "hurt", "south") then
@@ -382,6 +418,7 @@ end
 
 function EnemyRenderer.triggerDeath(enemyId)
     local id = enemyId or currentEnemyId
+    EnemyRenderer._dropFidget()
     if id and SpriteAnimation.exists(id, "death", "south") then
         ensureAnim(id, "death")
     end
@@ -406,9 +443,27 @@ local timeScale = 1
 function EnemyRenderer.setTimeScale(k) timeScale = math.max(0.02, k or 1) end
 function EnemyRenderer.getTimeScale() return timeScale end
 
+function EnemyRenderer.lifeBusy()
+    if EnemyRenderer.isBusy() or arrivalT > 0 or defendTime > 0 or buffTime > 0
+        or poisonTime > 0 or slashTime > 0 or poseSink > 0 then
+        return true
+    end
+    local BC = package.loaded["src.ui.BossCinematic"]
+    if BC and BC.phase and BC.phase() then return true end
+    local WR = package.loaded["src.ui.WorldRoad"]
+    if WR and WR.isTraveling and WR.isTraveling() then return true end
+    return false
+end
+
 function EnemyRenderer.update(dt)
     dt = dt * timeScale
-    if currentAnim then currentAnim:update(dt) end
+    if currentAnim then currentAnim:update(dt * EnemyLife.animRate(currentAnimName)) end
+    do
+        local lc, lf, loop = EnemyLife.update(dt, currentEnemyId, currentAnimName,
+            currentAnim and currentAnim.currentFrame, EnemyRenderer.lifeBusy())
+        if lc and loop then EnemyRenderer._playLoop(lc, lf)
+        elseif lc then EnemyRenderer.playClip(lc, lf) end
+    end
     if currentAnimName == "death" then
         fallT = fallT + dt
         local dur = reducedMotion() and EnemyRenderer.FALL_DUR_REDUCED
@@ -866,7 +921,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     local footPad = curM.pad
     local frameIdx = hasAnim and currentAnim.currentFrame or 1
-    if not floating and (currentAnimName or "idle") == "idle"
+    if not floating and EnemyLife.isIdleLike(currentAnimName or "idle")
         and curM.framePads and curM.framePads[frameIdx] then
         footPad = curM.framePads[frameIdx]
     end
@@ -934,6 +989,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
 
     local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX + driftX
+        + EnemyLife.jitterPx() * math.max(1, math.floor(scale + 0.5))
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
         + footY + atkDY + hoverY
         - EnemyRenderer.breathLift() * math.max(1, math.floor(scale + 0.5))
@@ -1047,6 +1103,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
+    EnemyLife.frame(cx - (iw * scale) / 2, cy - ih * scale + footY, scale,
+        (drawX - (cx - (iw * scale) / 2)) / scale, (drawY - (cy - ih * scale + footY)) / scale,
+        iw, ih, enemyAlive, (opts and opts.alpha) or 1, game.enemy)
+    EnemyLife.drawBack()
+    love.graphics.setColor(1, 1, 1, 1)
+
     local auraRect = nil
     if auraId then
         auraRect = { x = drawX, y = drawY, w = iw * scale, h = ih * scale,
@@ -1075,6 +1137,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
     local bodyA = (opts and opts.alpha) or 1
     local gradeC = SceneGrade.color("enemy", SceneGrade.depth(), EnemyRenderer._gradeC)
+    tintR, tintG, tintB = EnemyLife.tint(tintR, tintG, tintB)
     tintR, tintG, tintB = tintR * gradeC[1], tintG * gradeC[2], tintB * gradeC[3]
     local squash, darkK = 0, 0
     if attackFx and attackFx.kind == "strong" then
@@ -1087,13 +1150,19 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             tintB = tintB * (1 - darkK + darkK * math.min(1, sb * 1.6))
         end
     end
-    local squashed = squash ~= 0
+    local lifeSY = 0
+    if hasAnim and EnemyLife.isIdleLike(currentAnimName) and EnemyLife.stretchPx() ~= 0 then
+        local cH = curM.frameHeights and curM.frameHeights[frameIdx]
+        if not cH or cH <= 0 then cH = ih - footPad end
+        lifeSY = EnemyLife.stretchPx() / math.max(8, cH)
+    end
+    local squashed = squash ~= 0 or lifeSY ~= 0
     if squashed then
         local fx0 = drawX + (iw * scale) / 2
         local fy0 = drawY + (ih - footPad) * scale
         love.graphics.push()
         love.graphics.translate(fx0, fy0)
-        love.graphics.scale(1 + squash, 1 - squash)
+        love.graphics.scale(1 + squash, 1 - squash + lifeSY)
         love.graphics.translate(-fx0, -fy0)
     end
     if hasAnim and bodyA >= 1 then
@@ -1110,6 +1179,34 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         local staticImg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
         if staticImg then
             love.graphics.draw(staticImg, drawX, drawY, 0, scale, scale)
+        end
+    end
+
+    if hasAnim and bodyA >= 1 then
+        local ck = EnemyLife.charK(t)
+        if ck > 0 then
+            local sx0, sy0, sw0, sh0 = love.graphics.getScissor()
+            local cH = curM.frameHeights and curM.frameHeights[frameIdx]
+            if not cH or cH <= 0 then cH = ih - footPad end
+            local yTop = drawY + (ih - footPad - cH * 0.40) * scale
+            local qx, qy = love.graphics.transformPoint(drawX - 4, yTop)
+            local qx2, qy2 = love.graphics.transformPoint(drawX + iw * scale + 4, drawY + ih * scale + 4)
+            love.graphics.intersectScissor(math.floor(qx), math.floor(qy),
+                math.max(1, math.floor(qx2 - qx)), math.max(1, math.floor(qy2 - qy)))
+            currentAnim:draw(drawX, drawY, scale, { 0.14, 0.08, 0.04, 0.58 * ck })
+            if sx0 then love.graphics.setScissor(sx0, sy0, sw0, sh0) else love.graphics.setScissor() end
+        end
+        local ep = EnemyLife.eyePulse(t)
+        if ep > 0 then
+            local eyes, ne = EnemyLife.States.eyes()
+            local P = scale
+            love.graphics.setColor(1, 0.16, 0.10, 0.6 * ep)
+            for ei = 1, ne do
+                local e = eyes[ei]
+                local x0 = math.floor(math.floor(drawX) + math.floor(e[1]) * P)
+                local y0 = math.floor(math.floor(drawY) + math.floor(e[2]) * P)
+                love.graphics.rectangle("fill", x0, y0, math.max(1, math.floor(P + 0.5)), math.max(1, math.floor(P + 0.5)))
+            end
         end
     end
 
@@ -1147,6 +1244,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         BossAura.drawFront(auraId, auraRect)
         BossTokens.drawFront(auraId, auraRect)
     end
+    EnemyLife.drawFront()
+    love.graphics.setColor(1, 1, 1, 1)
 
     if defendTime > 0 then
         local k = 1 - defendTime / DEFEND_DUR
@@ -1264,6 +1363,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                     love.graphics.push()
                     love.graphics.translate(tx, ty)
                     love.graphics.scale(ux, uy)
+                    if lifeSY ~= 0 then
+                        local fy0 = drawY + (ih - footPad) * scale
+                        love.graphics.translate(0, fy0)
+                        love.graphics.scale(1, 1 + lifeSY)
+                        love.graphics.translate(0, -fy0)
+                    end
                     if animRef then
                         local r, g, b = love.graphics.getColor()
                         animRef:draw(drawX, drawY, scale, { r, g, b, 1 })
@@ -1303,6 +1408,7 @@ end
 
 function EnemyRenderer.getEncounterBillboard(enemy)
     if not enemy or not enemy.spriteId then return nil end
+    EnemyLife.prewarm(enemy.spriteId)
     local bfps, bopts = idleSpec(enemy.spriteId)
     local anim = SpriteAnimation.new(enemy.spriteId, "idle", "south",
         bfps, bopts)
