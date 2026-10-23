@@ -69,6 +69,8 @@ function M.run()
         local b = render(game, scene, false)
         local n, dark, y0, y1, overlap = 0, 0, 1e9, -1e9, 0
         local rmin, rmax = {}, {}
+        local axis = foot and foot.bodyX or cx
+        local axisTop = 1e9
         local x0 = math.max(0, math.floor(cx - 520))
         local x1 = math.min(W - 1, math.floor(cx + 520))
         local yy0 = math.max(0, cy - 320)
@@ -80,6 +82,7 @@ function M.run()
                 local d = (r2 + g2 + b2 - r1 - g1 - b1) / 3
                 if d > 0.01 then
                     n = n + 1
+                    if math.abs(x - axis) <= 8 and y < axisTop then axisTop = y end
                     if not rmin[y] or x < rmin[y] then rmin[y] = x end
                     if not rmax[y] or x > rmax[y] then rmax[y] = x end
                     dark = dark + d
@@ -102,7 +105,7 @@ function M.run()
                 if wv < wMin then wMin = wv end
             end
         end
-        return { rowsN = rowsN, wMax = wMax, wMin = wMin, n = n, dark = dark, y0 = y0, y1 = y1, overlap = overlap, last = rec,
+        return { axisTop = axisTop, rowsN = rowsN, wMax = wMax, wMin = wMin, n = n, dark = dark, y0 = y0, y1 = y1, overlap = overlap, last = rec,
                  footBottom = foot and foot.footBottom or 0 }
     end
 
@@ -129,8 +132,8 @@ function M.run()
                 if not (bot.y0 <= cy and bot.y1 >= cy - 2) then
                     fails.floor[#fails.floor + 1] = string.format("%s(%d..%d chao %d)", tag, bot.y0, bot.y1, cy)
                 end
-                if top.y0 <= top.footBottom then
-                    fails.gap[#fails.gap + 1] = string.format("%s(sombra %d pe %d)", tag, top.y0, top.footBottom)
+                if top.axisTop <= top.footBottom + 2 then
+                    fails.gap[#fails.gap + 1] = string.format("%s(sombra %d pe %d)", tag, top.axisTop, top.footBottom)
                 end
                 if not (top.last and top.last.alpha < bot.last.alpha and top.last.sizeK < bot.last.sizeK
                         and top.dark < bot.dark) then
@@ -195,7 +198,7 @@ function M.run()
     t:truthy("flutuantes declarados (" .. #ids .. ")", #ids >= 7)
     t:eq("todo flutuante tem sombra no chao (estrada, salao, sem frame): " .. table.concat(fails.none, " "), #fails.none, 0)
     t:eq("sombra fica na linha do chao: " .. table.concat(fails.floor, " "), #fails.floor, 0)
-    t:eq("vao entre o pe e a sombra no topo do bob: " .. table.concat(fails.gap, " "), #fails.gap, 0)
+    t:eq("vao entre o pe e a sombra sob o eixo do corpo no topo do bob: " .. table.concat(fails.gap, " "), #fails.gap, 0)
     t:eq("sombra respira: menor e mais clara no alto, maior e mais escura embaixo: " .. table.concat(fails.breath, " "), #fails.breath, 0)
     t:eq("sombra tem forma (pontas afinam), nunca faixa reta: " .. table.concat(fails.bar, " "), #fails.bar, 0)
     do
