@@ -39,6 +39,12 @@ variantes) foram APAGADOS. Não há mais chave de variante. Provas antes/depois 
   ferrugem, musgo em tufos só nas pontas, tábua caída/quebrada/faltando, longarinas visíveis nas
   frestas e nos buracos, estacas a cada 6 tábuas, água com brilho nas frestas e ao lado.
 
+- Metade borrada (crista): sorteada por segmento com a chance que for MAIOR entre a distância
+  (`farT0`..`farT1`) e o passo de v por linha (`farDv`, acima de ~1 texel por faixa a amostra
+  pula texel e cintila). Pântano: borrão vertical 13 (tábua/fresta de 7 texels virava listra no
+  `test_castle_light`, que mede degrau de brilho no fim da estrada), `farT0 0,2`, `farT1 0,4`,
+  `farDv 0,45`; mais que isso borra as tábuas sob o pé do inimigo.
+
 ## RoadSurface (engine/RoadSurface.lua)
 
 Só cache: `get(bid, pal, yieldEvery)` assa `RoadTiles.bake` (o pré-aquecimento passa

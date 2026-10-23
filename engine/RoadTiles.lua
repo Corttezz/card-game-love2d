@@ -106,7 +106,7 @@ local function palettes(bid, p)
     P[ICE] = ramp(mix(sky, { 0.3, 0.38, 0.5 }, 0.5), mix(sky, { 0.75, 0.85, 0.95 }, 0.5), { 0.9, 0.96, 1.0 }, 4)
     P[EMBER] = { { 0.22, 0.05, 0.03 }, { 0.46, 0.1, 0.04 }, { 0.78, 0.26, 0.06 }, { 1.0, 0.5, 0.14 },
         { 1.0, 0.76, 0.34 } }
-    P[ASH] = ramp(mul(edge, 0.85), mix(roadB, { 0.3, 0.28, 0.28 }, 0.55), mix(roadA, { 0.62, 0.6, 0.58 }, 0.62), 7)
+    P[ASH] = ramp(mul(edge, 0.85), mix(roadB, { 0.3, 0.28, 0.28 }, 0.5), mix(roadA, { 0.6, 0.58, 0.56 }, 0.5), 7)
     P[SOOT] = ramp(mul(edge, 0.5), mul(edge, 0.9), mix(edge, roadB, 0.5), 3)
     P[RUST] = { { 0.24, 0.12, 0.07 }, { 0.42, 0.22, 0.1 }, { 0.55, 0.32, 0.14 } }
     P[STRAW] = { { 0.42, 0.33, 0.14 }, { 0.62, 0.52, 0.26 }, { 0.8, 0.7, 0.4 } }
@@ -349,7 +349,7 @@ PAINT.abyss = function(x, y, u, s)
     local drift = fbm(x, y, s + 3, 4, 40)
     val = val + (drift - 0.5) * 0.32
     local streak = vnoise(x, y, 3, 60, s + 5)
-    if streak > 0.66 then val = val + (streak - 0.66) * 0.8 end
+    if streak > 0.66 then val = val + (streak - 0.66) * 0.5 end
     local dj, id = voronoi(x, y, 22, 66, s + 23, 1.0)
     local open = vnoise(x, y, 9, 32, s + 25)
     local wid = 0.05 + vnoise(x, y, 14, 60, s + 27) * 0.07
@@ -631,8 +631,8 @@ V.STYLE = {}
 function V.style(bid)
     local st = V.STYLE[bid]
     if st then return st end
-    st = { half = HALF, cu = CU, far = TW, vk = V.VK, tm0 = 0.98, tmK = 0.03, farT0 = 0.1, farT1 = 0.42 }
-    if bid == "marsh" then st.platform, st.farT0, st.farT1 = true, 0.2, 0.4 end
+    st = { half = HALF, cu = CU, far = TW, vk = V.VK, tm0 = 0.98, tmK = 0.03, farT0 = 0.1, farT1 = 0.42, farDv = 1.0 }
+    if bid == "marsh" then st.platform, st.farT0, st.farT1, st.farDv = true, 0.2, 0.4, 0.45 end
     V.STYLE[bid] = st
     return st
 end

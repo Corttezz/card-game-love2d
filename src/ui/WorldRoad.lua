@@ -3929,8 +3929,9 @@ local function drawRoad(g, x, w, camZ)
         if sR <= sL then return end
         local hs = RHS[k] * (hsK or 1)
         local tm = (st.tm0 + RBL[k] * st.tmK) * bright
-        local far = t < st.farT1
-        local farK = (t - st.farT0) / (st.farT1 - st.farT0)
+        local farK = math.min((t - st.farT0) / (st.farT1 - st.farT0),
+            1 - math.max(0, math.min(1, (RDV[k] - st.farDv) / 0.8)))
+        local far = farK < 1
         local bandR = sL + band
         local segX = sL
         while segX < sR do
