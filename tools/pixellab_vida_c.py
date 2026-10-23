@@ -312,6 +312,8 @@ def clip_dir(eid, clip):
 
 def install(eid, clip, n, fix=None):
     d = os.path.join(TRIES, f"{eid}_{clip}_t{n}")
+    if fix and fix.get("as"):
+        clip = fix["as"]
     files = sorted([x for x in os.listdir(d) if x.endswith(".png")], key=lambda s: int(s[:-4]))
     src = [os.path.join(d, x) for x in files]
     seq = src[:-1] if clip == "idle" else src
@@ -347,7 +349,7 @@ def install(eid, clip, n, fix=None):
         if x.endswith(".png") and x != "0.png":
             os.remove(os.path.join(dest, x))
     for x in os.listdir(tmp):
-        if x != "0.png":
+        if x != "0.png" or clip != "idle":
             shutil.copyfile(os.path.join(tmp, x), os.path.join(dest, x))
     shutil.rmtree(tmp)
     final_strip(eid, clip)
