@@ -41,8 +41,13 @@ oclui); poças/núcleos z=rel do prop; vagalumes/brasas z=-1 (nunca ocluídos).
 O lightmap é 1/4 da tela: o oclusor rasteriza só no CENTRO de cada texel, então a
 borda do sprite (até 3 px) caía em texel não coberto e recebia a luz de trás
 (laranja em céu de pôr do sol, castelo, lanterna), em degraus de 4 px que seguem o
-corpo como rastro. Correção: `cover = true` no oclusor desenha a silhueta 9x com
-deslocamento de 1,5 px (cobertura conservadora do texel). Usado no inimigo de
+corpo como rastro. Correção: `cover = true` no oclusor. O composite renderiza DOIS
+lightmaps de 1/4 (cena sem os oclusores `cover`; e com eles, silhueta desenhada 9x
+com deslocamento de 1,5 px) e uma MÁSCARA em resolução cheia da silhueta; o shader
+`shaders/light_cover.glsl` escolhe pixel a pixel (corpo = lightmap com oclusor, resto
+= lightmap da cena). Só dilatar NÃO serve: o `flatColor` do inimigo é mais claro que
+o ambiente e a dilatação pintou um contorno claro no chão em volta (2ª queixa do
+dono no mesmo dia). Usado no inimigo de
 batalha (`EnemyRenderer`) e no encontro da estrada/entrada (`WorldRoad`); o
 encontro e a batalha também submetem o oclusor com alpha >= 0,5 (antes só com
 alpha 1, então todo fade acendia o corpo inteiro). Trava: `test_enemy_light_fringe`.

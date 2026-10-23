@@ -14,10 +14,13 @@ local whiteImg
 local microImg
 local shader
 local occShader
+local coverShader
+local coverCanvas
+local maskCanvas
 local shaderOk = nil
 
 local queue, microQueue, occQueue = {}, {}, {}
-local pool = { e = {}, m = {}, ne = 0, nm = 0, lights = {}, entries = {}, fc = { 0, 0, 0 }, white = { 1, 1, 1 } }
+local pool = { e = {}, m = {}, ne = 0, nm = 0, lights = {}, entries = {}, fc = { 0, 0, 0 }, ms = { 1, 1 }, white = { 1, 1, 1 } }
 local frameActive = false
 local ambient = { 1, 1, 1 }
 local time = 0
@@ -57,6 +60,12 @@ local function ensureResources()
     if not canvas or canvas:getWidth() ~= cw or canvas:getHeight() ~= ch then
         canvas = love.graphics.newCanvas(cw, ch, { format = "rgba8" })
         canvas:setFilter("nearest", "nearest")
+        coverCanvas = love.graphics.newCanvas(cw, ch, { format = "rgba8" })
+        coverCanvas:setFilter("nearest", "nearest")
+    end
+    if not maskCanvas or maskCanvas:getWidth() ~= W or maskCanvas:getHeight() ~= H then
+        maskCanvas = love.graphics.newCanvas(W, H, { format = "rgba8" })
+        maskCanvas:setFilter("nearest", "nearest")
     end
     if not whiteImg then
         local d = love.image.newImageData(2, 2)
@@ -92,6 +101,14 @@ local function ensureResources()
             return love.graphics.newShader("shaders/occluder.glsl")
         end)
         if ok2 and sh2 then occShader = sh2 end
+        local ok3, sh3 = pcall(function()
+            return love.graphics.newShader("shaders/light_cover.glsl")
+        end)
+        if ok3 and sh3 then
+            coverShader = sh3
+        else
+            Debug.warn("[LightEngine] shader light_cover falhou: " .. tostring(sh3))
+        end
     end
 end
 
@@ -176,51 +193,16 @@ function LightEngine._entryOrder(a, b)
     return (a.occ and 0 or 1) < (b.occ and 0 or 1)
 end
 
-function LightEngine.composite(x, y, w, h)
-    if not frameActive then return end
-    frameActive = false
-    if lumaOf(ambient) > 0.985 and ambient[1] > 0.97 and ambient[2] > 0.97
-       and ambient[3] > 0.97 and #queue == 0 and #microQueue == 0 then
-        return
-    end
-    ensureResources()
-
-    local prevCanvas = love.graphics.getCanvas()
+local function drawEntries(entries, target, withCover)
     local S = LightEngine.SCALE
-
-    love.graphics.push("all")
-    love.graphics.origin()
-    love.graphics.setScissor()
-    love.graphics.setShader()
-
-    love.graphics.setCanvas(canvas)
-    love.graphics.clear(ambient[1], ambient[2], ambient[3], 1)
-
-    local lights, entries = pool.lights, pool.entries
-    for i = #lights, 1, -1 do lights[i] = nil end
-    for i = #entries, 1, -1 do entries[i] = nil end
-    for _, l in ipairs(queue) do lights[#lights + 1] = l end
-    for _, m in ipairs(microQueue) do lights[#lights + 1] = m end
-    for _, l in ipairs(lights) do entries[#entries + 1] = l end
-    for _, o in ipairs(occQueue) do
-        local hit = false
-        for _, l in ipairs(lights) do
-            if l.z > o.z then
-                local cx2 = math.max(o.bx, math.min(l.x, o.bx + o.w))
-                local cy2 = math.max(o.by, math.min(l.y, o.by + o.h))
-                local dx, dy = l.x - cx2, l.y - cy2
-                if dx * dx + dy * dy <= l.r * l.r then hit = true; break end
-            end
-        end
-        if hit or o.lift or o.flatColor then o.occ = true; entries[#entries + 1] = o end
-    end
-    table.sort(entries, LightEngine._entryOrder)
-
     local mw = microImg and microImg:getWidth() or 16
     local ww = whiteImg and whiteImg:getWidth() or 2
+    love.graphics.setCanvas(target)
+    love.graphics.clear(ambient[1], ambient[2], ambient[3], 1)
     love.graphics.setBlendMode("add", "alphamultiply")
     for _, e in ipairs(entries) do
-        if e.occ then
+        if e.occ and e.cover and not withCover then
+        elseif e.occ then
             love.graphics.setBlendMode("alpha", "alphamultiply")
             local cr, cg, cb = ambient[1], ambient[2], ambient[3]
             if e.flatColor then
@@ -288,12 +270,88 @@ function LightEngine.composite(x, y, w, h)
         end
     end
     love.graphics.setShader()
+end
+
+function LightEngine.composite(x, y, w, h)
+    if not frameActive then return end
+    frameActive = false
+    if lumaOf(ambient) > 0.985 and ambient[1] > 0.97 and ambient[2] > 0.97
+       and ambient[3] > 0.97 and #queue == 0 and #microQueue == 0 then
+        return
+    end
+    ensureResources()
+
+    local prevCanvas = love.graphics.getCanvas()
+    local S = LightEngine.SCALE
+
+    love.graphics.push("all")
+    love.graphics.origin()
+    love.graphics.setScissor()
+    love.graphics.setShader()
+
+    local lights, entries = pool.lights, pool.entries
+    for i = #lights, 1, -1 do lights[i] = nil end
+    for i = #entries, 1, -1 do entries[i] = nil end
+    for _, l in ipairs(queue) do lights[#lights + 1] = l end
+    for _, m in ipairs(microQueue) do lights[#lights + 1] = m end
+    for _, l in ipairs(lights) do entries[#entries + 1] = l end
+    local nCover = 0
+    for _, o in ipairs(occQueue) do
+        local hit = false
+        for _, l in ipairs(lights) do
+            if l.z > o.z then
+                local cx2 = math.max(o.bx, math.min(l.x, o.bx + o.w))
+                local cy2 = math.max(o.by, math.min(l.y, o.by + o.h))
+                local dx, dy = l.x - cx2, l.y - cy2
+                if dx * dx + dy * dy <= l.r * l.r then hit = true; break end
+            end
+        end
+        if hit or o.lift or o.flatColor then
+            o.occ = true
+            entries[#entries + 1] = o
+            if o.cover then nCover = nCover + 1 end
+        end
+    end
+    table.sort(entries, LightEngine._entryOrder)
+
+    local useCover = nCover > 0 and coverShader ~= nil
+    drawEntries(entries, canvas, not useCover)
+    if useCover then
+        drawEntries(entries, coverCanvas, true)
+        love.graphics.setCanvas(maskCanvas)
+        love.graphics.clear(0, 0, 0, 0)
+        love.graphics.setBlendMode("alpha", "alphamultiply")
+        love.graphics.setColor(1, 1, 1, 1)
+        if occShader then
+            love.graphics.setShader(occShader)
+            occShader:send("flatColor", pool.white)
+        end
+        for _, e in ipairs(entries) do
+            if e.occ and e.cover then
+                if e.fn then
+                    e.fn()
+                else
+                    love.graphics.draw(e.img, e.x, e.y, e.rot or 0, e.sx or 1, e.sy or e.sx or 1, e.ox or 0, e.oy or 0)
+                end
+            end
+        end
+        love.graphics.setShader()
+    end
 
     love.graphics.setCanvas(prevCanvas)
     love.graphics.setBlendMode("multiply", "premultiplied")
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setScissor(x, y, w, h)
+    if useCover then
+        love.graphics.setShader(coverShader)
+        coverShader:send("occLm", coverCanvas)
+        coverShader:send("occMask", maskCanvas)
+        local ms = pool.ms
+        ms[1], ms[2] = maskCanvas:getWidth(), maskCanvas:getHeight()
+        coverShader:send("maskSize", ms)
+    end
     love.graphics.draw(canvas, 0, 0, 0, S, S)
+    love.graphics.setShader()
 
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
