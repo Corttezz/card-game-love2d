@@ -277,7 +277,7 @@ def processed(eid, clip, t):
         for fx in SP.FIXUPS.get((eid, clip, t), []):
             if len(fx) > 2 and len(out) not in fx[2]:
                 continue
-            s = fixup(s, ref, fx[:2])
+            s = out[-1].copy() if fx[0] == "dup" else fixup(s, ref, fx[:2])
         out.append(s)
         fars.append(far)
     return out, (round(max(fars), 3) if fars else 0)
