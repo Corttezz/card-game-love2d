@@ -77,7 +77,7 @@ local function ramp(dark, base, light, n)
 end
 
 local DIRT, STONE, GAP, GRASS, MOSS, WOOD, WATER, SNOW, EMBER, ASH, LEAF, ICE, MUD, STRAW, LEAF2, LEAF3, LEAF4,
-    RUST, SOOT = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+    RUST, SOOT, LEAF5, LEAF6 = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
 V.MAT = { DIRT = DIRT, STONE = STONE, LEAF = LEAF, LEAF2 = LEAF2, LEAF3 = LEAF3, LEAF4 = LEAF4, EMBER = EMBER,
     WOOD = WOOD, WATER = WATER, SNOW = SNOW }
 
@@ -114,6 +114,8 @@ local function palettes(bid, p)
     P[LEAF2] = { { 0.3, 0.07, 0.06 }, { 0.5, 0.12, 0.08 }, { 0.68, 0.2, 0.1 }, { 0.82, 0.32, 0.14 } }
     P[LEAF3] = { { 0.4, 0.26, 0.08 }, { 0.62, 0.44, 0.12 }, { 0.8, 0.62, 0.2 }, { 0.92, 0.78, 0.34 } }
     P[LEAF4] = { { 0.2, 0.12, 0.07 }, { 0.33, 0.21, 0.11 }, { 0.46, 0.31, 0.16 }, { 0.58, 0.42, 0.22 } }
+    P[LEAF5] = { { 0.42, 0.3, 0.06 }, { 0.68, 0.5, 0.1 }, { 0.88, 0.7, 0.18 }, { 0.98, 0.86, 0.36 } }
+    P[LEAF6] = { { 0.22, 0.06, 0.07 }, { 0.38, 0.1, 0.1 }, { 0.52, 0.16, 0.12 }, { 0.64, 0.26, 0.16 } }
     return P
 end
 
@@ -254,6 +256,67 @@ local function leafAt(x, y, cell, dens, s, len0, len1, wk0, wk1, pick)
     return bm, bv, bl
 end
 
+local LEAFMATS = { LEAF, LEAF2, LEAF3, LEAF4, LEAF5, LEAF6, LEAF, LEAF2 }
+
+local function fallenLeaf(x, y, cell, dens, s, len0, len1)
+    local ncx, cx = grid(cell, TW)
+    local ncy, cy = grid(cell, TH)
+    local ci, cj = floor(x / cx), floor(y / cy)
+    local best, bm, bv
+    for dj = -1, 1 do
+        for di = -1, 1 do
+            local i, j = ci + di, cj + dj
+            local wi, wj = i % ncx, j % ncy
+            local dkey = ((wi * 1031 + wj) * 7 + floor(cell * 10)) * 131 + s
+            local dk = dmemo[dkey]
+            if not dk then
+                dk = dens(((i + 0.5) * cx % TW - CU) / HALF, (j + 0.5) * cy % TH)
+                dmemo[dkey] = dk
+            end
+            local layer = h2(wi, wj, s + 6)
+            if h2(wi, wj, s) < dk and (not best or layer > best) then
+                local px = (i + 0.1 + h2(wi, wj, s + 1) * 0.8) * cx
+                local py = (j + 0.1 + h2(wi, wj, s + 2) * 0.8) * cy
+                local a = h2(wi, wj, s + 3) * TAU
+                local ca, sa = cos(a), sin(a)
+                local L = len0 + h2(wi, wj, s + 4) * (len1 - len0)
+                local W = L * (0.4 + h2(wi, wj, s + 5) * 0.2)
+                local curl = h2(wi, wj, s + 9) < 0.28
+                local dx, dy = x - px, (y - py) * 1.2
+                local al = (dx * ca + dy * sa) / L
+                local ac = (-dx * sa + dy * ca)
+                local hit, v = false, 0
+                local litSide = (-sa * LX - ca * 0.6)
+                if al <= -0.92 and al > -1.4 and abs(ac + (al + 0.92) * 0.25) < 0.2 then
+                    hit, v = true, 0.12
+                elseif al > -1 and al < 1 then
+                    local prof = (al < 0) and sqrt(1 - al * al) or (1 - al * al) * (1 - al * 0.25)
+                    local limA, limB = W * prof, W * prof
+                    if curl then limA = limA * 0.45 end
+                    if ac < limA and ac > -limB then
+                        hit = true
+                        local side = ac / max(0.4, ac > 0 and limA or limB)
+                        v = 0.55 + (h2(wi, wj, s + 8) - 0.5) * 0.24 + side * litSide * 0.26
+                        if L > 1.6 and abs(ac) < 0.32 and al > -0.85 and al < 0.8 then v = v - 0.14 end
+                        if curl and ac > limA - 0.6 then v = v + 0.2 end
+                        if curl and ac > 0 and ac < limA - 0.6 then v = v - 0.18 end
+                        if (ac > 0 and ac > limA - 0.45 or ac < 0 and ac < -limB + 0.45) and side * litSide < 0 then
+                            v = v - 0.16
+                        end
+                    end
+                end
+                if hit then
+                    best = layer
+                    bm = LEAFMATS[1 + floor(h2(wi, wj, s + 7) * #LEAFMATS)]
+                    bv = v
+                end
+            end
+        end
+    end
+    if not best then return nil end
+    return bm, bv, best
+end
+
 local function trail(x, y, u, s, o)
     local au = abs(u)
     local n = fbm(x, y, s, 6, 26)
@@ -307,13 +370,16 @@ PAINT.fields = function(x, y, u, s)
     end
     if worn > 0.5 and au > 0.16 and au < 0.32 then
         local cy = floor(y / 19)
-        local hy = y - cy * 19
         local off = h2(cy, 1, s + 81) > 0.5 and 0.24 or -0.24
-        local hx = floor(x + 0.5 - CU - off * HALF + 2)
-        if h2(cy, 2, s + 81) > 0.4 and hy < 4 and hx >= 0 and hx < 4 then
-            local rim = (hy == 0) or hx == 0 or hx == 3
-            if rim and not (hy == 3 and (hx == 1 or hx == 2)) then val = val - 0.15; h = h - 0.05 end
-            if hy == 3 and (hx == 1 or hx == 2) then val = val + 0.06 end
+        if h2(cy, 2, s + 81) > 0.4 then
+            local dx = x + 0.5 - (CU + off * HALF)
+            local dy = (y - cy * 19 - 2.2) * 1.15
+            local r = sqrt(dx * dx + dy * dy)
+            if r < 2.0 and r > 1.05 and dy < 0.9 then
+                val = val - (dy < -0.3 and 0.16 or 0.1); h = h - 0.05
+            elseif r <= 1.05 and dy > -0.4 then
+                val = val + 0.04
+            end
         end
     end
     local st = au > 0.45 and au < 1.0 and leafAt(x, y, 9, function() return 0.08 + sho * 0.3 end, s + 85, 1.8, 2.8,
@@ -352,11 +418,11 @@ PAINT.abyss = function(x, y, u, s)
     if streak > 0.66 then val = val + (streak - 0.66) * 0.5 end
     local dj, id = voronoi(x, y, 22, 66, s + 23, 1.0)
     local open = vnoise(x, y, 9, 32, s + 25)
-    local wid = 0.05 + vnoise(x, y, 14, 60, s + 27) * 0.07
+    local wid = 0.085 + vnoise(x, y, 14, 60, s + 27) * 0.08
     if dj < wid and open > 0.46 then
         local depth = 1 - dj / wid
         local hot = vnoise(x, y, 5, 22, s + 29)
-        if hot > 0.62 and wid > 0.085 then
+        if hot > 0.6 and wid > 0.125 then
             return EMBER, 0.0, 0.1 + depth * 0.6 + (hot - 0.62) * 0.9
         end
         return SOOT, 0.05, 0.45 + (1 - depth) * 0.45
@@ -402,7 +468,7 @@ PAINT.frost = function(x, y, u, s)
     local n = fbm(x, y, s, 6, 24)
     local worn = 1 - sstep(0.15, 0.7, au)
     local rk = rutK(u, y, 0.1)
-    local val = 0.56 - worn * 0.22 + (n - 0.5) * 0.14 - rk * 0.2 + sstep(0.7, 1.0, au) * 0.18
+    local val = 0.5 - worn * 0.28 + (n - 0.5) * 0.14 - rk * 0.2 + sstep(0.68, 0.98, au) * 0.34
     local h = 0.4 - rk * 0.25
     if rk > 0.6 and h2(x, y, s + 49) < 0.05 then val = val + 0.3 end
     local bp = au < 0.75 and bootPrint(x, y, s)
@@ -432,11 +498,12 @@ local function plankTable(s)
     return PLANKS
 end
 
-PAINT.marsh = function(x, y, u, s)
+PAINT.marsh = function(x, y, u, s, np)
     local PT = plankTable(s)
-    local p = PT.list[PT.at[y]]
+    local yi = floor(y)
+    local p = PT.list[PT.at[yi]]
     local pk = p.i
-    local yy = y - p.y0
+    local yy = yi - p.y0
     local PLW = p.w
     local au = abs(u)
     local endL = -(0.57 + (h2(pk, 1, s) - 0.5) * 0.1)
@@ -453,12 +520,12 @@ PAINT.marsh = function(x, y, u, s)
     local sag = (h2(pk, 7, s) < 0.15) and 1 or 0
     local rag = (h2(pk, yy, s + 31) - 0.5) * 2.2 / HALF
     endL, endR = endL + rag * (h2(pk, 32, s) > 0.4 and 1 or 0.3), endR - rag * (h2(pk, 33, s) > 0.4 and 1 or 0.3)
-    local inPlank = yy < PLW - 1 and not missing and u > endL and u < endR
+    local inPlank = (not np) and yy < PLW - 1 and not missing and u > endL and u < endR
     if inPlank then
         local grain = vnoise(x, y, 5, TH * 0.9, s + 7 + pk) * 0.55 + vnoise(x, y, 24, TH * 0.5, s + 8) * 0.45
         local tone = h2(pk, 6, s + 1)
         tone = tone * tone * (3 - 2 * tone)
-        local val = 0.34 + tone * 0.4 + (grain - 0.5) * 0.3 - sag * 0.12
+        local val = 0.38 + tone * 0.32 + (grain - 0.5) * 0.3 - sag * 0.1
         if yy == 0 then val = val + 0.14 end
         if yy == PLW - 2 then val = val - 0.2 end
         if yy > 0 and yy < PLW - 2 and vnoise(x, y, 3, TH * 0.9, s + 35 + yy) > 0.7
@@ -490,23 +557,23 @@ PAINT.marsh = function(x, y, u, s)
         if dE < 4 and mo > 0.72 - (4 - dE) * 0.015 then return MOSS, 0.92, 0.3 + (mo - 0.6) * 1.4 end
         return WOOD, 0.9 - sag * 0.1, val
     end
-    local str = abs(au - 0.42) * HALF < 2.2
+    local str = (not np) and abs(au - 0.42) * HALF < 2.2
     if str and au < 0.62 then
         local val = 0.2 + vnoise(x, y, 30, 80, s + 21) * 0.14
         if yy == 0 then val = val - 0.08 end
         return WOOD, 0.55, val
     end
-    local post = (pk % 6 == 2) and yy < PLW - 2 and abs(au - 0.68) * HALF < 2.4
+    local post = (not np) and (pk % 6 == 2) and yy < PLW - 2 and abs(au - 0.68) * HALF < 2.4
     if post then
         local lu = (au - 0.68) * HALF * (u > 0 and 1 or -1) * LX
         local val = 0.42 + (lu > 0.6 and 0.16 or lu < -0.6 and -0.12 or 0) + (yy == 0 and 0.1 or 0)
-        if (x + yy * 2) % 4 == 0 then val = val - 0.08 end
+        if (floor(x) + yy * 2) % 4 == 0 then val = val - 0.08 end
         return WOOD, 1.0, val
     end
-    if au < 0.64 and not missing and yy == PLW - 1 then
+    if (not np) and au < 0.64 and not missing and yy == PLW - 1 then
         return WATER, 0.1, 0.1 + (h2(x, y, s) > 0.9 and 0.55 or 0)
     end
-    local wet = vnoise(x, y, 5, 20, s + 17) + (missing and 0.25 or 0)
+    local wet = vnoise(x, y, 5, 20, s + 17) + ((missing or np) and 0.25 or 0)
     if wet > 0.5 then
         local rip = (sin(y * 0.9 + vnoise(x, y, 8, 40, s + 24) * 6) > 0.92 and h2(x, y, s + 23) > 0.4) and 0.3 or 0
         local edgeW = (wet < 0.54) and -0.15 or 0
@@ -517,22 +584,22 @@ end
 
 PAINT.dusk = function(x, y, u, s)
     local mat, h, val, sho, rk, worn = trail(x, y, u, s, { rutW = 0.09 })
-    local au = abs(u)
     local function dens(uu, yy)
         local rr = rutK(uu, yy, 0.13)
         local a = abs(uu)
-        local clump = vnoise(uu * HALF + CU, yy, 5, 18, s + 66)
-        return 0.27 + sstep(0.55, 0.95, a) * 0.36 + rr * 0.1 + (clump - 0.5) * 0.7
+        local clump = vnoise(uu * HALF + CU, yy, 4, 14, s + 66)
+        local edge = sstep(0.5, 0.92, a)
+        return 0.32 + edge * 0.7 + rr * 0.15 + (clump - 0.45) * 0.9 - (1 - edge) * worn * 0.05
     end
-    local m2, lv = leafAt(x, y, 8, dens, s + 61, 2.0, 3.0, 0.5, 0.66)
+    local m2, lv, ly = fallenLeaf(x, y, 6, dens, s + 61, 2.1, 3.1)
+    local m3, lv3, ly3 = fallenLeaf(x, y, 3.5, function(uu, yy) return (dens(uu, yy) - 0.25) * 1.5 end, s + 91,
+        1.4, 2.0)
     if m2 then
-        if worn > 0.75 and rk < 0.3 then return m2 == LEAF3 and LEAF4 or m2, h + 0.1, lv * 0.8 end
-        return m2, h + 0.32, lv
+        local wornLeaf = worn > 0.8 and rk < 0.25 and h2(floor(x), floor(y / 3), s + 63) < 0.5
+        return wornLeaf and LEAF4 or m2, h + 0.3 + ly * 0.25, lv * (wornLeaf and 0.75 or 1)
     end
-    local m3, lv3 = leafAt(x, y, 4, function(uu, yy) return (dens(uu, yy) - 0.3) * 1.6 end, s + 91, 1.3, 2.0,
-        0.5, 0.7)
-    if m3 then return m3, h + 0.18, lv3 * 0.82 end
-    if dens(u, y) > 0.5 then val = val - 0.05 end
+    if m3 then return m3, h + 0.18 + ly3 * 0.1, lv3 * 0.85 end
+    if dens(u, y) > 0.6 then val = val - 0.06 end
     local sh, sv = stone(x, y, 15, 0.1, 1.2, 2.2, s + 71)
     if sh then return STONE, sh, sv end
     local gr = gravel(x, y, s, 0.7)
@@ -540,10 +607,45 @@ PAINT.dusk = function(x, y, u, s)
     return mat, h, val
 end
 
+function V.planks(bid)
+    local seed = 0
+    for i = 1, #bid do seed = seed + bid:byte(i) end
+    return plankTable(seed).list
+end
+
 V.LIGHT_X = { fields = 1, highlands = 1, abyss = 1, frost = 1, marsh = 1, dusk = -1 }
 
 function V.paint(bid, x, y, seed)
     return PAINT[bid](x, y, (x + 0.5 - CU) / HALF, seed)
+end
+
+V.S = 2
+V.GRAIN = { [DIRT] = 0.2, [MUD] = 0.14, [ASH] = 0.18, [SOOT] = 0.12, [SNOW] = 0.08, [STONE] = 0.12,
+    [WOOD] = 0.08, [GRASS] = 0.14, [LEAF] = 0.1, [LEAF2] = 0.1, [LEAF3] = 0.1, [LEAF4] = 0.1, [LEAF5] = 0.1,
+    [LEAF6] = 0.1, [STRAW] = 0.1 }
+V.BLOCKS = { marsh = 3 }
+
+local ffi = require("ffi")
+
+local function boxBlur(src, dst, W, H, rx, ry, tmp)
+    for y = 0, H - 1 do
+        local row = y * W
+        local acc = 0
+        for dx = -rx, rx do acc = acc + src[row + dx % W] end
+        for x = 0, W - 1 do
+            tmp[row + x] = acc
+            acc = acc + src[row + (x + rx + 1) % W] - src[row + (x - rx) % W]
+        end
+    end
+    local n = (2 * rx + 1) * (2 * ry + 1)
+    for x = 0, W - 1 do
+        local acc = 0
+        for dy = -ry, ry do acc = acc + tmp[(dy % H) * W + x] end
+        for y = 0, H - 1 do
+            dst[y * W + x] = acc / n
+            acc = acc + tmp[((y + ry + 1) % H) * W + x] - tmp[((y - ry) % H) * W + x]
+        end
+    end
 end
 
 function V.bake(bid, pal, yieldEvery)
@@ -554,72 +656,89 @@ function V.bake(bid, pal, yieldEvery)
     for i = 1, #bid do seed = seed + bid:byte(i) end
     local lx = V.LIGHT_X[bid] or 1
     LX = lx
-    memo, dmemo = {}, {}
-    local M, Hh, Vv = {}, {}, {}
-    for y = 0, TH - 1 do
-        if yieldEvery and y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
-        for x = 0, TW - 1 do
-            local u = (x + 0.5 - CU) / HALF
-            local m, h, v = paint(x, y, u, seed)
-            local i = y * TW + x
-            M[i], Hh[i], Vv[i] = m, h, v
-        end
-    end
-    memo, dmemo = {}, {}
-    local d = love.image.newImageData(TW * 2, TH)
-    local R, G, B = {}, {}, {}
-    for y = 0, TH - 1 do
-        if yieldEvery and y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
-        local yu = ((y + 1) % TH) * TW
-        local yd = ((y - 1) % TH) * TW
-        local y0 = y * TW
-        for x = 0, TW - 1 do
-            local i = y0 + x
-            local m = M[i]
-            local v = Vv[i]
-            local h = Hh[i]
-            local xl = (x + lx) % TW
-            local xr = (x - lx) % TW
-            local hToLight = Hh[yu + xl]
-            local hAway = Hh[yd + xr]
-            if m ~= EMBER then
-                local h2l = Hh[((y + 2) % TH) * TW + (x + 2 * lx) % TW]
-                if hToLight - h > 0.25 then v = v - 0.3 - (hToLight - h) * 0.2
-                elseif h2l - h > 0.35 then v = v - 0.16 end
-                local hl = Hh[yu + x]
-                if hl - h > 0.3 then v = v - 0.1 end
-                if h - hToLight > 0.25 then v = v + 0.16 end
-                if h - hAway > 0.25 then v = v - 0.08 end
+    local GR = V.GRAIN
+    local S = V.S
+    local W, H = TW * S, TH * S
+    local N = W * H
+    local blocks = V.BLOCKS[bid] or 2
+    local d = love.image.newImageData(W * blocks, H)
+    local M = ffi.new("uint8_t[?]", N)
+    local Hh = ffi.new("float[?]", N)
+    local Vv = ffi.new("float[?]", N)
+    local R = ffi.new("float[?]", N)
+    local G = ffi.new("float[?]", N)
+    local B = ffi.new("float[?]", N)
+    local function pass(np, ox)
+        memo, dmemo = {}, {}
+        for Y = 0, H - 1 do
+            if yieldEvery and Y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
+            local y = Y / S
+            for X = 0, W - 1 do
+                local x = X / S
+                local u = (x + 0.5 / S - CU) / HALF
+                local m, h, v = paint(x, y, u, seed, np)
+                local i = Y * W + X
+                M[i], Hh[i], Vv[i] = m, h, v
             end
-            local pr = P[m] or P[DIRT]
-            local n = #pr
-            local lv = max(0, min(1, v)) * (n - 1) + 1
-            local li = floor(lv)
-            if lv - li > 0.5 + (h2(x, y, 977) - 0.5) * 0.22 + (bayer(x, y) - 0.5) * 0.12 then li = li + 1 end
-            li = max(1, min(n, li))
-            local c = pr[li]
-            R[i], G[i], B[i] = c[1], c[2], c[3]
-            d:setPixel(x, y, c[1], c[2], c[3], 1)
         end
-    end
-    local BX, BY = 3, (bid == "marsh") and 13 or 7
-    for y = 0, TH - 1 do
-        if yieldEvery and y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
-        for x = 0, TW - 1 do
-            local r, g, b, cnt = 0, 0, 0, 0
-            for dy = -BY, BY, 2 do
-                local yy = ((y + dy) % TH) * TW
-                for dx = -BX, BX do
-                    local j = yy + (x + dx) % TW
-                    r, g, b, cnt = r + R[j], g + G[j], b + B[j], cnt + 1
+        memo, dmemo = {}, {}
+        for Y = 0, H - 1 do
+            if yieldEvery and Y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
+            local yu = ((Y + S) % H) * W
+            local yd = ((Y - S) % H) * W
+            local y2 = ((Y + 2 * S) % H) * W
+            local y1 = ((Y + 1) % H) * W
+            local y0 = Y * W
+            for X = 0, W - 1 do
+                local i = y0 + X
+                local m = M[i]
+                local v = Vv[i]
+                local h = Hh[i]
+                if m ~= EMBER then
+                    local hToLight = Hh[yu + (X + lx * S) % W]
+                    local hAway = Hh[yd + (X - lx * S) % W]
+                    local h2l = Hh[y2 + (X + 2 * lx * S) % W]
+                    if hToLight - h > 0.25 then v = v - 0.3 - (hToLight - h) * 0.2
+                    elseif h2l - h > 0.35 then v = v - 0.16 end
+                    if Hh[yu + X] - h > 0.3 then v = v - 0.1 end
+                    if h - Hh[y1 + (X + lx) % W] > 0.25 then v = v + 0.16 end
+                    if h - hAway > 0.25 then v = v - 0.08 end
                 end
+                local gk = GR[m]
+                if gk then
+                    v = v + ((h2(X, Y, 331) - 0.5) * 0.6 + (h2(floor(X / 2), floor(Y / 2), 337) - 0.5) * 0.4) * gk
+                end
+                local pr = P[m] or P[DIRT]
+                local n = #pr
+                local lv = max(0, min(1, v)) * (n - 1) + 1
+                local li = floor(lv)
+                if lv - li > 0.5 + (h2(X, Y, 977) - 0.5) * 0.22 + (bayer(X, Y) - 0.5) * 0.12 then li = li + 1 end
+                li = max(1, min(n, li))
+                local c = pr[li]
+                R[i], G[i], B[i] = c[1], c[2], c[3]
+                d:setPixel(ox + X, Y, c[1], c[2], c[3], 1)
             end
-            r, g, b = r / cnt, g / cnt, b / cnt
-            local i = y * TW + x
-            local k = 0.22
-            d:setPixel(TW + x, y, r + (R[i] - r) * k, g + (G[i] - g) * k, b + (B[i] - b) * k, 1)
         end
     end
+    pass(false, 0)
+    local by = ((bid == "marsh") and 13 or 7) * S
+    local tmp = ffi.new("float[?]", N)
+    local bR, bG, bB = ffi.new("float[?]", N), ffi.new("float[?]", N), ffi.new("float[?]", N)
+    boxBlur(R, bR, W, H, 3 * S, by, tmp)
+    if yieldEvery then coroutine.yield() end
+    boxBlur(G, bG, W, H, 3 * S, by, tmp)
+    if yieldEvery then coroutine.yield() end
+    boxBlur(B, bB, W, H, 3 * S, by, tmp)
+    for Y = 0, H - 1 do
+        if yieldEvery and Y % (yieldEvery * 4) == 0 then coroutine.yield() end
+        for X = 0, W - 1 do
+            local i = Y * W + X
+            local k = (bid == "marsh") and 0.08 or 0.22
+            local r, g, b = bR[i], bG[i], bB[i]
+            d:setPixel(W + X, Y, r + (R[i] - r) * k, g + (G[i] - g) * k, b + (B[i] - b) * k, 1)
+        end
+    end
+    if blocks > 2 then pass(true, 2 * W) end
     local img = love.graphics.newImage(d)
     img:setFilter("nearest", "nearest")
     img:setWrap("repeat", "repeat")
@@ -631,8 +750,13 @@ V.STYLE = {}
 function V.style(bid)
     local st = V.STYLE[bid]
     if st then return st end
-    st = { half = HALF, cu = CU, far = TW, vk = V.VK, tm0 = 0.98, tmK = 0.03, farT0 = 0.1, farT1 = 0.42, farDv = 1.0 }
-    if bid == "marsh" then st.platform, st.farT0, st.farT1, st.farDv = true, 0.2, 0.4, 0.45 end
+    local S = V.S
+    st = { half = HALF * S, cu = CU * S, far = TW * S, vk = V.VK * S, tm0 = 0.98, tmK = 0.03, farT0 = 0.1,
+        farT1 = 0.42, farDv = 1.0 * S, S = S }
+    if bid == "marsh" then
+        st.platform, st.farT0, st.farT1, st.farDv = true, 0.2, 0.4, 0.45 * S
+        st.bare = 2 * TW * S
+    end
     V.STYLE[bid] = st
     return st
 end
