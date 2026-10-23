@@ -778,6 +778,18 @@
     "problems": [
      "chuvisco 0.51"
     ]
+   },
+   {
+    "job": "a26aa632-0eb5-44c1-b619-4482b82e473f",
+    "n": 2,
+    "size": 1.062,
+    "eye": 0.931,
+    "step": 0.456,
+    "motion": 0.64,
+    "end": 0.007,
+    "problems": [
+     "chuvisco 0.46"
+    ]
    }
   ]
  },
@@ -1061,7 +1073,8 @@
   "installed": 1
  },
  "wicker_effigy/state_poison": {
-  "status": "retry",
+  "status": "pending",
+  "job": "a4ee73dc-927f-47ea-9025-7b7b81130a92",
   "tries": [
    {
     "job": "6ae09a0d-1ae0-453a-b9f8-a814b6937425",
@@ -1096,18 +1109,67 @@
   "installed": 1
  },
  "wicker_effigy/state_enraged": {
-  "status": "pending",
-  "job": "3f0620d6-95ad-4698-b3f7-a07eb9190859",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "3f0620d6-95ad-4698-b3f7-a07eb9190859",
+    "n": 1,
+    "size": 1.134,
+    "eye": 0.752,
+    "step": 0.625,
+    "motion": 0.704,
+    "end": 0.004,
+    "problems": [
+     "chuvisco 0.62"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "carrion_king/state_poison": {
-  "status": "pending",
-  "job": "99f2f645-63f9-4d06-bec6-28b9221b68a3",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "99f2f645-63f9-4d06-bec6-28b9221b68a3",
+    "n": 1,
+    "size": 0.927,
+    "eye": 0.83,
+    "step": 0.518,
+    "motion": 0.644,
+    "end": 0.008,
+    "problems": [
+     "chuvisco 0.52"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "carrion_king/state_weak": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "62c0fbb5-64e6-4f8d-b14a-978cb8c79f5b",
+    "n": 1,
+    "size": 0.927,
+    "eye": 0.793,
+    "step": 0.498,
+    "motion": 0.639,
+    "end": 0.007,
+    "problems": [
+     "chuvisco 0.50"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "carrion_king/state_enraged": {
   "status": "pending",
-  "job": "62c0fbb5-64e6-4f8d-b14a-978cb8c79f5b",
+  "job": "bf685d84-6b73-4ece-9a22-c25a6b5a0707",
+  "tries": []
+ },
+ "moon_gargoyle/state_poison": {
+  "status": "pending",
+  "job": "3dba0693-5db8-45de-92ba-baea4f8718e7",
   "tries": []
  }
 }

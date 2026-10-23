@@ -11,5 +11,6 @@ return {
     },
     states = {
         weak = { clip = "state_weak", fps = 8 },
+        enraged = { clip = "state_enraged", fps = 8 },
     },
 }
