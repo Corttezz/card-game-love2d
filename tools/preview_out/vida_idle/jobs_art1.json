@@ -465,7 +465,7 @@
   "installed": 1
  },
  "carrion_king/fidget_caw": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "ce4dc470-aca0-48a3-bb43-9e03f41ed92a",
@@ -487,7 +487,8 @@
     "end": 0.01,
     "problems": []
    }
-  ]
+  ],
+  "installed": 2
  },
  "carrion_king/fidget_tilt": {
   "status": "installed",
@@ -545,7 +546,8 @@
   "installed": 1
  },
  "ram_cultist/fidget_censer": {
-  "status": "review",
+  "status": "pending",
+  "job": "214f8baf-513e-452d-905f-62fc36f21341",
   "tries": [
    {
     "job": "fada9f46-2c17-4082-aafa-5b12c26823bb",
@@ -560,7 +562,7 @@
   ]
  },
  "ram_cultist/fidget_chant": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "7cf64ebf-88bd-4dea-943d-db2ed8de2098",
@@ -572,7 +574,8 @@
     "end": 0.008,
     "problems": []
    }
-  ]
+  ],
+  "installed": 1
  },
  "storm_harpy/fidget_shriek": {
   "status": "installed",
@@ -593,7 +596,7 @@
   "installed": 1
  },
  "storm_harpy/fidget_flap": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "e956927b-d344-4fc9-a128-1554e90f3054",
@@ -607,12 +610,25 @@
      "chuvisco 0.60"
     ]
    }
-  ]
+  ],
+  "installed": 1
  },
  "rune_golem/fidget_runes": {
-  "status": "pending",
-  "job": "f3c25e27-34da-4f6f-b1a2-239fd927eb24",
-  "tries": []
+  "status": "review",
+  "tries": [
+   {
+    "job": "f3c25e27-34da-4f6f-b1a2-239fd927eb24",
+    "n": 1,
+    "size": 1.025,
+    "eye": 0.74,
+    "step": 0.441,
+    "motion": 0.568,
+    "end": 0.006,
+    "problems": [
+     "olho 0.74"
+    ]
+   }
+  ]
  },
  "rune_golem/fidget_fists": {
   "status": "pending",
