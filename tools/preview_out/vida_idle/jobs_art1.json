@@ -1538,7 +1538,7 @@
   "installed": 1
  },
  "tower_lich/state_weak": {
-  "status": "review",
+  "status": "rejected",
   "tries": [
    {
     "job": "38ca7579-2416-4792-8d72-9412f8829234",
@@ -1574,18 +1574,67 @@
   "installed": 1
  },
  "cursed_scarecrow/fidget_gust": {
-  "status": "pending",
-  "job": "2daf496d-9a43-45f1-8df2-84fad0a7d58a",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "2daf496d-9a43-45f1-8df2-84fad0a7d58a",
+    "n": 1,
+    "size": 1.105,
+    "eye": 0.924,
+    "step": 0.491,
+    "motion": 0.652,
+    "end": 0.003,
+    "problems": [
+     "chuvisco 0.49"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "hollow_farmer/fidget_twitch": {
-  "status": "pending",
-  "job": "55b58000-33ee-4572-824b-560eab15d684",
-  "tries": []
+  "status": "review",
+  "tries": [
+   {
+    "job": "55b58000-33ee-4572-824b-560eab15d684",
+    "n": 1,
+    "size": 0.975,
+    "eye": 1.0,
+    "step": 0.198,
+    "motion": 0.178,
+    "end": 0.003,
+    "problems": []
+   }
+  ]
  },
  "plague_rats/fidget_hiss": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "4df99824-737c-47e8-ae73-fd68ebb9d1c6",
+    "n": 1,
+    "size": 0.987,
+    "eye": 1.0,
+    "step": 0.382,
+    "motion": 0.453,
+    "end": 0.002,
+    "problems": []
+   }
+  ],
+  "installed": 1
+ },
+ "harvest_reaper/fidget_gust": {
   "status": "pending",
-  "job": "4df99824-737c-47e8-ae73-fd68ebb9d1c6",
+  "job": "63f7e09a-62f3-4a1c-ab39-9a39cc82db9c",
+  "tries": []
+ },
+ "blight_bull/fidget_shake": {
+  "status": "pending",
+  "job": "372bd3c6-f43e-4d5a-a340-81f6252adaec",
+  "tries": []
+ },
+ "wicker_effigy/fidget_creak": {
+  "status": "pending",
+  "job": "b7b82d6a-7695-482e-b21f-f872c28e0cb3",
   "tries": []
  }
 }
