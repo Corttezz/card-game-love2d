@@ -345,6 +345,13 @@ def install(eid, clip, n, fix=None):
                     x0, y0, x1, y1 = (int(v) for v in bx.split(","))
                     a[y0:y1, x0:x1] = 0
                 im = Image.fromarray(a, "RGBA")
+            if fix and fix.get("white2base"):
+                base = load(idle0(eid))
+                a = np.asarray(im).astype(np.int32).copy()
+                wm = (a[..., :3].min(axis=2) > 170) & (a[..., 3] > 0) & (base[..., 3] > 0)
+                bw = base[..., :3].min(axis=2) > 170
+                a[wm & ~bw] = base[wm & ~bw]
+                im = Image.fromarray(a.astype(np.uint8), "RGBA")
             if fix and fix.get("white"):
                 im = fix_white(eid, im)
             if fix and fix.get("eyes"):
