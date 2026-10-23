@@ -319,7 +319,9 @@ def fixup(im, ref, fx):
         return transplant(im, ref, (x0, y0, x1, y1))
     im = im.copy()
     px, rp = im.load(), ref.load()
-    cap = max(lum(rp[x, y]) for y in range(y0, y1) for x in range(x0, x1) if rp[x, y][3] >= 128) + 6
+    ops = [rp[x, y] for y in range(y0, y1) for x in range(x0, x1) if rp[x, y][3] >= 128]
+    cap = max(lum(p) for p in ops) + 6
+    dark = min(ops, key=lum)
     for y in range(y0, y1):
         for x in range(x0, x1):
             r, g, b, a = px[x, y]
@@ -330,6 +332,9 @@ def fixup(im, ref, fx):
             elif kind == "unglow":
                 if a >= 128 and lum((r, g, b)) > cap:
                     px[x, y] = rp[x, y]
+            elif kind == "ungrey":
+                if a >= 128 and lum((r, g, b)) > 50 and max(r, g, b) - min(r, g, b) < 40:
+                    px[x, y] = dark
             elif kind == "erase_new":
                 if a >= 128 and rp[x, y][3] < 128:
                     px[x, y] = (0, 0, 0, 0)
