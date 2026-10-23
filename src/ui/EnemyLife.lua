@@ -1,5 +1,6 @@
 local Debug = require("src.core.Debug")
 local SceneGrade = require("engine.SceneGrade")
+local EnemyStates = require("src.ui.EnemyStates")
 
 local EnemyLife = {}
 
@@ -9,9 +10,10 @@ EnemyLife.DEATH_FADE = 0.5
 EnemyLife.DEFAULT_GAP = { 4.0, 8.0 }
 EnemyLife.enabled = true
 EnemyLife.fxEnabled = true
+EnemyLife._rng = love.math.newRandomGenerator(0x51DE)
 EnemyLife._rand = function(a, b)
-    if a then return love.math.random(a, b) end
-    return love.math.random()
+    if a then return EnemyLife._rng:random(a, b) end
+    return EnemyLife._rng:random()
 end
 
 EnemyLife.KINDS = { "smoke", "embers", "drips", "spores", "flies", "mist", "frost", "ash", "glint", "bubbles" }
@@ -42,7 +44,18 @@ EnemyLife.SPEC = {
                     c = { 1.00, 0.97, 0.86 }, a = 1.00, grade = 0.3, glint = true },
     [K_BUBBLES] = { rate = 1.0, l0 = 1.2, l1 = 2.0, v0 = 3.0, v1 = 5.0, jit = 0.6, wind = 0.5, wob = 0.7,
                     c = { 0.62, 0.82, 0.50 }, a = 0.85, grade = 1, pop = 0.12 },
+    [11]        = { rate = 0, l0 = 0.35, l1 = 0.70, v0 = 4.0, v1 = 8.0, jit = 1.0, wind = 2.0, wob = 0.8,
+                    c = { 1.00, 0.58, 0.16 }, a = 1.00, grade = 0.25, flicker = true, flame = true },
+    [12]        = { rate = 0, l0 = 0.8, l1 = 1.0, v0 = 0, v1 = 0, jit = 0, wind = 0, wob = 0,
+                    c = { 0.72, 0.86, 1.00 }, a = 0.90, grade = 0.6, hang = 0.30, grav = 55 },
+    [13]        = { rate = 0, l0 = 0.6, l1 = 1.0, v0 = 8.0, v1 = 12.0, jit = 3.0, wind = 4.0, wob = 0.8,
+                    c = { 0.92, 0.92, 0.94 }, a = 0.78, grade = 0.8, grow = true },
+    [14]        = { rate = 0, l0 = 0.45, l1 = 0.80, v0 = 10.0, v1 = 16.0, jit = 2.0, wind = 1.0, wob = 1.0,
+                    c = { 1.00, 0.24, 0.14 }, a = 1.00, grade = 0.25, flicker = true },
+    [15]        = { rate = 0, l0 = 1.5, l1 = 2.2, v0 = 3.0, v1 = 5.0, jit = 1.0, wind = 1.0, wob = 1.2,
+                    c = { 0.56, 0.96, 0.56 }, a = 0.80, grade = 0.5, flicker = true },
 }
+EnemyLife.SPEC[K_SMOKE].grow = true
 
 local N = EnemyLife.MAX
 local pk, px, py, pvx, pvy, plife, pmax, pseed, pem = {}, {}, {}, {}, {}, {}, {}, {}, {}
@@ -62,6 +75,7 @@ local S = {
     deathT = -1, alive = true, live = 0,
     ox = 0, oy = 0, scale = 1, dx = 0, dy = 0, iw = 0, ih = 0, alpha = 1, framed = false,
     wind = 0, gc = { 1, 1, 1 }, cursor = 1, playing = nil, pinned = false,
+    enemy = nil, spawnOk = false,
 }
 EnemyLife._S = S
 
@@ -87,6 +101,21 @@ function EnemyLife.validate(t, id)
         if type(t.gap) ~= "table" or type(t.gap[1]) ~= "number" or type(t.gap[2]) ~= "number"
             or t.gap[1] <= 0 or t.gap[2] < t.gap[1] then
             return false, "gap invalido"
+        end
+    end
+    if t.states ~= nil then
+        if type(t.states) ~= "table" then return false, "states nao e tabela" end
+        for name, sd in pairs(t.states) do
+            if not EnemyStates.INDEX[name] then return false, "estado desconhecido " .. tostring(name) end
+            if type(sd) ~= "table" then return false, "estado " .. name .. " nao e tabela" end
+            if sd.clip ~= nil and (type(sd.clip) ~= "string" or not sd.clip:find("^state_")) then
+                return false, "estado " .. name .. " clip sem prefixo state_"
+            end
+            if sd.fps ~= nil and (type(sd.fps) ~= "number" or sd.fps <= 0) then return false, "estado " .. name .. " fps" end
+            if sd.fx ~= nil then
+                local ok, err = EnemyLife.validate({ fx = sd.fx }, id)
+                if not ok then return false, "estado " .. name .. ": " .. err end
+            end
         end
     end
     if t.fx ~= nil then
@@ -144,8 +173,16 @@ function EnemyLife.isFidget(name)
     return name ~= nil and string.find(name, "fidget_", 1, true) == 1
 end
 
+function EnemyLife.isStateClip(name)
+    return name ~= nil and string.find(name, "state_", 1, true) == 1
+end
+
 function EnemyLife.isIdleLike(name)
-    return name == "idle" or EnemyLife.isFidget(name)
+    return name == "idle" or EnemyLife.isFidget(name) or EnemyLife.isStateClip(name)
+end
+
+function EnemyLife.isLoop(name)
+    return name == "idle" or EnemyLife.isStateClip(name)
 end
 
 local function clearPool()
@@ -187,10 +224,22 @@ function EnemyLife.setEnemy(id)
     clearPool()
     buildEmitters(S.data)
     S.gapLeft = rollGap()
+    EnemyStates.reset()
+    S.jobN = 1
+    S.jobs[1] = { prep = true }
     if S.data and S.data.fidgets then
         for _, f in ipairs(S.data.fidgets) do
             S.jobN = S.jobN + 1
             S.jobs[S.jobN] = f
+        end
+    end
+    if S.data and S.data.states then
+        for _, n in ipairs(EnemyStates.LIST) do
+            local sd = S.data.states[n]
+            if sd and sd.clip then
+                S.jobN = S.jobN + 1
+                S.jobs[S.jobN] = { clip = sd.clip, fps = sd.fps, loop = true }
+            end
         end
     end
 end
@@ -201,9 +250,13 @@ function EnemyLife.prewarm(id)
 end
 
 local function runJob()
-    if S.jobI >= S.jobN then return false end
+    if not S.id or S.jobI >= S.jobN then return false end
     S.jobI = S.jobI + 1
     local f = S.jobs[S.jobI]
+    if f.prep then
+        EnemyStates.prepare(S.id)
+        return true
+    end
     local SpriteAnimation = require("src.ui.SpriteAnimation")
     if not SpriteAnimation.exists(S.id, f.clip, "south") then
         warnOnce(S.id .. "|" .. f.clip, "[EnemyLife] clip " .. f.clip .. " de " .. tostring(S.id) .. " nao existe no disco")
@@ -296,8 +349,28 @@ local function spawn(e, ei)
     S.live = S.live + 1
 end
 
+function EnemyLife._spawnRaw(kind, ax, ay, tint)
+    local i = freeSlot()
+    if not i then return end
+    local sp = EnemyLife.SPEC[kind]
+    local R = EnemyLife._rand
+    pk[i] = kind
+    pem[i] = 0
+    px[i] = ax + S.dx
+    py[i] = ay + S.dy
+    local life = sp.l0 + (sp.l1 - sp.l0) * R()
+    plife[i], pmax[i] = life, life
+    pseed[i] = R() * 6.2832
+    local v = sp.v0 + (sp.v1 - sp.v0) * R()
+    pvx[i], pvy[i] = (R() - 0.5) * sp.jit, -v
+    local c = tint or sp.c
+    pcr[i], pcg[i], pcb[i] = c[1], c[2], c[3]
+    S.live = S.live + 1
+end
+EnemyLife.spawnRaw = EnemyLife._spawnRaw
+
 local function kill(i)
-    local e = S.emit[pem[i]]
+    local e = pem[i] > 0 and S.emit[pem[i]] or nil
     if e then e.alive = e.alive - 1 end
     pk[i] = 0
     S.live = S.live - 1
@@ -380,17 +453,25 @@ function EnemyLife.update(dt, id, animName, frameIdx, busy)
         S.deathT = -1
     end
     local red = reduced()
+    S.spawnOk = EnemyLife.fxEnabled and S.framed and not dying and not red
+    EnemyStates.read(S.enemy, dying)
     if red then
         if S.live > 0 then clearPool() end
     else
-        tickFx(dt, EnemyLife.fxEnabled and S.framed and not dying and S.nEmit > 0)
+        EnemyStates.update(dt, S.data, EnemyLife, dying)
+        tickFx(dt, S.spawnOk and S.nEmit > 0)
     end
     if EnemyLife.isFidget(animName) then
         S.playing = animName
         return nil
     end
     S.playing = nil
-    if not EnemyLife.enabled or red or dying or busy or animName ~= "idle" then return nil end
+    local loopName, loopFps, loopSd = EnemyStates.loopFor(S.data, S.warm)
+    if not dying and EnemyLife.isLoop(animName) and animName ~= loopName and frameIdx == 1 and not busy then
+        return loopName, loopFps or 8, true
+    end
+    local fidgetOk = animName == "idle" or (loopSd and loopSd.fidgets and animName == loopName)
+    if not EnemyLife.enabled or red or dying or busy or not fidgetOk then return nil end
     local fl = S.data and S.data.fidgets
     if not fl or #fl == 0 then return nil end
     if S.force then
@@ -419,7 +500,33 @@ function EnemyLife.resumeIdle(anim)
     end
 end
 
-function EnemyLife.frame(ox, oy, scale, dxA, dyA, iw, ih, alive, alpha)
+function EnemyLife.spawning() return S.spawnOk end
+
+function EnemyLife.loopClip()
+    local n, fps = EnemyStates.loopFor(S.data, S.warm)
+    return n, fps
+end
+
+function EnemyLife.animRate(animName)
+    if not EnemyLife.isLoop(animName) or reduced() then return 1 end
+    return EnemyStates.rate()
+end
+
+function EnemyLife.stretchPx() return EnemyStates.stretchPx() end
+function EnemyLife.jitterPx()
+    if reduced() then return 0 end
+    return EnemyStates.jitterPx()
+end
+function EnemyLife.tint(r, g, b) return EnemyStates.tint(r, g, b) end
+function EnemyLife.charK(t) return EnemyStates.charK(t) end
+function EnemyLife.eyePulse(t)
+    if reduced() then return 0 end
+    return EnemyStates.eyePulse(t)
+end
+EnemyLife.States = EnemyStates
+
+function EnemyLife.frame(ox, oy, scale, dxA, dyA, iw, ih, alive, alpha, enemy)
+    S.enemy = enemy
     S.ox, S.oy, S.scale = ox, oy, scale
     S.dx, S.dy, S.iw, S.ih = dxA, dyA, iw, ih
     S.alive = alive
@@ -497,8 +604,12 @@ local function drawLayer(back, mask)
                         elseif sp.w then
                             rect(ax, ay, sp.w, 1)
                         else
-                            local sz = (k == K_SMOKE and age > pmax[i] * 0.45) and 2 or 1
-                            rect(ax, ay, sz, sz)
+                            local sz = (sp.grow and age > pmax[i] * 0.45) and 2 or 1
+                            if sp.flame then
+                                if age < pmax[i] * 0.5 then rect(ax, ay, 1, 2) else rect(ax, ay, 1, 1) end
+                            else
+                                rect(ax, ay, sz, sz)
+                            end
                         end
                     end
                 end
@@ -526,6 +637,10 @@ function EnemyLife.reload(id)
 end
 
 function EnemyLife.reset()
+    EnemyStates.reset()
+    S.enemy = nil
+    S.pinned = false
+    S.jobN, S.jobI = 0, 0
     S.id, S.data, S.playing = nil, nil, nil
     S.framed = false
     clearPool()

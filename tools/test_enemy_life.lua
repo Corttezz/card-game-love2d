@@ -42,6 +42,18 @@ local function checkData(t, EnemyLife)
                 local idle0 = idle and idle[1] and pixels(idle[1].path)
                 t:truthy(id .. ": tem idle 0", idle0 ~= nil)
                 local seen = {}
+                for sname, sd in pairs(data.states or {}) do
+                    if sd.clip then
+                        local fr = clipFiles(id, sd.clip)
+                        t:truthy(id .. "/" .. sd.clip .. ": clip de estado existe no disco", fr and #fr > 0)
+                        if fr and #fr > 0 and idle0 then
+                            t:truthy(string.format("%s/%s: 8 a 12 quadros (%d)", id, sd.clip, #fr), #fr >= 8 and #fr <= 12)
+                            t:truthy(id .. "/" .. sd.clip .. ": quadro 0 = idle 0", pixels(fr[1].path) == idle0)
+                            t:truthy(id .. "/" .. sd.clip .. ": ultimo quadro = idle 0", pixels(fr[#fr].path) == idle0)
+                        end
+                    end
+                    t:truthy(id .. ": estado " .. sname .. " conhecido", EnemyLife.States.INDEX[sname] ~= nil)
+                end
                 for _, fd in ipairs(data.fidgets or {}) do
                     t:falsy(id .. ": fidget repetido " .. fd.clip, seen[fd.clip])
                     seen[fd.clip] = true
@@ -79,7 +91,7 @@ local function checkScheduler(t, EnemyLife)
                     { clip = "fidget_c", fps = 12, weight = 1 } },
         gap = { 1.0, 2.0 },
     })
-    EnemyLife.update(0, id, "idle", 1, true)
+    EnemyLife.update(0, id, "idle", 1, false)
     S.warm.fidget_a, S.warm.fidget_b, S.warm.fidget_c = true, true, true
 
     local firedBusy = false
@@ -312,16 +324,217 @@ local function checkRenderer(t, EnemyLife)
     t:truthy("integracao com o EnemyRenderer sem erro" .. (okRun and "" or (": " .. tostring(err))), okRun)
 end
 
+
+local function walkLua(dir, out)
+    for _, f in ipairs(love.filesystem.getDirectoryItems(dir)) do
+        local p = dir .. "/" .. f
+        local info = love.filesystem.getInfo(p)
+        if info and info.type == "directory" then walkLua(p, out)
+        elseif f:match("%.lua$") then out[#out + 1] = p end
+    end
+end
+
+local function enemyStatusNames()
+    local names = {}
+    local files = {}
+    walkLua("src", files)
+    for _, p in ipairs(files) do
+        local src = love.filesystem.read(p) or ""
+        for n in src:gmatch("addStatusEffect%(%s*{%s*name%s*=%s*\"([%w_]+)\"") do names[n] = p end
+        for n in src:gmatch("debuffName%s*=%s*\"([%w_]+)\"") do names[n] = p end
+        if p:find("^src/data/cards/") then
+            for n in src:gmatch("\"apply_debuff\"%s*,%s*value%s*=%s*\"([%w_]+)\"") do names[n] = p end
+        end
+    end
+    for id, kit in pairs(require("src.data.enemies").KITS or {}) do
+        for _, ph in ipairs(kit.phases or {}) do names[ph.id or "eclipse"] = "kit " .. id end
+    end
+    names.block, names.strength, names.veil = "armor", "baseDamage", "intentVeil"
+    return names
+end
+
+local function checkStates(t, EnemyLife)
+    local ES = EnemyLife.States
+    local names = enemyStatusNames()
+    local n = 0
+    for name, where in pairs(names) do
+        n = n + 1
+        local kit = nil
+        for _, k in pairs(require("src.data.enemies").KITS or {}) do
+            for _, ph in ipairs(k.phases or {}) do if ph.id == name then kit = k end end
+        end
+        local c = ES.canonical(name, kit and { kit = kit } or nil)
+        t:truthy(string.format("status %s (%s) tem estado visivel ou e token de chefe", name, where),
+            c ~= nil or ES.TOKEN_ONLY[name])
+        if c then t:truthy("estado " .. c .. " tem visual generico", ES.GEN[c] ~= nil) end
+    end
+    t:truthy("varreu os status do jogo (" .. n .. ")", n >= 8)
+    for _, want in ipairs({ "poison", "burn", "weak", "vulnerable", "strength", "regen", "enraged", "fury", "block", "veil" }) do
+        t:truthy("status " .. want .. " coberto", ES.canonical(want) ~= nil)
+    end
+
+    local id = "__life_states__"
+    EnemyLife._setData(id, { fx = {} })
+    EnemyLife.update(0, id, "idle", 1, false)
+    local B = ES._B
+    B.n, B.w, B.h, B.top, B.baseY, B.baseL, B.baseR, B.headX, B.headY = 0, 100, 100, 5, 95, 30, 70, 50, 6
+    for i = 1, 40 do
+        B.n = B.n + 1
+    end
+    local canvas = love.graphics.newCanvas(300, 300)
+    local fake = { statusEffects = {}, armor = 0, baseDamage = 10, maxHealth = 100, health = 100 }
+    local function frame(anim, enemy)
+        EnemyLife.frame(50, 50, 2, 0, 0, 100, 100, anim ~= "death", 1, enemy or fake)
+        EnemyLife.update(1 / 60, id, anim or "idle", 2, false)
+        EnemyLife.drawBack()
+        EnemyLife.drawFront()
+    end
+    love.graphics.setCanvas(canvas)
+    local everyOk = true
+    for _, st in ipairs(ES.LIST) do
+        ES.force({ st })
+        local seenLive = false
+        for _ = 1, 240 do
+            frame("idle")
+            if EnemyLife.liveCount() > 0 or EnemyLife.jitterPx() ~= 0 then seenLive = true end
+        end
+        local r, g, b = EnemyLife.tint(1, 1, 1)
+        local visual = seenLive or r < 1 or g < 1 or b < 1
+            or EnemyLife.animRate("idle") ~= 1 or EnemyLife.stretchPx() ~= 0 or EnemyLife.charK(1) > 0
+        if st == "block" then
+            fake.armor = 0
+            ES.force(nil)
+            frame("idle")
+            fake.armor = 12
+            for _ = 1, 30 do frame("idle") end
+            visual = visual or EnemyLife.liveCount() > 0
+            fake.armor = 0
+            ES.force({ st })
+        end
+        t:truthy("estado " .. st .. " aparece (particula, cor, ritmo ou postura)", visual)
+        if not visual then everyOk = false end
+    end
+    ES.force(ES.LIST)
+    local maxKinds = 0
+    for _ = 1, 120 do
+        frame("idle")
+        if ES.kindCount() > maxKinds then maxKinds = ES.kindCount() end
+    end
+    t:truthy("todos os estados juntos: no maximo " .. ES.MAX_KINDS .. " tipos de particula (" .. maxKinds .. ")",
+        maxKinds <= ES.MAX_KINDS)
+    local samples = {}
+    for r = 1, 3 do
+        collectgarbage("collect")
+        collectgarbage("stop")
+        local k0 = collectgarbage("count")
+        for _ = 1, 60 do frame("idle") end
+        samples[r] = (collectgarbage("count") - k0) / 60
+        collectgarbage("restart")
+    end
+    table.sort(samples)
+    t:truthy(string.format("estados sem alocacao por quadro (%.3f KB/quadro, teto 1)", samples[2]), samples[2] < 1)
+    for _ = 1, 40 do frame("death") end
+    local r, g, b = EnemyLife.tint(1, 1, 1)
+    t:truthy("morte: nenhum estado (cor, ritmo, particula de estado)",
+        r == 1 and g == 1 and b == 1 and ES.kindCount() == 0 and EnemyLife.charK(1) == 0)
+    t:eq("morte: particulas somem", EnemyLife.liveCount(), 0)
+    ES.force(nil)
+    fake.statusEffects = { { name = "poison", stacks = 4, duration = 2 }, { name = "fury", stacks = 2, duration = 99 } }
+    for _ = 1, 5 do frame("idle") end
+    t:truthy("ao vivo: veneno lido do inimigo", ES.level("poison") > 0)
+    t:truthy("ao vivo: furia vira enfurecido", ES.level("enraged") > 0)
+    fake.baseDamage = 14
+    frame("idle")
+    t:truthy("ao vivo: forca ganha aparece", ES.level("strength") > 0)
+    fake.statusEffects = {}
+    fake.baseDamage = 10
+    frame("idle")
+    t:eq("sem status: sem estado", ES.level("poison"), 0)
+    love.graphics.setCanvas()
+    EnemyLife._setData(id, nil)
+    t:falsy("estado desconhecido nos dados rejeitado", EnemyLife.validate({ states = { sono = {} } }))
+    t:falsy("clip de estado sem prefixo rejeitado", EnemyLife.validate({ states = { poison = { clip = "idle" } } }))
+    t:truthy("estado com fx proprio aceito", EnemyLife.validate({ states = { burn = { fx = { { kind = "embers", xr = 0.5, yr = 0.9 } } } } }))
+    return everyOk
+end
+
+local function checkStateClip(t, EnemyLife)
+    local ER = require("src.ui.EnemyRenderer")
+    local id = "cursed_scarecrow"
+    local clip = "state_poison"
+    local _, written = writeFixture(id, clip, { 1, 2, 3, 4, 3, 2, 1, 1 })
+    local okRun, err = pcall(function()
+        ER.clearCache()
+        require("src.ui.SpriteAnimation").clearCache()
+        EnemyLife._setData(id, { states = { poison = { clip = clip, fps = 30 } } })
+        local enemy = { spriteId = id, health = 10, isBoss = false, statusEffects = {}, armor = 0, baseDamage = 5, maxHealth = 50 }
+        local game = { enemy = enemy }
+        local canvas = love.graphics.newCanvas(800, 800)
+        local function step(dt)
+            ER.update(dt)
+            love.graphics.setCanvas(canvas)
+            ER.draw(game, 400, 700)
+            love.graphics.setCanvas()
+        end
+        for _ = 1, 30 do step(0) end
+        t:truthy("clip de estado aquecido", EnemyLife.isWarm(clip))
+        enemy.statusEffects = { { name = "poison", stacks = 3, duration = 2 } }
+        local entered, enterFrame = false, nil
+        for _ = 1, 300 do
+            local before = ER.debugState().animName
+            step(1 / 60)
+            if ER.debugState().animName == clip then entered = true enterFrame = (ER.getLastFoot() or {}).frame break end
+            if before ~= "idle" then break end
+        end
+        t:truthy("veneno troca o idle pelo clip de estado", entered)
+        t:eq("troca no quadro 0: o clip de estado entra no seu quadro 0 (= idle 0)", enterFrame, 1)
+        t:falsy("clip de estado nao conta como ocupado", ER.isBusy())
+        ER.triggerHurt()
+        t:truthy("dano sobrepoe o estado", ER.debugState().animName ~= clip)
+        local back = false
+        for _ = 1, 300 do
+            step(1 / 60)
+            if ER.debugState().animName == clip then back = true break end
+        end
+        t:truthy("depois do dano volta ao clip de estado", back)
+        enemy.statusEffects = {}
+        local left = false
+        for _ = 1, 300 do
+            step(1 / 60)
+            if ER.debugState().animName == "idle" then left = true break end
+        end
+        t:truthy("sem veneno volta ao idle no quadro 0", left)
+        enemy.statusEffects = { { name = "poison", stacks = 3, duration = 2 } }
+        for _ = 1, 120 do step(1 / 60) end
+        enemy.health = 0
+        ER.triggerDeath(id)
+        local during = false
+        for _ = 1, 120 do
+            step(1 / 60)
+            if ER.debugState().animName == clip then during = true end
+        end
+        t:falsy("estado nunca toca durante a morte", during)
+    end)
+    removeFixture(id, clip, written)
+    EnemyLife._setData(id, nil)
+    ER.clearCache()
+    t:truthy("clip de estado integrado sem erro" .. (okRun and "" or (": " .. tostring(err))), okRun)
+end
+
 function M.run()
     local t = TK.new("monstros vivos parados (EnemyLife)")
     TK.bootstrap()
     local EnemyLife = require("src.ui.EnemyLife")
+    EnemyLife.clearCache()
+    EnemyLife.States.force(nil)
     local gs = _G.gameSettings
     _G.gameSettings = { reducedMotion = false }
     checkData(t, EnemyLife)
     checkScheduler(t, EnemyLife)
     checkFx(t, EnemyLife)
     checkRenderer(t, EnemyLife)
+    checkStates(t, EnemyLife)
+    checkStateClip(t, EnemyLife)
     _G.gameSettings = gs
     EnemyLife.clearCache()
     return t:done()

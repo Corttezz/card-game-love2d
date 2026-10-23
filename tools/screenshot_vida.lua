@@ -66,6 +66,8 @@ function M.run()
     local outDir = "vida_idle/runtime"
     love.filesystem.createDirectory(outDir)
     local tag = vw .. "x" .. vh
+    local stTag = (os.getenv("VIDA_STATES") or ""):gsub("[^%a_]+", "-")
+    if stTag ~= "" then tag = tag .. "_estado-" .. stTag end
 
     for _, id in ipairs(ids) do
         local entry = list[Vida.indexOf(list, id) or 1]
@@ -90,6 +92,12 @@ function M.run()
         if data then
             EnemyLife._setData(id, data)
             EnemyLife.prewarmNow(id)
+        end
+        local stEnv = os.getenv("VIDA_STATES")
+        if stEnv and stEnv ~= "" then
+            local list = {}
+            for n in stEnv:gmatch("[%a_]+") do list[#list + 1] = n end
+            EnemyLife.States.force(list)
         end
         for _ = 1, 120 do Vida.step(1 / 60, entry); draw() end
         local foot = ER.getLastFoot()
@@ -173,6 +181,7 @@ function M.run()
         print(string.format("[vida] %s %s clips %s  fx vivas %d  -> %s/%s_%s_*.png", id, tag,
             table.concat(summary, " "), EnemyLife.liveCount(), outDir, id, tag))
         if fixture then removeFixture(id, fixture) end
+        EnemyLife.States.force(nil)
         EnemyLife._setData(id, nil)
     end
     love.event.quit()

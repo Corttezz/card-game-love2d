@@ -84,9 +84,15 @@ function M.label(entry)
     local _, data = EL.current()
     local nf = data and data.fidgets and #data.fidgets or 0
     local nfx = data and data.fx and #data.fx or 0
-    return string.format("%s  ato %d  %s   clip %s  quadro %s/%d   fidgets %d  fx %d (%d vivas%s)  proximo fidget em %.1fs",
+    local ES = EL.States
+    local on = {}
+    for _, n in ipairs(ES.LIST) do
+        if ES.level(n) > 0 then on[#on + 1] = n end
+    end
+    return string.format("%s  ato %d  %s   clip %s  quadro %s/%d   fidgets %d  fx %d (%d vivas%s)  proximo fidget em %.1fs   estados [%s]: %s",
         entry.id, entry.act, entry.node, tostring(st.animName), tostring(foot.frame), ER._debugFrameCount(),
-        nf, nfx, EL.liveCount(), EL.fxEnabled and "" or ", fx OFF", math.max(0, EL.gapLeft()))
+        nf, nfx, EL.liveCount(), EL.fxEnabled and "" or ", fx OFF", math.max(0, EL.gapLeft()),
+        ES.forcedLabel(), (#on > 0) and table.concat(on, "+") or "-")
 end
 
 function M.run(startId)
@@ -120,7 +126,7 @@ function M.run(startId)
     love.draw = function()
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.draw()
-        local l1 = string.format("%d/%d   <- -> criatura   1-9 fidget N   F fx   espaco pausa   R recarrega   ESC sai%s",
+        local l1 = string.format("%d/%d   <- -> criatura   1-9 fidget N   S estados   F fx   espaco pausa   R recarrega   ESC sai%s",
             idx, #list, paused and "   [PAUSA]" or "")
         local l2 = M.label(list[idx])
         local font = FontManager.getFont(10)
@@ -145,6 +151,8 @@ function M.run(startId)
             mount(idx - 1)
         elseif key == "space" then
             paused = not paused
+        elseif key == "s" then
+            EnemyLife.States.cycleForced()
         elseif key == "f" then
             EnemyLife.fxEnabled = not EnemyLife.fxEnabled
         elseif key == "r" then

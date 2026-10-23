@@ -134,9 +134,15 @@ local function ensureAnim(enemyId, animName)
     end
 
     local function backToIdle()
-        local ifps, iopts = idleSpec(enemyId)
-        currentAnim = SpriteAnimation.new(enemyId, "idle", "south", ifps, iopts)
-        currentAnimName = "idle"
+        local ln, lfps = EnemyLife.loopClip()
+        local la = (ln ~= "idle") and SpriteAnimation.new(enemyId, ln, "south", lfps or 8, { loop = true }) or nil
+        if la then
+            currentAnim, currentAnimName = la, ln
+        else
+            local ifps, iopts = idleSpec(enemyId)
+            currentAnim = SpriteAnimation.new(enemyId, "idle", "south", ifps, iopts)
+            currentAnimName = "idle"
+        end
         if EnemyLife.isFidget(animName) then EnemyLife.resumeIdle(currentAnim) end
     end
 
@@ -291,6 +297,20 @@ function EnemyRenderer.resetRun()
     currentAnimName = nil
 end
 
+function EnemyRenderer._playLoop(name, fps)
+    if not currentEnemyId or currentAnimName == "death" then return false end
+    local a
+    if name == "idle" then
+        local ifps, iopts = idleSpec(currentEnemyId)
+        a = SpriteAnimation.new(currentEnemyId, "idle", "south", ifps, iopts)
+    else
+        a = SpriteAnimation.new(currentEnemyId, name, "south", fps or 8, { loop = true })
+    end
+    if not a then return false end
+    currentAnim, currentAnimName = a, name
+    return true
+end
+
 function EnemyRenderer._dropFidget()
     if currentAnim and currentEnemyId and EnemyLife.isFidget(currentAnimName) then
         local ifps, iopts = idleSpec(currentEnemyId)
@@ -437,11 +457,12 @@ end
 
 function EnemyRenderer.update(dt)
     dt = dt * timeScale
-    if currentAnim then currentAnim:update(dt) end
+    if currentAnim then currentAnim:update(dt * EnemyLife.animRate(currentAnimName)) end
     do
-        local lc, lf = EnemyLife.update(dt, currentEnemyId, currentAnimName,
+        local lc, lf, loop = EnemyLife.update(dt, currentEnemyId, currentAnimName,
             currentAnim and currentAnim.currentFrame, EnemyRenderer.lifeBusy())
-        if lc then EnemyRenderer.playClip(lc, lf) end
+        if lc and loop then EnemyRenderer._playLoop(lc, lf)
+        elseif lc then EnemyRenderer.playClip(lc, lf) end
     end
     if currentAnimName == "death" then
         fallT = fallT + dt
@@ -968,6 +989,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
 
     local drawX = cx - (iw * scale) / 2 + jitter + atkDX + knockDX + driftX
+        + EnemyLife.jitterPx() * math.max(1, math.floor(scale + 0.5))
     local drawY = cy - ih * scale + bounce + EnemyRenderer.getArrivalOffset()
         + footY + atkDY + hoverY
         - EnemyRenderer.breathLift() * math.max(1, math.floor(scale + 0.5))
@@ -1083,7 +1105,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     EnemyLife.frame(cx - (iw * scale) / 2, cy - ih * scale + footY, scale,
         (drawX - (cx - (iw * scale) / 2)) / scale, (drawY - (cy - ih * scale + footY)) / scale,
-        iw, ih, enemyAlive, (opts and opts.alpha) or 1)
+        iw, ih, enemyAlive, (opts and opts.alpha) or 1, game.enemy)
     EnemyLife.drawBack()
     love.graphics.setColor(1, 1, 1, 1)
 
@@ -1115,6 +1137,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
     local bodyA = (opts and opts.alpha) or 1
     local gradeC = SceneGrade.color("enemy", SceneGrade.depth(), EnemyRenderer._gradeC)
+    tintR, tintG, tintB = EnemyLife.tint(tintR, tintG, tintB)
     tintR, tintG, tintB = tintR * gradeC[1], tintG * gradeC[2], tintB * gradeC[3]
     local squash, darkK = 0, 0
     if attackFx and attackFx.kind == "strong" then
@@ -1127,13 +1150,19 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             tintB = tintB * (1 - darkK + darkK * math.min(1, sb * 1.6))
         end
     end
-    local squashed = squash ~= 0
+    local lifeSY = 0
+    if hasAnim and EnemyLife.isIdleLike(currentAnimName) and EnemyLife.stretchPx() ~= 0 then
+        local cH = curM.frameHeights and curM.frameHeights[frameIdx]
+        if not cH or cH <= 0 then cH = ih - footPad end
+        lifeSY = EnemyLife.stretchPx() / math.max(8, cH)
+    end
+    local squashed = squash ~= 0 or lifeSY ~= 0
     if squashed then
         local fx0 = drawX + (iw * scale) / 2
         local fy0 = drawY + (ih - footPad) * scale
         love.graphics.push()
         love.graphics.translate(fx0, fy0)
-        love.graphics.scale(1 + squash, 1 - squash)
+        love.graphics.scale(1 + squash, 1 - squash + lifeSY)
         love.graphics.translate(-fx0, -fy0)
     end
     if hasAnim and bodyA >= 1 then
@@ -1150,6 +1179,34 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         local staticImg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
         if staticImg then
             love.graphics.draw(staticImg, drawX, drawY, 0, scale, scale)
+        end
+    end
+
+    if hasAnim and bodyA >= 1 then
+        local ck = EnemyLife.charK(t)
+        if ck > 0 then
+            local sx0, sy0, sw0, sh0 = love.graphics.getScissor()
+            local cH = curM.frameHeights and curM.frameHeights[frameIdx]
+            if not cH or cH <= 0 then cH = ih - footPad end
+            local yTop = drawY + (ih - footPad - cH * 0.40) * scale
+            local qx, qy = love.graphics.transformPoint(drawX - 4, yTop)
+            local qx2, qy2 = love.graphics.transformPoint(drawX + iw * scale + 4, drawY + ih * scale + 4)
+            love.graphics.intersectScissor(math.floor(qx), math.floor(qy),
+                math.max(1, math.floor(qx2 - qx)), math.max(1, math.floor(qy2 - qy)))
+            currentAnim:draw(drawX, drawY, scale, { 0.14, 0.08, 0.04, 0.58 * ck })
+            if sx0 then love.graphics.setScissor(sx0, sy0, sw0, sh0) else love.graphics.setScissor() end
+        end
+        local ep = EnemyLife.eyePulse(t)
+        if ep > 0 then
+            local eyes, ne = EnemyLife.States.eyes()
+            local P = scale
+            love.graphics.setColor(1, 0.16, 0.10, 0.6 * ep)
+            for ei = 1, ne do
+                local e = eyes[ei]
+                local x0 = math.floor(math.floor(drawX) + math.floor(e[1]) * P)
+                local y0 = math.floor(math.floor(drawY) + math.floor(e[2]) * P)
+                love.graphics.rectangle("fill", x0, y0, math.max(1, math.floor(P + 0.5)), math.max(1, math.floor(P + 0.5)))
+            end
         end
     end
 
@@ -1306,13 +1363,18 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                     love.graphics.push()
                     love.graphics.translate(tx, ty)
                     love.graphics.scale(ux, uy)
+                    if lifeSY ~= 0 then
+                        local fy0 = drawY + (ih - footPad) * scale
+                        love.graphics.translate(0, fy0)
+                        love.graphics.scale(1, 1 + lifeSY)
+                        love.graphics.translate(0, -fy0)
+                    end
                     if animRef then
                         local r, g, b = love.graphics.getColor()
                         animRef:draw(drawX, drawY, scale, { r, g, b, 1 })
                     else
                         love.graphics.draw(staticRef, drawX, drawY, 0, scale, scale)
                     end
-                    EnemyLife.drawFront(true)
                     love.graphics.pop()
                 end,
             })
