@@ -42,6 +42,7 @@ local SUITES = {
     { group = "unit",  name = "test_world_props" },
     { group = "unit",  name = "test_scene_continuity" },
     { group = "unit",  name = "test_enemy_entrances" },
+    { group = "unit",  name = "test_enemy_life" },
     { group = "unit",  name = "test_props_opaque" },
     { group = "unit",  name = "test_scene_grade" },
     { group = "unit",  name = "test_contact_shadow" },

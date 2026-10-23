@@ -320,6 +320,9 @@ Ouro inicial $10; renda pela folha do cash out (`Game:_buildRoundEvalSources`): 
 
 O painel do canto de inimigo (antigo `HudEnemyPanel`) foi aposentado. `GameUI.lua` só delega pro `HudManager`. Ver [`memory/ui_rendering.md`](memory/ui_rendering.md) e [`tools/preview_battle_hud.lua`](tools/preview_battle_hud.lua).
 
+### Monstros vivos parados (`src/ui/EnemyLife.lua`, Out/2026)
+Parado na luta o monstro toca o idle longo e, de vez em quando, um FIDGET (`animations/fidget_<nome>/`, quadro 0 e último = idle 0) que só começa no quadro 0 do idle e nunca com o inimigo ocupado; ataque/dano/defesa/buff/morte interrompem na hora. Partículas de pixel por tipo (fumaça, brasa, gota, esporo, moscas, névoa, gelo, cinza, brilho, bolha) em pool fixo, na grade de pixel do sprite e na cor do `SceneGrade`. Dados por criatura em `src/data/enemy_life/<id>.lua` (sem arquivo = só o idle). Galeria `love . vida [id]`; trava `test_enemy_life`. Ver [`memory/enemy_life.md`](memory/enemy_life.md).
+
 ### Cinemática de chefe (`src/ui/BossCinematic.lua` + `src/data/boss_cinematics.lua`, Out/2026)
 Porta abre → salão abre **VAZIO** → entrada do chefe dentro do salão (olhos no escuro, rasantes com rastro, pouso, cartão nome+epíteto) → HUD → luta; morte em câmera lenta + rajada + dessaturação + corpo no salão **antes** do cash out. Roteiro por dados (passos `{kind, dur}`), pular após 1 s, `reducedMotion` = roteiro curto, Continuar NUNCA repete a entrada. Overlay registrado PRIMEIRO no InputFocus; `main.lua` tem a exceção que deixa o relógio correr com ela no topo. Protótipo só no `carrion_king`. Ver [`memory/boss_cinematics.md`](memory/boss_cinematics.md).
 

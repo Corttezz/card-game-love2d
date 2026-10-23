@@ -7,6 +7,7 @@ local EnemyEmissives = require("src.data.enemy_emissives")
 local EnemyPoses = require("src.data.enemy_poses")
 local BossAura = require("src.ui.BossAura")
 local BossTokens = require("src.ui.BossTokens")
+local EnemyLife = require("src.ui.EnemyLife")
 
 local function reducedMotion()
     return (_G.gameSettings and _G.gameSettings.reducedMotion) or false
@@ -136,6 +137,7 @@ local function ensureAnim(enemyId, animName)
         local ifps, iopts = idleSpec(enemyId)
         currentAnim = SpriteAnimation.new(enemyId, "idle", "south", ifps, iopts)
         currentAnimName = "idle"
+        if EnemyLife.isFidget(animName) then EnemyLife.resumeIdle(currentAnim) end
     end
 
     local fps, opts = idleSpec(enemyId)
@@ -195,6 +197,7 @@ function EnemyRenderer.clearCache()
     ambientParticles = {}
     BossAura.reset()
     BossTokens.reset()
+    EnemyLife.clearCache()
     if EnemyRenderer._clearClipMetrics then EnemyRenderer._clearClipMetrics() end
 end
 
@@ -282,12 +285,22 @@ function EnemyRenderer.resetRun()
     auraId = nil
     BossAura.reset()
     BossTokens.reset()
+    EnemyLife.reset()
     currentAnim = nil
     currentEnemyId = nil
     currentAnimName = nil
 end
 
+function EnemyRenderer._dropFidget()
+    if currentAnim and currentEnemyId and EnemyLife.isFidget(currentAnimName) then
+        local ifps, iopts = idleSpec(currentEnemyId)
+        currentAnim = SpriteAnimation.new(currentEnemyId, "idle", "south", ifps, iopts)
+        currentAnimName = "idle"
+    end
+end
+
 function EnemyRenderer.triggerAttack(kind, onApex, opts)
+    EnemyRenderer._dropFidget()
     local dove = (opts and opts.swarm and auraId
         and BossAura.dive(auraId, ATK_WINDUP + ATK_LUNGE, ATK_RECOIL)) or false
     local struck = (not dove and opts and opts.strike and auraId
@@ -323,10 +336,12 @@ end
 function EnemyRenderer.triggerPoison() poisonTime = 0.5 end
 
 function EnemyRenderer.triggerDefend()
+    EnemyRenderer._dropFidget()
     defendTime = DEFEND_DUR
 end
 
 function EnemyRenderer.triggerBuff()
+    EnemyRenderer._dropFidget()
     buffTime = BUFF_DUR
     buffParticles = {}
     for _ = 1, 14 do
@@ -344,7 +359,7 @@ end
 
 function EnemyRenderer.isBusy()
     return attackFx ~= nil or hurtTime > 0 or knockTime > 0
-        or (currentAnimName ~= nil and currentAnimName ~= "idle")
+        or (currentAnimName ~= nil and not EnemyLife.isIdleLike(currentAnimName))
 end
 
 function EnemyRenderer.musicBreath(power)
@@ -373,6 +388,7 @@ end
 
 function EnemyRenderer.triggerHurt()
     if currentAnimName == "death" then return end
+    EnemyRenderer._dropFidget()
     hurtTime = 0.20
     knockTime = 0.25
     if currentEnemyId and SpriteAnimation.exists(currentEnemyId, "hurt", "south") then
@@ -382,6 +398,7 @@ end
 
 function EnemyRenderer.triggerDeath(enemyId)
     local id = enemyId or currentEnemyId
+    EnemyRenderer._dropFidget()
     if id and SpriteAnimation.exists(id, "death", "south") then
         ensureAnim(id, "death")
     end
@@ -406,9 +423,26 @@ local timeScale = 1
 function EnemyRenderer.setTimeScale(k) timeScale = math.max(0.02, k or 1) end
 function EnemyRenderer.getTimeScale() return timeScale end
 
+function EnemyRenderer.lifeBusy()
+    if EnemyRenderer.isBusy() or arrivalT > 0 or defendTime > 0 or buffTime > 0
+        or poisonTime > 0 or slashTime > 0 or poseSink > 0 then
+        return true
+    end
+    local BC = package.loaded["src.ui.BossCinematic"]
+    if BC and BC.phase and BC.phase() then return true end
+    local WR = package.loaded["src.ui.WorldRoad"]
+    if WR and WR.isTraveling and WR.isTraveling() then return true end
+    return false
+end
+
 function EnemyRenderer.update(dt)
     dt = dt * timeScale
     if currentAnim then currentAnim:update(dt) end
+    do
+        local lc, lf = EnemyLife.update(dt, currentEnemyId, currentAnimName,
+            currentAnim and currentAnim.currentFrame, EnemyRenderer.lifeBusy())
+        if lc then EnemyRenderer.playClip(lc, lf) end
+    end
     if currentAnimName == "death" then
         fallT = fallT + dt
         local dur = reducedMotion() and EnemyRenderer.FALL_DUR_REDUCED
@@ -866,7 +900,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     local footPad = curM.pad
     local frameIdx = hasAnim and currentAnim.currentFrame or 1
-    if not floating and (currentAnimName or "idle") == "idle"
+    if not floating and EnemyLife.isIdleLike(currentAnimName or "idle")
         and curM.framePads and curM.framePads[frameIdx] then
         footPad = curM.framePads[frameIdx]
     end
@@ -1047,6 +1081,12 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
+    EnemyLife.frame(cx - (iw * scale) / 2, cy - ih * scale + footY, scale,
+        (drawX - (cx - (iw * scale) / 2)) / scale, (drawY - (cy - ih * scale + footY)) / scale,
+        iw, ih, enemyAlive, (opts and opts.alpha) or 1)
+    EnemyLife.drawBack()
+    love.graphics.setColor(1, 1, 1, 1)
+
     local auraRect = nil
     if auraId then
         auraRect = { x = drawX, y = drawY, w = iw * scale, h = ih * scale,
@@ -1147,6 +1187,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         BossAura.drawFront(auraId, auraRect)
         BossTokens.drawFront(auraId, auraRect)
     end
+    EnemyLife.drawFront()
+    love.graphics.setColor(1, 1, 1, 1)
 
     if defendTime > 0 then
         local k = 1 - defendTime / DEFEND_DUR
@@ -1270,6 +1312,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                     else
                         love.graphics.draw(staticRef, drawX, drawY, 0, scale, scale)
                     end
+                    EnemyLife.drawFront(true)
                     love.graphics.pop()
                 end,
             })
@@ -1303,6 +1346,7 @@ end
 
 function EnemyRenderer.getEncounterBillboard(enemy)
     if not enemy or not enemy.spriteId then return nil end
+    EnemyLife.prewarm(enemy.spriteId)
     local bfps, bopts = idleSpec(enemy.spriteId)
     local anim = SpriteAnimation.new(enemy.spriteId, "idle", "south",
         bfps, bopts)
