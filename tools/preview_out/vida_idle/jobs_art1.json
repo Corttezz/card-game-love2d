@@ -465,18 +465,102 @@
   "installed": 1
  },
  "carrion_king/fidget_caw": {
-  "status": "pending",
-  "job": "ce4dc470-aca0-48a3-bb43-9e03f41ed92a",
-  "tries": []
+  "status": "review",
+  "tries": [
+   {
+    "job": "ce4dc470-aca0-48a3-bb43-9e03f41ed92a",
+    "n": 1,
+    "size": 1.053,
+    "eye": 0.82,
+    "step": 0.414,
+    "motion": 0.552,
+    "end": 0.008,
+    "problems": []
+   }
+  ]
  },
  "carrion_king/fidget_tilt": {
-  "status": "pending",
-  "job": "03ecb0af-44a5-4694-8c9c-c65feca52969",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "03ecb0af-44a5-4694-8c9c-c65feca52969",
+    "n": 1,
+    "size": 1.044,
+    "eye": 0.578,
+    "step": 0.465,
+    "motion": 0.558,
+    "end": 0.008,
+    "problems": [
+     "olho 0.58",
+     "chuvisco 0.47"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "moon_gargoyle/fidget_wings": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "466dc007-99bd-4b12-87a0-a867098bcd52",
+    "n": 1,
+    "size": 0.917,
+    "eye": 0.925,
+    "step": 0.48,
+    "motion": 0.622,
+    "end": 0.0,
+    "problems": [
+     "chuvisco 0.48"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "moon_gargoyle/fidget_look": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "e0be58e7-29fc-422a-9820-6f52237e5598",
+    "n": 1,
+    "size": 0.964,
+    "eye": 0.914,
+    "step": 0.547,
+    "motion": 0.598,
+    "end": 0.005,
+    "problems": [
+     "chuvisco 0.55"
+    ]
+   }
+  ]
+ },
+ "ram_cultist/fidget_censer": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "fada9f46-2c17-4082-aafa-5b12c26823bb",
+    "n": 1,
+    "size": 0.964,
+    "eye": 1.0,
+    "step": 0.236,
+    "motion": 0.354,
+    "end": 0.01,
+    "problems": []
+   }
+  ]
+ },
+ "ram_cultist/fidget_chant": {
   "status": "pending",
-  "job": "466dc007-99bd-4b12-87a0-a867098bcd52",
+  "job": "7cf64ebf-88bd-4dea-943d-db2ed8de2098",
+  "tries": []
+ },
+ "storm_harpy/fidget_shriek": {
+  "status": "pending",
+  "job": "32e2d3d1-9787-47f9-aedf-abac5180e15c",
+  "tries": []
+ },
+ "storm_harpy/fidget_flap": {
+  "status": "pending",
+  "job": "e956927b-d344-4fc9-a128-1554e90f3054",
   "tries": []
  }
 }

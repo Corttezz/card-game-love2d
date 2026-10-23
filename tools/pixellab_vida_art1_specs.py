@@ -151,8 +151,10 @@ SPECS = {
         idle=None,
         fidgets={
             "fidget_caw": dict(frames=10, action=(
-                "opens its long beak wide in a silent caw, head thrust forward and up, then "
-                "closes the beak and settles")),
+                "a silent caw seen from the front: the raven head lifts a little and the grey "
+                "beak parts slightly, upper beak up and lower beak down showing a small orange "
+                "mouth, the beak keeps its grey color and its short length and never covers the "
+                "face or the crown, then the beak closes and the head settles")),
             "fidget_tilt": dict(frames=8, action=(
                 "a quick bird head tilt: the raven head jerks sideways, holds, then jerks back, "
                 "the crown staying on the head")),
