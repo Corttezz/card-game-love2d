@@ -1212,18 +1212,103 @@
   "installed": 1
  },
  "moon_gargoyle/state_weak": {
-  "status": "pending",
-  "job": "d11bdb47-aab5-4d1c-8de2-e8c231fdb8a1",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "d11bdb47-aab5-4d1c-8de2-e8c231fdb8a1",
+    "n": 1,
+    "size": 0.94,
+    "eye": 0.914,
+    "step": 0.508,
+    "motion": 0.704,
+    "end": 0.007,
+    "problems": [
+     "chuvisco 0.51"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "moon_gargoyle/state_enraged": {
-  "status": "pending",
-  "job": "ec496110-bf66-4172-8814-ec3f6529cfef",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "ec496110-bf66-4172-8814-ec3f6529cfef",
+    "n": 1,
+    "size": 0.929,
+    "eye": 0.963,
+    "step": 0.601,
+    "motion": 0.707,
+    "end": 0.007,
+    "problems": [
+     "chuvisco 0.60"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "ram_cultist/state_poison": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "0e21d4e3-e911-4c58-b684-8721b82934ac",
+    "n": 1,
+    "size": 0.881,
+    "eye": 1.0,
+    "step": 0.479,
+    "motion": 0.586,
+    "end": 0.006,
+    "problems": [
+     "chuvisco 0.48"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "ram_cultist/state_weak": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "2a1a91a5-0064-41f2-ae82-c357d8b12dd0",
+    "n": 1,
+    "size": 0.94,
+    "eye": 1.0,
+    "step": 0.433,
+    "motion": 0.562,
+    "end": 0.007,
+    "problems": []
+   }
+  ],
+  "installed": 1
+ },
+ "ram_cultist/state_enraged": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "42b7a675-29aa-4ce7-8ee6-a9cfdb000096",
+    "n": 1,
+    "size": 0.929,
+    "eye": 1.0,
+    "step": 0.431,
+    "motion": 0.524,
+    "end": 0.012,
+    "problems": []
+   }
+  ]
+ },
+ "storm_harpy/state_poison": {
   "status": "pending",
-  "job": "0e21d4e3-e911-4c58-b684-8721b82934ac",
+  "job": "77f080aa-e7a5-4e1a-9067-1761116ce9d4",
+  "tries": []
+ },
+ "storm_harpy/state_weak": {
+  "status": "pending",
+  "job": "9f0fe7d6-fb77-4533-b1d9-a9300c65b670",
+  "tries": []
+ },
+ "storm_harpy/state_enraged": {
+  "status": "pending",
+  "job": "27bd1db7-eaea-45db-9049-1caad831f0fb",
   "tries": []
  }
 }
