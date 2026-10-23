@@ -7,4 +7,8 @@ return {
     fx = {
         { kind = "embers", xr = 0.5, yr = 0.55, rate = 0.8, spread = 0.5, dir = "up" },
     },
+    states = {
+        poison = { clip = "state_poison", fps = 8 },
+        weak = { clip = "state_weak", fps = 7 },
+    },
 }
