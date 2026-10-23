@@ -1592,7 +1592,7 @@
   "installed": 1
  },
  "hollow_farmer/fidget_twitch": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "55b58000-33ee-4572-824b-560eab15d684",
@@ -1604,7 +1604,8 @@
     "end": 0.003,
     "problems": []
    }
-  ]
+  ],
+  "installed": 1
  },
  "plague_rats/fidget_hiss": {
   "status": "installed",
