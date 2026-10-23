@@ -233,5 +233,6 @@ FIXUPS = {
     ("abyss_watcher", "state_poison", 1): [("unpale", (30, 40, 100, 70), (3, 4, 5, 6))],
     ("abyss_watcher", "state_weak", 1): [("transplant", (34, 24, 82, 58), (6, 7, 8, 9, 10))],
     ("abyss_watcher", "state_enraged", 1): [("dup", (0, 0, 1, 1), (6,))],
+    ("frost_wolf", "state_enraged", 1): [("unwhite", (0, 34, 50, 52), (5, 6, 7, 8, 9))],
     ("winter_monarch", "fidget_cape", 1): [("transplant", (4, 4, 30, 34)), ("erase_new", (0, 0, 40, 44)), ("restore", (0, 0, 32, 40), (7, 8, 9, 10))],
 }
