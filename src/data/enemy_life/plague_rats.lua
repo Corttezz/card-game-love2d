@@ -6,4 +6,8 @@ return {
     fx = {
         { kind = "flies", xr = 0.50, yr = 0.35, rate = 0.80, spread = 0.45 },
     },
+    states = {
+        poison = { clip = "state_poison", fps = 8 },
+        enraged = { clip = "state_enraged", fps = 8 },
+    },
 }

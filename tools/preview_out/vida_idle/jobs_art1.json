@@ -873,18 +873,116 @@
   "installed": 1
  },
  "hollow_farmer/state_weak": {
-  "status": "pending",
-  "job": "f25b9b01-8f02-40ac-bfc9-d01048186afb",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "f25b9b01-8f02-40ac-bfc9-d01048186afb",
+    "n": 1,
+    "size": 0.926,
+    "eye": 1.0,
+    "step": 0.366,
+    "motion": 0.535,
+    "end": 0.002,
+    "problems": []
+   }
+  ],
+  "installed": 1
  },
  "hollow_farmer/state_enraged": {
-  "status": "pending",
-  "job": "09336bcf-f893-4830-8dc8-684dfc11c624",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "09336bcf-f893-4830-8dc8-684dfc11c624",
+    "n": 1,
+    "size": 0.9,
+    "eye": 1.0,
+    "step": 0.496,
+    "motion": 0.607,
+    "end": 0.004,
+    "problems": [
+     "chuvisco 0.50"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "plague_rats/state_poison": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "3d8cd310-6751-4766-a992-5874571de3c8",
+    "n": 1,
+    "size": 1.051,
+    "eye": 1.0,
+    "step": 0.3,
+    "motion": 0.462,
+    "end": 0.001,
+    "problems": []
+   }
+  ],
+  "installed": 1
+ },
+ "plague_rats/state_weak": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "80735eb4-32d1-4e21-b7fe-4e2353989b3f",
+    "n": 1,
+    "size": 0.989,
+    "eye": 1.0,
+    "step": 0.245,
+    "motion": 0.402,
+    "end": 0.007,
+    "problems": []
+   }
+  ]
+ },
+ "plague_rats/state_enraged": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "9d3511e9-9f41-4ce0-9e5f-0e1c07df8bf4",
+    "n": 1,
+    "size": 1.141,
+    "eye": 1.0,
+    "step": 0.418,
+    "motion": 0.52,
+    "end": 0.002,
+    "problems": []
+   }
+  ],
+  "installed": 1
+ },
+ "harvest_reaper/state_poison": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "f62280c5-8401-4d3b-af8b-ba39c37bf85b",
+    "n": 1,
+    "size": 0.947,
+    "eye": 0.903,
+    "step": 0.56,
+    "motion": 0.679,
+    "end": 0.013,
+    "problems": [
+     "chuvisco 0.56"
+    ]
+   }
+  ]
+ },
+ "harvest_reaper/state_weak": {
   "status": "pending",
-  "job": "3d8cd310-6751-4766-a992-5874571de3c8",
+  "job": "eebbaa04-e425-434a-9bcf-1e6dcd9556d1",
+  "tries": []
+ },
+ "harvest_reaper/state_enraged": {
+  "status": "pending",
+  "job": "f70aa90e-24f6-44f4-b75e-f7a2e23e6d92",
+  "tries": []
+ },
+ "blight_bull/state_poison": {
+  "status": "pending",
+  "job": "c8c6e009-ee3e-4a37-a40f-4e22a141801a",
   "tries": []
  }
 }
