@@ -263,9 +263,27 @@ def processed(eid, clip, t):
         if im.size != ref.size:
             im = im.resize(ref.size, Image.NEAREST)
         s, far = snap(im, pal, cache)
+        for fx in SP.FIXUPS.get((eid, clip, t), []):
+            s = fixup(s, ref, fx)
         out.append(s)
         fars.append(far)
     return out, (round(max(fars), 3) if fars else 0)
+
+
+def fixup(im, ref, fx):
+    kind, (x0, y0, x1, y1) = fx
+    im = im.copy()
+    px, rp = im.load(), ref.load()
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            r, g, b, a = px[x, y]
+            if kind == "unflame":
+                hot = r > 120 and b < 110 and r > b * 1.8
+                if a >= 128 and px[x, y] != rp[x, y] and (hot or rp[x, y][3] < 128):
+                    px[x, y] = rp[x, y]
+            elif kind == "restore":
+                px[x, y] = rp[x, y]
+    return im
 
 
 def label_strip(rows, out, scale=4, bg=(52, 48, 58, 255)):

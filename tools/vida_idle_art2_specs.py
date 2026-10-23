@@ -28,7 +28,7 @@ SPECS = {
         ]),
     "hellhound": dict(act=3, eyes=[0, 1], idle=dict(frames=16, fps=10, action=(
         "idle panting loop of a two-headed hellhound standing four-legged: both heads pant with jaws working slightly, the burning flame manes on both heads and along the back roil and lick upward, "
-        "the flame on the tail tip flickers and the tail sways, the ribcage rises and falls with heavy breaths, the glowing lava cracks on the chest pulse")),
+        "the flame on the tail tip flickers and the tail sways, the ribcage rises and falls with heavy breaths, the lava cracks keep their color")),
         fidgets=dict(
             fidget_snarl=dict(frames=10, fps=11, weight=3, action=(
                 "both heads snarl: the two heads pull back the lips and snap their jaws once toward the front, manes flaring, then settle back")),
@@ -59,13 +59,13 @@ SPECS = {
             dict(kind="ash", xr=0.50, yr=0.80, rate=0.4, spread=0.50, dir="up"),
         ]),
     "obsidian_sentinel": dict(act=3, eyes=[4, 5], idle=dict(frames=16, fps=8, action=(
-        "idle loop of a heavy armored sentinel standing guard: the glowing lava seams on the obsidian armor pulse slowly brighter and dimmer, "
+        "idle loop of a heavy armored sentinel standing guard: the glowing lava seams on the obsidian armor keep exactly their color and brightness, "
         "the dark cape behind it ripples at its ragged glowing hem, chest plate rises with a slow heavy breath, the visor slit glows")),
         fidgets=dict(
             fidget_look=dict(frames=12, fps=9, weight=2, action=(
                 "the sentinel turns its helmet slowly to its left as if scanning, holds, then turns back to the front")),
             fidget_flex=dict(frames=10, fps=10, weight=2, action=(
-                "the sentinel clenches both gauntlet fists at its sides, the lava seams flaring brighter, then relaxes the hands")),
+                "the sentinel clenches both gauntlet fists at its sides, then relaxes the hands, the armor colors stay the same")),
             fidget_gust=dict(frames=10, fps=11, weight=1, action=(
                 "a gust of hot wind: the cape and the tabard flap to the side and settle back, the sentinel does not move")),
         ),
@@ -75,7 +75,7 @@ SPECS = {
         ]),
     "pit_brute": dict(act=3, eyes=[0, 1], idle=dict(frames=16, fps=8, action=(
         "idle loop of a hulking horned demon leaning on its sledgehammer: the huge chest and shoulders heave with slow heavy breaths, "
-        "the glowing lava cracks across the muscles pulse brighter on the inhale and dimmer on the exhale, the loincloth sways a little, the head bobs slightly, the hands stay on the hammer handle")),
+        "the loincloth sways a little, the head bobs slightly, the hands stay on the hammer handle. The lava cracks, horns and hammer keep exactly their colors and brightness in every frame, no glowing, no gold, no yellow")),
         fidgets=dict(
             fidget_snort=dict(frames=10, fps=10, weight=3, action=(
                 "the demon snorts: the head jerks up a little, the nostrils flare and the lips curl to show the fangs, the shoulders rise, then it settles")),
@@ -90,7 +90,7 @@ SPECS = {
         ]),
     "abyss_watcher": dict(act=3, eyes=[0, 1, 2], float=True, idle=dict(frames=16, fps=9, action=(
         "idle loop of a floating jellyfish-like abyss creature: the long curtain of tentacles undulates in slow waves that travel down from the bell to the tips, "
-        "the tentacle tips curl and sway, the flesh bell swells and contracts gently like breathing, the cluster of glowing orange eyes pulses softly")),
+        "the tentacle tips curl and sway, the flesh bell swells and contracts gently like breathing, the cluster of glowing orange eyes stays lit with the same color")),
         fidgets=dict(
             fidget_blink=dict(frames=6, fps=12, weight=3, action=(
                 "the eyes blink: the eyelids of all the glowing orange eyes close and open once, the large central eye last")),
@@ -108,7 +108,7 @@ SPECS = {
             fidget_flex=dict(frames=12, fps=10, weight=2, action=(
                 "the demon lord flexes its huge clawed hands, the claws curling and opening, the glowing lava seams on the arms flaring, then relaxes")),
             fidget_glare=dict(frames=10, fps=9, weight=2, action=(
-                "the horned skull head tilts down slightly and the glowing yellow eyes glare toward the viewer, the chest core flares brighter, then the head returns")),
+                "the horned skull head tilts down slightly and the glowing yellow eyes glare toward the viewer, then the head returns, colors stay the same")),
             fidget_cape=dict(frames=12, fps=10, weight=1, action=(
                 "a hot gust: the ragged grey-green cape billows outward on both sides and falls back, the demon stays still")),
         ),
@@ -147,10 +147,10 @@ SPECS = {
         ]),
     "rime_shaman": dict(act=4, eyes=[0, 1], idle=dict(frames=16, fps=9, action=(
         "idle loop of a hunched goblin shaman holding a totem staff: the white fur pelt cloak ruffles in a cold wind, the fur trim strips sway, "
-        "the ice crystal on top of the staff glints and pulses, the raised hand curls and opens its fingers slowly, the shoulders rise and fall with breathing, the bone necklace swings a little")),
+        "the ice crystal on top of the staff stays the same, the raised hand curls and opens its fingers slowly, the shoulders rise and fall with breathing, the bone necklace swings a little")),
         fidgets=dict(
             fidget_tap=dict(frames=10, fps=10, weight=2, action=(
-                "the shaman lifts the totem staff a little and taps it down on the ground, the ice crystal flaring brighter, then holds it upright again")),
+                "the shaman lifts the totem staff a little and taps it down on the ground, then holds it upright again")),
             fidget_mutter=dict(frames=10, fps=10, weight=2, action=(
                 "the shaman mutters a chant: the head bobs, the mouth moves, the raised hand makes a small circling gesture, then stops")),
             fidget_look=dict(frames=12, fps=9, weight=1, action=(
@@ -163,7 +163,7 @@ SPECS = {
         ]),
     "glacier_knight": dict(act=4, eyes=[0], idle=dict(frames=16, fps=8, action=(
         "idle loop of a heavy ice knight standing with a greatsword held low: the icy flame wisps on the shoulders and the sword tip curl and waver upward every frame, "
-        "the chest plate rises with a slow breath, the blue glow in the visor slit pulses softly")),
+        "the chest plate rises with a slow breath, the blue glow in the visor slit stays lit")),
         fidgets=dict(
             fidget_grip=dict(frames=10, fps=10, weight=2, action=(
                 "the knight tightens its grip on the greatsword, raising the blade a little and lowering it back")),
@@ -210,7 +210,7 @@ SPECS = {
     "winter_monarch": dict(act=4, boss=True, eyes=[2, 3], idle=None,
         fidgets=dict(
             fidget_orb=dict(frames=12, fps=10, weight=2, action=(
-                "the ice king lifts the staff slightly, the blue gem orb at its top flares brighter, then lowers the staff back")),
+                "the ice king lifts the staff slightly, then lowers the staff back, the gem keeps its color")),
             fidget_cape=dict(frames=12, fps=10, weight=2, action=(
                 "a freezing gust: the long ice cape billows out to the side and falls back, the king stays still")),
             fidget_glare=dict(frames=10, fps=9, weight=1, action=(
@@ -220,4 +220,8 @@ SPECS = {
             dict(kind="glint", xr=0.16, yr=0.17, rate=0.8, spread=0.05),
             dict(kind="frost", xr=0.50, yr=0.40, rate=0.8, spread=0.50, dir="down"),
         ]),
+}
+
+FIXUPS = {
+    ("ember_imp", "idle", 3): [("unflame", (0, 44, 40, 58))],
 }

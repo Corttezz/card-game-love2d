@@ -1,0 +1,10 @@
+return {
+    fidgets = {
+    },
+    gap = { 2.5, 6 },
+    fx = {
+        { kind = "embers", xr = 0.47, yr = 0.08, rate = 1.2, spread = 0.18, dir = "up" },
+        { kind = "embers", xr = 0.86, yr = 0.1, rate = 0.6, spread = 0.06, dir = "up" },
+        { kind = "ash", xr = 0.5, yr = 0.2, rate = 0.5, spread = 0.4, dir = "up" },
+    },
+}
