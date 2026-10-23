@@ -240,15 +240,22 @@ function LightEngine.composite(x, y, w, h)
                 love.graphics.setShader()
                 love.graphics.setColor(cr, cg, cb, 1)
             end
-            if e.fn then
-                love.graphics.push()
-                love.graphics.scale(1 / S)
-                e.fn()
-                love.graphics.pop()
-            else
-                love.graphics.draw(e.img, e.x / S, e.y / S, e.rot or 0,
-                    (e.sx or 1) / S, (e.sy or e.sx or 1) / S,
-                    e.ox or 0, e.oy or 0)
+            local d = e.cover and S * 0.375 or 0
+            local r0 = e.cover and -1 or 0
+            for oy = r0, -r0 do
+                for ox = r0, -r0 do
+                    if e.fn then
+                        love.graphics.push()
+                        love.graphics.scale(1 / S)
+                        love.graphics.translate(ox * d, oy * d)
+                        e.fn()
+                        love.graphics.pop()
+                    else
+                        love.graphics.draw(e.img, (e.x + ox * d) / S, (e.y + oy * d) / S, e.rot or 0,
+                            (e.sx or 1) / S, (e.sy or e.sx or 1) / S,
+                            e.ox or 0, e.oy or 0)
+                    end
+                end
             end
             love.graphics.setShader()
             love.graphics.setBlendMode("add", "alphamultiply")

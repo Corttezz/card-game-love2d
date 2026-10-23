@@ -1250,11 +1250,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 or sprites.west or sprites.north)
         end
         local flatColor = SceneGrade.flatColor("enemy", {})
-        if (animRef or staticRef) and bodyA >= 1 then
+        if (animRef or staticRef) and bodyA >= 0.5 then
             LightEngine.submitOccluder({
                 z = (((package.loaded["src.ui.WorldRoad"] or {}).BATTLE_REL)
                     or 9) + 6,
-                flatColor = flatColor,
+                flatColor = flatColor, cover = true,
                 bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
                 fn = function()
                     if animRef then

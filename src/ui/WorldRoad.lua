@@ -4859,10 +4859,10 @@ function LMG.drawEncounterFront(g, x, w, camZ)
 
     local oxT, oyT = love.graphics.transformPoint(dx0, dy0)
     local flatColor = Scene.Grade.flatColor("enemy", LMG.fc)
-    if e.anim and (pz.alpha or 1) < 0.999 then
+    if e.anim and (pz.alpha or 1) < 0.5 then
     elseif e.anim then
         LightEngine.submitOccluder({
-            z = rel + 6, flatColor = flatColor, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
+            z = rel + 6, flatColor = flatColor, cover = true, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
             fn = function()
                 local r, g2, b, a = love.graphics.getColor()
                 e.anim:draw(oxT, oyT, s, { r, g2, b, a })
@@ -4870,7 +4870,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
         })
     else
         LightEngine.submitOccluder({
-            z = rel + 6, flatColor = flatColor, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
+            z = rel + 6, flatColor = flatColor, cover = true, img = e.img, x = oxT, y = oyT, sx = s, sy = s,
             bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
         })
     end
