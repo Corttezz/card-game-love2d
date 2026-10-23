@@ -124,6 +124,16 @@ function QuadMesh:rectSkew(x, y, w, h, u0, u1, vL, vR, dvv, r, g, b, aL, aR)
     put(fp, bp, i + 3, x1, y1, u1, vR + dvv, R, G, B, AR)
 end
 
+function QuadMesh:quad(x1, y1, u1, v1, x2, y2, u2, v2, x3, y3, u3, v3, x4, y4, u4, v4, r, g, b, a)
+    local i = alloc(self)
+    local fp, bp = self.fp, self.bp
+    local R, G, B, A = c8(r), c8(g), c8(b), c8(a)
+    put(fp, bp, i, x1, y1, u1, v1, R, G, B, A)
+    put(fp, bp, i + 1, x2, y2, u2, v2, R, G, B, A)
+    put(fp, bp, i + 2, x3, y3, u3, v3, R, G, B, A)
+    put(fp, bp, i + 3, x4, y4, u4, v4, R, G, B, A)
+end
+
 function QuadMesh:sprite(x, y, sx, sy, ox, oy, kx, qw, qh,
                          u0, v0, u1, v1, R, G, B, A)
     local i = alloc(self)

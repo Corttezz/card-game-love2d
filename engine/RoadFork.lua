@@ -1,6 +1,6 @@
 local RoadFork = {}
 
-RoadFork.BAND_K = 0.45
+RoadFork.BAND_K = 0.22
 RoadFork.ALPHA_MIN = 0.02
 
 local order = {}

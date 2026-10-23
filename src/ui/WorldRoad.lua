@@ -3882,7 +3882,7 @@ local function drawRoad(g, x, w, camZ)
         RBL[k] = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
         local tn2 = math.min(1, (sy + step) / groundH)
         local relN = REL_CREST * (1 - tn2 ^ (1 / T_POW))
-        RDV[k] = math.min(16, math.max(0.05, (rel - relN) * vd))
+        RDV[k] = math.min(16 * (st.S or 1), math.max(0.05, (rel - relN) * vd))
         RV[k] = worldZ * vd - vbase
         RHS[k] = half0 / st.half
         RWOB[k] = roadWobble(worldZ, t, w)
@@ -3895,7 +3895,8 @@ local function drawRoad(g, x, w, camZ)
     if fork then
         for i = 1, nArm do
             local a = arms[i]
-            if not a then a = { c = {}, va = {}, sh = {}, L = {} }; arms[i] = a end
+            if not a then a = { c = {}, va = {}, sh = {}, L = {}, bare = {}, alpha = {} }; arms[i] = a end
+            for kk = 1, nRows do a.bare[kk] = false end
             local C, VA, SH, L = a.c, a.va, a.sh, a.L
             for k = 1, nRows do
                 C[k] = cx + RWOB[k] * 0.5 + (RREL[k] > FORK_REL and forkOffset(fork, i, RREL[k], w) or 0)
@@ -3925,12 +3926,29 @@ local function drawRoad(g, x, w, camZ)
     end
 
     local SEG = 16
-    local function span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, hsK)
+    local function span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, hsK, ub)
         if sR <= sL then return end
         local hs = RHS[k] * (hsK or 1)
+        if band > 0 then
+            local q = math.max(3, math.floor(hs * 3 + 0.5))
+            local bandR0 = sL + band
+            local vr = math.floor(vrow / (2 * (st.S or 1)))
+            local bx = sL
+            while bx < bandR0 do
+                local bw = math.min(q, bandR0 - bx)
+                local cell = math.floor((bx - cxRow) / q)
+                local r = (bx + bw * 0.5 - sL) / band
+                if r + (hash(cell * 1.37 + vr * 7.91) - 0.5) * 0.7 > 0.5 then
+                    span(cxRow, bx, bx + bw, 0, aMul, bright, vrow, sh, lrow, hsK, ub)
+                end
+                bx = bx + bw
+            end
+            sL, band = bandR0, 0
+            if sR <= sL then return end
+        end
         local tm = (st.tm0 + RBL[k] * st.tmK) * bright
         local farK = math.min((t - st.farT0) / (st.farT1 - st.farT0),
-            1 - math.max(0, math.min(1, (RDV[k] - st.farDv) / 0.8)))
+            1 - math.max(0, math.min(1, (RDV[k] - st.farDv) / (0.8 * (st.S or 1)))))
         local far = farK < 1
         local bandR = sL + band
         local segX = sL
@@ -3941,8 +3959,8 @@ local function drawRoad(g, x, w, camZ)
             if tile then
                 local du0 = (segX - cxRow) / hs
                 local du1 = du0 + segW / hs
-                local vx = du0 + st.cu
-                if far and hash(segX * 0.173 + rowId * 7.31) > farK then vx = vx + st.far end
+                local vx = du0 + st.cu + (ub or 0)
+                if not ub and far and hash(segX * 0.173 + rowId * 7.31) > farK then vx = vx + st.far end
                 local aL, aR = aMul, aMul
                 if band > 0 and segX < bandR then
                     aL = aMul * (segX - sL) / band
@@ -4056,7 +4074,8 @@ local function drawRoad(g, x, w, camZ)
                     local i = ord[q]
                     local a, arm = A[i], arms[i]
                     local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
-                    span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k])
+                    span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k], nil, st.bare)
+                    if st.bare then arm.bare[k], arm.alpha[k] = true, a.a end
                 end
             end
             for q = 1, m do
@@ -4075,6 +4094,9 @@ local function drawRoad(g, x, w, camZ)
             decorate(xL, xR, true, true, 1)
         end
     end
+    if fork and st.bare and tile then
+        WorldRoad._forkPlanks(qm, g, cx, groundH, step, nRows, nArm, arms, R, st, tw, th)
+    end
     if qm.n > 0 then
         qm:upload(0, qm.n)
         local prevShader = love.graphics.getShader()
@@ -4083,6 +4105,74 @@ local function drawRoad(g, x, w, camZ)
         love.graphics.setColor(rc[1], rc[2], rc[3], 1)
         qm:draw(0, qm.n, tile)
         love.graphics.setShader(prevShader)
+    end
+end
+
+function WorldRoad._forkPlanks(qm, g, cx, groundH, step, nRows, nArm, arms, R, st, tw, th)
+    local RT = require("engine.RoadTiles")
+    local list = RT.planks("marsh")
+    local S = st.S or 1
+    local per = RT.TH * S
+    local RHS, RDV = R.hs, R.dv
+    local hl = RT.HALF * S * 0.66
+    local u0, u1 = (st.cu - hl) / tw, (st.cu + hl) / tw
+    local B = R.pb or {}
+    R.pb = B
+    local function rowPoint(r, c, du, rowOff)
+        local rr = r + rowOff
+        local t = math.max(0, math.min(1, (rr - 1) * step / groundH))
+        local kk = math.max(1, math.min(nRows, math.floor(rr + 0.5)))
+        local x = c + du * RHS[kk]
+        return x, g.latY(x - cx, t) + 0.0
+    end
+    for i = 1, nArm do
+        local arm = arms[i]
+        local C, VA, SH, L = arm.c, arm.va, arm.sh, arm.L
+        local nb = 0
+        for k = nRows - 1, 1, -1 do
+            if arm.bare[k] or arm.bare[k + 1] then
+                local a, b = VA[k + 1], VA[k]
+                if b > a then
+                    local cyc = math.floor(a / per)
+                    for cc = cyc, cyc + 1 do
+                        for _, p in ipairs(list) do
+                            local bv = (cc * RT.TH + p.y0) * S
+                            if bv > a and bv <= b then
+                                local f = (bv - a) / (b - a)
+                                nb = nb + 1
+                                local e = B[nb]
+                                if not e then e = {}; B[nb] = e end
+                                e.r = (k + 1) - f
+                                e.c = C[k + 1] + (C[k] - C[k + 1]) * f
+                                e.v = bv
+                                e.k = k
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        for j = 1, nb - 1 do
+            local e0, e1 = B[j], B[j + 1]
+            local okRun = e1.v > e0.v
+            for kk = e1.k, e0.k + 1 do if okRun and not arm.bare[kk] then okRun = false end end
+            if okRun then
+                local k = e0.k
+                local aMul = arm.alpha[k] or 1
+                if aMul > 0.02 then
+                    local da = (SH[k] or 0) * (L[k] or 1)
+                    local Lk = L[k] or 1
+                    local rowOff = -hl * da / (Lk * Lk)
+                    local xBL, yBL = rowPoint(e0.r, e0.c, -hl, -rowOff)
+                    local xBR, yBR = rowPoint(e0.r, e0.c, hl, rowOff)
+                    local xTL, yTL = rowPoint(e1.r, e1.c, -hl, -rowOff)
+                    local xTR, yTR = rowPoint(e1.r, e1.c, hl, rowOff)
+                    local tm = st.tm0 + st.tmK * 0.5
+                    qm:quad(xTL, yTL, u0, e1.v / th, xBL, yBL, u0, e0.v / th, xTR, yTR, u1, e1.v / th,
+                        xBR, yBR, u1, e0.v / th, tm, tm, tm, aMul)
+                end
+            end
+        end
     end
 end
 
@@ -5294,7 +5384,7 @@ local function prewarmJobs(idx)
     local bid = b.id
     local y = coroutine.yield
     getGroundTexture(bid); y()
-    RoadSurface.get(bid, b, 4); y()
+    RoadSurface.get(bid, b, 1); y()
     getSprite("mountains", 0, bid); y()
     mountainsSkyColor(bid); y()
     getSprite("mountains_front", 0, bid); y()

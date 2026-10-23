@@ -49,7 +49,7 @@ def run():
                 continue
             half = (960, 540)
             sheet = Image.new("RGB", (1920, 540 + 480 + 520))
-            sheet.paste(label(a.resize(half, Image.LANCZOS), "antes (9913b64c) ato %d %s" % (ato, NAMES[ato])), (0, 0))
+            sheet.paste(label(a.resize(half, Image.LANCZOS), "antes (8b4db32e) ato %d %s" % (ato, NAMES[ato])), (0, 0))
             sheet.paste(label(b.resize(half, Image.LANCZOS), "depois ato %d %s" % (ato, NAMES[ato])), (960, 0))
             na, ja = crops(a)
             nb, jb = crops(b)
