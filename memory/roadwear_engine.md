@@ -95,3 +95,27 @@ com sombra. Sem poça, anel, pegada, brasa ou junco (todos eram elipses).
 - Perf (1920x1080): trilha 506 a 566 draw calls, encruzilhada 533 a 602; a 9913b64c dava 537 a 610
   (o ato 3 com encruzilhada já passava de 600 antes; o `test_perf_budget` mede a trilha). QuadMesh
   da estrada nasce com 16384 quads para não crescer no meio da encruzilhada.
+
+## Rodada 2 (23/Out/2026, revisão do lead sobre 8b4db32e)
+
+- **Texel fino perto da câmera:** o tile é assado em `V.S = 2` (768x1280 por bloco, FFI, borrão
+  separável). As pinturas continuam em unidades de desenho (mesmo tamanho de pedra/tábua/folha),
+  amostradas a cada meio texel, e o bake soma GRÃO por material (`V.GRAIN`, ruído de 1 e 2 px).
+  Perto da câmera o texel tem ~2,2 px em 1080p, ~4 px em 3440x1440, igual à escala dos props.
+  `st.half/cu/far/vk/farDv` já vêm multiplicados por `S`. Bake 0,4 a 2,9 s por bioma (ato 6 o mais
+  caro), o pré-aquecimento cede a cada linha (`RoadSurface.get(bid, b, 1)`).
+- **Folhas do ato 6 (`fallenLeaf`):** oval pontudo com talo, ~28% enroladas (um lado estreito com
+  dobra clara e miolo escuro), 6 tons (laranja, vermelha, ocre, marrom, dourada, carmim), camada
+  grande e camada miúda, altura por camada (folha de cima projeta sombra na de baixo e no chão),
+  tapete nas bordas e em manchas, espalhadas no centro.
+- **Junção como um material:** a faixa de transição não faz mais crossfade; cada pedaço de
+  ~3 texels escolhe um dos ramos (rampa + hash estável por linha do mundo), costura irregular,
+  `BAND_K = 0,22`. Rachadura do ato 3 mais larga (fenda de 1 px aliasava no cisalhamento).
+- **Passarela rígida nos ramos (`WorldRoad._forkPlanks`):** nas linhas de ramo fora do deck o chão
+  vem do bloco 3 do tile (`st.bare`, lama e água sem tábua) e cada tábua é um quad
+  (`QuadMesh:quad`) reto e de largura constante entre duas bordas de tábua achadas no v integrado
+  do ramo (`RoadTiles.planks`), girada pelo cisalhamento do ramo naquele ponto. Sem leque nem
+  esticado; na convergência o escolhido termina igual ao tile do tronco.
+- **Ato 4:** neve pisada mais escura e azulada no centro (-0,28), berma clara (+0,34).
+- Pântano no `test_castle_light`: borrão da crista guarda só 8% do detalhe (`k`) e tom de tábua
+  0,32 de faixa: a sobra de listra de tábua no borrão dava "subida" 5,3 contra 4,96.
