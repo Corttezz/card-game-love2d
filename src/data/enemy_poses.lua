@@ -21,7 +21,7 @@ EnemyPoses.BY_ID = {
     grave_slime       = { pose = "grounded", shadowBaseK = 0.30 },
     harvest_reaper    = { pose = "grounded", idle = { fps = 6, cycle = true } },
     mire_hag          = { pose = "grounded" },
-    moon_gargoyle     = { pose = "grounded", shadowBaseK = 0.15 },
+    moon_gargoyle     = { pose = "grounded", shadowBaseK = 0.15, idle = { fps = 6, cycle = true } },
     obsidian_sentinel = { pose = "grounded" },
     rot_colossus      = { pose = "grounded",
                           idle = { fps = 5, cycle = true } },
