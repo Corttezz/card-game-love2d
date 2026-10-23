@@ -1727,18 +1727,77 @@
   "installed": 1
  },
  "storm_harpy/fidget_twitch": {
-  "status": "pending",
-  "job": "7abaaa20-6a2a-45c5-a56d-efcc632af3de",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "7abaaa20-6a2a-45c5-a56d-efcc632af3de",
+    "n": 1,
+    "size": 1.132,
+    "eye": 0.913,
+    "step": 0.463,
+    "motion": 0.578,
+    "end": 0.005,
+    "problems": [
+     "chuvisco 0.46"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "rune_golem/fidget_look": {
-  "status": "pending",
-  "job": "641d948c-0eb6-475a-a84e-1905b156b8bf",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "641d948c-0eb6-475a-a84e-1905b156b8bf",
+    "n": 1,
+    "size": 0.975,
+    "eye": 0.698,
+    "step": 0.378,
+    "motion": 0.489,
+    "end": 0.007,
+    "problems": [
+     "olho 0.70"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "spectral_knight/fidget_mist": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "961c0b55-d16f-4b84-8e34-865f07751b28",
+    "n": 1,
+    "size": 0.939,
+    "eye": 0.767,
+    "step": 0.184,
+    "motion": 0.25,
+    "end": 0.007,
+    "problems": []
+   }
+  ],
+  "installed": 1
+ },
+ "storm_griffin/fidget_look": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "6e16761c-52fe-4e0a-ac34-800236016194",
+    "n": 1,
+    "size": 1.028,
+    "eye": 0.376,
+    "step": 0.333,
+    "motion": 0.422,
+    "end": 0.015,
+    "problems": [
+     "olho 0.38"
+    ]
+   }
+  ]
+ },
+ "tower_lich/fidget_hand": {
   "status": "pending",
-  "job": "961c0b55-d16f-4b84-8e34-865f07751b28",
+  "job": "f60a280b-12a4-405a-9600-4fe0db73be1f",
   "tries": []
  }
 }
