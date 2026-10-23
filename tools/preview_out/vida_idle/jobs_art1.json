@@ -782,7 +782,7 @@
   ]
  },
  "tower_lich/fidget_tilt": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "cf115bcc-f5f8-4219-a00f-8247f72fcb7d",
@@ -797,7 +797,8 @@
      "chuvisco 0.54"
     ]
    }
-  ]
+  ],
+  "installed": 1
  },
  "cursed_scarecrow/state_poison": {
   "status": "installed",
@@ -818,13 +819,72 @@
   "installed": 1
  },
  "cursed_scarecrow/state_weak": {
-  "status": "pending",
-  "job": "d4b63cea-b9b7-4f1f-8b32-f3dea52dcc71",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "d4b63cea-b9b7-4f1f-8b32-f3dea52dcc71",
+    "n": 1,
+    "size": 1.105,
+    "eye": 0.801,
+    "step": 0.524,
+    "motion": 0.693,
+    "end": 0.007,
+    "problems": [
+     "chuvisco 0.52"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "cursed_scarecrow/state_enraged": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "bbdd6e6a-2b7e-4a40-ba04-bc481736a338",
+    "n": 1,
+    "size": 1.132,
+    "eye": 0.801,
+    "step": 0.555,
+    "motion": 0.703,
+    "end": 0.006,
+    "problems": [
+     "chuvisco 0.55"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "hollow_farmer/state_poison": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "ddabe7ba-24b3-4bf0-935f-93053919d118",
+    "n": 1,
+    "size": 0.901,
+    "eye": 0.774,
+    "step": 0.461,
+    "motion": 0.587,
+    "end": 0.003,
+    "problems": [
+     "chuvisco 0.46"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "hollow_farmer/state_weak": {
   "status": "pending",
-  "job": "bbdd6e6a-2b7e-4a40-ba04-bc481736a338",
+  "job": "f25b9b01-8f02-40ac-bfc9-d01048186afb",
+  "tries": []
+ },
+ "hollow_farmer/state_enraged": {
+  "status": "pending",
+  "job": "09336bcf-f893-4830-8dc8-684dfc11c624",
+  "tries": []
+ },
+ "plague_rats/state_poison": {
+  "status": "pending",
+  "job": "3d8cd310-6751-4766-a992-5874571de3c8",
   "tries": []
  }
 }
