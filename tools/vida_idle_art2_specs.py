@@ -229,5 +229,6 @@ FIXUPS = {
     ("obsidian_sentinel", "fidget_look", 2): [("unflame", (28, 0, 72, 22))],
     ("abyss_acolyte", "state_poison", 1): [("unglow", (40, 8, 62, 26)), ("ungrey", (42, 10, 60, 24))],
     ("obsidian_sentinel", "state_enraged", 1): [("unwhite", (0, 0, 90, 30)), ("unwhite", (0, 30, 90, 50), (5, 6, 7, 8))],
+    ("obsidian_sentinel", "state_poison", 2): [("unwhite", (0, 0, 90, 30)), ("unwhite", (0, 30, 90, 50), (4, 5, 6, 7, 8, 9))],
     ("winter_monarch", "fidget_cape", 1): [("transplant", (4, 4, 30, 34)), ("erase_new", (0, 0, 40, 44)), ("restore", (0, 0, 32, 40), (7, 8, 9, 10))],
 }
