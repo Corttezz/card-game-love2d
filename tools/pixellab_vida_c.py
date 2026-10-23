@@ -339,6 +339,12 @@ def install(eid, clip, n, fix=None):
             im = Image.open(seq[i]).convert("RGBA")
             if fix and str(i) in fix:
                 im = Image.open(os.path.join(ROOT, fix[str(i)])).convert("RGBA")
+            if fix and fix.get("erase"):
+                a = np.asarray(im).copy()
+                for bx in fix["erase"].split(";"):
+                    x0, y0, x1, y1 = (int(v) for v in bx.split(","))
+                    a[y0:y1, x0:x1] = 0
+                im = Image.fromarray(a, "RGBA")
             if fix and fix.get("white"):
                 im = fix_white(eid, im)
             if fix and fix.get("eyes"):
