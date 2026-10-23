@@ -617,6 +617,19 @@ function CheatMode.keypressed(key)
         end
         return true
     end
+    if key == "home" or key == "end" then
+        local RV = require("engine.RoadVariants")
+        RV.cycle(key == "home" and 1 or -1)
+        local WR = require("src.ui.WorldRoad")
+        local B = require("src.data.biomes")
+        local b = B[(((WR._biomeIndex or 1) - 1) % #B) + 1]
+        local g = game()
+        if g and g.addMessage then
+            local I18n = require("src.i18n.I18n")
+            g:addMessage(I18n.t("cheat.road_variant", { name = RV.label(b and b.id) }, "Road: {name}"), "info")
+        end
+        return true
+    end
     local CheatActions = require("src.ui.CheatActions")
     local ctrl = love.keyboard.isDown("lctrl", "rctrl")
     local shift = love.keyboard.isDown("lshift", "rshift")

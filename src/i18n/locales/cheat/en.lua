@@ -1,4 +1,5 @@
 return {
+    road_variant = "Road: {name}",
     crt_variant = "CRT screen: {name}",
     title = "CHEAT MODE",
     tab = "CHEAT  {k}",

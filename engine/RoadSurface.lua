@@ -169,10 +169,25 @@ local function bake(bid, pal, yieldEvery)
     return img
 end
 
+local RoadVariants = require("engine.RoadVariants")
+
+function RoadSurface.style(bid)
+    if RoadVariants.id == "atual" then return nil end
+    return require("engine.RoadSurfaceVariants").style(bid, RoadVariants.id)
+end
+
 function RoadSurface.get(bid, pal, yieldEvery)
-    local hit = cache[bid]
+    local vid = RoadVariants.id
+    local key = vid == "atual" and bid or (bid .. "|" .. vid)
+    local hit = cache[key]
     if hit ~= nil then return hit or nil end
-    local ok, img = pcall(bake, bid, pal or {}, yieldEvery)
+    local ok, img
+    if vid == "atual" then
+        ok, img = pcall(bake, bid, pal or {}, yieldEvery)
+    else
+        ok, img = pcall(require("engine.RoadSurfaceVariants").bake, bid, vid, pal or {}, yieldEvery)
+    end
+    bid = key
     if not ok or not img then
         Debug.warn(("[RoadSurface] bake do bioma '%s' falhou: %s — usando o PNG")
             :format(tostring(bid), tostring(img)))

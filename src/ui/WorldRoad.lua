@@ -3875,6 +3875,7 @@ local function drawRoad(g, x, w, camZ)
     local biomeNow = rawBiome()
     local tile = RoadSurface.get(biomeNow.id, biomeNow)
         or getRoadTile(biomeNow.id)
+    local st = RoadSurface.style(biomeNow.id)
     local tw, th, dv, v, hs
     if tile then tw, th = tile:getWidth(), tile:getHeight() end
 
@@ -3894,9 +3895,18 @@ local function drawRoad(g, x, w, camZ)
             local dxMid = (segX + segW / 2) - cx
             local segY = math.floor(g.latY(dxMid, t))
             if tile then
-                local vx = (segX - cxRow) / hs + tw * 0.5
+                local vx, tm
+                if st then
+                    vx = (segX - cxRow) / hs + st.cu
+                    if t < 0.42 and hash(segX * 0.173 + rowId * 7.31) > (t - 0.1) / 0.32 then
+                        vx = vx + st.far
+                    end
+                    tm = (st.tm0 + blend * st.tmK) * bright
+                else
+                    vx = (segX - cxRow) / hs + tw * 0.5
+                    tm = (0.95 + blend * 0.08) * bright
+                end
                 local vw = segW / hs
-                local tm = (0.95 + blend * 0.08) * bright
                 qm:rect(segX, segY, hs * vw, ((step + 1.5) / dv) * dv,
                     vx / tw, v / th, (vx + vw) / tw, (v + dv) / th,
                     tm, tm, tm, aMul)
@@ -3909,8 +3919,11 @@ local function drawRoad(g, x, w, camZ)
         end
 
         if not decorate then return end
+        if st and st.edging and newRow then
+            WorldRoad._roadEdging(rect, g, cx, t, xL, xR, rowId, st, hash)
+        end
 
-        if newRow then
+        if newRow and not st then
             for k = 1, 2 do
                 local hpos = hash(rowId * 31 + k * 17)
                 if hpos > 0.35 then
@@ -3926,7 +3939,7 @@ local function drawRoad(g, x, w, camZ)
             end
         end
 
-        if t > 0.18 then
+        if t > 0.18 and not st then
             local VN = WorldRoad.valueNoise
             local rutW = math.max(1, math.floor(2.2 * g.persp(t) + 0.5))
             local ra = math.min(1, (t - 0.18) * 2.2) * 0.42 * aMul
@@ -4001,9 +4014,10 @@ local function drawRoad(g, x, w, camZ)
             tileUsed = tile
             local tn2 = math.min(1, (sy + step) / groundH)
             local relN = REL_CREST * (1 - tn2 ^ (1 / T_POW))
-            dv = math.min(16, math.max(0.05, (rel - relN) * RD_V_DENSITY))
-            v = (worldZ * RD_V_DENSITY) % th
-            hs = 4.4 * (0.35 + 0.65 * t)
+            local vd = RD_V_DENSITY * (st and st.vk or 1)
+            dv = math.min(16, math.max(0.05, (rel - relN) * vd))
+            v = (worldZ * vd) % th
+            hs = st and (half0 / st.half) or 4.4 * (0.35 + 0.65 * t)
         end
         newRow = rowId ~= lastDecoRow
         if newRow then lastDecoRow = rowId end
@@ -4041,6 +4055,30 @@ local function drawRoad(g, x, w, camZ)
         love.graphics.setColor(rc[1], rc[2], rc[3], 1)
         qm:draw(0, qm.n, tileUsed)
         love.graphics.setShader(prevShader)
+    end
+end
+
+function WorldRoad._roadEdging(rect, g, cx, t, xL, xR, rowId, st, hash)
+    if t < 0.08 then return end
+    local b = rawBiome()
+    local rock, rd = b.rock or { 0.38, 0.35, 0.3 }, b.rockDark or { 0.24, 0.22, 0.19 }
+    for sd = -1, 1, 2 do
+        local hh = hash(rowId * 71 + sd * 13)
+        if hh > 0.12 then
+            local rw = xR - xL
+            local sw = math.max(2, math.floor(rw * 0.034 * (0.75 + hh * 0.6) + 0.5))
+            local sh = math.max(2, math.floor(sw * (0.42 + 0.2 * t) + 0.5))
+            local inset = math.floor(rw * 0.035 + 2)
+            local x0 = sd < 0 and (xL + inset) or (xR - inset - sw)
+            local y0 = math.floor(g.latY(x0 + sw / 2 - cx, t)) - sh + 2
+            local tk = 0.85 + hash(rowId * 37 + sd) * 0.3
+            rect(x0 - 1, y0 + sh - 1, sw + 1, math.max(1, math.floor(sh * 0.45)), 0.06, 0.05, 0.04, 0.55)
+            rect(x0, y0, sw, sh, rd[1] * tk, rd[2] * tk, rd[3] * tk, 1)
+            local ins = math.max(1, math.floor(sw * 0.16))
+            rect(x0 + ins, y0, sw - 2 * ins, math.max(1, sh - ins), rock[1] * tk, rock[2] * tk, rock[3] * tk, 1)
+            rect(x0 + math.floor(sw * 0.45), y0, math.max(1, sw - math.floor(sw * 0.45) - ins),
+                math.max(1, math.floor(sh * 0.35)), rock[1] * tk * 1.32, rock[2] * tk * 1.3, rock[3] * tk * 1.25, 1)
+        end
     end
 end
 
@@ -5119,6 +5157,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
             tint = envColor,
             forkActive = WorldRoad._fork ~= nil,
             forkRel = FORK_REL,
+            roadVis = WorldRoad.roadVis(),
         })
     end
     _profMark('roadwear')

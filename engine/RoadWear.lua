@@ -246,6 +246,10 @@ RoadWear.CATALOG = {
 RoadWear.DENSITY = 1.6
 
 function RoadWear.draw(ctx)
+    local vid = require("engine.RoadVariants").id
+    if vid ~= "atual" then
+        return require("engine.RoadDecals").draw(ctx, vid)
+    end
     stamps = stamps or makeStamps()
     local cat = RoadWear.CATALOG[ctx.bid]
     if not cat then return end

@@ -1,4 +1,5 @@
 return {
+    road_variant = "Camino: {name}",
     crt_variant = "Pantalla CRT: {name}",
     title = "MODO TRUCOS",
     tab = "TRUCOS  {k}",

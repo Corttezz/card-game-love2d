@@ -1,4 +1,5 @@
 return {
+    road_variant = "Estrada: {name}",
     crt_variant = "Tela CRT: {name}",
     title = "MODO CHEAT",
     tab = "CHEAT  {k}",
