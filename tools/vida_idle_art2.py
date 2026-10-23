@@ -275,7 +275,9 @@ def processed(eid, clip, t):
             im = im.resize(ref.size, Image.NEAREST)
         s, far = snap(im, pal, cache)
         for fx in SP.FIXUPS.get((eid, clip, t), []):
-            s = fixup(s, ref, fx)
+            if len(fx) > 2 and len(out) not in fx[2]:
+                continue
+            s = out[-1].copy() if fx[0] == "dup" else fixup(s, ref, fx[:2])
         out.append(s)
         fars.append(far)
     return out, (round(max(fars), 3) if fars else 0)
@@ -317,7 +319,16 @@ def fixup(im, ref, fx):
         return transplant(im, ref, (x0, y0, x1, y1))
     im = im.copy()
     px, rp = im.load(), ref.load()
-    cap = max(lum(rp[x, y]) for y in range(y0, y1) for x in range(x0, x1) if rp[x, y][3] >= 128) + 6
+    ops = [rp[x, y] for y in range(y0, y1) for x in range(x0, x1) if rp[x, y][3] >= 128]
+    cap = max(lum(p) for p in ops) + 6
+    dark = min(ops, key=lum)
+    cnt = {}
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            q = px[x, y]
+            if q[3] >= 128 and 40 < lum(q) <= 150:
+                cnt[q] = cnt.get(q, 0) + 1
+    fill = max(cnt, key=cnt.get) if cnt else dark
     for y in range(y0, y1):
         for x in range(x0, x1):
             r, g, b, a = px[x, y]
@@ -328,6 +339,25 @@ def fixup(im, ref, fx):
             elif kind == "unglow":
                 if a >= 128 and lum((r, g, b)) > cap:
                     px[x, y] = rp[x, y]
+            elif kind == "ungrey":
+                if a >= 128 and lum((r, g, b)) > 50 and max(r, g, b) - min(r, g, b) < 40:
+                    px[x, y] = dark
+            elif kind == "unwhite":
+                if a >= 128 and min(r, g, b) > 215:
+                    src = None
+                    for dy in range(1, 6):
+                        if y + dy < im.size[1]:
+                            q = px[x, y + dy]
+                            if q[3] >= 128 and min(q[:3]) <= 215:
+                                src = q
+                                break
+                    px[x, y] = src if (src and rp[x, y][3] >= 128) else (0, 0, 0, 0)
+            elif kind == "unpale":
+                if a >= 128 and lum((r, g, b)) > 150:
+                    px[x, y] = fill
+            elif kind == "erase_new":
+                if a >= 128 and rp[x, y][3] < 128:
+                    px[x, y] = (0, 0, 0, 0)
             elif kind == "restore":
                 px[x, y] = rp[x, y]
     return im
