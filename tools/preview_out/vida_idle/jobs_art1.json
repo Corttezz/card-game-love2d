@@ -923,7 +923,7 @@
   "installed": 1
  },
  "plague_rats/state_weak": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "80735eb4-32d1-4e21-b7fe-4e2353989b3f",
@@ -935,7 +935,8 @@
     "end": 0.007,
     "problems": []
    }
-  ]
+  ],
+  "installed": 1
  },
  "plague_rats/state_enraged": {
   "status": "installed",
@@ -954,7 +955,7 @@
   "installed": 1
  },
  "harvest_reaper/state_poison": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "f62280c5-8401-4d3b-af8b-ba39c37bf85b",
@@ -968,21 +969,75 @@
      "chuvisco 0.56"
     ]
    }
-  ]
+  ],
+  "installed": 1
  },
  "harvest_reaper/state_weak": {
-  "status": "pending",
-  "job": "eebbaa04-e425-434a-9bcf-1e6dcd9556d1",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "eebbaa04-e425-434a-9bcf-1e6dcd9556d1",
+    "n": 1,
+    "size": 1.053,
+    "eye": 0.885,
+    "step": 0.59,
+    "motion": 0.739,
+    "end": 0.01,
+    "problems": [
+     "chuvisco 0.59"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "harvest_reaper/state_enraged": {
-  "status": "pending",
-  "job": "f70aa90e-24f6-44f4-b75e-f7a2e23e6d92",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "f70aa90e-24f6-44f4-b75e-f7a2e23e6d92",
+    "n": 1,
+    "size": 1.053,
+    "eye": 0.931,
+    "step": 0.608,
+    "motion": 0.736,
+    "end": 0.004,
+    "problems": [
+     "chuvisco 0.61"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "blight_bull/state_poison": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "c8c6e009-ee3e-4a37-a40f-4e22a141801a",
+    "n": 1,
+    "size": 0.981,
+    "eye": 0.523,
+    "step": 0.322,
+    "motion": 0.472,
+    "end": 0.002,
+    "problems": [
+     "olho 0.52"
+    ]
+   }
+  ]
+ },
+ "blight_bull/state_weak": {
   "status": "pending",
-  "job": "c8c6e009-ee3e-4a37-a40f-4e22a141801a",
+  "job": "ef4bc359-c701-449d-b319-d083b29c31c8",
+  "tries": []
+ },
+ "blight_bull/state_enraged": {
+  "status": "pending",
+  "job": "9bc846d9-3b85-42e5-818a-5d3087dc7030",
+  "tries": []
+ },
+ "wicker_effigy/state_poison": {
+  "status": "pending",
+  "job": "6ae09a0d-1ae0-453a-b9f8-a814b6937425",
   "tries": []
  }
 }
