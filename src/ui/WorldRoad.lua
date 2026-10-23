@@ -3,7 +3,7 @@ local Sfx = require("src.systems.Sfx")
 local LightEngine = require("engine.LightEngine")
 local ShadowEngine = require("engine.ShadowEngine")
 local LuminaireEngine = require("engine.LuminaireEngine")
-local RoadWear = require("engine.RoadWear")
+local RoadDecals = require("engine.RoadDecals")
 local RoadSurface = require("engine.RoadSurface")
 local QuadMesh = require("engine.QuadMesh")
 local WeatherEngine = require("engine.WeatherEngine")
@@ -2940,19 +2940,6 @@ local function drawTerrainDetail(g, x, w, camZ)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local roadTileCache = {}
-local function getRoadTile(bid)
-    local hit = roadTileCache[bid]
-    if hit ~= nil then return hit or nil end
-    local img = tryLoadPng("road_dirt_" .. bid) or tryLoadPng("road_dirt")
-    if img then
-        img:setWrap("repeat", "repeat")
-        roadTileCache[bid] = img
-    else
-        roadTileCache[bid] = false
-    end
-    return img
-end
 local RD_V_DENSITY = 5.2
 
 local FORK_REL    = 10
@@ -3843,20 +3830,25 @@ function WorldRoad.forkClearK(a)
     return math.min(1, a * 2.5)
 end
 
+WorldRoad._roadRows = { t = {}, rel = {}, wz = {}, half = {}, row = {}, blend = {}, dv = {}, v = {}, hs = {},
+    wob = {}, newRow = {}, arms = {}, A = {} }
+function WorldRoad._roadHash(n)
+    local v = math.sin(n * 12.9898) * 43758.5453
+    return v - math.floor(v)
+end
+
 local function drawRoad(g, x, w, camZ)
     local roadA = envColor("roadA")
-    local roadB = envColor("roadB")
     local roadEdge = envColor("roadEdge")
     local cx = g.cx
     local crest = g.crestYAt(cx)
     local groundH = g.bottomY - crest
     local fork = WorldRoad._fork
-
     local step = 2
     local vis = WorldRoad.roadVis()
     local qm = WorldRoad._roadQM
     if not qm then
-        qm = QuadMesh.new(8192)
+        qm = QuadMesh.new(16384)
         WorldRoad._roadQM = qm
     end
     qm:reset()
@@ -3864,120 +3856,137 @@ local function drawRoad(g, x, w, camZ)
     local function rect(rx, ry, rw, rh, r, gg, bb, aa)
         qm:rect(rx, ry, rw, rh, UNTEX, 0, UNTEX, 0, r, gg, bb, aa)
     end
-    local tileUsed = nil
-    local function hash(n)
-        local v = math.sin(n * 12.9898) * 43758.5453
-        return v - math.floor(v)
-    end
-    local lastDecoRow = nil
-    local t, rel, worldZ, half0, eL, eR, rowId, blend, m
-    local newRow
+    local hash = WorldRoad._roadHash
+    local RoadFork = require("engine.RoadFork")
     local biomeNow = rawBiome()
     local tile = RoadSurface.get(biomeNow.id, biomeNow)
-        or getRoadTile(biomeNow.id)
     local st = RoadSurface.style(biomeNow.id)
-    local tw, th, dv, v, hs
+    local tw, th = 1, 1
     if tile then tw, th = tile:getWidth(), tile:getHeight() end
+    local R = WorldRoad._roadRows
+    local RT, RREL, RWZ, RH, RROW, RBL, RDV, RV, RHS, RWOB, RNEW =
+        R.t, R.rel, R.wz, R.half, R.row, R.blend, R.dv, R.v, R.hs, R.wob, R.newRow
+    local vd = RD_V_DENSITY * st.vk
+    local vbase = math.floor(camZ * vd / th) * th
+    local nRows = 0
+    local lastRow = nil
+    for sy = 0, groundH - 1, step do
+        nRows = nRows + 1
+        local k = nRows
+        local t = sy / groundH
+        local rel = REL_CREST * (1 - t ^ (1 / T_POW))
+        local worldZ = camZ + rel
+        local half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)) * vis
+        local rowId = math.floor(worldZ * 2.3)
+        RT[k], RREL[k], RWZ[k], RH[k], RROW[k] = t, rel, worldZ, half0, rowId
+        RBL[k] = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
+        local tn2 = math.min(1, (sy + step) / groundH)
+        local relN = REL_CREST * (1 - tn2 ^ (1 / T_POW))
+        RDV[k] = math.min(16, math.max(0.05, (rel - relN) * vd))
+        RV[k] = worldZ * vd - vbase
+        RHS[k] = half0 / st.half
+        RWOB[k] = roadWobble(worldZ, t, w)
+        RNEW[k] = rowId ~= lastRow
+        lastRow = rowId
+    end
 
-    local lastXL, lastXR, lastHalf = 0, 0, 0
-    local function paintRow(cxRow, halfMul, aMul, decorate, bright, wk)
-        wk = wk or 1
-        local half = half0 * halfMul * wk
-        eL = WorldRoad.roadEdgeOff(worldZ, t, -1, half0 * halfMul)
-        eR = WorldRoad.roadEdgeOff(worldZ, t, 1, half0 * halfMul)
-        local xL = math.floor(cxRow - half - (eL + WorldRoad.edgeBite(worldZ, t, -1)) * wk)
-        local xR = math.floor(cxRow + half + (eR + WorldRoad.edgeBite(worldZ, t, 1)) * wk)
-        lastXL, lastXR, lastHalf = xL, xR, half
-
-        local SEG = 16
-        for segX = xL, xR - 1, SEG do
-            local segW = math.min(SEG, xR - segX)
-            local dxMid = (segX + segW / 2) - cx
-            local segY = math.floor(g.latY(dxMid, t))
-            if tile then
-                local vx, tm
-                if st then
-                    vx = (segX - cxRow) / hs + st.cu
-                    if t < 0.42 and hash(segX * 0.173 + rowId * 7.31) > (t - 0.1) / 0.32 then
-                        vx = vx + st.far
-                    end
-                    tm = (st.tm0 + blend * st.tmK) * bright
+    local arms = R.arms
+    local nArm = fork and fork.n or 0
+    if fork then
+        for i = 1, nArm do
+            local a = arms[i]
+            if not a then a = { c = {}, va = {}, sh = {}, L = {} }; arms[i] = a end
+            local C, VA, SH, L = a.c, a.va, a.sh, a.L
+            for k = 1, nRows do
+                C[k] = cx + RWOB[k] * 0.5 + (RREL[k] > FORK_REL and forkOffset(fork, i, RREL[k], w) or 0)
+            end
+            for k = nRows, 1, -1 do
+                if RREL[k] <= FORK_REL or k == nRows then
+                    VA[k], SH[k], L[k] = RV[k], 0, RDV[k]
                 else
-                    vx = (segX - cxRow) / hs + tw * 0.5
-                    tm = (0.95 + blend * 0.08) * bright
+                    local da = (C[k + 1] - C[k]) / RHS[k]
+                    local dvk = RDV[k]
+                    local ln = math.sqrt(da * da + dvk * dvk)
+                    VA[k] = VA[k + 1] + ln
+                    SH[k] = da / ln
+                    L[k] = ln
                 end
-                local vw = segW / hs
-                qm:rect(segX, segY, hs * vw, ((step + 1.5) / dv) * dv,
-                    vx / tw, v / th, (vx + vw) / tw, (v + dv) / th,
-                    tm, tm, tm, aMul)
+            end
+        end
+    end
+
+    local t, worldZ, half0, rowId, newRow, k
+    local function edges(cxRow)
+        local eL = WorldRoad.roadEdgeOff(worldZ, t, -1, half0)
+        local eR = WorldRoad.roadEdgeOff(worldZ, t, 1, half0)
+        local xL = math.floor(cxRow - half0 - (eL + WorldRoad.edgeBite(worldZ, t, -1)))
+        local xR = math.floor(cxRow + half0 + (eR + WorldRoad.edgeBite(worldZ, t, 1)))
+        return xL, xR
+    end
+
+    local SEG = 16
+    local function span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, hsK)
+        if sR <= sL then return end
+        local hs = RHS[k] * (hsK or 1)
+        local tm = (st.tm0 + RBL[k] * st.tmK) * bright
+        local far = t < st.farT1
+        local farK = (t - st.farT0) / (st.farT1 - st.farT0)
+        local bandR = sL + band
+        local segX = sL
+        while segX < sR do
+            local lim = (band > 0 and segX < bandR) and math.min(bandR, segX + SEG) or (segX + SEG)
+            local segW = math.min(lim, sR) - segX
+            local segY = math.floor(g.latY(segX + segW / 2 - cx, t))
+            if tile then
+                local du0 = (segX - cxRow) / hs
+                local du1 = du0 + segW / hs
+                local vx = du0 + st.cu
+                if far and hash(segX * 0.173 + rowId * 7.31) > farK then vx = vx + st.far end
+                local aL, aR = aMul, aMul
+                if band > 0 and segX < bandR then
+                    aL = aMul * (segX - sL) / band
+                    aR = aMul * math.min(1, (segX + segW - sL) / band)
+                end
+                qm:rectSkew(segX, segY, segW, step + 1.5,
+                    vx / tw, (vx + segW / hs) / tw,
+                    (vrow - du0 * sh) / th, (vrow - du1 * sh) / th, -lrow * (step + 1.5) / step / th,
+                    tm, tm, tm, aL, aR)
             else
-                rect(segX, segY, segW, step + 1.5,
-                    (roadA[1] + (roadB[1] - roadA[1]) * blend) * m * bright,
-                    (roadA[2] + (roadB[2] - roadA[2]) * blend) * m * bright,
-                    (roadA[3] + (roadB[3] - roadA[3]) * blend) * m * bright, aMul)
+                rect(segX, segY, segW, step + 1.5, roadA[1] * bright, roadA[2] * bright, roadA[3] * bright, aMul)
             end
+            segX = segX + segW
         end
+    end
 
-        if not decorate then return end
-        if st and st.edging and newRow then
-            WorldRoad._roadEdging(rect, g, cx, t, xL, xR, rowId, st, hash)
-        end
-
-        if newRow and not st then
-            for k = 1, 2 do
-                local hpos = hash(rowId * 31 + k * 17)
-                if hpos > 0.35 then
-                    local px2 = xL + math.floor(hpos * (xR - xL))
-                    local sz = math.max(2, math.floor((1 + hash(rowId + k) * 2) * (0.4 + 0.6 * t) * 2))
-                    local py2 = math.floor(g.latY(px2 - cx, t))
-                    if hash(rowId * 3 + k) > 0.5 then
-                        rect(px2, py2, sz, sz, roadEdge[1], roadEdge[2], roadEdge[3], 0.5 * aMul)
-                    else
-                        rect(px2, py2, sz, sz, roadA[1] * 1.2, roadA[2] * 1.2, roadA[3] * 1.15, 0.6 * aMul)
-                    end
-                end
-            end
-        end
-
-        if t > 0.18 and not st then
-            local VN = WorldRoad.valueNoise
-            local rutW = math.max(1, math.floor(2.2 * g.persp(t) + 0.5))
-            local ra = math.min(1, (t - 0.18) * 2.2) * 0.42 * aMul
-            for sd = -1, 1, 2 do
-                local wear = VN(worldZ * 0.9, sd * 7.7 + 3.1)
-                if wear > 0.28 then
-                    local rdx = half * (0.40 + (VN(worldZ * 0.35, sd * 5.3) - 0.5) * 0.10)
-                    local rx = math.floor(cxRow + sd * rdx)
-                    rect(rx, math.floor(g.latY(rx - cx, t)), rutW, step,
-                        roadEdge[1], roadEdge[2], roadEdge[3], ra * math.min(1, (wear - 0.28) * 4))
-                end
-            end
-        end
-
+    local function decorate(xL, xR, dL, dR, aMul, oL, oR)
         local yL = math.floor(g.latY(xL - cx, t))
         local yR = math.floor(g.latY(xR - cx, t))
-        if hash(rowId * 5 + 2) > 0.25 then
+        if dL and hash(rowId * 5 + 2) > 0.25 then
             rect(xL - 2, yL, 2, step, roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
         end
-        if hash(rowId * 11 + 4) > 0.25 then
+        if dR and hash(rowId * 11 + 4) > 0.25 then
             rect(xR, yR, 2, step, roadEdge[1], roadEdge[2], roadEdge[3], 0.85 * aMul)
         end
-        if newRow and hash(rowId * 17 + 9) > 0.72 then
-            local ps = math.max(2, math.floor(3.5 * g.persp(t)))
+        if not newRow then return end
+        dL, dR = dL and oL ~= false, dR and oR ~= false
+        local pp = g.persp(t)
+        if hash(rowId * 17 + 9) > 0.72 then
+            local ps = math.max(2, math.floor(3.5 * pp))
             local side = hash(rowId * 23 + 3) > 0.5 and 1 or -1
-            local px2 = side > 0 and (xR + 3 + math.floor(hash(rowId * 29) * 8 * g.persp(t)))
-                                  or (xL - 5 - math.floor(hash(rowId * 29) * 8 * g.persp(t)))
-            rect(px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1),
-                roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9 * aMul)
+            if (side > 0 and dR) or (side < 0 and dL) then
+                local px2 = side > 0 and (xR + 3 + math.floor(hash(rowId * 29) * 8 * pp))
+                                      or (xL - 5 - math.floor(hash(rowId * 29) * 8 * pp))
+                rect(px2, math.floor(g.latY(px2 - cx, t)), ps, math.max(step, ps - 1),
+                    roadA[1] * 1.25, roadA[2] * 1.22, roadA[3] * 1.15, 0.9 * aMul)
+            end
         end
-
-        if newRow then
-            local ga2 = envColor("grassA")
-            for k = 1, 3 do
-                local hh = hash(rowId * 53 + k * 7)
-                local dd = math.floor(hh * hh * 12 * g.persp(t)) + 2
-                local sz2 = math.max(1, math.floor(2 * g.persp(t)))
-                local sideK = (hash(rowId * 59 + k) > 0.5) and 1 or -1
+        local ga2 = envColor("grassA")
+        for q = 1, 3 do
+            local hh = hash(rowId * 53 + q * 7)
+            local dd = math.floor(hh * hh * 12 * pp) + 2
+            local sz2 = math.max(1, math.floor(2 * pp))
+            local sideK = (hash(rowId * 59 + q) > 0.5) and 1 or -1
+            if (sideK > 0 and dR) or (sideK < 0 and dL) then
                 local bx = sideK > 0 and (xR + dd) or (xL - dd - sz2)
                 rect(bx, math.floor(g.latY(bx - cx, t)), sz2, sz2,
                     roadA[1], roadA[2], roadA[3], (1 - hh * 0.6) * 0.5 * aMul)
@@ -3988,63 +3997,81 @@ local function drawRoad(g, x, w, camZ)
                 end
             end
         end
-
-        if newRow and hash(rowId * 41 + 5) > 0.45 then
-            local ga = envColor("grassA")
+        if hash(rowId * 41 + 5) > 0.45 then
             local gs = hash(rowId * 43 + 1) > 0.5 and 1 or -1
-            local gx = gs > 0 and (xR - 2 - math.floor(hash(rowId * 47) * 6))
-                               or (xL + math.floor(hash(rowId * 47) * 6))
-            local gy = math.floor(g.latY(gx - cx, t))
-            local gsz = math.max(1, math.floor(2 * g.persp(t)))
-            rect(gx, gy, gsz + 1, gsz, ga[1] * 1.3, ga[2] * 1.3, ga[3] * 1.15, 0.85 * aMul)
-            rect(gx + gs, gy - gsz, gsz, gsz, ga[1] * 1.3, ga[2] * 1.3, ga[3] * 1.15, 0.85 * aMul)
+            if (gs > 0 and dR) or (gs < 0 and dL) then
+                local gx = gs > 0 and (xR - 2 - math.floor(hash(rowId * 47) * 6))
+                                   or (xL + math.floor(hash(rowId * 47) * 6))
+                local gy = math.floor(g.latY(gx - cx, t))
+                local gsz = math.max(1, math.floor(2 * pp))
+                rect(gx, gy, gsz + 1, gsz, ga2[1] * 1.3, ga2[2] * 1.3, ga2[3] * 1.15, 0.85 * aMul)
+                rect(gx + gs, gy - gsz, gsz, gsz, ga2[1] * 1.3, ga2[2] * 1.3, ga2[3] * 1.15, 0.85 * aMul)
+            end
         end
     end
 
-    for sy = 0, groundH - 1, step do
-        t = sy / groundH
-        rel = REL_CREST * (1 - t ^ (1 / T_POW))
-        worldZ = camZ + rel
-
-        half0 = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15)) * vis
-        rowId = math.floor(worldZ * 2.3)
-        blend = hash(math.floor(worldZ / 1.9) * 3 + math.floor(t * 5))
-        m = 0.97 + hash(rowId) * 0.04
-        if tile then
-            tileUsed = tile
-            local tn2 = math.min(1, (sy + step) / groundH)
-            local relN = REL_CREST * (1 - tn2 ^ (1 / T_POW))
-            local vd = RD_V_DENSITY * (st and st.vk or 1)
-            dv = math.min(16, math.max(0.05, (rel - relN) * vd))
-            v = (worldZ * vd) % th
-            hs = st and (half0 / st.half) or 4.4 * (0.35 + 0.65 * t)
-        end
-        newRow = rowId ~= lastDecoRow
-        if newRow then lastDecoRow = rowId end
-
-        local wob = roadWobble(worldZ, t, w)
-
+    local A = R.A
+    local probe = WorldRoad._armProbe
+    local chosen = fork and fork.converge and fork.chosen or nil
+    R.platOn = false
+    for kk = 1, nRows do
+        k = kk
+        t, worldZ, half0, rowId, newRow = RT[k], RWZ[k], RH[k], RROW[k], RNEW[k]
+        local rel = RREL[k]
         if fork and rel > FORK_REL then
-            local probe = WorldRoad._armProbe
-            for i = 1, fork.n do
-                local aMul = forkAlpha(fork, i) * math.max(0.001, fork.animIn or 1)
-                if aMul > 0.02 then
-                    local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
-                    paintRow(cx + wob * 0.5 + forkOffset(fork, i, rel, w),
-                        1, aMul, i == 1, bright, 1)
-                    if probe and probe.i == i and math.abs(rel - probe.rel) < 0.5 then
-                        probe.n = probe.n + 1
-                        probe.sum = probe.sum + (lastXR - lastXL) / (2 * half0)
-                        probe.geo = probe.geo + lastHalf / half0
-                        probe.half = half0
-                    end
+            for i = 1, nArm do
+                local a = A[i]
+                if not a then a = {}; A[i] = a end
+                local arm = arms[i]
+                a.c = arm.c[k]
+                a.xL, a.xR = edges(a.c)
+                a.a = forkAlpha(fork, i) * math.max(0.001, fork.animIn or 1)
+                if probe and probe.i == i and math.abs(rel - probe.rel) < 0.5 and a.a > 0.02 then
+                    probe.n = probe.n + 1
+                    probe.sum = probe.sum + (a.xR - a.xL) / (2 * half0)
+                    probe.geo = probe.geo + 1
+                    probe.half = half0
                 end
             end
+            local ord, m = RoadFork.partition(A, nArm, chosen, half0, st.platform)
+            local fp = WorldRoad._forkSurfaceProbe
+            if fp then RoadFork.probeRow(fp, A, ord, m, arms, k, RDV[k], RHS[k], step) end
+            local uL, uR, pa = nil, nil, 0
+            if st.platform and not fork.converge then uL, uR, pa = RoadFork.contiguous(A, ord, m, half0) end
+            if uL then
+                local a1 = A[ord[1]]
+                local hsK = (uR - uL) / math.max(1, a1.xR - a1.xL)
+                span((uL + uR) * 0.5, uL, uR, 0, pa, 1, RV[k], 0, RDV[k], hsK)
+                if not R.platOn then
+                    for bx = uL, uR - 1, 16 do
+                        rect(bx, math.floor(g.latY(bx + 8 - cx, t)) - 1, math.min(16, uR - bx), 2,
+                            roadEdge[1] * 0.6, roadEdge[2] * 0.6, roadEdge[3] * 0.6, 0.9 * pa)
+                    end
+                end
+                R.platOn = true
+            else
+                R.platOn = false
+                for q = 1, m do
+                    local i = ord[q]
+                    local a, arm = A[i], arms[i]
+                    local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
+                    span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k])
+                end
+            end
+            for q = 1, m do
+                local a = A[ord[q]]
+                decorate(a.xL, a.xR, a.dL, a.dR, a.a, q == 1, q == m)
+            end
             if (fork.animIn or 1) < 1 then
-                paintRow(cx + wob, 1, 1 - fork.animIn, false, 1, 1)
+                local c = cx + RWOB[k]
+                local xL, xR = edges(c)
+                span(c, xL, xR, 0, 1 - fork.animIn, 1, RV[k], 0, RDV[k])
             end
         else
-            paintRow(cx + wob, 1, 1, true, 1)
+            local c = cx + RWOB[k]
+            local xL, xR = edges(c)
+            span(c, xL, xR, 0, 1, 1, RV[k], 0, RDV[k])
+            decorate(xL, xR, true, true, 1)
         end
     end
     if qm.n > 0 then
@@ -4053,32 +4080,8 @@ local function drawRoad(g, x, w, camZ)
         love.graphics.setShader(QuadMesh.untexturedShader())
         local rc = Scene.Grade.color("road", 1, LMG.c)
         love.graphics.setColor(rc[1], rc[2], rc[3], 1)
-        qm:draw(0, qm.n, tileUsed)
+        qm:draw(0, qm.n, tile)
         love.graphics.setShader(prevShader)
-    end
-end
-
-function WorldRoad._roadEdging(rect, g, cx, t, xL, xR, rowId, st, hash)
-    if t < 0.08 then return end
-    local b = rawBiome()
-    local rock, rd = b.rock or { 0.38, 0.35, 0.3 }, b.rockDark or { 0.24, 0.22, 0.19 }
-    for sd = -1, 1, 2 do
-        local hh = hash(rowId * 71 + sd * 13)
-        if hh > 0.12 then
-            local rw = xR - xL
-            local sw = math.max(2, math.floor(rw * 0.034 * (0.75 + hh * 0.6) + 0.5))
-            local sh = math.max(2, math.floor(sw * (0.42 + 0.2 * t) + 0.5))
-            local inset = math.floor(rw * 0.035 + 2)
-            local x0 = sd < 0 and (xL + inset) or (xR - inset - sw)
-            local y0 = math.floor(g.latY(x0 + sw / 2 - cx, t)) - sh + 2
-            local tk = 0.85 + hash(rowId * 37 + sd) * 0.3
-            rect(x0 - 1, y0 + sh - 1, sw + 1, math.max(1, math.floor(sh * 0.45)), 0.06, 0.05, 0.04, 0.55)
-            rect(x0, y0, sw, sh, rd[1] * tk, rd[2] * tk, rd[3] * tk, 1)
-            local ins = math.max(1, math.floor(sw * 0.16))
-            rect(x0 + ins, y0, sw - 2 * ins, math.max(1, sh - ins), rock[1] * tk, rock[2] * tk, rock[3] * tk, 1)
-            rect(x0 + math.floor(sw * 0.45), y0, math.max(1, sw - math.floor(sw * 0.45) - ins),
-                math.max(1, math.floor(sh * 0.35)), rock[1] * tk * 1.32, rock[2] * tk * 1.3, rock[3] * tk * 1.25, 1)
-        end
     end
 end
 
@@ -5145,7 +5148,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     _profMark('road')
     do
         local gg = g
-        RoadWear.draw({
+        RoadDecals.draw({
             geom = gg, x = x, w = w, camZ = WorldRoad._camZ,
             time = WorldRoad._time,
             bid = rawBiome().id,
@@ -5290,7 +5293,7 @@ local function prewarmJobs(idx)
     local bid = b.id
     local y = coroutine.yield
     getGroundTexture(bid); y()
-    RoadSurface.get(bid, b, 16); y()
+    RoadSurface.get(bid, b, 4); y()
     getSprite("mountains", 0, bid); y()
     mountainsSkyColor(bid); y()
     getSprite("mountains_front", 0, bid); y()

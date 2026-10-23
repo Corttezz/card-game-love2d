@@ -1,5 +1,4 @@
 return {
-    road_variant = "Route : {name}",
     crt_variant = "Écran CRT : {name}",
     title = "MODE TRICHE",
     tab = "TRICHE  {k}",

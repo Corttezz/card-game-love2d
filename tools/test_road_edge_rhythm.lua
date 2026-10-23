@@ -231,9 +231,9 @@ function M.wedge(bio)
     local canvas = love.graphics.newCanvas(W, H)
     local realTime = love.timer.getTime
     love.timer.getTime = function() return 100 end
-    local RoadWear = require("engine.RoadWear")
-    local realWear = RoadWear.draw
-    RoadWear.draw = function() end
+    local RoadDecals = require("engine.RoadDecals")
+    local realWear = RoadDecals.draw
+    RoadDecals.draw = function() end
     setup(WorldRoad, bio, "forkbare", canvas)
     local full = render(WorldRoad, bio, canvas)
     GrassField.disabled = true
@@ -242,7 +242,7 @@ function M.wedge(bio)
     WorldRoad.roadEdgeOff = function() return -1e5 end
     local none = render(WorldRoad, bio, canvas)
     WorldRoad.roadEdgeOff = realOff
-    RoadWear.draw = realWear
+    RoadDecals.draw = realWear
     GrassField.disabled = nil
     love.timer.getTime = realTime
     canvas:release()

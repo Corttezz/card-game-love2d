@@ -9,7 +9,6 @@ function M.run(arg)
     _G.EventManager = _G.EventManager or require("engine.EventManager")
     _G.Event = _G.Event or require("engine.Event")
     local WorldRoad = require("src.ui.WorldRoad")
-    local RoadVariants = require("engine.RoadVariants")
     local canvas = love.graphics.newCanvas(vw, vh)
     local topBarH = 52
     local function frame(bio)
@@ -26,6 +25,11 @@ function M.run(arg)
     local rows = {}
     local ok = true
     for bio = 1, 6 do
+        local B = require("src.data.biomes")[bio]
+        local tb = love.timer.getTime()
+        require("engine.RoadTiles").bake(B.id, B)
+        rows[#rows + 1] = string.format("ato%d bake do tile %.0f ms", bio, (love.timer.getTime() - tb) * 1000)
+        print(rows[#rows])
         WorldRoad.setBiome(bio)
         WorldRoad._blend = nil
         WorldRoad._prevBiomeIndex = nil
@@ -35,11 +39,9 @@ function M.run(arg)
         end
         for _ = 1, 240 do frame(bio) end
         WorldRoad._blend = nil
-        for _, v in ipairs({ "atual", "A", "B", "C" }) do
-            RoadVariants.use(v)
-            for _ = 1, 4000 do
-                if WorldRoad.isPrewarmed(bio) then break end
-                WorldRoad.prewarmTick(0.05)
+        for _, v in ipairs({ "trilha", "encruzilhada" }) do
+            if v == "encruzilhada" then
+                WorldRoad.showFork({ { type = "battle" }, { type = "rest" }, { type = "shop" } }, function() end)
             end
             for _ = 1, 60 do frame(bio) end
             local s0 = love.graphics.getStats().drawcalls
@@ -62,14 +64,14 @@ function M.run(arg)
             end
             love.graphics.getStats()
             local ms = (love.timer.getTime() - t0) / 30 * 1000
-            local line = string.format("ato%d %-5s dc=%d alloc=%.1fKB ms_andando=%.2f", bio, v, dc, samples[2], ms)
+            local line = string.format("ato%d %-12s dc=%d alloc=%.1fKB ms_andando=%.2f", bio, v, dc, samples[2], ms)
             rows[#rows + 1] = line
             print(line)
-            if v ~= "atual" and (dc > 600 or samples[2] > 40) then ok = false end
+            if dc > 600 or samples[2] > 40 then ok = false end
         end
+        WorldRoad._fork = nil
     end
-    RoadVariants.use("atual")
-    local f = love.filesystem.newFile("perf_estrada_variantes.txt", "w")
+    local f = love.filesystem.newFile("perf_estrada_final.txt", "w")
     f:write(table.concat(rows, "\n"))
     f:close()
     print(ok and "[ok] orcamento de draw calls e alocacao" or "[FAIL] orcamento estourado")

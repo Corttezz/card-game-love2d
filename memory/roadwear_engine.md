@@ -1,86 +1,91 @@
 ---
 name: roadwear_engine
-description: Motores do solo do caminho — RoadSurface (síntese da textura-base com relevo) + RoadWear (decals determinísticos por bioma)
+description: Solo do caminho — RoadTiles (tile por bioma, escolha do dono), RoadSurface (cache/bake), RoadFork (encruzilhada como um chão só), RoadDecals (folhas sopradas do ato 6)
 type: architecture
 ---
 
-# Solo do caminho — RoadSurface + RoadWear (v10/v10.1, Jul/2026)
+# Solo do caminho (23/Out/2026, estrada final escolhida pelo dono)
 
-**Pedido:** "o solo do caminho está muito padronizado/plano; quero imperfeições
-naturais, diferenciadas por bioma, mantendo o visual do jogo."
+O dono escolheu UMA variante por ato na folha `tools/preview_out/estrada_variantes/visao_geral_18_tod65.png`:
+ato 1 A trilha gasta, ato 2 A trilha de cascalho, ato 3 A trilha de cinza com rachaduras e brasa,
+ato 4 A neve pisada, ato 5 B passarela de tábuas, ato 6 A trilha de folhas. As outras 12 variantes,
+`engine/RoadVariants.lua`, `CARDGAME_ROAD`, Home/End no cheat, a chave `cheat.road_variant`, o bake
+antigo do `RoadSurface` e o `engine/RoadWear.lua` (catálogo de decalques antigo, já desligado pelas
+variantes) foram APAGADOS. Não há mais chave de variante. Provas antes/depois em
+`tools/preview_out/estrada_final/atoN/antes_depois_<cena>.png`.
 
-## RoadSurface — SÍNTESE da textura-base (engine/RoadSurface.lua)
+## RoadTiles (engine/RoadTiles.lua)
 
-A v10 só decorava por cima do PNG tileado — o usuário rejeitou ("você não
-mudou o terreno de fato; bioma 2 virou quadradinhos soltos"). A v10.1
-SINTETIZA a superfície por bioma (192×512, tileia nos 2 eixos, noise em
-lattice modular, bake 1× cacheado):
+- Um `PAINT[bid]` por bioma devolve material, altura e valor por texel; `V.bake` aplica sombra
+  projetada pela altura na direção da luz (`LIGHT_X`, ato 6 à esquerda), quantiza na paleta do bioma
+  (dither leve: limiar ±0,11 + Bayer ±0,06; mais que isso vira chuvisco) e grava a metade borrada
+  (crista) à direita. Tile 384x640, 56 texels por meia-largura de estrada.
+- `V.VK = 1.35`: texel QUADRADO perto da câmera em 1080p (4,5 x 4,4 px). Com 1,75 o texel era 2:1
+  deitado e todo detalhe virava traço horizontal.
+- **Nada redondo.** Pedra = polígono convexo de 5 a 7 facetas (`stone`/`stoneAt`, memo por célula):
+  topo claro, faceta virada para a luz mais clara, faceta de costas escura, contorno escuro só do
+  lado da sombra, altura alta para projetar sombra de 1 texel. A `pebble` elíptica com sombreado
+  radial (lia como bolinha) e as `blob` redondas saíram. Cascalho só em aglomerados
+  (`gravel`, ruído baixo como máscara), nunca confete uniforme.
+- Folha (`leafAt`): lente pontuda orientada, nervura só em folha larga, borda escura do lado da
+  sombra, 4 rampas de outono (laranja, vermelha, ocre, marrom seca); camada de folhas grandes e
+  camada miúda por baixo, densidade por célula memorizada (`dmemo`, sem isso o bake do ato 6
+  levava 1,9 s), amontoada nas bordas e em manchas, pisada e escurecida no centro gasto.
+  Achatada em v (`dy * 1.2`) para deitar no chão.
+- Neve: pegada oval com parede do fundo escura e borda de perto clara (sem traço no meio), sulco
+  com brilho de gelo raro, ondulação de vento nos ombros. A mancha `sl` (fbm escuro) saiu: era a
+  bola escura do ato 4.
+- Passarela: tábuas de 6 a 8 texels com ponta irregular, veio, nó, rachadura curta, pregos com
+  ferrugem, musgo em tufos só nas pontas, tábua caída/quebrada/faltando, longarinas visíveis nas
+  frestas e nos buracos, estacas a cada 6 tábuas, água com brilho nas frestas e ao lado.
 
-1. **Clusters tonais** — FBM periódico escolhe entre 4 tons de terra.
-2. **Micro-relevo top-light** — borda superior de cluster elevado = highlight,
-   inferior = sombra. É o que dá o "desnível" 3D.
-3. **Sulcos de roda** contínuos serpenteando + rim claro; **desgaste central**.
-4. **Especiais**: highlands = LAJES Voronoi (juntas escuras, relevo por laje —
-   substitui os decals de cobble); abyss = craquelure FINA (células 18×40,
-   junta 1 texel — 0.045 lia como placas); frost = veios de gelo; marsh =
-   sheen úmido + verdete; dusk = flecos de folhiço.
+## RoadSurface (engine/RoadSurface.lua)
 
-**Integração (drawRoad)**: sampling CENTRADO no eixo da estrada
-(`(segX-cxRow)/hs + tw*0.5`, sem uOff aleatório) → sulcos/desgaste seguem a
-curva e cada braço do fork ganha os seus. Banda de brilho por faixa reduzida
-(0.10→0.04) — banda forte re-achatava a textura em listras. PNG antigo segue
-como fallback se o bake falhar.
+Só cache: `get(bid, pal, yieldEvery)` assa `RoadTiles.bake` (o pré-aquecimento passa
+`yieldEvery = 4`: fatias de ~3 ms), `style(bid)` devolve o estilo (o pântano tem
+`platform = true`). Falha avisa uma vez e cacheia `false`; sem tile a estrada sai em cor chapada.
 
-## RoadWear — decals determinísticos (engine/RoadWear.lua)
+## Desenho (WorldRoad drawRoad) e encruzilhada (engine/RoadFork.lua)
 
-## Arquitetura
+- Cada faixa de 2 px amostra o tile de cima (v maior, mais longe) para baixo
+  (`rectSkew(..., -lrow * 3.5 / 2)`). O código antigo amostrava de baixo para cima e cada texel que
+  caía no meio de uma faixa saía espelhado: eram os fiapos horizontais de 1 px que "mancham" a
+  textura perto da câmera em todos os atos.
+- Ramos: o v de cada ramo é INTEGRADO ao longo dele (`va`), passo `L = sqrt(da² + dv²)` em texels,
+  e a linha da tela recebe cisalhamento `sh = da / L` por vértice (`QuadMesh:rectSkew`). Densidade
+  ao longo do ramo / tronco fica entre 0,99 e 1,44; o mapeamento antigo dava 0,36 a 0,53 (era o
+  "esticado" do dono). Sulcos seguem e se dividem em cada ramo.
+- `RoadFork.partition`: cada pixel tem UM dono. Ramos ordenados pelo centro; vizinhos dividem a
+  sobreposição no meio com transição de `BAND_K * meia-largura` (alfa por vértice); convergindo, o
+  escolhido fica inteiro e os outros só pintam fora dele. Antes o último ramo (direita) pintava por
+  cima dos outros com outra textura. Borda de dentro (coberta por outro ramo) não ganha contorno nem
+  migalha; borda que dá para a cunha só ganha o contorno.
+- Pântano: enquanto os ramos estão colados (centros a menos de `DECK_K = 1,45` meias-larguras) a
+  passarela vira um DECK único com as tábuas do tronco esticadas na largura da união e uma viga
+  escura na ponta; depois cada ramo sai com tábuas perpendiculares a ele.
+- Sonda de teste: `WorldRoad._forkSurfaceProbe` (sobreposição e densidade por linha);
+  `WorldRoad._armProbe` segue igual para o `test_fork_branch_width`.
 
-`engine/RoadWear.lua`, mesma família do GrassField/LuminaireEngine:
+## RoadDecals (engine/RoadDecals.lua)
 
-- **Determinístico**: feature = f(worldZ, hash). Sem estado/spawn — a estrada
-  rola e os detalhes rolam junto, sempre os mesmos. Slots de z por feature
-  (`cada` unidades) com jitter interno (quebra o ritmo de grade).
-- **Projeção injetada**: WorldRoad passa ctx (geom do domo, roadCenter com
-  wobble, roadHalf, envColor) — o engine nunca tem coordenadas próprias.
-- **Stamps grayscale** procedurais (gerados 1×) tintados por `envColor` no
-  draw → o crossfade de bioma lerpa as cores de graça.
-- **SQUASH vertical (~0.55)**: o stamp deita no chão (foreshortening) em vez
-  de parecer adesivo em pé. Flip horizontal por hash (variedade grátis).
-- **Fork**: rel > FORK_REL−1 não recebe detalhe (área de escolha limpa).
-- Chamado em `WorldRoad.draw` logo APÓS `drawRoad`, ANTES da grama/props
-  (detalhe é do CHÃO: capim de borda e pés de árvore cobrem ele).
+Só o ato 6: poucas folhas (3 carimbos 4-5 px, 4 cores) que o vento leva de lado e assentam,
+com sombra. Sem poça, anel, pegada, brasa ou junco (todos eram elipses).
 
-## Catálogo por bioma (RoadWear.CATALOG)
+## Vagalume
 
-| bioma | features |
-|---|---|
-| fields | manchas úmidas, pedras encravadas, palha, pegadas, seixos |
-| highlands | LAJES de calçamento (2 tons), musgo, pedras |
-| abyss | RACHADURAS com brasa (submitMicro pulsante!), chamusco, ossos |
-| frost | bancos de NEVE invadindo, placas de gelo, pegadas |
-| marsh | POÇAS espelhando o céu (tint fog×1.35), lama, raízes, junco |
-| dusk | FOLHAS de outono (2 tons quentes), raízes, pedras |
+`WeatherEngine`: a poça de luz no chão do vagalume caiu de `radius * 8 * ps + 10` para
+`radius * 2.4 * ps + 4` e intensidade 2,2 → 1,4. O disco grande na estrada lia como bola.
 
-## Knobs
+## Travas e ferramentas
 
-- `RoadWear.DENSITY` (1.6): multiplicador global de densidade.
-- Por feature: `cada` (espaçamento z), `alpha`, `uMax` (fração da meia-
-  largura), `scaleK`, `tint(ctx)`, `ember` (micro-luz abyss).
-- Escala na tela: `(0.70 + 2.6·t) · scaleK`, squash y ×0.55.
-
-## Lições
-
-- A 1ª calibração (DENSITY=1, escala 0.55+2.2t) ficou invisível — stamps de
-  chão precisam de MAIS presença do que parece no código (a perspectiva +
-  ambiente escuro comem tudo). Validar SEMPRE com zoom no leito.
-- Poça = aro escuro + miolo CLARO tintado com a cor do fog (reflexo do céu).
-- Rachadura do abyss ilumina (submitMicro rel=z) — chão vivo à noite.
-
-## Perf (Out/2026)
-- `RoadSurface.get(bid, pal, yieldEvery)`: com `yieldEvery` o bake cede
-  (`coroutine.yield`) a cada N linhas — SÓ o pré-aquecimento do WorldRoad
-  passa (roda na coroutine dele). Bake era ~1/3 do engasgo da troca de ato.
-- Falha do bake AVISA (`[RoadSurface] bake ... falhou`) e cacheia `false`
-  (1 aviso, não 1 bake falho por frame); o chamador cai no PNG tileado.
-- A estrada desenha num QuadMesh (1 draw); `RoadSurface.has(bid)` existe
-  pra ferramentas checarem o cache.
+- `love . test_one test_road_fork_surface`: partição (sem sobreposição, escolhido inteiro, junta dura),
+  6 atos × 2 e 3 opções: sobreposição 0, densidade em [0,55; 1,8], convergência sem sobreposição.
+- `test_fork_branch_width`, `test_road_edge_rhythm` (ato 4 cunha 0,26 contra piso 0,25: a cor da
+  neve pisada foi afastada da neve do campo para o teste não contar texel da estrada como cunha).
+- Capturas `lovec . test_one screenshot_estrada_final "<atos>:<cenas>"` (`fork3`, `fork2`,
+  `converge`, `chegada`, `battle`, `continuar`; `ESTRADA_VIRTUAL`, `ESTRADA_TAG`), folhas
+  `python tools/estrada_final_folha.py`, perf `lovec . test_one perf_estrada_final` (inclui o tempo
+  do bake por ato).
+- Perf (1920x1080): trilha 506 a 566 draw calls, encruzilhada 533 a 602; a 9913b64c dava 537 a 610
+  (o ato 3 com encruzilhada já passava de 600 antes; o `test_perf_budget` mede a trilha). QuadMesh
+  da estrada nasce com 16384 quads para não crescer no meio da encruzilhada.
