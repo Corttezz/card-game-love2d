@@ -546,8 +546,7 @@
   "installed": 1
  },
  "ram_cultist/fidget_censer": {
-  "status": "pending",
-  "job": "214f8baf-513e-452d-905f-62fc36f21341",
+  "status": "installed",
   "tries": [
    {
     "job": "fada9f46-2c17-4082-aafa-5b12c26823bb",
@@ -558,8 +557,19 @@
     "motion": 0.354,
     "end": 0.01,
     "problems": []
+   },
+   {
+    "job": "214f8baf-513e-452d-905f-62fc36f21341",
+    "n": 2,
+    "size": 0.94,
+    "eye": 1.0,
+    "step": 0.253,
+    "motion": 0.454,
+    "end": 0.009,
+    "problems": []
    }
-  ]
+  ],
+  "installed": 2
  },
  "ram_cultist/fidget_chant": {
   "status": "installed",
@@ -627,6 +637,18 @@
     "problems": [
      "olho 0.74"
     ]
+   },
+   {
+    "job": "7fffdcc7-a9c2-431c-ae90-4a63aa0b1f06",
+    "n": 2,
+    "size": 1.038,
+    "eye": 0.572,
+    "step": 0.356,
+    "motion": 0.529,
+    "end": 0.005,
+    "problems": [
+     "olho 0.57"
+    ]
    }
   ]
  },
@@ -649,7 +671,8 @@
   "installed": 1
  },
  "spectral_knight/fidget_sword": {
-  "status": "review",
+  "status": "pending",
+  "job": "599ab130-c717-476e-b391-b9fc31fd95fb",
   "tries": [
    {
     "job": "c0ff404d-1987-4d4f-84b5-fa7c43cd239d",
@@ -664,13 +687,47 @@
   ]
  },
  "spectral_knight/fidget_helm": {
-  "status": "pending",
-  "job": "07bcc50f-4d77-43d2-b3cd-9a239d39fa08",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "07bcc50f-4d77-43d2-b3cd-9a239d39fa08",
+    "n": 1,
+    "size": 0.969,
+    "eye": 0.766,
+    "step": 0.231,
+    "motion": 0.281,
+    "end": 0.006,
+    "problems": []
+   }
+  ],
+  "installed": 1
  },
  "storm_griffin/fidget_screech": {
+  "status": "retry",
+  "tries": [
+   {
+    "job": "13b27162-74c1-46ed-aeb5-e701fc213545",
+    "n": 1,
+    "size": 1.075,
+    "eye": 0.386,
+    "step": 0.464,
+    "motion": 0.561,
+    "end": 0.015,
+    "problems": [
+     "olho 0.39",
+     "chuvisco 0.46"
+    ]
+   }
+  ]
+ },
+ "storm_griffin/fidget_flap": {
   "status": "pending",
-  "job": "13b27162-74c1-46ed-aeb5-e701fc213545",
+  "job": "5b7b97ae-2622-42b1-a528-80999c7713aa",
+  "tries": []
+ },
+ "tower_lich/fidget_orb": {
+  "status": "pending",
+  "job": "beda6c70-23ee-4450-a8c3-e4ee0e380f4f",
   "tries": []
  }
 }

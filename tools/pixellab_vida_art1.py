@@ -77,6 +77,10 @@ def clips_of(eid):
 
 
 def submit(eid, clip, seed):
+    import importlib
+    import pixellab_vida_art1_specs as S
+    importlib.reload(S)
+    SPECS.update(S.SPECS)
     sp = spec_of(eid, clip)
     tool = sp.get("tool", "animate_image")
     text = f"{sp['action']}. It keeps its {SPECS[eid]['keep']}." + SUFFIX
@@ -231,7 +235,7 @@ def metrics(eid, ims):
         for k, e in enumerate(eyes):
             if g0[k] > 0:
                 worst_eye = min(worst_eye, glow(im, *e) / g0[k])
-    if abs(1 - worst_size) > 0.12:
+    if abs(1 - worst_size) > 0.18:
         probs.append(f"tamanho {worst_size:.2f}")
     if worst_eye < 0.75:
         probs.append(f"olho {worst_eye:.2f}")

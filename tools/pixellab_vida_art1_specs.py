@@ -281,8 +281,10 @@ SPECS = {
             "one-pixel cyan lines, never white, never thick blocks, never more of them" + IDLE)),
         fidgets={
             "fidget_screech": dict(frames=10, action=(
-                "throws its eagle head forward and screeches with the beak wide open, then pulls "
-                "the head back")),
+                "throws its eagle head forward and screeches with the beak wide open, the "
+                "feathers on the neck bristle, then pulls the head back; only the head, neck and "
+                "wing feathers move, the few thin cyan lightning lines stay thin one-pixel lines, "
+                "no lightning burst, no thick bolts, no white")),
             "fidget_flap": dict(frames=12, action=(
                 "gives one powerful flap of its raised wings, down and back up, staying on the "
                 "ground, then holds them raised as before")),
