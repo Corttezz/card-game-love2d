@@ -624,7 +624,7 @@
   "installed": 1
  },
  "rune_golem/fidget_runes": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "f3c25e27-34da-4f6f-b1a2-239fd927eb24",
@@ -650,7 +650,8 @@
      "olho 0.57"
     ]
    }
-  ]
+  ],
+  "installed": 2
  },
  "rune_golem/fidget_fists": {
   "status": "installed",
@@ -671,8 +672,7 @@
   "installed": 1
  },
  "spectral_knight/fidget_sword": {
-  "status": "pending",
-  "job": "599ab130-c717-476e-b391-b9fc31fd95fb",
+  "status": "installed",
   "tries": [
    {
     "job": "c0ff404d-1987-4d4f-84b5-fa7c43cd239d",
@@ -683,8 +683,19 @@
     "motion": 0.467,
     "end": 0.006,
     "problems": []
+   },
+   {
+    "job": "599ab130-c717-476e-b391-b9fc31fd95fb",
+    "n": 2,
+    "size": 0.98,
+    "eye": 0.754,
+    "step": 0.438,
+    "motion": 0.513,
+    "end": 0.007,
+    "problems": []
    }
-  ]
+  ],
+  "installed": 2
  },
  "spectral_knight/fidget_helm": {
   "status": "installed",
@@ -703,7 +714,8 @@
   "installed": 1
  },
  "storm_griffin/fidget_screech": {
-  "status": "retry",
+  "status": "pending",
+  "job": "8f5b41f8-558a-49e7-a066-d66f17021371",
   "tries": [
    {
     "job": "13b27162-74c1-46ed-aeb5-e701fc213545",
@@ -721,13 +733,46 @@
   ]
  },
  "storm_griffin/fidget_flap": {
-  "status": "pending",
-  "job": "5b7b97ae-2622-42b1-a528-80999c7713aa",
-  "tries": []
+  "status": "installed",
+  "job": "4cea6c37-7f3b-4ab3-9bb9-a3d68497a6a2",
+  "tries": [
+   {
+    "job": "5b7b97ae-2622-42b1-a528-80999c7713aa",
+    "n": 1,
+    "size": 0.688,
+    "eye": 0.0,
+    "step": 0.747,
+    "motion": 0.792,
+    "end": 0.015,
+    "problems": [
+     "tamanho 0.69",
+     "olho 0.00",
+     "chuvisco 0.75"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "tower_lich/fidget_orb": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "beda6c70-23ee-4450-a8c3-e4ee0e380f4f",
+    "n": 1,
+    "size": 1.062,
+    "eye": 0.96,
+    "step": 0.512,
+    "motion": 0.689,
+    "end": 0.006,
+    "problems": [
+     "chuvisco 0.51"
+    ]
+   }
+  ]
+ },
+ "tower_lich/fidget_tilt": {
   "status": "pending",
-  "job": "beda6c70-23ee-4450-a8c3-e4ee0e380f4f",
+  "job": "cf115bcc-f5f8-4219-a00f-8247f72fcb7d",
   "tries": []
  }
 }
