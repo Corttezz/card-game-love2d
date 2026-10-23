@@ -5,6 +5,7 @@ return {
     },
     gap = { 4.0, 9.0 },
     states = {
+        poison = { clip = "state_poison", fps = 8 },
         weak = { clip = "state_weak", fps = 7 },
         enraged = { clip = "state_enraged", fps = 10 },
     },
