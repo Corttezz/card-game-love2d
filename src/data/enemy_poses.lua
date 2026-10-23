@@ -19,7 +19,7 @@ EnemyPoses.BY_ID = {
     frost_wight       = { pose = "grounded" },
     glacier_knight    = { pose = "grounded" },
     grave_slime       = { pose = "grounded", shadowBaseK = 0.30 },
-    harvest_reaper    = { pose = "grounded" },
+    harvest_reaper    = { pose = "grounded", idle = { fps = 6, cycle = true } },
     mire_hag          = { pose = "grounded" },
     moon_gargoyle     = { pose = "grounded", shadowBaseK = 0.15 },
     obsidian_sentinel = { pose = "grounded" },
