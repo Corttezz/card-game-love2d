@@ -335,6 +335,16 @@ def fixup(im, ref, fx):
             elif kind == "ungrey":
                 if a >= 128 and lum((r, g, b)) > 50 and max(r, g, b) - min(r, g, b) < 40:
                     px[x, y] = dark
+            elif kind == "unwhite":
+                if a >= 128 and min(r, g, b) > 215:
+                    src = None
+                    for dy in range(1, 6):
+                        if y + dy < im.size[1]:
+                            q = px[x, y + dy]
+                            if q[3] >= 128 and min(q[:3]) <= 215:
+                                src = q
+                                break
+                    px[x, y] = src if (src and rp[x, y][3] >= 128) else (0, 0, 0, 0)
             elif kind == "erase_new":
                 if a >= 128 and rp[x, y][3] < 128:
                     px[x, y] = (0, 0, 0, 0)
