@@ -291,7 +291,7 @@
  },
  "plague_rats/fidget_sniff": {
   "status": "pending",
-  "job": "19ae33b9-2a5b-431b-b7eb-3cfa9822d9f8",
+  "job": "aae4c7ae-d313-4b0a-928f-f45d08619f02",
   "tries": [
    {
     "job": "c91f71ed-d284-4032-85ac-048e00872810",
@@ -304,12 +304,23 @@
     "problems": [
      "tamanho 1.14"
     ]
+   },
+   {
+    "job": "19ae33b9-2a5b-431b-b7eb-3cfa9822d9f8",
+    "n": 2,
+    "size": 1.154,
+    "eye": 1.0,
+    "step": 0.164,
+    "motion": 0.203,
+    "end": 0.004,
+    "problems": [
+     "tamanho 1.15"
+    ]
    }
   ]
  },
  "plague_rats/fidget_squirm": {
-  "status": "pending",
-  "job": "6dc79777-d59b-4994-87cb-a2a5d5a0136d",
+  "status": "installed",
   "tries": [
    {
     "job": "67c9aa52-5f6e-48e9-a7bf-70c0472f75a5",
@@ -322,12 +333,47 @@
     "problems": [
      "tamanho 1.19"
     ]
+   },
+   {
+    "job": "6dc79777-d59b-4994-87cb-a2a5d5a0136d",
+    "n": 2,
+    "size": 0.968,
+    "eye": 1.0,
+    "step": 0.326,
+    "motion": 0.475,
+    "end": 0.003,
+    "problems": []
    }
-  ]
+  ],
+  "installed": 2
  },
  "harvest_reaper/fidget_scythe": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "8712a335-af61-4a0f-901b-b29dd6f0e318",
+    "n": 1,
+    "size": 0.947,
+    "eye": 0.741,
+    "step": 0.547,
+    "motion": 0.664,
+    "end": 0.008,
+    "problems": [
+     "olho 0.74",
+     "chuvisco 0.55"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "harvest_reaper/fidget_tilt": {
   "status": "pending",
-  "job": "8712a335-af61-4a0f-901b-b29dd6f0e318",
+  "job": "a8ce301f-6c4b-41af-aea2-29fa394858ba",
+  "tries": []
+ },
+ "blight_bull/fidget_snort": {
+  "status": "pending",
+  "job": "1912bbc4-dc58-43bd-85b9-f5fda9cfb3bb",
   "tries": []
  }
 }
