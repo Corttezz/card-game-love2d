@@ -272,7 +272,7 @@ local function flickerOf(L, seed)
     return fi, fr
 end
 
-LuminaireEngine.EMIT = { on = true, intensity = 0.22, radiusK = 0.75, levels = 3, cell = 4, upK = 2.2 }
+LuminaireEngine.EMIT = { on = true, intensity = 0.22, radiusK = 0.75, levels = 255, cell = 1, upK = 2.2 }
 local emit = { shader = nil, ok = nil, img = nil }
 
 local function emitShader()

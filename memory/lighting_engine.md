@@ -13,6 +13,35 @@ noise) + F3 parcial (vagalumes como micro-luzes, gate por LUMINÂNCIA do
 ambiente, cap 14 no escuro) + **F6.1 ENTARDECER POR ANDAR** + **OCLUSÃO POR
 SILHUETA**.
 
+## Luz suave (Out/2026, queixa do dono: "no fim da luz fica quadriculado")
+O fim de toda poça (poste, tocha, braseiro, fogueira, porta, janela) saía em
+blocos de 4 px: a luz era POSTERIZADA (8 degraus + Bayer 4x4) no lightmap de 1/4
+com amostragem nearest, e a poça emissiva (`light_emit.glsl`) tinha 3 degraus
+com Bayer em célula de 4 px. Agora:
+- `light_dither.glsl`: queda (1-d²)² LISA, sem degrau nem Bayer; poça de chão
+  (sy < 0,9) tem contorno orgânico (`LightEngine.POOL_WOBBLE` 0,14, onda angular
+  por `seed`; só encolhe, nunca passa do quad). `levels/dither/ditherAmt` dos
+  submits ficaram sem efeito.
+- Duas passadas de lightmap: `canvas` (duro, nearest) = ambiente + silhuetas
+  chapadas dos oclusores; `softCanvas` (rgba16f, linear) = TODAS as luzes, com
+  os oclusores atingidos (`hitL`) apagando em preto o que vinha de trás. Soma
+  linear = o mesmo painter de antes. `light_cover.glsl` soma o suave com
+  filtro bilinear (pixel inteiro de tela, sem bloco) e o zera onde o texel
+  mais próximo está apagado (borda de oclusor/faixa do horizonte não vaza —
+  sem isso o castelo longe acendia o chão 1 a 4/255, `test_castle_light`).
+- Luz suave posicionada sem `floor` (não anda aos pulos de 4 px na viagem);
+  o lightmap do corpo do monstro (`coverCanvas`) segue nearest e com floor.
+- Micro-luz: sprite 32x32 liso `min(1, 1,6·(1-d²)^1,3)` (energia ≈ o antigo
+  núcleo + anel 45%), filtro linear.
+- `light_emit.glsl`: mesma queda lisa e contorno orgânico; `EMIT.levels=255,
+  cell=1` viram só ruído anti-banding de ±0,5/255 por pixel.
+Trava: `test_light_falloff` (1080p: nenhum degrau acima de 2·rampa local +
+2,5/255 nem subida ao longo de 4 raios de 4 poças e da poça emissiva; o código
+antigo dá 13/255). Capturas: `lovec . test_one screenshot_luz_suave
+<rótulo>[:WxH[:atos]]` → `tools/preview_out/luz_suave/<rótulo>/<res>/`
+(quadro de batalha, `_so_luz` = só a contribuição da luz ×6, recortes 2x/4x da
+borda da poça). Custo medido: +1 troca de canvas e +5 a +25 draws por quadro.
+
 ## F6.1 — entardecer progressivo por andar
 `lightDay`/`lightNight` por bioma em biomes.lua; `WorldRoad.setTimeOfDay(t,
 instant)` (0=dia..1=anoitecer, ease 0.30/s durante a viagem — amanhecer suave
@@ -118,9 +147,10 @@ x=0.23, medição deu 0.46).
   like-for-like: `full1` vs `nolight_full1`.
 
 ## Arquitetura em uma linha
-Canvas de luz ¼ res nearest (rgba8) limpo com `lightAmbient` do bioma (alpha=1!),
-luzes `add` posterizadas (poça de chão: 4 degraus + Bayer 4×4; horizonte/pequenas:
-2 degraus SEM dither), micro-luzes (cap 64, sem shader) para vagalumes/chamas/janelas,
+Canvas de luz ¼ res nearest (rgba8) limpo com `lightAmbient` do bioma (alpha=1!)
+com as silhuetas dos oclusores + canvas SUAVE ¼ res (rgba16f, bilinear) com as
+luzes `add` de queda lisa (desde Out/2026, ver "Luz suave"; antes eram degraus +
+Bayer 4×4, que viravam blocos de 4 px), micro-luzes (cap 64) para vagalumes/chamas/janelas,
 composto com `multiply, premultiplied` + scissor sobre a cena ANTES da UI.
 Multiply-only ⇒ nunca clareia acima da arte (a lição-mãe do projeto).
 

@@ -40,7 +40,7 @@ card-game-love2d/
 │   ├── flash.glsl              # Próprio (full-screen white + ring radial)
 │   ├── booster.glsl            # Próprio (iridescente azul-prata pra packs)
 │   ├── holo.glsl               # Próprio (rare/legendary — multi-banda + sweep + sparkle)
-│   ├── light_dither.glsl       # Próprio (LightEngine — falloff posterizado + dither Bayer 4×4)
+│   ├── light_dither.glsl       # Próprio (LightEngine — queda lisa (1-d²)² + contorno orgânico na poça; soma bilinear no light_cover, sem bloco — memory/lighting_engine.md "Luz suave")
 │   ├── foil.glsl               # Próprio (edition Foil — metálico frio sem rainbow)
 │   └── polychrome.glsl         # Próprio (edition Polychrome — hue cycle saturado). A edition Negative (negative.glsl) saiu em Out/2026
 ├── src/scenes/                 # Scenes extraídas de main.lua (padrão init(deps) + update/draw/input)
