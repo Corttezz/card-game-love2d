@@ -1,5 +1,7 @@
 return {
     fidgets = {
+        { clip = "fidget_blink", fps = 12, weight = 3 },
+        { clip = "fidget_dart", fps = 10, weight = 2 },
     },
     gap = { 2.5, 6 },
     fx = {
