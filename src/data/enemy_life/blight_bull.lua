@@ -12,6 +12,8 @@ return {
     states = {
         poison = { clip = "state_poison", fps = 8 },
         weak = { clip = "state_weak", fps = 8 },
-        enraged = { clip = "state_enraged", fps = 8 },
+        enraged = { clip = "state_enraged", fps = 8, fx = {
+            { kind = "smoke", xr = 0.48, yr = 0.56, rate = 1.40, spread = 0.10, tint = { 0.85, 0.80, 0.74 } },
+        } },
     },
 }

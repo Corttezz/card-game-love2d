@@ -386,4 +386,12 @@ FX = {
 
 BOSSES = ("carrion_king", "tower_lich")
 
-STATE_FX = {}
+STATE_FX = {
+    "blight_bull": {"enraged": [dict(kind="smoke", xr=0.48, yr=0.56, rate=1.4, spread=0.10,
+                                     tint=(0.85, 0.80, 0.74))]},
+    "plague_rats": {"enraged": [dict(kind="smoke", xr=0.70, yr=0.30, rate=0.8, spread=0.20,
+                                     tint=(0.80, 0.78, 0.72))],
+                    "poison": [dict(kind="drips", xr=0.50, yr=0.70, rate=1.0, spread=0.40)]},
+    "wicker_effigy": {"enraged": [dict(kind="embers", xr=0.50, yr=0.50, rate=1.6, spread=0.30)]},
+    "tower_lich": {"enraged": [dict(kind="frost", xr=0.17, yr=0.22, rate=1.2, spread=0.06)]},
+}

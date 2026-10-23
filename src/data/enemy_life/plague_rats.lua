@@ -8,8 +8,12 @@ return {
         { kind = "flies", xr = 0.50, yr = 0.35, rate = 0.80, spread = 0.45 },
     },
     states = {
-        poison = { clip = "state_poison", fps = 8 },
+        poison = { clip = "state_poison", fps = 8, fx = {
+            { kind = "drips", xr = 0.50, yr = 0.70, rate = 1.00, spread = 0.40 },
+        } },
         weak = { clip = "state_weak", fps = 8 },
-        enraged = { clip = "state_enraged", fps = 8 },
+        enraged = { clip = "state_enraged", fps = 8, fx = {
+            { kind = "smoke", xr = 0.70, yr = 0.30, rate = 0.80, spread = 0.20, tint = { 0.80, 0.78, 0.72 } },
+        } },
     },
 }
