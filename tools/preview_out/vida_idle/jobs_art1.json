@@ -765,7 +765,7 @@
   "installed": 1
  },
  "tower_lich/fidget_orb": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "beda6c70-23ee-4450-a8c3-e4ee0e380f4f",
@@ -791,7 +791,8 @@
      "chuvisco 0.46"
     ]
    }
-  ]
+  ],
+  "installed": 2
  },
  "tower_lich/fidget_tilt": {
   "status": "installed",
@@ -1073,8 +1074,7 @@
   "installed": 1
  },
  "wicker_effigy/state_poison": {
-  "status": "pending",
-  "job": "a4ee73dc-927f-47ea-9025-7b7b81130a92",
+  "status": "installed",
   "tries": [
    {
     "job": "6ae09a0d-1ae0-453a-b9f8-a814b6937425",
@@ -1087,8 +1087,21 @@
     "problems": [
      "chuvisco 0.57"
     ]
+   },
+   {
+    "job": "a4ee73dc-927f-47ea-9025-7b7b81130a92",
+    "n": 2,
+    "size": 1.073,
+    "eye": 0.752,
+    "step": 0.602,
+    "motion": 0.663,
+    "end": 0.004,
+    "problems": [
+     "chuvisco 0.60"
+    ]
    }
-  ]
+  ],
+  "installed": 2
  },
  "wicker_effigy/state_weak": {
   "status": "installed",
@@ -1163,13 +1176,54 @@
   "installed": 1
  },
  "carrion_king/state_enraged": {
-  "status": "pending",
-  "job": "bf685d84-6b73-4ece-9a22-c25a6b5a0707",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "bf685d84-6b73-4ece-9a22-c25a6b5a0707",
+    "n": 1,
+    "size": 0.89,
+    "eye": 0.868,
+    "step": 0.654,
+    "motion": 0.739,
+    "end": 0.016,
+    "problems": [
+     "chuvisco 0.65"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "moon_gargoyle/state_poison": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "3dba0693-5db8-45de-92ba-baea4f8718e7",
+    "n": 1,
+    "size": 0.902,
+    "eye": 0.914,
+    "step": 0.543,
+    "motion": 0.763,
+    "end": 0.011,
+    "problems": [
+     "chuvisco 0.54"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "moon_gargoyle/state_weak": {
   "status": "pending",
-  "job": "3dba0693-5db8-45de-92ba-baea4f8718e7",
+  "job": "d11bdb47-aab5-4d1c-8de2-e8c231fdb8a1",
+  "tries": []
+ },
+ "moon_gargoyle/state_enraged": {
+  "status": "pending",
+  "job": "ec496110-bf66-4172-8814-ec3f6529cfef",
+  "tries": []
+ },
+ "ram_cultist/state_poison": {
+  "status": "pending",
+  "job": "0e21d4e3-e911-4c58-b684-8721b82934ac",
   "tries": []
  }
 }
