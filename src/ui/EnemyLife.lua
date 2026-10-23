@@ -560,13 +560,14 @@ local function drawLayer(back, mask)
             local sp = EnemyLife.SPEC[k]
             if (sp.back == true) == back then
                 local age = pmax[i] - plife[i]
-                local a = sp.a * deathK * S.alpha
-                if not sp.orbit then
-                    a = a * math.min(1, age / 0.25) * math.min(1, plife[i] / 0.4)
+                local on = deathK >= 0.5
+                if on and not sp.orbit then
+                    on = age >= 0.12 and plife[i] >= 0.2
                 end
-                if sp.flicker then
-                    a = a * (0.65 + 0.35 * math.sin(age * 17 + pseed[i] * 3))
+                if on and sp.flicker then
+                    on = math.sin(age * 17 + pseed[i] * 3) > -0.7
                 end
+                local a = on and sp.a * S.alpha or 0
                 if a > 0.02 then
                     if mask then
                         love.graphics.setColor(1, 1, 1, 1)

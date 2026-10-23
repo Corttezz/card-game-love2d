@@ -72,11 +72,15 @@ function M.battleShadow(id, tod)
     end
     for _ = 1, 40 do GameplayScene.update(DT) end
     local cv = love.graphics.newCanvas(VW, VH)
+    local oGet = love.timer.getTime
     local function shot()
+        local t0 = oGet()
+        love.timer.getTime = function() return t0 end
         love.graphics.setCanvas(cv)
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.draw()
         love.graphics.setCanvas()
+        love.timer.getTime = oGet
         return cv:newImageData()
     end
     shot():release()

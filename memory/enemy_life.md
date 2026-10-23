@@ -40,6 +40,9 @@ runtime mora em `src/ui/EnemyLife.lua`.
   global, senao mudam a sequencia de quem desenha o cenario e a entrada (o `test_enemy_entrances` ficou
   instavel na sombra da ancora quando o fx usava o gerador global).
 - FX: pool fixo (`EnemyLife.MAX = 128`, arrays paralelos, sem tabela por particula, sem closure no laco).
+  Alfa BINARIO por particula: ou desenha com o alfa do tipo, ou nao desenha (nasce aos 0,12 s, some nos
+  ultimos 0,2 s, pisca liga/desliga, morte apaga na metade dos 0,5 s). Sem pixel quase transparente na borda
+  do corpo, que o anel do `test_enemy_entrances` leria como luz vazando.
   Coordenadas em PIXEL DE ARTE relativas a pose de repouso (o corpo que investe nao arrasta a fumaca); desenho
   encaixado na grade de pixel do sprite (1 particula = 1 ou 2 px de arte). Cor = cor do tipo x
   `SceneGrade.color("enemy", ...)` (brasa/brilho/gelo so parcialmente graduados). Vento =
