@@ -13,6 +13,10 @@ EYES = {
         {"box": (49, 7, 56, 14), "line": 10, "lid": (40, 10), "lid2": (44, 9)},
         {"box": (27, 8, 31, 13), "line": 10, "lid": (40, 10), "lid2": (44, 9)},
     ],
+    "blood_duke": [
+        {"small": True, "box": (35, 15, 37, 17), "lid": (37, 13), "ink": (54, 40, 62, 255)},
+        {"small": True, "box": (40, 15, 42, 17), "lid": (39, 13), "ink": (54, 40, 62, 255)},
+    ],
 }
 
 
@@ -20,6 +24,17 @@ def lid_frame(base, eyes, amount):
     a = base.copy()
     for e in eyes:
         x0, y0, x1, y1 = e["box"]
+        if e.get("small"):
+            skin = base[e["lid"][1], e["lid"][0]].copy()
+            rows = y1 - y0
+            shut = rows if amount >= 1 else max(1, rows // 2)
+            for y in range(y0, y0 + shut):
+                for x in range(x0, x1):
+                    a[y, x] = skin
+            if amount >= 1:
+                for x in range(x0, x1):
+                    a[y1 - 1, x] = e.get("ink", (40, 30, 50, 255))
+            continue
         top = base[e["lid"][1], e["lid"][0]].copy()
         bot = base[e["lid2"][1], e["lid2"][0]].copy()
         stop = y0 + int(round((e["line"] - y0) * amount)) if amount < 1 else e["line"]
