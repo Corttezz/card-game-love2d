@@ -335,7 +335,7 @@ STATE_DETAIL = {
                        "it grips the scythe tight and leans in, wheat straw bristling"),
     "blight_bull": ("the head drops low and it wheezes", "the head and horns hang low, the legs stay planted",
                     "the head lowers to charge, nostrils flaring, it stamps a front hoof"),
-    "wicker_effigy": ("the fires shrink and sputter", "the fires burn low and the arms hang heavy",
+    "wicker_effigy": ("the three orange fires shrink and sputter low, the wicker stays dark brown, no white, no smoke, no sparks","the fires burn low and the arms hang heavy",
                       "the fires blaze higher and the twig claws flex; the wicker stays dark brown"),
     "carrion_king": ("the beak hangs open", "the wings droop down and the crowned head sags",
                      "the wings flare out and the beak opens in a silent scream"),
