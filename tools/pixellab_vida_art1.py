@@ -114,6 +114,9 @@ def poll(job, dest):
     if not (mN and mU):
         return "error"
     os.makedirs(dest, exist_ok=True)
+    mC = re.search(r"charged:\s*(\d+)", t)
+    with open(dest + "_charged.txt", "w") as f:
+        f.write(mC.group(1) if mC else "?")
     for i in range(int(mN.group(1))):
         with open(os.path.join(dest, f"{i}.png"), "wb") as f:
             f.write(F.fetch(f"{mU.group(1)}?index={i}"))
