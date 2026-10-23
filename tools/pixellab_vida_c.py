@@ -343,6 +343,18 @@ def install(eid, clip, n, fix=None):
                 im = fix_white(eid, im)
             if fix and fix.get("eyes"):
                 im = fix_eyes(eid, im)
+            if fix and fix.get("warm2green"):
+                a = np.asarray(im).astype(np.int32).copy()
+                warm = (a[..., 0] > a[..., 1] + 40) & (a[..., 3] > 0)
+                m = np.zeros_like(warm)
+                for bx in fix["warm2green"].split(";"):
+                    x0, y0, x1, y1 = (int(v) for v in bx.split(","))
+                    m[y0:y1, x0:x1] = warm[y0:y1, x0:x1]
+                r = a[..., 0].copy()
+                a[..., 0] = np.where(m, a[..., 1] // 2, a[..., 0])
+                a[..., 1] = np.where(m, r, a[..., 1])
+                a[..., 2] = np.where(m, (a[..., 2] + r // 3), a[..., 2])
+                im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
             if fix and fix.get("lock"):
                 for bx in fix["lock"].split(";"):
                     im = fix_lock(eid, im, tuple(int(v) for v in bx.split(",")))
