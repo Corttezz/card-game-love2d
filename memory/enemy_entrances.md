@@ -124,6 +124,24 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
 - **Ordem na crista**: o `drawEncounterBehind` vinha ANTES do `drawPropsBehind`, entao a estaca era pintada por cima do
   espantalho. As ancoras sairam do `drawPropsBehind` e sao desenhadas por `EE.drawBehindAnchors` no comeco do
   `drawEncounterBehind`, antes do corpo. Na frente a ordem ja vinha do z (ancora 0,25 atras do corpo).
+- **"Rastro" / borrao de luz que acompanha o formato de todo monstro (23/Out)**: era LUZ, nao efeito de entrada. Duas
+  causas medidas na cena real (anel de 2 a 6 px fora da silhueta exata, com e sem o monstro, sem UI):
+  1. **Mascara fora de registro**: o mundo e desenhado sob um zoom leve (translate ~(-6,-3,5), escala 1,007). O sprite
+     passa por essa transformacao, mas o oclusor do monstro (e a mascara de resolucao cheia do `light_cover`) era
+     desenhado em coordenadas ja transformadas e arredondadas (`transformPoint` + `floor`), caindo 1 a 2 px fora: o
+     lightmap "levantado" vazava de um lado do contorno. Agora o `fn` do oclusor reaplica a MESMA transformacao (translate +
+     scale capturados no desenho) e desenha nas coordenadas locais do sprite (`EnemyRenderer` e encontro do `WorldRoad`):
+     mascara e sprite batem 0 px (`tools/probe_mask_offset.lua`).
+  2. **Emissivos do monstro** (olhos, chamas) entravam no lightmap da cena e clareavam o chao/ceu em volta. Agora vao so
+     para o lightmap do corpo (`LightEngine.submitMicro(..., bodyOnly = true)`): a mascara os limita aos pixels do sprite.
+  Antes/depois no mesmo medidor: anjo 6,5 -> ~0,1 %, dullahan 8,7 -> ~0,1 %, diabrete 8,4 -> < 1 %. Sobra so ruido de
+  quadro (<1 %). A erosao da mascara (`COVER_ERODE_PX`) ficou em 0: com o registro certo ela so escureceria a borda.
+  Medidor `tools/probe_enemy_halo.lua [id|all]` (env `PROBE_PHASES`, `PROBE_CRT`, `PROBE_RES`, relogio congelado entre
+  as tomadas para o CRT); trava em `test_enemy_entrances` (anjo e diabrete, entrada/batalha/ataque, CRT ligado, <= 1 %).
+- Junto: rajada de particula (`pulse_max`) gasta nunca morria no `ParticlesManager` (vazamento, inclusive do CardFeel):
+  `engine/Particles.lua` marca morta quando emitiu tudo e esvaziou. Rampas de clima da entrada decaem no
+  `WorldRoad.update` (`EE.tick`), nao mais no desenho. Trava: 2 s apos o handoff do anjo, harpia e ceifador, nada da
+  entrada vivo (`EE.liveParticles`, rampas, vagalumes).
 - Beats de som que o motor dispara (contrato com `test_entrance_sfx`): andar stop/step1..3, investida skid/stop, brotar
   rise/stop, acordar wake/land(so espantalho e gargula, 50 % do assentamento)/stop, mergulho start/stop, condensar
   start(enxame em dur-2 s; sem enxame em u1)/form(u1, uma vez)/stop, flanco start/stop/hop, montar mid/stop; investida tambem `charge` (uma vez, quando o corpo passa 2 unidades da crista correndo).

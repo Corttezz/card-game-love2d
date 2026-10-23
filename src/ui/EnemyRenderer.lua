@@ -26,7 +26,7 @@ local function submitEmissives(spriteId, sx, sy, iw, ih, scale, z, boost)
             a.r * ih * scale,
             a.color,
             (a.intensity or 0.35) * pulse * (boost or 1),
-            z)
+            z, true)
     end
 end
 
@@ -1242,6 +1242,10 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     do
         local oxT, oyT = love.graphics.transformPoint(drawX, drawY)
+        local tx, ty = love.graphics.transformPoint(0, 0)
+        local ux, uy = love.graphics.transformPoint(1, 1)
+        ux, uy = ux - tx, uy - ty
+        lastFoot.tx, lastFoot.ty, lastFoot.ux, lastFoot.uy = tx, ty, ux, uy
         local animRef = hasAnim and currentAnim or nil
         local staticRef = nil
         if not animRef then
@@ -1257,12 +1261,16 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 flatColor = flatColor, cover = true,
                 bx = oxT, by = oyT, w = iw * scale, h = ih * scale,
                 fn = function()
+                    love.graphics.push()
+                    love.graphics.translate(tx, ty)
+                    love.graphics.scale(ux, uy)
                     if animRef then
                         local r, g, b = love.graphics.getColor()
-                        animRef:draw(oxT, oyT, scale, { r, g, b, 1 })
+                        animRef:draw(drawX, drawY, scale, { r, g, b, 1 })
                     else
-                        love.graphics.draw(staticRef, oxT, oyT, 0, scale, scale)
+                        love.graphics.draw(staticRef, drawX, drawY, 0, scale, scale)
                     end
+                    love.graphics.pop()
                 end,
             })
         end

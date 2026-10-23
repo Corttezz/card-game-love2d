@@ -1749,6 +1749,7 @@ local prewarmTick
 function WorldRoad.update(dt)
     WorldRoad._time = WorldRoad._time + dt
     prewarmTick()
+    require("src.ui.EnemyEntrance").tick(dt)
 
     if #WorldRoad._props == 0 then
         populate()
@@ -4897,7 +4898,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     EE.drawUnder(e, g, w, cx, sy, s, t, lift)
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = sy - e.ih * s + footY - lift
-    if WorldRoad._traceEnemy then WorldRoad._traceEnemy(dx0, dy0, "encounter", lat) end
+    if WorldRoad._traceEnemy then WorldRoad._traceEnemy(dx0, dy0, "encounter", lat, s) end
     if e.anim then
         local drawn = ShadowEngine.silhouette(shX, sy - 1 + lift * 0.16, { smear = e.iw * s * 0.035 * (es.smearK or 1),
                 widthK = es.widthK, lenK = es.lenK, alphaK = (es.alphaK or 1) * pz.shadowA,
@@ -4936,11 +4937,18 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     local flatColor = Scene.Grade.flatColor("enemy", LMG.fc)
     if e.anim and (pz.alpha or 1) < 0.5 then
     elseif e.anim then
+        local tx, ty = love.graphics.transformPoint(0, 0)
+        local ux, uy = love.graphics.transformPoint(1, 1)
+        ux, uy = ux - tx, uy - ty
         LightEngine.submitOccluder({
             z = rel + 6, flatColor = flatColor, cover = true, bx = oxT, by = oyT, w = e.iw * s, h = e.ih * s,
             fn = function()
                 local r, g2, b, a = love.graphics.getColor()
-                e.anim:draw(oxT, oyT, s, { r, g2, b, a })
+                love.graphics.push()
+                love.graphics.translate(tx, ty)
+                love.graphics.scale(ux, uy)
+                e.anim:draw(dx0, dy0, s, { r, g2, b, a })
+                love.graphics.pop()
             end,
         })
     else
@@ -4957,7 +4965,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
             LightEngine.submitMicro(
                 oxT + a.xr * e.iw * s, oyT + a.yr * e.ih * s,
                 a.r * e.ih * s, a.color,
-                (a.intensity or 0.35) * 0.8 * pulse * (pz.alpha or 1), math.min(rel, 9))
+                (a.intensity or 0.35) * 0.8 * pulse * (pz.alpha or 1), math.min(rel, 9), true)
         end
     end
 end

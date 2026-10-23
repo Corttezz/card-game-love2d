@@ -309,11 +309,21 @@ local function burst(name, k)
     local ok, PM = pcall(require, "engine.ParticlesManager")
     if not ok then return end
     local uk = require("src.ui.UiScale").k()
-    PM.spawn(st.scrX / uk, (st.scrY - 6) / uk, 0, 0, {
+    local ps = PM.spawn(st.scrX / uk, (st.scrY - 6) / uk, 0, 0, {
         timer = 0.012, lifespan = cfg.life, scale = 0.38, speed = cfg.speed * (k or 1),
         colours = COLOURS[name], pulse_max = math.floor(cfg.n * (k or 1) + 0.5),
         vel_variation = 0.7, gravity = cfg.gravity, layer = 7,
     })
+    if ps then EE._spawned[ps] = true end
+end
+
+EE._spawned = setmetatable({}, { __mode = "k" })
+function EE.liveParticles()
+    local n = 0
+    for ps in pairs(EE._spawned) do
+        if ps:isDead() then EE._spawned[ps] = nil else n = n + 1 end
+    end
+    return n
 end
 
 local wx = { rain = 0, blizzard = 0, ff = 0, dim = 0 }
@@ -358,11 +368,11 @@ end
 
 function EE.wx(name) return wx[name] or 0 end
 
+function EE.tick(dt)
+    if not st then wxTick(math.min(dt or 0, 0.1)) end
+end
+
 function EE.dimAmbient(amb)
-    if not st then
-        local dt = love.timer and love.timer.getDelta() or 1 / 60
-        wxTick(math.min(dt, 0.1))
-    end
     if wx.dim <= 0 then return amb end
     local k = 1 - EE.WX_DIM * wx.dim
     wxAmb[1], wxAmb[2], wxAmb[3] = (amb[1] or 1) * k, (amb[2] or 1) * k, (amb[3] or 1) * k
@@ -900,6 +910,7 @@ function EE.begin(enc, opts)
         end
     end
     S.view = setmetatable({ st = S, currentFrame = 1, enemyId = id, entrance = true }, View)
+    EE._spawned = setmetatable({}, { __mode = "k" })
     S.img = S.idleImg or S.staticImg
     S.stride = EE.strideUnits(enc)
     st = S

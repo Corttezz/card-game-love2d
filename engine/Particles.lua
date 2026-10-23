@@ -133,7 +133,8 @@ function Particles:update(dt)
     end
 
     if (self.fade_alpha >= 1 and #self.particles == 0)
-       or (self.dead and #self.particles == 0) then
+       or (self.dead and #self.particles == 0)
+       or (self.pulse_max and self.pulsed >= self.pulse_max and #self.particles == 0) then
         self.dead = true
     end
 end

@@ -9,6 +9,45 @@ M.LAST_FRAME_TOL = 0.02
 M.LEG_MAX_HALF_S = 10
 M.SHADOW_CASES = { { "cursed_scarecrow", 0.85 }, { "cursed_scarecrow", 0.62 }, { "moon_gargoyle", 0.85 } }
 M.SHADOW_MIN_PX = 1500
+M.HALO_CASES = { { "fallen_angel", 0.85 }, { "ember_imp", 0.65 } }
+M.HALO_MARGIN = 0.01
+M.AFTER_HANDOFF_S = 2.0
+
+function M.afterHandoff(id)
+    local Entradas = require("tools.entradas")
+    local GameplayScene = require("src.scenes.GameplayScene")
+    local WorldRoad = require("src.ui.WorldRoad")
+    local EE = require("src.ui.EnemyEntrance")
+    local list = Entradas.roster()
+    local DT = 1 / 30
+    local ctx = Entradas.mount(list[Entradas.indexOf(list, id)], { dt = DT })
+    Entradas.startEntrance(ctx, DT)
+    for _ = 1, 700 do
+        GameplayScene.update(DT)
+        if not WorldRoad.isTraveling() then break end
+    end
+    local CP = require("src.systems.CardParticles")
+    for _ = 1, math.floor(M.AFTER_HANDOFF_S / DT) do
+        GameplayScene.update(DT)
+        CP.update(DT)
+    end
+    local info = {}
+    for ps in pairs(EE._spawned) do
+        if not ps:isDead() then
+            info[#info + 1] = string.format("%d/%s n%d clk%.1f life%.1f", ps.pulsed, tostring(ps.pulse_max), #ps.particles,
+                ps.clock, ps.lifespan)
+        end
+    end
+    M._lastInfo = table.concat(info, "; ")
+    local wxLeft = 0
+    for _, k in ipairs({ "rain", "blizzard", "ff", "dim" }) do wxLeft = wxLeft + EE.wx(k) end
+    return {
+        active = EE.isActive(),
+        wx = wxLeft,
+        particles = EE.liveParticles(),
+        ffMute = require("engine.WeatherEngine").ffMute or 0,
+    }
+end
 
 local function luma(r, g, b) return 0.299 * r + 0.587 * g + 0.114 * b end
 
@@ -525,6 +564,33 @@ function M.run()
                 okO and tostring(res.worstAt) or tostring(res)),
                 okO and res.samples >= 5 and res.battle >= 3 and res.worst == 0)
         end
+    end
+    WorldRoad._props = {}
+    EE.reset()
+    do
+        local Halo = require("tools.probe_enemy_halo")
+        local o = { love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions }
+        love.graphics.getWidth = function() return Halo.VW end
+        love.graphics.getHeight = function() return Halo.VH end
+        love.graphics.getDimensions = function() return Halo.VW, Halo.VH end
+        Halo.CRT = false
+        for _, c in ipairs(M.HALO_CASES) do
+            for _, ph in ipairs({ "entrada", "batalha", "ataque" }) do
+                local okH, r = pcall(Halo.case, c[1], c[2], ph)
+                t:truthy(string.format("%s tod %.2f %s: sem borrao de luz fora do contorno (%s, margem %.1f%%)", c[1], c[2], ph,
+                    okH and r and string.format("anel %.2f%% mais claro com luz, %.2f%% sem luz", r.lit * 100, r.unlit * 100) or tostring(r),
+                    M.HALO_MARGIN * 100),
+                    okH and r ~= nil and r.ring > 0 and r.lit <= r.unlit + M.HALO_MARGIN)
+            end
+        end
+        for _, id in ipairs({ "fallen_angel", "storm_harpy", "harvest_reaper" }) do
+            local okA, r = pcall(M.afterHandoff, id)
+            t:truthy(string.format("%s: %.0f s apos o handoff nada da entrada vivo (%s)", id, M.AFTER_HANDOFF_S,
+                okA and string.format("ativa=%s clima=%.2f particulas=%d vagalumes=%.2f %s", tostring(r.active), r.wx,
+                    r.particles, r.ffMute, r.particles > 0 and M._lastInfo or "") or tostring(r)),
+                okA and not r.active and r.wx == 0 and r.particles == 0 and r.ffMute == 0)
+        end
+        love.graphics.getWidth, love.graphics.getHeight, love.graphics.getDimensions = o[1], o[2], o[3]
     end
     WorldRoad._props = {}
     EE.reset()

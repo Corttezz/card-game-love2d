@@ -3,6 +3,7 @@ local Debug = require("src.core.Debug")
 local LightEngine = {}
 
 LightEngine.SCALE = 4
+LightEngine.COVER_ERODE_PX = 0
 LightEngine.debugAmbientScale = 1
 LightEngine.debugNoLights = false
 
@@ -164,7 +165,7 @@ function LightEngine.submit(spec)
     end
 end
 
-function LightEngine.submitMicro(x, y, radius, color, intensity, z)
+function LightEngine.submitMicro(x, y, radius, color, intensity, z, bodyOnly)
     if not frameActive or LightEngine.debugNoLights then return end
     if #microQueue >= MAX_MICRO then return end
     pool.nm = pool.nm + 1
@@ -173,6 +174,7 @@ function LightEngine.submitMicro(x, y, radius, color, intensity, z)
     m.x, m.y, m.r = x, y, radius or 8
     m.color, m.i = color or pool.white, intensity or 1
     m.z = z or -1
+    m.bodyOnly = bodyOnly and true or nil
     microQueue[#microQueue + 1] = m
 end
 
@@ -202,6 +204,7 @@ local function drawEntries(entries, target, withCover)
     love.graphics.setBlendMode("add", "alphamultiply")
     for _, e in ipairs(entries) do
         if e.occ and e.cover and not withCover then
+        elseif e.micro and e.bodyOnly and not withCover then
         elseif e.occ then
             love.graphics.setBlendMode("alpha", "alphamultiply")
             local cr, cg, cb = ambient[1], ambient[2], ambient[3]
@@ -349,6 +352,7 @@ function LightEngine.composite(x, y, w, h)
         local ms = pool.ms
         ms[1], ms[2] = maskCanvas:getWidth(), maskCanvas:getHeight()
         coverShader:send("maskSize", ms)
+        coverShader:send("erodePx", LightEngine.COVER_ERODE_PX)
     end
     love.graphics.draw(canvas, 0, 0, 0, S, S)
     love.graphics.setShader()
@@ -360,6 +364,7 @@ end
 function LightEngine._lastEntry() return queue[#queue] end
 function LightEngine._entryAt(i) return queue[i] end
 function LightEngine.queued() return #queue end
+function LightEngine._maskCanvas() return maskCanvas end
 function LightEngine.microQueued() return #microQueue end
 function LightEngine._microAt(i) return microQueue[i] end
 
