@@ -2,6 +2,7 @@ return {
     fidgets = {
         { clip = "fidget_ruffle", fps = 10, weight = 2 },
         { clip = "fidget_bow", fps = 9, weight = 1 },
+        { clip = "fidget_sword", fps = 9, weight = 1 },
     },
     gap = { 4.5, 9.5 },
     states = {

@@ -3,6 +3,7 @@ return {
         { clip = "fidget_look", fps = 10, weight = 2 },
         { clip = "fidget_hunch", fps = 10, weight = 1 },
         { clip = "fidget_blink", fps = 12, weight = 3 },
+        { clip = "fidget_hat", fps = 9, weight = 1 },
     },
     gap = { 4.0, 9.0 },
     states = {
