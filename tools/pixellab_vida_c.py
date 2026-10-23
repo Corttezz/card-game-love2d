@@ -335,6 +335,13 @@ def install(eid, clip, n, fix=None):
             im = Image.open(seq[i]).convert("RGBA")
             if fix and str(i) in fix:
                 im = Image.open(os.path.join(ROOT, fix[str(i)])).convert("RGBA")
+            if fix and fix.get("white"):
+                im = fix_white(eid, im)
+            if fix and fix.get("eyes"):
+                im = fix_eyes(eid, im)
+            if fix and fix.get("lock"):
+                for bx in fix["lock"].split(";"):
+                    im = fix_lock(eid, im, tuple(int(v) for v in bx.split(",")))
             im.save(out)
     for x in os.listdir(dest):
         if x.endswith(".png") and x != "0.png":
@@ -345,6 +352,92 @@ def install(eid, clip, n, fix=None):
     shutil.rmtree(tmp)
     final_strip(eid, clip)
     print(f"[ok] instalado {eid}/{clip} t{n}: {len(seq)} quadros", flush=True)
+
+
+def fix_white(eid, im):
+    base = load(idle0(eid))
+    a = np.asarray(im).astype(np.int32).copy()
+    white = (a[..., :3].min(axis=2) > 190) & (a[..., 3] > 0)
+    bw = (base[..., :3].min(axis=2) > 190) & (base[..., 3] > 0)
+    near = np.zeros_like(bw)
+    for dy in range(-3, 4):
+        for dx in range(-3, 4):
+            near |= np.roll(np.roll(bw, dy, 0), dx, 1)
+    bad = white & ~near
+    a[bad] = 0
+    op = a[..., 3] > 0
+    nb = np.zeros(op.shape, np.int32)
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            if dx or dy:
+                nb += np.roll(np.roll(op, dy, 0), dx, 1)
+    a[op & (nb <= 1)] = 0
+    return Image.fromarray(a.astype(np.uint8), "RGBA")
+
+
+def glow_mask(a):
+    rgb = a[..., :3]
+    return (rgb.max(axis=2) > 150) & ((rgb.max(axis=2) - rgb.min(axis=2)) > 60) & (a[..., 3] > 0)
+
+
+def fix_eyes(eid, im):
+    base = load(idle0(eid))
+    a = np.asarray(im).astype(np.int32).copy()
+    h, w = base.shape[:2]
+    for xr, yr, r in emissive_boxes(eid):
+        cx, cy, rr = int(xr * w), int(yr * h), max(3, int(r * w))
+        x0, x1, y0, y1 = max(0, cx - rr), min(w, cx + rr + 1), max(0, cy - rr), min(h, cy + rr + 1)
+        hx0, hx1, hy0, hy1 = max(0, cx - 9), min(w, cx + 10), max(0, cy - 9), min(h, cy + 10)
+        tpl = base[hy0:hy1, hx0:hx1]
+        best, bd = None, None
+        for dy in range(-5, 6):
+            for dx in range(-5, 6):
+                if hy0 + dy < 0 or hx0 + dx < 0 or hy1 + dy > h or hx1 + dx > w:
+                    continue
+                reg = a[hy0 + dy:hy1 + dy, hx0 + dx:hx1 + dx]
+                d = int(np.abs(reg - tpl).sum())
+                if bd is None or d < bd:
+                    best, bd = (dx, dy), d
+        if best is None:
+            continue
+        dx, dy = best
+        src = base[y0:y1, x0:x1]
+        m = glow_mask(src)
+        ys, xs = np.nonzero(m)
+        for yy, xx in zip(ys, xs):
+            ty, tx = y0 + yy + dy, x0 + xx + dx
+            if 0 <= ty < h and 0 <= tx < w and a[ty, tx, 3] > 0:
+                a[ty, tx] = src[yy, xx]
+    return Image.fromarray(a.astype(np.uint8), "RGBA")
+
+
+def best_shift(base, a, box, r=5):
+    x0, y0, x1, y1 = box
+    h, w = base.shape[:2]
+    tpl = base[y0:y1, x0:x1]
+    best, bd = (0, 0), None
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            if y0 + dy < 0 or x0 + dx < 0 or y1 + dy > h or x1 + dx > w:
+                continue
+            reg = a[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
+            d = int(np.abs(reg - tpl).sum())
+            if bd is None or d < bd:
+                best, bd = (dx, dy), d
+    return best
+
+
+def fix_lock(eid, im, box):
+    base = load(idle0(eid))
+    a = np.asarray(im).astype(np.int32).copy()
+    x0, y0, x1, y1 = box
+    dx, dy = best_shift(base, a, box)
+    src = base[y0:y1, x0:x1]
+    m = src[..., 3] > 0
+    tgt = a[y0 + dy:y1 + dy, x0 + dx:x1 + dx]
+    tgt[m] = src[m]
+    a[y0 + dy:y1 + dy, x0 + dx:x1 + dx] = tgt
+    return Image.fromarray(a.astype(np.uint8), "RGBA")
 
 
 def frames_of(eid, clip):
