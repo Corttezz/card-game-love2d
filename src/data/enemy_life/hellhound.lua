@@ -9,4 +9,7 @@ return {
         { kind = "embers", xr = 0.9, yr = 0.1, rate = 0.6, spread = 0.05, dir = "up" },
         { kind = "smoke", xr = 0.16, yr = 0.4, rate = 0.5, spread = 0.05, dir = "up" },
     },
+    states = {
+        poison = { clip = "state_poison", fps = 8 },
+    },
 }
