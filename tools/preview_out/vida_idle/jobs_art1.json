@@ -256,7 +256,7 @@
   "installed": 1
  },
  "cursed_scarecrow/fidget_claws": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "3a093b2c-53c8-4434-bf2a-f11d95700145",
@@ -268,11 +268,22 @@
     "end": 0.004,
     "problems": []
    }
-  ]
+  ],
+  "installed": 1
  },
  "hollow_farmer/fidget_grip": {
   "status": "pending",
   "job": "f669c690-5186-43fa-9bd6-90a05c63d378",
+  "tries": []
+ },
+ "plague_rats/fidget_sniff": {
+  "status": "pending",
+  "job": "c91f71ed-d284-4032-85ac-048e00872810",
+  "tries": []
+ },
+ "plague_rats/fidget_squirm": {
+  "status": "pending",
+  "job": "67c9aa52-5f6e-48e9-a7bf-70c0472f75a5",
   "tries": []
  }
 }
