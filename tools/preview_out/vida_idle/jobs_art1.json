@@ -714,8 +714,7 @@
   "installed": 1
  },
  "storm_griffin/fidget_screech": {
-  "status": "pending",
-  "job": "8f5b41f8-558a-49e7-a066-d66f17021371",
+  "status": "review",
   "tries": [
    {
     "job": "13b27162-74c1-46ed-aeb5-e701fc213545",
@@ -728,6 +727,18 @@
     "problems": [
      "olho 0.39",
      "chuvisco 0.46"
+    ]
+   },
+   {
+    "job": "8f5b41f8-558a-49e7-a066-d66f17021371",
+    "n": 2,
+    "size": 0.979,
+    "eye": 0.386,
+    "step": 0.383,
+    "motion": 0.535,
+    "end": 0.026,
+    "problems": [
+     "olho 0.39"
     ]
    }
   ]
@@ -771,8 +782,49 @@
   ]
  },
  "tower_lich/fidget_tilt": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "cf115bcc-f5f8-4219-a00f-8247f72fcb7d",
+    "n": 1,
+    "size": 1.08,
+    "eye": 0.743,
+    "step": 0.536,
+    "motion": 0.594,
+    "end": 0.007,
+    "problems": [
+     "olho 0.74",
+     "chuvisco 0.54"
+    ]
+   }
+  ]
+ },
+ "cursed_scarecrow/state_poison": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "13795955-f6e4-4ddd-b23a-f5be4ad4dc4d",
+    "n": 1,
+    "size": 1.118,
+    "eye": 0.801,
+    "step": 0.542,
+    "motion": 0.676,
+    "end": 0.004,
+    "problems": [
+     "chuvisco 0.54"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "cursed_scarecrow/state_weak": {
   "status": "pending",
-  "job": "cf115bcc-f5f8-4219-a00f-8247f72fcb7d",
+  "job": "d4b63cea-b9b7-4f1f-8b32-f3dea52dcc71",
+  "tries": []
+ },
+ "cursed_scarecrow/state_enraged": {
+  "status": "pending",
+  "job": "bbdd6e6a-2b7e-4a40-ba04-bc481736a338",
   "tries": []
  }
 }

@@ -301,8 +301,9 @@ SPECS = {
         idle=None,
         fidgets={
             "fidget_orb": dict(frames=10, action=(
-                "raises the staff a little and the orb glows brighter for a moment, then lowers "
-                "it back and the orb dims to normal")),
+                "lifts the staff a few pixels and the orb's inner swirl turns slowly; only the "
+                "orb changes, a little brighter pale blue, it never turns white, the lich's body, "
+                "face and crown never light up, no glow, no halo; then the staff lowers back")),
             "fidget_tilt": dict(frames=10, action=(
                 "tilts its crowned skull head slowly to one side, staring, then back")),
             "fidget_hand": dict(frames=10, action=(
