@@ -108,7 +108,18 @@ def submit(task):
             "last_frame_base64": b64(idle0_path(eid)),
             "frame_count": task.get("frames") or sp["frames"],
             "seed": task["seed"]}
-    text = F.tool_text(F.rpc("tools/call", {"name": "animate_image", "arguments": args}))
+    name = "animate_image"
+    if task.get("tool") == "pmm":
+        name = "animate_image_pixminimax"
+        fc = args.pop("frame_count")
+        args["frame_count"] = max(4, (fc + 3) // 4 * 4)
+        args["description"] = args.pop("action")
+        args["direction"] = "south"
+        args["view"] = "side"
+        keep = F.ENEMIES.get(eid, {}).get("keep", "")
+        if keep:
+            args["subject_description"] = keep[:300]
+    text = F.tool_text(F.rpc("tools/call", {"name": name, "arguments": args}))
     m = re.search(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", text)
     if not m:
         return None, text[:300]
@@ -389,12 +400,15 @@ def queue(args):
                 pend.extend(json.load(fh))
     extra = ""
     frames = None
+    tool = None
     items = []
     for a in args:
         if a.startswith("extra="):
             extra = a[6:]
         elif a.startswith("frames="):
             frames = int(a[7:])
+        elif a.startswith("tool="):
+            tool = a[5:]
         else:
             items.append(a)
     new = []
@@ -404,7 +418,7 @@ def queue(args):
         for c in clips:
             t = max(next_t(jobs + pend + new, eid, c), 1)
             new.append(dict(eid=eid, clip=c, t=t, seed=7000 + 131 * t + len(c) * 17 + SPECS[eid]["act"],
-                            status="queued", extra=extra, frames=frames))
+                            status="queued", extra=extra, frames=frames, tool=tool))
     os.makedirs(INBOX, exist_ok=True)
     with open(os.path.join(INBOX, f"q{int(time.time() * 1000)}.json"), "w") as f:
         json.dump(new, f)
