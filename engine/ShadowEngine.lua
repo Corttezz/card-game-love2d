@@ -13,6 +13,7 @@ local frame = {
     cx = 0, cy = 0, R = 1, D = 1, clip = false,
 }
 function ShadowEngine.setTint(r, g, b) frame.tr, frame.tg, frame.tb = r or 0, g or 0, b or 0 end
+function ShadowEngine.getTint() return frame.tr, frame.tg, frame.tb end
 function ShadowEngine.getClip() return frame.cx, frame.cy, frame.R, frame.D end
 function ShadowEngine.setClip(cx, cy, R, D)
     frame.cx, frame.cy, frame.R, frame.D = cx, cy, R, math.max(1, D)
