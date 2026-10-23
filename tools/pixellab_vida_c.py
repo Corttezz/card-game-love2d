@@ -247,6 +247,8 @@ def finish(d):
     with open(os.path.join(d, "meta.json")) as f:
         meta = json.load(f)
     meta["metrics"] = m
+    mc = re.search(r"charged:\s*(\d+)", resp or "")
+    meta["charged"] = int(mc.group(1)) if mc else None
     with open(os.path.join(d, "meta.json"), "w") as f:
         json.dump(meta, f, indent=1)
     act = S.ACT[eid]
