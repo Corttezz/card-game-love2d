@@ -272,18 +272,62 @@
   "installed": 1
  },
  "hollow_farmer/fidget_grip": {
-  "status": "pending",
-  "job": "f669c690-5186-43fa-9bd6-90a05c63d378",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "f669c690-5186-43fa-9bd6-90a05c63d378",
+    "n": 1,
+    "size": 0.967,
+    "eye": 1.0,
+    "step": 0.451,
+    "motion": 0.563,
+    "end": 0.001,
+    "problems": [
+     "chuvisco 0.45"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "plague_rats/fidget_sniff": {
   "status": "pending",
-  "job": "c91f71ed-d284-4032-85ac-048e00872810",
-  "tries": []
+  "job": "19ae33b9-2a5b-431b-b7eb-3cfa9822d9f8",
+  "tries": [
+   {
+    "job": "c91f71ed-d284-4032-85ac-048e00872810",
+    "n": 1,
+    "size": 1.141,
+    "eye": 1.0,
+    "step": 0.161,
+    "motion": 0.256,
+    "end": 0.002,
+    "problems": [
+     "tamanho 1.14"
+    ]
+   }
+  ]
  },
  "plague_rats/fidget_squirm": {
   "status": "pending",
-  "job": "67c9aa52-5f6e-48e9-a7bf-70c0472f75a5",
+  "job": "6dc79777-d59b-4994-87cb-a2a5d5a0136d",
+  "tries": [
+   {
+    "job": "67c9aa52-5f6e-48e9-a7bf-70c0472f75a5",
+    "n": 1,
+    "size": 1.192,
+    "eye": 1.0,
+    "step": 0.319,
+    "motion": 0.447,
+    "end": 0.001,
+    "problems": [
+     "tamanho 1.19"
+    ]
+   }
+  ]
+ },
+ "harvest_reaper/fidget_scythe": {
+  "status": "pending",
+  "job": "8712a335-af61-4a0f-901b-b29dd6f0e318",
   "tries": []
  }
 }
