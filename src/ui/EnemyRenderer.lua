@@ -1019,6 +1019,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                 liftK = lift / math.max(1, ih * scale), hover = pose.hover,
                 bob = reducedMotion() and 0 or pose.bob,
                 fade = 1 - contactK, alphaK = sceneShadowA,
+                groundR = opts and opts.groundR, maxY = opts and opts.shadowMaxY,
             })
         end
         local footW, footCx = nil, nil

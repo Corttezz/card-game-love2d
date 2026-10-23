@@ -3,33 +3,63 @@ local Debug = require("src.core.Debug")
 local FloatShadow = {}
 
 FloatShadow.ENABLED = true
-FloatShadow.FLAT = 0.12
-FloatShadow.MIN_ROWS = 8
+FloatShadow.DEPTH = 0.20
+FloatShadow.DEPTH_W = 0.10
+FloatShadow.DEPTH_MAX = 0.24
+FloatShadow.MIN_ROWS = 10
 FloatShadow.WIDE = 1.06
-FloatShadow.ALPHA = 0.72
-FloatShadow.BACK = 0.55
+FloatShadow.ALPHA = 0.74
+FloatShadow.GAP = 0.40
+FloatShadow.FRONT = 0.35
 FloatShadow.BOB_SIZE = 0.07
 FloatShadow.BOB_ALPHA = 0.16
 FloatShadow.HOVER_SIZE = 1.6
 FloatShadow.HIGH_FADE = 2.5
 FloatShadow.LIGHT_SHIFT = 0.30
-FloatShadow.PASSES = 4
-FloatShadow.TAPER = 0.65
-FloatShadow.CORE_W = 0.62
-FloatShadow.CORE_H = 0.62
+FloatShadow.MASS_POW = 0.35
+FloatShadow.ROUND = 0.80
+FloatShadow.RAG = 1.4
+FloatShadow.CORE_K = 0.55
+FloatShadow.CORE_MASS = 0.35
 FloatShadow.CORE_ALPHA = 0.50
 FloatShadow.FALLBACK_TINT = { 0.22, 0.18, 0.24 }
 
 local S = { cv = nil, cw = 0, ch = 0, tint = { 0, 0, 0, 0 }, last = nil, rec = {} }
 
 S.MASK_SRC = [[
+uniform vec2 vRange;
 uniform vec4 band;
-uniform float taper;
+uniform vec4 shape;
+uniform float texelU;
+uniform float bend;
+vec2 massAt(Image tex, float u) {
+    float m = 0.0;
+    float low = 0.0;
+    for (int i = 0; i < 40; i++) {
+        float k = (float(i) + 0.5) / 40.0;
+        float on = step(0.5, Texel(tex, vec2(u, mix(vRange.x, vRange.y, k))).a);
+        m += on;
+        low = max(low, on * k);
+    }
+    return vec2(m / 40.0, low);
+}
+float hash(float x) { return fract(sin(x * 12.9898) * 43758.5453); }
 vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
-    if (Texel(tex, tc).a < 0.5) discard;
-    float v = clamp((sc.y - band.y) / max(band.w, 1.0), 0.0, 1.0) * 2.0 - 1.0;
-    float lens = sqrt(max(0.0, 1.0 - v * v));
-    if (abs(sc.x - band.x) > band.z * (1.0 - taper + taper * lens)) discard;
+    float u = tc.x;
+    vec2 a = massAt(tex, u - texelU);
+    vec2 b = massAt(tex, u);
+    vec2 c = massAt(tex, u + texelU);
+    float m = 0.25 * a.x + 0.5 * b.x + 0.25 * c.x;
+    float low = max(b.y, 0.5 * (a.y + c.y));
+    if (m < shape.w) discard;
+    float xn = (sc.x - band.x) / max(band.z, 1.0);
+    float lens = sqrt(max(0.0, 1.0 - xn * xn));
+    float d = band.w * pow(m, shape.x) * (1.0 - shape.y + shape.y * lens);
+    float rag = (hash(floor(sc.x / 3.0)) - 0.5) * shape.z;
+    float back = d * 0.8 + rag;
+    float front = d * mix(0.30, 1.20, smoothstep(0.45, 1.0, low)) + rag;
+    float y = sc.y - (band.y + bend * xn * xn);
+    if (y < -back || y > front) discard;
     return vec4(1.0);
 }
 ]]
@@ -65,20 +95,21 @@ local function canvasFor(cw, ch)
     return S.cv
 end
 
-local function stamp(img, iw, top, wx, ky, y0, contentW, contentH, off)
+local function stamp(img, iw, ih, top, bottom, wide, rows, y0, cyRow, halfW, halfD, off, bendRows, massMin)
+    S.vR = S.vR or { 0, 0 }
+    S.vR[1], S.vR[2] = top / ih, bottom / ih
     S.vBand = S.vBand or { 0, 0, 0, 0 }
-    S.vBand[1], S.vBand[2] = math.floor(S.cw / 2) + (off or 0) * wx, y0
-    S.vBand[3], S.vBand[4] = math.max(1, contentW * wx / 2 + 0.5), math.max(1, contentH * ky)
+    S.vBand[1], S.vBand[2] = math.floor(S.cw / 2) + (off or 0) * wide, y0 + cyRow
+    S.vBand[3], S.vBand[4] = halfW, halfD
+    S.vShape = S.vShape or { 0, 0, 0, 0 }
+    S.vShape[1], S.vShape[2], S.vShape[3], S.vShape[4] = FloatShadow.MASS_POW, FloatShadow.ROUND, FloatShadow.RAG, massMin
+    S.mask:send("vRange", S.vR)
     S.mask:send("band", S.vBand)
-    S.mask:send("taper", FloatShadow.TAPER)
-    local n = math.max(1, math.min(FloatShadow.PASSES, math.ceil(1 / math.max(ky, 1e-3) / 1.5)))
-    for j = 0, n - 1 do
-        love.graphics.push()
-        love.graphics.translate(math.floor(S.cw / 2), y0)
-        love.graphics.scale(wx, ky)
-        love.graphics.draw(img, -iw / 2, -top - j / (n * ky))
-        love.graphics.pop()
-    end
+    S.mask:send("shape", S.vShape)
+    S.mask:send("texelU", 1 / iw)
+    S.mask:send("bend", bendRows)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(img, math.floor(S.cw / 2) - iw * wide / 2, y0, 0, wide, rows / ih)
 end
 
 function FloatShadow.breath(liftK, hover, bob)
@@ -111,13 +142,23 @@ function FloatShadow.draw(img, o)
     local bottom = ih - (o.footPad or 0)
     local contentH = math.max(1, math.min(bottom, o.contentH or bottom))
     local top = bottom - contentH
+    local s = o.scale or 1
     local sizeK, alphaK = FloatShadow.breath(o.liftK or 0, o.hover or 0, o.bob or 0)
-    local flat = math.max(FloatShadow.FLAT, FloatShadow.MIN_ROWS / contentH)
-    local k = flat * sizeK
+    local depth = math.max(FloatShadow.DEPTH, FloatShadow.MIN_ROWS / contentH)
+    local contentW = math.max(1, math.min(iw, o.contentW or iw))
+    local halfD = math.min(contentH * FloatShadow.DEPTH_MAX, math.max(contentH * depth * 0.5, contentW * FloatShadow.DEPTH_W)) * sizeK
     local wide = FloatShadow.WIDE * sizeK * (o.widthK or 1)
+    local halfW = math.max(1, contentW * wide / 2)
+    local bendRows = 0
+    if o.groundR and o.groundR > 0 then
+        local hw = halfW * s
+        bendRows = math.min(12, hw * hw / (2 * o.groundR) / s)
+    end
+    local maxHalfD = contentH * FloatShadow.DEPTH_MAX * 1.25
+    local band = math.ceil(2 * maxHalfD + FloatShadow.RAG + 14) + 4
+    local cyRow = math.floor(band / 2 - 6)
     local cw = math.ceil(iw * FloatShadow.WIDE * 1.2) + 4
-    local ch = 2 * (math.ceil(contentH * flat * 1.2) + 4)
-    local cv = canvasFor(cw, ch)
+    local cv = canvasFor(cw, band * 2)
 
     local prevCanvas = love.graphics.getCanvas()
     local prevShader = love.graphics.getShader()
@@ -130,21 +171,21 @@ function FloatShadow.draw(img, o)
     love.graphics.clear(0, 0, 0, 0)
     love.graphics.setShader(S.mask)
     love.graphics.setBlendMode("alpha", "alphamultiply")
-    love.graphics.setColor(1, 1, 1, 1)
-    local half = math.ceil(contentH * flat * 1.2) + 4
-    local contentW = math.max(1, math.min(iw, o.contentW or iw))
-    stamp(img, iw, top, wide, k, 1, contentW, contentH, o.contentOff)
-    local ck = k * FloatShadow.CORE_H
-    local coreY = 1 + math.floor((contentH * k - contentH * ck) / 2 + 0.5)
-    stamp(img, iw, top, wide * FloatShadow.CORE_W, ck, half + coreY, contentW, contentH, o.contentOff)
+    stamp(img, iw, ih, top, bottom, wide, band, 0, cyRow, halfW, halfD, o.contentOff, bendRows, 0.03)
+    stamp(img, iw, ih, top, bottom, wide, band, band, cyRow, halfW * 0.85,
+        halfD * FloatShadow.CORE_K, o.contentOff, bendRows, FloatShadow.CORE_MASS)
     love.graphics.setCanvas(prevCanvas)
     love.graphics.pop()
 
-    local s = o.scale or 1
-    local rows = contentH * k
-    local Hs = rows * s
+    local hoverPx = (o.hover or 0) * ih * s
+    local halfDpx = halfD * s
+    local cy = o.groundY + FloatShadow.FRONT * halfDpx
+    cy = math.max(cy, o.groundY - (1 - FloatShadow.GAP) * hoverPx + halfDpx)
+    if o.maxY and cy + halfDpx * 0.9 > o.maxY then
+        cy = math.max(o.maxY - halfDpx * 0.9, o.groundY - halfDpx * 0.4)
+    end
     local x0 = math.floor(o.x - math.floor(S.cw / 2) * s + 0.5)
-    local y0 = math.floor(o.groundY - FloatShadow.BACK * Hs - s + 0.5)
+    local y0 = math.floor(cy - cyRow * s + 0.5)
     local r, g, b = FloatShadow.tint()
     local a = math.min(0.9, FloatShadow.ALPHA * alphaK * fade * (o.alphaK or 1))
     S.tint[1], S.tint[2], S.tint[3], S.tint[4] = r, g, b, a
@@ -154,8 +195,8 @@ function FloatShadow.draw(img, o)
     love.graphics.setColor(1, 1, 1, 1)
     S.qA = S.qA or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
     S.qB = S.qB or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
-    S.qA:setViewport(0, 0, S.cw, half, S.cw, S.ch)
-    S.qB:setViewport(0, half, S.cw, half, S.cw, S.ch)
+    S.qA:setViewport(0, 0, S.cw, band, S.cw, S.ch)
+    S.qB:setViewport(0, band, S.cw, band, S.cw, S.ch)
     love.graphics.draw(cv, S.qA, x0, y0, 0, s, s)
     S.tint[4] = math.min(0.9, FloatShadow.CORE_ALPHA * alphaK * fade * (o.alphaK or 1))
     S.comp:send("tint", S.tint)
@@ -165,8 +206,8 @@ function FloatShadow.draw(img, o)
     if sx then love.graphics.setScissor(sx, sy, sw, sh) else love.graphics.setScissor() end
     love.graphics.setColor(1, 1, 1, 1)
     local L = S.rec
-    L.x, L.y0, L.h, L.w = o.x, y0, math.ceil(rows + 2) * s, iw * wide * s
-    L.alpha, L.sizeK, L.groundY = a, sizeK, o.groundY
+    L.x, L.cy, L.halfD, L.w = o.x, cy, halfDpx, halfW * 2 * s
+    L.alpha, L.sizeK, L.groundY, L.bend = a, sizeK, o.groundY, bendRows * s
     S.last = L
     return true
 end

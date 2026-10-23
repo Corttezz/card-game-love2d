@@ -147,9 +147,10 @@ function M.run(arg)
             shots[#shots + 1] = { phase = phase, data = data,
                 gx = foot and foot.hudCx or VW / 2, gy = foot and foot.groundY or VH * 0.7,
                 fb = foot and foot.footBottom or 0,
-                a = last and last.alpha or 0, k = last and last.sizeK or 0 }
-            print(string.format("[sombra_voo] %s %-6s %s alpha=%.3f size=%.3f pe=%d chao=%d",
-                c.id, phase, tag, shots[#shots].a, shots[#shots].k, shots[#shots].fb, shots[#shots].gy))
+                a = last and last.alpha or 0, k = last and last.sizeK or 0,
+                hd = last and last.halfD or 0, w = last and last.w or 0 }
+            print(string.format("[sombra_voo] %s %-6s %s alpha=%.3f size=%.3f meia=%.1f larg=%.0f pe=%d chao=%d",
+                c.id, phase, tag, shots[#shots].a, shots[#shots].k, shots[#shots].hd, shots[#shots].w, shots[#shots].fb, shots[#shots].gy))
         end
         local cropW, cropH = 520, 200
         local fullW, fullH = VW / 2, VH / 2

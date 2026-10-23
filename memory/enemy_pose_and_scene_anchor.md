@@ -167,24 +167,31 @@ Antes o flutuante só tinha a silhueta PROJETADA do `ShadowEngine` (fraca:
 pico de 0,07 de escurecimento no salão do rei-carniça, invisível no
 tapete) e, sem frame de sombra, duas elipses concêntricas. Agora:
 
-- **Forma:** o quadro atual da animação desenhado num canvas em resolução de
-  ARTE, achatado (`FLAT` 0,12 da altura do conteúdo, no mínimo `MIN_ROWS` 8
-  linhas de arte, pra morcego/espectro pequenos não virarem fio) e 6% mais
-  largo, com união de 4 passadas deslocadas (fiapo fino não some). O canvas
-  é composto com `scale` inteiro do inimigo: borda dura em pixel de arte,
-  sem brilho, sem blur. O contorno é afinado nas pontas por uma lente
-  (`TAPER` 0,65 em shader, sobre o MEIO da largura do conteúdo), pra a faixa
-  de asa aberta não ler como régua; o recorte interno (pernas, tentáculos,
-  farrapos) continua o da silhueta. Nunca elipse lisa (o dono recusa bolha
-  redonda).
-- **Duas camadas:** faixa inteira (`ALPHA` 0,72) + núcleo (62% da largura e
-  da altura, `CORE_ALPHA` 0,5) em multiply, a cor é a tinta de sombra da
-  cena (`ShadowEngine.getTint()`: grade do bioma na estrada,
-  `GameplayScene.HALL_SHADOW` no salão; sem frame, `SceneGrade.shadowTint` ou
-  `FALLBACK_TINT`).
-- **Posição:** 55% da faixa atrás da linha do chão (`BACK`), o resto à frente;
-  o que fica atrás dos pés é coberto pelo corpo. Isso deixa a sombra acima da
-  mão nos salões (o chão do chefe encosta no topo das cartas).
+- **Forma (v2, mesmo dia, revisão do coordenador: "na estrada viram barras
+  retas"):** a forma vem do PERFIL DE COLUNAS do quadro atual, não das linhas
+  de baixo achatadas. Num shader de máscara em resolução de ARTE, cada coluna
+  mede a sua MASSA (fração opaca do topo ao pé, 40 amostras, vizinhas
+  ponderadas) e a sua BASE (linha opaca mais baixa). Profundidade da coluna =
+  `meia × massa^0,35 × lente` (`ROUND` 0,8 afina as pontas); a borda de trás
+  usa a massa, a da frente segue a base (barra de manto, ponta de tentáculo e
+  de asa recortam a frente); ruído por célula de 3 colunas (`RAG` 1,4 linha)
+  quebra a lisura. Meia-profundidade = `max(10% da altura, 10% da largura)`,
+  no máximo 24% da altura (morcego de asa aberta ganha corpo), mínimo 10
+  linhas. Núcleo = mesma forma a 55%, só onde a massa passa de 0,35. Composto
+  em multiply com escala inteira do inimigo: borda em degrau de pixel de
+  arte, sem brilho.
+- **Domo:** na estrada as pontas descem com a curva do chão
+  (`WorldRoad.groundRadius(rel, w, h)` → `bend = (meia-largura)² / 2R`, até 12
+  linhas); o billboard da viagem usa o raio do próprio quadro. Salão: plano.
+- **Duas camadas:** faixa (`ALPHA` 0,74) + núcleo (`CORE_ALPHA` 0,5), a cor é a
+  tinta de sombra da cena (`ShadowEngine.getTint()`: grade do bioma na
+  estrada, `GameplayScene.HALL_SHADOW` no salão; sem frame,
+  `SceneGrade.shadowTint` ou `FALLBACK_TINT`).
+- **Posição:** centro 35% da meia-profundidade à frente da linha do chão, e
+  nunca subindo além de deixar 40% do hover de vão sob o pé. Se a frente
+  passar do topo da mão (`opts.shadowMaxY` = topo das cartas, passado pelo
+  `GameplayScene` na estrada e no salão), a sombra sobe até caber (salão do
+  lich: o chão encosta nas cartas).
 - **Respira com o bob:** `FloatShadow.breath(liftK, hover, bob)`: mais alto =
   menor e mais clara (bob normalizado, `BOB_SIZE` 0,07 e `BOB_ALPHA` 0,16, mais
   `HOVER_SIZE` 1,6 pela altura absoluta e `HIGH_FADE` acima do bob, na
@@ -201,6 +208,10 @@ tapete) e, sem frame de sombra, duas elipses concêntricas. Agora:
   POUSADO, `alphaK × contactK`) entram. Sem inimigo, nada.
 - A silhueta projetada do flutuante no ar e a elipse dupla de fallback saíram.
 
+`dusk_shade` mantém a sombra de voo por cima da poça escura da âncora de
+entrada (`shadepool`): a poça é prop da entrada e pode faltar (Continuar);
+dentro dela a sombra quase não aparece, fora dela segura a leitura.
+
 Asas que PISAM continuam `grounded` (olhado o idle a 3x, 23/Out/2026):
 `storm_harpy` (talões no chão, agachada), `storm_griffin` (quatro patas
 plantadas), `fallen_angel` (botas no chão, espada), `moon_gargoyle`
@@ -208,7 +219,8 @@ plantadas), `fallen_angel` (botas no chão, espada), `moon_gargoyle`
 
 Trava: `love . test_one test_floating_shadow` (todo flutuante na estrada, no
 salão e sem frame: sombra existe, cruza a linha do chão, vão até o pé no
-topo do bob, respira, nunca por cima do corpo, sem elipse, reducedMotion
+topo do bob, respira, tem forma (a fileira mais estreita à frente do pé
+mede ≤ 70% da mais larga: nunca faixa reta), curva com o domo na estrada, nunca por cima do corpo, sem elipse, reducedMotion
 parado, some no cadáver pousado e sem inimigo, contorno de luz 0). Capturas:
 `lovec . test_one screenshot_sombra_voo [tag]` (topo e base do bob em
 1920x1080 + recorte 2x; `SOMBRA_VOO_MASK=1` grava também a versão sem a
