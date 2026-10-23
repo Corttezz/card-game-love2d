@@ -237,6 +237,15 @@ def metrics(eid, clip, ims):
         if e0:
             eyes.append(round(min((eye_lum(im, eid, idx) or 0) for im in ims[1:-1]) / e0, 2) if len(ims) > 2 else 1)
     m["eyes"] = eyes
+    from PIL import ImageFilter
+    sil = ref.getchannel("A").point(lambda v: 255 if v >= 128 else 0).filter(ImageFilter.MaxFilter(9))
+    base = sum(1 for v in ref.getchannel("A").get_flattened_data() if v >= 128)
+    outs = []
+    for im in ims[1:-1]:
+        a = im.getchannel("A").get_flattened_data()
+        s = sil.get_flattened_data()
+        outs.append(sum(1 for x, y in zip(a, s) if x >= 128 and y == 0) / max(1, base))
+    m["out"] = round(max(outs), 3) if outs else 0
     if clip == "idle" and len(ims) > 2:
         m["seam"] = round(diff(ims[-2], ref, 24), 3)
     return m
@@ -296,7 +305,12 @@ def ingest(jobs):
     files = sorted(os.listdir(INBOX))
     for f in files:
         with open(os.path.join(INBOX, f)) as fh:
-            jobs.extend(json.load(fh))
+            for it in json.load(fh):
+                if it.get("t", 1) > 1 or it.get("front"):
+                    k = next((i for i, j in enumerate(jobs) if j["status"] == "queued"), len(jobs))
+                    jobs.insert(k, it)
+                else:
+                    jobs.append(it)
     if files:
         save_jobs(jobs)
         for f in files:
