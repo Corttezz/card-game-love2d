@@ -48,7 +48,7 @@ EnemyPoses.BY_ID = {
     frost_wolf        = { pose = "grounded", shadowBaseK = 0.18, idle = { fps = 9, cycle = true } },
     rime_shaman       = { pose = "grounded", axisX = 47, idle = { fps = 9, cycle = true } },
     frost_troll       = { pose = "grounded", idle = { fps = 8, cycle = true } },
-    ice_wyrm          = { pose = "grounded", shadowBaseK = 0.25, idle = { fps = 5, cycle = true } },
+    ice_wyrm          = { pose = "grounded", shadowBaseK = 0.25, idle = { fps = 9, cycle = true } },
     plague_toad       = { pose = "grounded", shadowBaseK = 0.25, idle = { fps = 6, cycle = true } },
     leech_horror      = { pose = "grounded", idle = { fps = 6, cycle = true } },
     croc_warrior      = { pose = "grounded", axisX = 50, shadowBaseK = 0.15, idle = { fps = 6, cycle = true } },
