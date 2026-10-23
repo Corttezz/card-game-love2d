@@ -8,4 +8,8 @@ return {
         { kind = "drips", xr = 0.48, yr = 0.95, rate = 0.6, spread = 0.5, dir = "down" },
         { kind = "embers", xr = 0.5, yr = 0.08, rate = 0.4, spread = 0.5, dir = "up" },
     },
+    states = {
+        poison = { clip = "state_poison", fps = 8 },
+        weak = { clip = "state_weak", fps = 7 },
+    },
 }

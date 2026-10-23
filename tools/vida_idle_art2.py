@@ -322,6 +322,13 @@ def fixup(im, ref, fx):
     ops = [rp[x, y] for y in range(y0, y1) for x in range(x0, x1) if rp[x, y][3] >= 128]
     cap = max(lum(p) for p in ops) + 6
     dark = min(ops, key=lum)
+    cnt = {}
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            q = px[x, y]
+            if q[3] >= 128 and 40 < lum(q) <= 150:
+                cnt[q] = cnt.get(q, 0) + 1
+    fill = max(cnt, key=cnt.get) if cnt else dark
     for y in range(y0, y1):
         for x in range(x0, x1):
             r, g, b, a = px[x, y]
@@ -345,6 +352,9 @@ def fixup(im, ref, fx):
                                 src = q
                                 break
                     px[x, y] = src if (src and rp[x, y][3] >= 128) else (0, 0, 0, 0)
+            elif kind == "unpale":
+                if a >= 128 and lum((r, g, b)) > 150:
+                    px[x, y] = fill
             elif kind == "erase_new":
                 if a >= 128 and rp[x, y][3] < 128:
                     px[x, y] = (0, 0, 0, 0)
