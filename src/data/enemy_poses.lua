@@ -14,7 +14,7 @@ EnemyPoses.BY_ID = {
                           idle = { fps = 6, cycle = true } },
     blood_duke        = { pose = "grounded" },
     bog_ghoul         = { pose = "grounded" },
-    cursed_scarecrow  = { pose = "grounded" },
+    cursed_scarecrow  = { pose = "grounded", idle = { fps = 6, cycle = true } },
     ember_imp         = { pose = "grounded", shadowBaseK = 0.18 },
     frost_wight       = { pose = "grounded" },
     glacier_knight    = { pose = "grounded" },
