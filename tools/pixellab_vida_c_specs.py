@@ -175,6 +175,11 @@ STATE_TEXT = {
                       "{limbs} tense and clench, it trembles with fury, then returns to the first pose", 10),
 }
 
+C["grave_thrall"]["fidgets"]["state_poison"] = (
+    "poisoned and sick: the skeleton hunches a little and sways weakly, the skull dips forward once as if "
+    "retching, the same short curved sword stays in the right hand and the tower shield sags a little, then it "
+    "recovers to the first pose; no motion lines, no marks around the head", 10)
+
 for _eid, _limbs in LIMBS.items():
     for _k, (_t, _n) in STATE_TEXT.items():
         C[_eid]["fidgets"].setdefault(_k, (_t.format(limbs=_limbs), _n))
