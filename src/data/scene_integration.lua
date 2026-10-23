@@ -8,7 +8,7 @@ local function landmarks(scorchR, scorchA, glowA, selfL)
                    selfLight = selfL },
         event  = { lanternGlow = true, selfLight = selfL },
         elite  = { runeFlicker = true, selfLight = selfL },
-        castle = { lowFog = true, hillShadow = true },
+        castle = { lowFog = true },
     }
 end
 

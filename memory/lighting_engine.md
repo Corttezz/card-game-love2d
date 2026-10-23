@@ -249,3 +249,5 @@ tabela nova por árvore por frame). Contrato: o motor só lê o oclusor até o
 vermelho e o azul 0,9 px na tela INTEIRA (`caB`), o que desenhava contorno ciano/vermelho em toda silhueta
 escura sobre fundo claro (asas no céu do pôr do sol). Saiu: sobra só a convergência radial, ~zero no centro,
 onde ficam os monstros, e crescendo para a borda do tubo. Trava em `test_crt_levels` (centro sem franja).
+
+- Out/2026: oclusor de HORIZONTE (WorldRoad._horizonLight, z=998) = a esfera esconde o que está além da crista no lightmap; luz que deve cair no chão do lado de cá precisa de z < 998 (poça do portão usa REL_CREST-0.05). Micro de intensidade 0 força o composite de dia para a curvatura valer sempre.

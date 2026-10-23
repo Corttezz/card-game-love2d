@@ -2365,6 +2365,73 @@ function WorldRoad.castleBaseY(g, bid, cx, s, iw, ih, progress)
     local foot = require("src.ui.CastleFoot").limit(g, bid, cx, s, iw, ih)
     return (foot and foot > baseY) and foot or baseY
 end
+WorldRoad.CASTLE_SPILL = { from = 0.74, to = 0.875 }
+WorldRoad.CASTLE_LIGHT_Z = 999
+WorldRoad.GATE_SPILL = { minY = 0.75, radiusK = 0.16, sy = 0.30, intensity = 0.30, doorK = 0.6 }
+WorldRoad.HORIZON_Z = 998
+WorldRoad.HORIZON = { rimK = 1.08, steps = { 0.935, 0.955, 0.972, 0.988 }, rimH = 0.003, stepH = 0.012 }
+function WorldRoad.castleSpillK(progress)
+    if WorldRoad._entry then return 1 end
+    local c = WorldRoad.CASTLE_SPILL
+    local u = math.min(1, math.max(0, ((progress or 0) - c.from) / (c.to - c.from)))
+    return u * u * (3 - 2 * u)
+end
+WorldRoad._hz = { xs = {}, ys = {}, n = 0, bands = {} }
+LMG.HZ_NIL = { 0, 0, 0 }
+function WorldRoad._hzDraw(band)
+    local hz = WorldRoad._hz
+    local xs, ys = hz.xs, hz.ys
+    local o0, o1 = band.o0, band.o1
+    for i = 1, hz.n - 1 do
+        local xa, xb, ya, yb = xs[i], xs[i + 1], ys[i], ys[i + 1]
+        love.graphics.polygon("fill", xa, ya + o0, xb, yb + o0, xb, yb + o1, xa, ya + o1)
+    end
+end
+function WorldRoad._horizonLight(g, x, w)
+    if not LightEngine.isEnabled() then return end
+    local hz = WorldRoad._hz
+    local n = 0
+    local step = 16
+    local sx = x - step
+    while true do
+        n = n + 1
+        local tx, ty = love.graphics.transformPoint(sx, g.crestYAt(sx))
+        hz.xs[n], hz.ys[n] = tx, ty
+        if sx >= x + w + step then break end
+        sx = sx + step
+    end
+    hz.n = n
+    local H = WorldRoad.HORIZON
+    local ar, ag, ab = LightEngine.ambientColor()
+    local rimH = math.max(LightEngine.SCALE, math.floor(g.h * H.rimH + 0.5))
+    local stepH = math.max(LightEngine.SCALE, math.floor(g.h * H.stepH + 0.5))
+    local nb = #H.steps + 2
+    local o = 0
+    for bi = 1, nb do
+        local band = hz.bands[bi]
+        if not band then
+            band = { flatColor = { 1, 1, 1 }, bx = 0, by = 0, w = 1, h = 1 }
+            band.fn = function() WorldRoad._hzDraw(band) end
+            hz.bands[bi] = band
+        end
+        local k, hgt
+        if bi == 1 then
+            k, hgt = H.rimK, rimH
+        elseif bi < nb then
+            k, hgt = H.steps[bi - 1], stepH
+        else
+            k, hgt = 1, (g.bottomY - g.crestApexY) + 64
+        end
+        band.o0, band.o1 = o, o + hgt
+        o = o + hgt
+        local fc = band.flatColor
+        fc[1], fc[2], fc[3] = math.min(1, ar * k), math.min(1, ag * k), math.min(1, ab * k)
+        band.z = WorldRoad.HORIZON_Z
+        band.bx, band.by, band.w, band.h = x, g.crestApexY, w, g.bottomY - g.crestApexY
+        LightEngine.submitOccluder(band)
+    end
+    LightEngine.submitMicro(0, 0, 1, LMG.HZ_NIL, 0, WorldRoad.HORIZON_Z)
+end
 local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local walked = math.max(0, camZ - (segBase or WorldRoad._segBase or 0))
     local progress = math.min(1, walked / SEGMENT_LEN)
@@ -2388,12 +2455,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     end
     local baseY = WorldRoad.castleBaseY(g, bid, cx, s, iw, ih, progress)
     local lmc = Scene.Grade.cfg("landmarks").castle
-    if alpha >= 1 and lmc and lmc.hillShadow then
-        local crest2 = g.crestYAt(cx)
-        local ry = math.max(2, (3 + 7 * progress) * g.h / 768)
-        Scene.Contact.queueDisc(cx, crest2 + ry, iw * s * 0.42, ry,
-            Scene.Grade.cfg("contact").alpha * 0.55, 0.01)
-    end
+    local spillK = WorldRoad.castleSpillK(progress)
 
     local cc = Scene.Grade.color("castle", 0.35 + 0.65 * progress, LMG.c)
     love.graphics.setColor(cc[1], cc[2], cc[3], alpha)
@@ -2420,7 +2482,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
 
         local LW = Config.Lighting.WINDOW
         local bio = BIOME_BY_ID[bid]
-        local wins = (bio and bio.lightWindows) or LW.anchors
+        local wins = WorldRoad.castleLights ~= false and ((bio and bio.lightWindows) or LW.anchors) or LMG.NO_CRITTERS
         local wcol = (bio and bio.lightWindowColor) or LW.color
         local time = love.timer.getTime()
         for wi, a in ipairs(wins) do
@@ -2437,10 +2499,23 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
                 x = tx, y = ty, radius = r * 1.6 * fr,
                 color = wcol, intensity = LW.intensity * 0.55 * fi,
                 dither = true, ditherAmt = 0.28, levels = 8,
-                seed = sd, z = 999,
+                seed = sd, z = WorldRoad.CASTLE_LIGHT_Z,
             })
             LightEngine.submitMicro(tx, ty, r * 0.45 * fr, wcol,
-                LW.intensity * fi, 999)
+                LW.intensity * fi, WorldRoad.CASTLE_LIGHT_Z)
+            local GS = WorldRoad.GATE_SPILL
+            if spillK > 0 and a[2] >= GS.minY then
+                local en = WorldRoad._entry
+                local doorK = en and en.doorK or 0
+                local pr = iw * s * GS.radiusK * fr
+                local gx, gy = love.graphics.transformPoint(wx, g.crestYAt(wx) + pr * GS.sy * 0.55)
+                LightEngine.submit({
+                    x = gx, y = gy, radius = pr, sy = GS.sy,
+                    color = wcol, intensity = LW.intensity * GS.intensity * fi * spillK * (1 + GS.doorK * doorK),
+                    dither = true, ditherAmt = 0.28, levels = 6,
+                    seed = sd, z = REL_CREST - 0.05,
+                })
+            end
         end
     end
     return true
@@ -2590,7 +2665,7 @@ local function drawPropsBehind(g, x, w, camZ)
                 love.graphics.draw(img, math.floor(px2), math.floor(baseY),
                     0, s * lumFlip, s, iw / 2, ih)
                 local flameTopY = baseY - ih * s * (1 - (lumAnc.ay or 0.3))
-                if flameTopY > crest - ih * s and flameTopY < baseY then
+                if flameTopY > crest - ih * s and flameTopY < crest - 1 then
                     local ax = lumAnc.ax or 0.5
                     if lumFlip < 0 then ax = 1 - ax end
                     local fx = px2 + (ax - 0.5) * iw * s
@@ -2599,7 +2674,7 @@ local function drawPropsBehind(g, x, w, camZ)
                     LuminaireEngine.submit(p.bid, p.kind, {
                         fx = fxT, fy = fyT, gx = gxT, gy = gyT,
                         sh = ih * s, t = 0, rel = rel, seed = p.z,
-                        flameH = math.max(8, gyT - fyT), capR = g.h * 0.30,
+                        flameH = math.max(8, gyT - fyT), capR = math.min(g.h * 0.30, crest - flameTopY),
                         alphaK = fadeA,
                     })
                 end
@@ -5016,6 +5091,7 @@ function WorldRoad.draw(x, y, w, h, actNumber)
     WeatherEngine.flushTo(REL_CREST)
     _profMark('castle')
     drawDome(g, x, y, w)
+    WorldRoad._horizonLight(g, x, w)
     _profMark('dome')
     drawTerrainDetail(g, x, w, WorldRoad._camZ)
     _profMark('terrain')

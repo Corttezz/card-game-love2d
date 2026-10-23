@@ -63,6 +63,7 @@ local SUITES = {
     { group = "unit",  name = "test_enemy_axis" },
     { group = "unit",  name = "test_castle_gate" },
     { group = "unit",  name = "test_castle_foot" },
+    { group = "unit",  name = "test_castle_light" },
     { group = "unit",  name = "test_card_live_hover" },
     { group = "unit",  name = "test_cards_always_live" },
     { group = "unit",  name = "test_holo_shader" },
