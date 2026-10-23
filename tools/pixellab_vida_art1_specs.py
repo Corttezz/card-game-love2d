@@ -345,7 +345,7 @@ STATE_DETAIL = {
                     "the raised hand clenches into a fist and the censer swings hard"),
     "storm_harpy": ("the wings tremble and sag", "the spread wings droop down and the hair falls limp",
                     "the wings flare wide, the claws spread and the hair whips"),
-    "rune_golem": ("the runes flicker unevenly", "the fists sag low and the runes dim",
+    "rune_golem": ("the magenta runes flicker dimmer unevenly, they stay magenta-purple, never white, never silver","the fists sag low and the runes dim",
                    "the fists clench and rise and the runes burn brighter"),
     "spectral_knight": ("the sword point dips", "the sword lowers toward the ground, the shield stays planted",
                         "it raises the sword higher and leans behind the shield, eye lights flaring"),

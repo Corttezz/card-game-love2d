@@ -7,4 +7,8 @@ return {
     fx = {
         { kind = "ash", xr = 0.45, yr = 0.50, rate = 0.30, spread = 0.40, dir = "down" },
     },
+    states = {
+        weak = { clip = "state_weak", fps = 8 },
+        enraged = { clip = "state_enraged", fps = 8 },
+    },
 }
