@@ -66,7 +66,7 @@ def submit(args):
 def wait(job, dest):
     os.makedirs(dest, exist_ok=True)
     t0 = time.time()
-    while time.time() - t0 < 2400:
+    while time.time() - t0 < 7200:
         try:
             text = F.tool_text(F.rpc("tools/call", {"name": "get_image", "arguments": {"job_id": job}}))
         except Exception:
