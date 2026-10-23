@@ -270,16 +270,52 @@ def processed(eid, clip, t):
     return out, (round(max(fars), 3) if fars else 0)
 
 
+def transplant(im, ref, box, pad=10, rng=3):
+    x0, y0, x1, y1 = box
+    w, h = ref.size
+    px, rp = im.load(), ref.load()
+    best = None
+    for dy in range(-rng, rng + 1):
+        for dx in range(-rng, rng + 1):
+            err = 0
+            for y in range(max(0, y0 - pad), min(h, y1 + pad), 2):
+                for x in range(max(0, x0 - pad), min(w, x1 + pad), 2):
+                    if x0 <= x < x1 and y0 <= y < y1:
+                        continue
+                    sx, sy = x + dx, y + dy
+                    if not (0 <= sx < w and 0 <= sy < h):
+                        continue
+                    a, b = rp[x, y], px[sx, sy]
+                    err += abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2]) + abs(a[3] - b[3])
+            if best is None or err < best[0]:
+                best = (err, dx, dy)
+    _, dx, dy = best
+    im = im.copy()
+    px = im.load()
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            sx, sy = x + dx, y + dy
+            if 0 <= sx < w and 0 <= sy < h and rp[x, y][3] >= 128:
+                px[sx, sy] = rp[x, y]
+    return im
+
+
 def fixup(im, ref, fx):
     kind, (x0, y0, x1, y1) = fx
+    if kind == "transplant":
+        return transplant(im, ref, (x0, y0, x1, y1))
     im = im.copy()
     px, rp = im.load(), ref.load()
+    cap = max(lum(rp[x, y]) for y in range(y0, y1) for x in range(x0, x1) if rp[x, y][3] >= 128) + 6
     for y in range(y0, y1):
         for x in range(x0, x1):
             r, g, b, a = px[x, y]
             if kind == "unflame":
                 hot = r > 120 and b < 110 and r > b * 1.8
                 if a >= 128 and px[x, y] != rp[x, y] and (hot or rp[x, y][3] < 128):
+                    px[x, y] = rp[x, y]
+            elif kind == "unglow":
+                if a >= 128 and lum((r, g, b)) > cap:
                     px[x, y] = rp[x, y]
             elif kind == "restore":
                 px[x, y] = rp[x, y]
