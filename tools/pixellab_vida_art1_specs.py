@@ -194,8 +194,9 @@ SPECS = {
             "slowly as if chanting" + IDLE)),
         fidgets={
             "fidget_censer": dict(frames=12, action=(
-                "swings the censer in a wider arc on its chain, the smoke wisp trailing behind, "
-                "then lets it settle back to hanging")),
+                "swings the censer a little wider on its chain, the censer keeps its dark violet "
+                "glass bulb and bronze base and never turns white or pale, the thin smoke wisp "
+                "stays violet and trails behind it, then the censer settles back to hanging")),
             "fidget_chant": dict(frames=10, action=(
                 "bows its ram skull head while the raised hand makes a slow chanting gesture, "
                 "fingers curling, then raises its head again")),

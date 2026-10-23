@@ -476,6 +476,16 @@
     "motion": 0.552,
     "end": 0.008,
     "problems": []
+   },
+   {
+    "job": "4eee9577-382c-4c07-acea-caa72bc282e0",
+    "n": 2,
+    "size": 1.035,
+    "eye": 0.897,
+    "step": 0.391,
+    "motion": 0.509,
+    "end": 0.01,
+    "problems": []
    }
   ]
  },
@@ -517,7 +527,7 @@
   "installed": 1
  },
  "moon_gargoyle/fidget_look": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "e0be58e7-29fc-422a-9820-6f52237e5598",
@@ -531,7 +541,8 @@
      "chuvisco 0.55"
     ]
    }
-  ]
+  ],
+  "installed": 1
  },
  "ram_cultist/fidget_censer": {
   "status": "review",
@@ -549,18 +560,68 @@
   ]
  },
  "ram_cultist/fidget_chant": {
-  "status": "pending",
-  "job": "7cf64ebf-88bd-4dea-943d-db2ed8de2098",
-  "tries": []
+  "status": "review",
+  "tries": [
+   {
+    "job": "7cf64ebf-88bd-4dea-943d-db2ed8de2098",
+    "n": 1,
+    "size": 0.869,
+    "eye": 1.0,
+    "step": 0.394,
+    "motion": 0.488,
+    "end": 0.008,
+    "problems": []
+   }
+  ]
  },
  "storm_harpy/fidget_shriek": {
-  "status": "pending",
-  "job": "32e2d3d1-9787-47f9-aedf-abac5180e15c",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "32e2d3d1-9787-47f9-aedf-abac5180e15c",
+    "n": 1,
+    "size": 1.145,
+    "eye": 1.0,
+    "step": 0.461,
+    "motion": 0.572,
+    "end": 0.003,
+    "problems": [
+     "chuvisco 0.46"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "storm_harpy/fidget_flap": {
+  "status": "review",
+  "tries": [
+   {
+    "job": "e956927b-d344-4fc9-a128-1554e90f3054",
+    "n": 1,
+    "size": 1.145,
+    "eye": 1.0,
+    "step": 0.597,
+    "motion": 0.719,
+    "end": 0.0,
+    "problems": [
+     "chuvisco 0.60"
+    ]
+   }
+  ]
+ },
+ "rune_golem/fidget_runes": {
   "status": "pending",
-  "job": "e956927b-d344-4fc9-a128-1554e90f3054",
+  "job": "f3c25e27-34da-4f6f-b1a2-239fd927eb24",
+  "tries": []
+ },
+ "rune_golem/fidget_fists": {
+  "status": "pending",
+  "job": "8143c2dd-a426-4977-848a-b996a7ccbea5",
+  "tries": []
+ },
+ "spectral_knight/fidget_sword": {
+  "status": "pending",
+  "job": "c0ff404d-1987-4d4f-84b5-fa7c43cd239d",
   "tries": []
  }
 }
