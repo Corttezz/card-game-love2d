@@ -1282,7 +1282,7 @@
   "installed": 1
  },
  "ram_cultist/state_enraged": {
-  "status": "review",
+  "status": "installed",
   "tries": [
    {
     "job": "42b7a675-29aa-4ce7-8ee6-a9cfdb000096",
@@ -1294,21 +1294,76 @@
     "end": 0.012,
     "problems": []
    }
-  ]
+  ],
+  "installed": 1
  },
  "storm_harpy/state_poison": {
-  "status": "pending",
-  "job": "77f080aa-e7a5-4e1a-9067-1761116ce9d4",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "77f080aa-e7a5-4e1a-9067-1761116ce9d4",
+    "n": 1,
+    "size": 1.158,
+    "eye": 1.0,
+    "step": 0.457,
+    "motion": 0.611,
+    "end": 0.001,
+    "problems": [
+     "chuvisco 0.46"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "storm_harpy/state_weak": {
-  "status": "pending",
-  "job": "9f0fe7d6-fb77-4533-b1d9-a9300c65b670",
-  "tries": []
+  "status": "installed",
+  "tries": [
+   {
+    "job": "9f0fe7d6-fb77-4533-b1d9-a9300c65b670",
+    "n": 1,
+    "size": 1.158,
+    "eye": 1.0,
+    "step": 0.513,
+    "motion": 0.612,
+    "end": 0.003,
+    "problems": [
+     "chuvisco 0.51"
+    ]
+   }
+  ],
+  "installed": 1
  },
  "storm_harpy/state_enraged": {
+  "status": "installed",
+  "tries": [
+   {
+    "job": "27bd1db7-eaea-45db-9049-1caad831f0fb",
+    "n": 1,
+    "size": 1.132,
+    "eye": 1.0,
+    "step": 0.458,
+    "motion": 0.62,
+    "end": 0.003,
+    "problems": [
+     "chuvisco 0.46"
+    ]
+   }
+  ],
+  "installed": 1
+ },
+ "rune_golem/state_poison": {
   "status": "pending",
-  "job": "27bd1db7-eaea-45db-9049-1caad831f0fb",
+  "job": "00e60069-d229-41e0-bde8-14c85b6074d2",
+  "tries": []
+ },
+ "rune_golem/state_weak": {
+  "status": "pending",
+  "job": "5393eb1e-1458-44d2-896d-dfd38e938f56",
+  "tries": []
+ },
+ "rune_golem/state_enraged": {
+  "status": "pending",
+  "job": "1638cdce-743b-4474-b6a6-e51a4510d269",
   "tries": []
  }
 }
