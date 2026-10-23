@@ -123,7 +123,8 @@ creature("grave_thrall", 6,
 creature("blood_duke", 6,
          "vampire lord, slicked dark hair, pale face, glowing red eyes, tall red collar, long black cape with crimson "
          "lining and gold trim, crimson vest, white gloves, black boots",
-         "slow aristocratic breathing, the long black cape with crimson lining sways and ripples at the hem, the tall "
+         "slow aristocratic breathing, the long black cape hangs closed and only its hem ripples gently, the cape never "
+         "spreads wider than in the first frame, the red eyes keep glowing, the tall "
          "collar shifts, the gloved fingers twitch",
          {"fidget_fangs": ("he smirks: the mouth opens a little showing the fangs, then closes", 8),
           "fidget_cape": ("a gust: the black cape billows out a little at the bottom and settles back", 10),
