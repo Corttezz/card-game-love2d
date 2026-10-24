@@ -5,6 +5,7 @@ local FontManager = require("src.ui.FontManager")
 local Palette = require("src.ui.Palette")
 local IconLoader = require("src.ui.IconLoader")
 local I18n = require("src.i18n.I18n")
+local Resistances = require("src.systems.Resistances")
 local utf8 = require("utf8")
 
 local Panel = {}
@@ -15,6 +16,7 @@ local state = {
     doneT = nil,
     hover = nil,
     badges = {},
+    hints = {},
 }
 
 local HOLD_AFTER = 1.6
@@ -106,6 +108,7 @@ function Panel.update(game, hoverCard, dt)
         state.doneT = nil
         state.hover = nil
         state.badges = {}
+        state.hints = {}
         return
     end
     if state.frozen and state.frozen.enemy ~= game.enemy then
@@ -132,6 +135,16 @@ function Panel.update(game, hoverCard, dt)
             added = DamagePreview.combosAddedBy(sel, hoverCard, game) }
     end
 
+    state.hints = {}
+    if myTurn then
+        for _, c in ipairs(game.hand or {}) do
+            if c.type ~= "joker" then
+                local h = Resistances.cardHint(game.enemy, c)
+                if h then state.hints[c] = h end
+            end
+        end
+    end
+
     state.badges = {}
     if myTurn and #sel > 0 then
         for _, c in ipairs(game.hand or {}) do
@@ -155,6 +168,20 @@ local COL_JOKER = Palette.ARCANE_LIGHT
 local COL_TEXT  = Palette.PARCHMENT_LIGHT
 local COL_DIM   = Palette.PARCHMENT
 local COL_LETHAL = Palette.MAGENTA
+local COL_RESIST = {
+    immune = Palette.STEEL_LIGHT,
+    resist = Palette.STEEL_LIGHT,
+    weak = Palette.ORANGE,
+}
+
+local function resistWord(level)
+    return I18n.t("resist.float." .. level, nil, level)
+end
+
+local function resistChipText(level, value)
+    if level == "immune" then return resistWord(level) end
+    return "×" .. fmtNum(value)
+end
 
 local function stepChips(steps)
     local chips = {}
@@ -188,6 +215,9 @@ local function stepChips(steps)
         elseif s.kind == "weak" or s.kind == "frail" then
             chips[#chips + 1] = { text = "×" .. fmtNum(s.value), color = Palette.PINK,
                 icon = "status_" .. s.kind }
+        elseif s.kind == "resist" then
+            chips[#chips + 1] = { text = resistChipText(s.level, s.value),
+                color = COL_RESIST[s.level] or COL_TEXT, icon = Resistances.ICON[s.dtype] }
         end
     end
     return chips
@@ -226,8 +256,13 @@ local function buildLines(R, opts)
             else
                 local chips = stepChips(e.steps)
                 if #chips <= 1 then chips = nil end
-                lines[#lines + 1] = { kind = "card", text = name, right = fmtNum(e.value),
-                    color = e.type == "attack" and COL_ATK or COL_DEF, chips = chips }
+                local right = fmtNum(e.value)
+                local col = e.type == "attack" and COL_ATK or COL_DEF
+                if e.resist == "immune" then
+                    right, col = resistWord("immune"), COL_RESIST.immune
+                end
+                lines[#lines + 1] = { kind = "card", text = name, right = right,
+                    color = col, chips = chips, dim = e.resist == "immune" }
             end
         end
     end
@@ -383,6 +418,16 @@ end
 
 local function summaryChips(R)
     local chips = {}
+    local seenR = {}
+    for _, r in ipairs(R.resists or {}) do
+        local key = r.type .. ":" .. r.level
+        if not seenR[key] then
+            seenR[key] = true
+            local tname = I18n.t("resist.type." .. r.type, nil, r.type)
+            chips[#chips + 1] = { icon = Resistances.ICON[r.type], text = resistWord(r.level),
+                color = COL_RESIST[r.level] or COL_TEXT, resist = r, name = tname }
+        end
+    end
     for _, combo in ipairs(R.combos or {}) do
         local b = combo.bonus or {}
         local what = ""
@@ -409,6 +454,14 @@ local function summaryChips(R)
 end
 
 local function chipTooltip(c, x, y, w, h, game)
+    if c.resist then
+        local mx, my = love.mouse.getPosition()
+        if mx < x or mx > x + w or my < y or my > y + h then return end
+        local title, body = require("src.ui.ResistBadges").tooltip(c.resist)
+        require("src.ui.StatusTooltip").show("resist_" .. c.resist.type, mx, my,
+            { title = title, body = body })
+        return
+    end
     rowTooltip({ combo = c.combo, joker = c.joker }, x, y, w, h, game)
 end
 
@@ -689,7 +742,31 @@ function Panel.drawEnemyGhost(game, rect)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+Panel.HINT_SIZE = 22
+
+function Panel.hints()
+    return state.hints
+end
+
+function Panel.drawHandHints(game)
+    if not next(state.hints) then return end
+    local RB = require("src.ui.ResistBadges")
+    local s = Panel.HINT_SIZE
+    for _, c in ipairs(game.hand or {}) do
+        local h = state.hints[c]
+        if h and c.renderX and c.renderY then
+            local cw = (c.image and c.image.getWidth and c.image:getWidth() or 96)
+                * (c.scale or c.baseScale or 1.333)
+            local x = math.floor(c.renderX + cw - s - 4)
+            local y = math.floor(c.renderY + cw * 0.36)
+            RB.drawChip(h, x, y, s)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 function Panel.drawHandBadges(game)
+    Panel.drawHandHints(game)
     if not next(state.badges) then return end
     local font = FontManager.getResponsiveFont(0.014, 11)
     love.graphics.setFont(font)

@@ -4,6 +4,7 @@ local EnemyKits = require("src.data.enemies")
 local Rng = require("src.systems.Rng")
 local IntentVisibility = require("src.systems.IntentVisibility")
 local BossMechanics = require("src.systems.BossMechanics")
+local Resistances = require("src.systems.Resistances")
 
 local Enemy = {}
 Enemy.__index = Enemy
@@ -369,8 +370,18 @@ function Enemy:_markDeathIfCrossed(wasAlive)
     self:_checkPhase()
 end
 
-function Enemy:takeDamage(damage)
+function Enemy:takeDamage(damage, dtype)
     local wasAlive = self.health > 0
+    local level
+    if dtype then
+        local raw = damage
+        damage, level = Resistances.apply(self, dtype, damage)
+        if level then
+            self.lastResist = { type = dtype, level = level, raw = raw, final = damage }
+            if Enemy.onResist then Enemy.onResist(self, level, dtype, raw, damage) end
+        end
+    end
+    local landed = damage
     if self:hasStatus("vulnerable") then
         damage = math.floor(damage * 1.5)
     end
@@ -390,6 +401,15 @@ function Enemy:takeDamage(damage)
             self:addStatusEffect({ name = "enraged", stacks = 1, duration = 999 })
         end
     end
+    return landed, level
+end
+
+function Enemy:resistanceTo(dtype)
+    return Resistances.level(self, dtype)
+end
+
+function Enemy:resistances()
+    return Resistances.entries(self)
 end
 
 function Enemy:addArmor(value)
@@ -492,6 +512,14 @@ function Enemy:onTurnEnd()
             end
         end
     end
+    local poisonRaw, burnRaw = poisonDmg, burnDmg
+    local poisonLvl, burnLvl
+    poisonDmg, poisonLvl = Resistances.apply(self, Resistances.DOT_TYPE.poison, poisonDmg)
+    burnDmg, burnLvl = Resistances.apply(self, Resistances.DOT_TYPE.burn, burnDmg)
+    self.lastDot = {
+        poison = { raw = poisonRaw, dealt = poisonDmg, level = poisonLvl },
+        burn = { raw = burnRaw, dealt = burnDmg, level = burnLvl },
+    }
     self:_applyDot(poisonDmg)
     self:_applyDot(burnDmg)
 

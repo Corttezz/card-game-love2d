@@ -1055,7 +1055,7 @@ return {
         shop_bell   = { name = "Campana de nuevas ofertas", desc = "Toca la campana y el mercader repone las dos estanterías. Cuesta ${n} en esta visita y sube $2 con cada toque." },
         shop_ledger = { name = "Libro de cuentas", desc = "Cierra la cuenta y sigue el viaje. Salir de la tienda da +${bonus} de oro." },
         shop_dice   = { name = "Cubilete de dados", desc = "Los Dados del Escriba: una apuesta por visita. Haz clic para abrir la mesa." },
-        poison     = { name = "Veneno",     desc = "Causa {stacks} de daño al final del turno y pierde 1 acumulación." },
+        poison     = { name = "Veneno",     desc = "Causa {stacks} de daño al final del turno y pierde 1 acumulación.", desc_immune = "Inmune: el veneno se pega y decae, pero no causa daño.", desc_resist = "Resistido: causa la mitad de {stacks} al final del turno y pierde 1 acumulación.", desc_weak = "Debilidad: causa un 50% más que {stacks} al final del turno y pierde 1 acumulación." },
         weak       = { name = "Débil",      desc = "El daño infligido se reduce en un 25% durante {duration} turno(s)." },
         vulnerable = { name = "Vulnerable", desc = "Recibe un 50% más de daño (veneno y quemadura no cuentan) durante {duration} turno(s)." },
         strength   = { name = "Fuerza",     desc = "Cada golpe de ataque causa +{stacks} de daño." },
@@ -1067,7 +1067,7 @@ return {
         orb_dark      = { name = "Orbe de Sombra",    desc = "No pulsa: crece +2 por turno. Evocar causa {duration} de daño (doble de su valor)." },
         orb_holy      = { name = "Orbe Sagrado",   desc = "Pulsa {stacks} de curación al final de tu turno. Evocar cura {duration} HP." },
         orb_empty     = { name = "Ranura de Orbe", desc = "Vacía. Las cartas de Canalizar crean orbes aquí (máximo {stacks}). Llena, canalizar evoca el más antiguo." },
-        burn       = { name = "Quemadura",  desc = "Causa {stacks} de daño de fuego al final del turno, durante {duration} turno(s)." },
+        burn       = { name = "Quemadura",  desc = "Causa {stacks} de daño de fuego al final del turno, durante {duration} turno(s).", desc_immune = "Inmune al fuego: la quemadura no causa daño.", desc_resist = "Resiste el fuego: causa la mitad de {stacks} al final del turno, durante {duration} turno(s).", desc_weak = "Débil contra el fuego: causa un 50% más que {stacks} al final del turno, durante {duration} turno(s)." },
         thorn        = { name = "Espinas",
             desc = "Armadas: cuando el enemigo te ataque, recibe {stacks} de daño de vuelta. Dura {duration} turno(s).",
             desc_permanent = "Cuando el enemigo te ataque, recibe {stacks} de daño de vuelta." },
@@ -1442,6 +1442,7 @@ return {
     cheat = require("src.i18n.locales.cheat.es"),
 
     bestiary = require("src.i18n.locales.bestiary.es"),
+    resist = require("src.i18n.locales.resist.es"),
 
     seals = require("src.i18n.locales.run_modifiers.es").seals,
     seal_ui = require("src.i18n.locales.run_modifiers.es").seal_ui,
