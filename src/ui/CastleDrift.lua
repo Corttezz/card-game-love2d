@@ -1,9 +1,7 @@
 local CastleDrift = {}
 
 CastleDrift.SIGN = -1
-CastleDrift.STEP = 0.025
-CastleDrift.MAX = 0.035
-CastleDrift.KEEP = 0.45
+CastleDrift.MAX = 0.05
 CastleDrift.FADE_FROM = 0.45
 CastleDrift.FADE_TO = 0.8
 
@@ -27,10 +25,14 @@ function CastleDrift.pick(dir, camZ, len, toCenter)
     local to = 0
     if not toCenter then
         local d = (dir or 0) > 0 and 1 or ((dir or 0) < 0 and -1 or 0)
-        to = math.min(CastleDrift.MAX, math.max(-CastleDrift.MAX,
-            cur * CastleDrift.KEEP + CastleDrift.SIGN * d * CastleDrift.STEP))
+        to = CastleDrift.SIGN * d * CastleDrift.MAX
     end
     st.from, st.to, st.z0, st.len = cur, to, camZ, math.max(1e-3, len or 1)
+end
+
+function CastleDrift.back(camZ, len)
+    local cur = CastleDrift.raw(camZ)
+    st.from, st.to, st.z0, st.len = cur, 0, camZ, math.max(1e-3, len or 1)
 end
 
 function CastleDrift.reset()

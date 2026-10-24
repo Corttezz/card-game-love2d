@@ -234,3 +234,59 @@ O lead viu a rodada 5 como "faixa escura chapada" no lugar onde o dono já recus
   (fator 0,62 + 0,24·|ey|).
 - **Convergência**: o deck volta à largura do tronco nos primeiros 40% (`WALK.convK`); nenhuma faixa
   mais larga que a passarela que entra na loja.
+
+## Rodada 7 (24/Out/2026): fluxo real, partida do nó, ramos sem continuação e ato 5 sem passarela
+
+Dono: "erros muito, muito graves nas estradas". Substitui o deck, as passarelas, os postes e as vigas das
+rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_walkPoints`, `_marshWalks`,
+`_board`, `_corner`, `_bq`; as notas acima ficam como histórico).
+
+- **O bug do marco parado na frente.** Depois de um nó sem luta (loja, descanso, evento) o `showFork` abria
+  a próxima encruzilhada com a câmera parada: o marco visitado (`WorldRoad._landmark`, no meio da estrada a
+  rel 7,5) ficava estacionado na frente e cobria o ramo do meio. Na batalha não acontecia porque a viagem de
+  20 leva a câmera além dele. A v5.2 limpava o `_landmark` no `showFork`; a rodada 3 tirou isso (o marco
+  "sumia") e ninguém testava sair de um nó, porque o `estrada_seq` só cobria encruzilhada → viagem → chegada.
+  Correção: `showFork` com um marco visitado na frente (rel entre -1 e `MARK_REL - 1`) não abre a encruzilhada,
+  faz a **partida** (`WorldRoad.DEPART`: viagem de 10 em 2,9 s com `WorldRoad.travel`) e abre a encruzilhada
+  no fim dela (`WorldRoad._openFork`). Durante a partida `isForkActive()` é verdade (o `main.lua` só roda o
+  `WorldRoad.update` no `mapSelection` com encruzilhada ativa) e `_fork` é nil (clique não faz nada). O marco
+  sai de cena pelo lado do ramo dele (`WorldRoad.landmarkSlide`, lado = `dirs` do ramo; do meio, lado por hash
+  do z), deslizando em 62 % da partida, como a estrada contornando o lugar.
+- **Ramo lateral termina no marco** (escolha, clique e enquanto se está no nó). `forkFarK` mede o fim pelo z
+  do marco no MUNDO (`f.markZ - camZ`), não por `MARK_REL` fixo; o escolhido não volta mais a inteiro na
+  convergência. No fim da convergência nasce `WorldRoad._stop = { z, reveal }`: as linhas da estrada e a
+  clareira da grama além do marco ficam com o mesmo corte (`WorldRoad.stopFarK`, mesma curva de `FORK_END`).
+  Ramo do meio já continua (reveal 1). **Ao sair** o corte corre do marco até a crista em 0,42 s
+  (`DEPART.reveal`, ease-out cúbico) enquanto a partida começa: a continuação "pisca" para frente em vez de
+  estalar. Nó de luta num ramo lateral (elite, 2ª batalha) revela já no fim da convergência, junto da viagem.
+  O `forkSig` da grama inclui o reveal (sem isso o quadro de grama em cache não abria a clareira).
+- **Castelo vende a curva.** `CastleDrift.pick` leva o castelo a `SIGN × dir × MAX` (0,05 da largura, oposto ao
+  ramo) só durante a convergência; `WorldRoad.travel` chama `CastleDrift.back` e o desvio volta a 0 ao longo da
+  viagem (partida do nó ou caminho da batalha). Não acumula mais (`STEP`/`KEEP` saíram). Ramo do meio: 0.
+- **Batalha sempre no meio** (`WorldRoad.forkDirs`): nós que se atravessam andando (`WALK_TYPES`: battle 1,
+  elite 2, mini_boss 3, boss 4, a prioridade decide quem fica no meio quando há dois) vão para o ramo do meio;
+  os outros saem para a esquerda e a direita na ordem original. 2 opções com luta: luta no meio e a outra do lado
+  em que estava na lista (antes da luta = esquerda). Sem luta: 3 opções mantêm o do meio da lista, 2 opções
+  ficam esquerda/direita. Os índices dos nós não mudam (`chooseNode(index)` intacto); a ordem é decidida uma vez no
+  `showFork` (Continuar recalcula igual, mesma lista).
+- **Ato 5: tábuas só no tronco.** Todo ramo (inclusive o do meio) é trilha de pântano com o mesmo sistema de
+  ramos dos outros atos (`RoadFork.partition` normal, sem junta dura), chão do bloco 3 do tile repintado por
+  `marshTrail` (`RoadTiles`): lama pisada com sulcos e pegadas, turfa escura nas bordas, poças com brilho,
+  juncos em touceiras só nas bordas, raízes entrando na trilha, musgo; bloco 4 = metade borrada do bloco 3 para a
+  crista (`V.BLOCKS.marsh = 4`). As tábuas do tronco terminam rotas no barro (`WorldRoad._marshRow`): desde
+  `FORK_REL - 4,6` até `+0,7` (`PLANK_END`), cada tábua (id = tile × 997 + índice, avaliada no CENTRO da tábua,
+  então a ponta é reta por tábua) encurta de um lado mais que do outro, escurece (afundada) e some
+  (`fade 0,22`). Tudo vezes `WorldRoad.forkE` (`animIn × (1 - convergência)`): sem encruzilhada o tronco é tábua
+  até a crista e a abertura/fechamento dissolve tábua por tábua, sem estalo.
+- **Terra sob a mão.** `GroundClutter` não corta mais de uma vez o que fica sob a mão quando ela entra: some em
+  0,35 s (`LMG.handK`, `env.handK`). Era o `clutter some` na chegada.
+- **Trava e ferramenta do fluxo real.** `lovec . test_one estrada_fluxo "<atos>:<planos>"` dá boot no
+  `main.lua` (como o `test_cheat_mode`), modo cheat sem painel, CRT desligado, 60 fps, mouse falso: encruzilhada
+  real → clique pelo `love.mousepressed` → convergência → tela do nó (loja/descanso/evento pelo rush do cheat;
+  luta vencida pelo `kill`) → saída → partida → próxima encruzilhada. Detector do `estrada_seq` (aparece/some/
+  salta/teleporta) + `opcao:coberta` (algo mais perto cobrindo > 22 % de um marco clicável; árvore só se o pé
+  cai no miolo do marco) + `landmark:parado_na_frente`. Planos: 3 opções (loja, descanso, batalha, evento, sem
+  luta no meio e do lado, elite do lado) e 2 opções (loja, batalha, sem luta). Folhas:
+  `CARDGAME_IDENTITY=<id> python tools/estrada_fluxo_folha.py [prefixo]` → `tools/preview_out/estrada_fluxo/`
+  (`folha_<tag>.jpg` quadro a quadro, `momentos_<tag>.jpg` encruzilhada/chegou/tela/saiu/saiu+10/próxima).
+  Trava: `love . test_one test_fork_flow` (no test_all): ordem dos ramos + 6 fluxos reais com 0 sinais.

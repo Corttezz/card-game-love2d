@@ -1235,6 +1235,7 @@ end
 function WorldRoad.travel(opts)
     opts = opts or {}
     local dist = opts.distance or WorldRoad.TRAVEL_DISTANCE
+    require("src.ui.CastleDrift").back(WorldRoad._camZ, dist)
     WorldRoad._travel = {
         from = WorldRoad._camZ,
         dist = dist,
@@ -1761,9 +1762,20 @@ function WorldRoad.update(dt)
     end
 
 
+    do
+        local s = WorldRoad._stop
+        if s then
+            if s.revealing then
+                s.reveal = math.min(1, s.reveal + dt / WorldRoad.DEPART.reveal)
+                if s.reveal >= 1 then s.revealing = false end
+            end
+            if s.z - WorldRoad._camZ < -3 and s.reveal >= 1 then WorldRoad._stop = nil end
+        end
+    end
+
     local f = WorldRoad._fork
     if f then
-        f.animIn = math.min(1, (f.animIn or 0) + dt * 2.2)
+        f.animIn = math.min(1, (f.animIn or 0) + dt * 1.7)
         if f.chosenPulse and f.chosenPulse > 0 then
             f.chosenPulse = math.max(0, f.chosenPulse - dt)
         end
@@ -1781,12 +1793,17 @@ function WorldRoad.update(dt)
                     local fps = (a and a.fps) or 8
                     local animT = ((f._animT and f._animT[f.chosen]) or 0)
                         + f.chosen * 3.7
+                    local d = f.dirs[f.chosen] or 0
                     WorldRoad._landmark = {
                         key = key, z = f.markZ,
                         size = lmCfg(LANDMARK_SIZE, key) or 2.0,
                         phase = animT - WorldRoad._time * fps,
+                        side = d ~= 0 and d or ((math.floor(f.markZ * 7) % 2 == 0) and 1 or -1),
                     }
                 end
+                local dch = f.dirs[f.chosen] or 0
+                WorldRoad._stop = { z = f.markZ, reveal = (dch == 0) and 1 or 0,
+                    revealing = dch ~= 0 and WorldRoad.isWalkType(node and node.type) }
                 local cb, idx = f.onChosen, f.chosen
                 WorldRoad._fork = nil
                 if cb then cb(node, idx) end
@@ -2617,7 +2634,9 @@ local function drawPropsBehind(g, x, w, camZ)
         local fadeA = propFadeK(p) * PropCut.hideK(p)
         local roadLum = LuminaireEngine.def(p.bid, p.kind)
         roadLum = roadLum and roadLum.roadside
-        if WorldRoad._fork and not roadLum and not PropCut.kinds[p.kind] then fadeA = 0 end
+        if WorldRoad._fork and not roadLum and not PropCut.kinds[p.kind] then
+            fadeA = fadeA * (1 - WorldRoad.forkE(WorldRoad._fork))
+        end
         if p.anchor then
         elseif fadeA > 0.01 and rel > REL_CREST and rel <= REL_CREST + EMERGE_BAND then
             local em = 1 - (rel - REL_CREST) / EMERGE_BAND
@@ -3333,10 +3352,59 @@ function WorldRoad.lumPlanVerdict(p, z, kind, bid)
     return nil
 end
 
+WorldRoad.WALK_TYPES = { battle = 1, elite = 2, mini_boss = 3, boss = 4 }
+function WorldRoad.isWalkType(nt)
+    return WorldRoad.WALK_TYPES[nt or ""] ~= nil
+end
+function WorldRoad.forkDirs(nodes, n)
+    if n == 1 then return { 0 } end
+    local W = WorldRoad.WALK_TYPES
+    local mid, best = nil, 99
+    for i = 1, n do
+        local p = W[nodes[i] and nodes[i].type or ""]
+        if p and p < best then mid, best = i, p end
+    end
+    if n == 2 and not mid then return { -1, 1 } end
+    mid = mid or 2
+    local dirs, side = {}, -1
+    for i = 1, n do
+        if i == mid then dirs[i] = 0
+        elseif n == 2 then dirs[i] = (i < mid) and -1 or 1
+        else dirs[i] = side; side = 1 end
+    end
+    return dirs
+end
+
+WorldRoad.DEPART = { dist = 10, dur = 2.9, slideLen = 0.62, reveal = 0.8 }
 function WorldRoad.showFork(nodes, onChosen)
     if not nodes or #nodes == 0 then return false end
+    if WorldRoad._pendingFork then
+        WorldRoad._pendingFork.nodes, WorldRoad._pendingFork.onChosen = nodes, onChosen
+        return true
+    end
+    local lm = WorldRoad._landmark
+    local rel = lm and (lm.z - WorldRoad._camZ)
+    if rel and rel < MARK_REL - 1 and rel > -1 and not WorldRoad._travel then
+        local D = WorldRoad.DEPART
+        WorldRoad._pendingFork = { nodes = nodes, onChosen = onChosen }
+        local s = WorldRoad._stop or { z = lm.z, reveal = 1 }
+        WorldRoad._stop = s
+        s.revealing = s.reveal < 1
+        lm.depart = { z0 = WorldRoad._camZ, len = D.dist * D.slideLen }
+        WorldRoad.travel({ distance = D.dist, duration = D.dur, onComplete = function()
+            local p = WorldRoad._pendingFork
+            WorldRoad._pendingFork = nil
+            if p then WorldRoad._openFork(p.nodes, p.onChosen) end
+        end })
+        return true
+    end
+    return WorldRoad._openFork(nodes, onChosen)
+end
+
+function WorldRoad._openFork(nodes, onChosen)
     local n = math.min(3, #nodes)
-    local dirs = (n == 1) and { 0 } or (n == 2) and { -1, 1 } or { -1, 0, 1 }
+    local dirs = WorldRoad.forkDirs(nodes, n)
+    WorldRoad._stop = nil
     WorldRoad._fork = {
         nodes = nodes, n = n, dirs = dirs,
         animIn = 0, hover = nil, chosen = nil, converge = nil,
@@ -3544,7 +3612,30 @@ function LMG.layoutMarks(f)
 end
 
 function WorldRoad.isForkActive()
-    return WorldRoad._fork ~= nil
+    return WorldRoad._fork ~= nil or WorldRoad._pendingFork ~= nil
+end
+
+function WorldRoad.isDeparting()
+    return WorldRoad._pendingFork ~= nil
+end
+
+function WorldRoad.stopFarK(rel)
+    local s = WorldRoad._stop
+    if not s or s.reveal >= 1 then return 1 end
+    local E = WorldRoad.FORK_END
+    local r = s.reveal
+    r = r * r * (3 - 2 * r)
+    local endRel = (s.z - WorldRoad._camZ) + E.from + (REL_CREST + EMERGE_BAND) * r
+    local e = math.min(1, math.max(0, (rel - endRel) / E.len))
+    return 1 - e * e * (3 - 2 * e)
+end
+
+function WorldRoad.landmarkSlide(lm, t, w)
+    local d = lm and lm.depart
+    if not d then return 0 end
+    local k = math.min(1, math.max(0, (WorldRoad._camZ - d.z0) / d.len))
+    k = k * k * (3 - 2 * k)
+    return (lm.side or 1) * k * w * (0.16 + 0.34 * t)
 end
 
 local function forkOffset(f, i, rel, w, plan)
@@ -3684,7 +3775,15 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
             end,
             roadCenters = function(z, t)
                 local f = WorldRoad._fork
-                if not f then return nil end
+                if not f then
+                    local rs = z - WorldRoad._camZ
+                    local ks = WorldRoad.stopFarK(rs)
+                    if ks >= 1 then return nil end
+                    local cs, ws = _grassFork.cs, _grassFork.ws
+                    cs[1], ws[1] = g.cx + roadWobble(z, t, w), ks
+                    for i = 2, #cs do cs[i] = nil; ws[i] = nil end
+                    return cs, 1, ws
+                end
                 local rel = z - WorldRoad._camZ
                 if rel <= FORK_REL then return nil end
                 local wob = roadWobble(z, t, w)
@@ -3718,8 +3817,10 @@ local function drawGrass(g, x, w, camZ, relFrom, relTo)
     _grassCtx.relTo = relTo
     _grassCtx.frame = WorldRoad._drawFrame
     local f = WorldRoad._fork
+    local stp = WorldRoad._stop
     _grassCtx.forkSig = f and (f.n * 1e7 + (f.chosen or 0) * 1e6
-        + (f.converge and f.converge.k or 0) * 1e3 + (f.animIn or 0)) or 0
+        + (f.converge and f.converge.k or 0) * 1e3 + (f.animIn or 0))
+        or (stp and stp.reveal < 1 and (2e8 + stp.reveal * 1e3 + (stp.z % 97))) or 0
     GrassField.draw(_grassCtx)
 end
 
@@ -3751,8 +3852,7 @@ function WorldRoad.forkMousePressed(mx, my)
         local fights = nt == "battle" or nt == "elite" or nt == "mini_boss"
         WorldRoad.planStop(WorldRoad._camZ + MARK_REL - ARRIVE_REL
             + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), fights)
-        require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL
-            + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), nt == "boss")
+        require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL, nt == "boss")
         if node then
             local key = landmarkKeyFor(node.type)
             local img = key and getLandmark(key)
@@ -3840,10 +3940,9 @@ WorldRoad.FORK_END = { from = 0.4, len = 2.4 }
 function WorldRoad.forkFarK(f, i, rel)
     if not f or f.dirs[i] == 0 then return 1 end
     local E = WorldRoad.FORK_END
-    local e = math.min(1, math.max(0, (rel - MARK_REL - E.from) / E.len))
-    local k = 1 - e * e * (3 - 2 * e)
-    if f.converge and i == f.chosen then k = k + (1 - k) * (f.converge.k or 0) end
-    return k
+    local endRel = (f.markZ or (WorldRoad._camZ + MARK_REL)) - WorldRoad._camZ
+    local e = math.min(1, math.max(0, (rel - endRel - E.from) / E.len))
+    return 1 - e * e * (3 - 2 * e)
 end
 
 WorldRoad._roadRows = { t = {}, rel = {}, wz = {}, half = {}, row = {}, blend = {}, dv = {}, v = {}, hs = {},
@@ -3975,7 +4074,7 @@ local function drawRoad(g, x, w, camZ)
                 local du0 = (segX - cxRow) / hs
                 local du1 = du0 + segW / hs
                 local vx = du0 + st.cu + (ub or 0)
-                if not ub and far and hash(segX * 0.173 + rowId * 7.31) > farK then vx = vx + st.far end
+                if far and hash(segX * 0.173 + rowId * 7.31) > farK then vx = vx + st.far end
                 local aL, aR = aMul, aMul
                 if band > 0 and segX < bandR then
                     aL = aMul * (segX - sL) / band
@@ -4047,31 +4146,14 @@ local function drawRoad(g, x, w, camZ)
     local A = R.A
     local probe = WorldRoad._armProbe
     local chosen = fork and fork.converge and fork.chosen or nil
-    local DK = nil
-    if fork and st.platform and tile then
-        DK = R.deck or {}
-        R.deck = DK
-        DK.r0, DK.r1, DK.wk, DK.e = WorldRoad.deckSpan(fork)
-        local tF = (1 - FORK_REL / REL_CREST) ^ T_POW
-        local hsF = ROAD_HALF * w * (0.30 + 0.70 * tF ^ 1.15) * vis / st.half
-        DK.uc = roadWobble(camZ + FORK_REL, tF, w) / hsF
-        DK.front, DK.alive, DK.pc = false, false, rawBiome().trunk or DK.pc or { 0.2, 0.14, 0.09 }
-    end
+    local marsh = st.bare and tile and WorldRoad.forkE(fork) or 0
+    local MR = WorldRoad._marshRow
     R.vd, R.vbase, R.camZ, R.w, R.vis = vd, vbase, camZ, w, vis
     for kk = 1, nRows do
         k = kk
         t, worldZ, half0, rowId, newRow = RT[k], RWZ[k], RH[k], RROW[k], RNEW[k]
         local rel = RREL[k]
-        local dL, dR
-        if DK and rel > DK.r0 and rel <= DK.r1 then
-            dL, dR = edges(cx + RWOB[k])
-        end
-        if dL and dR > dL then
-            DK.alive = true
-            local xL, xR = WorldRoad._deckRow(DK, k, t, half0, cx + RWOB[k], dL, dR, cx, R, span, rect, g, step,
-                nRows, rowId, qm, st)
-            decorate(xL, xR, true, true, 1)
-        elseif fork and rel > FORK_REL then
+        if fork and rel > FORK_REL then
             for i = 1, nArm do
                 local a = A[i]
                 if not a then a = {}; A[i] = a end
@@ -4086,30 +4168,19 @@ local function drawRoad(g, x, w, camZ)
                     probe.half = half0
                 end
             end
-            local central = nil
-            if st.platform then
-                for ci = 1, nArm do if fork.dirs[ci] == 0 then central = ci end end
-            end
             local ck = fork.converge and math.min(1, (fork.converge.k or 0) / 0.18) or 1
-            local ord, m = RoadFork.partition(A, nArm, chosen, half0, st.platform, ck * ck * (3 - 2 * ck), central)
+            local ord, m = RoadFork.partition(A, nArm, chosen, half0, false, ck * ck * (3 - 2 * ck))
             local fp = WorldRoad._forkSurfaceProbe
             if fp then RoadFork.probeRow(fp, A, ord, m, arms, k, RDV[k], RHS[k], step) end
             for q = 1, m do
                 local i = ord[q]
                 local a, arm = A[i], arms[i]
                 local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
-                local tk = st.bare and WorldRoad.walkTk(fork, i) or 0
-                if tk < 0.999 then
-                    span(a.c, a.sL, a.sR, a.band, a.a * (1 - tk), bright, arm.va[k], arm.sh[k],
-                        arm.L[k], nil, st.bare)
-                end
-                if st.bare and tk > 0.001 then
-                    span(a.c, a.sL, a.sR, a.band, a.a * tk, bright, arm.va[k], arm.sh[k], arm.L[k], nil, nil)
-                end
-                if st.bare and a.sR > a.sL then
-                    local yy = math.floor(g.latY(a.c - cx, t))
-                    if a.dL then rect(a.xL, yy, 2, step, 0.05, 0.06, 0.03, 0.5 * a.a * (1 - tk)) end
-                    if a.dR then rect(a.xR - 2, yy, 2, step, 0.05, 0.06, 0.03, 0.5 * a.a * (1 - tk)) end
+                if marsh > 0 then
+                    MR(span, a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k], marsh, rel, st,
+                        arm.va[k] + vbase, half0, vd)
+                else
+                    span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k])
                 end
             end
             for q = 1, m do
@@ -4117,14 +4188,18 @@ local function drawRoad(g, x, w, camZ)
                 decorate(a.xL, a.xR, a.dL, a.dR, a.a, q == 1, q == m)
             end
         else
-            local c = cx + RWOB[k]
-            local xL, xR = edges(c)
-            span(c, xL, xR, 0, 1, 1, RV[k], 0, RDV[k])
-            decorate(xL, xR, true, true, 1)
+            local sk = WorldRoad.stopFarK(rel)
+            if sk > 0.01 then
+                local c = cx + RWOB[k]
+                local xL, xR = edges(c)
+                if marsh > 0 then
+                    MR(span, c, xL, xR, 0, sk, 1, RV[k], 0, RDV[k], marsh, rel, st, RV[k] + vbase, half0, vd)
+                else
+                    span(c, xL, xR, 0, sk, 1, RV[k], 0, RDV[k])
+                end
+                decorate(xL, xR, true, true, sk)
+            end
         end
-    end
-    if DK and DK.alive then
-        WorldRoad._marshWalks(qm, g, cx, groundH, step, nRows, R, st, fork)
     end
     if qm.n > 0 then
         qm:upload(0, qm.n)
@@ -4137,319 +4212,49 @@ local function drawRoad(g, x, w, camZ)
     end
 end
 
-function WorldRoad._bq(qm, x1, y1, x2, y2, x3, y3, x4, y4, cr, cg, cb, a)
-    local U = QuadMesh.UNTEXTURED
-    qm:quad(x1, y1, U, 0, x2, y2, U, 0, x3, y3, U, 0, x4, y4, U, 0, cr, cg, cb, a)
-end
-
-function WorldRoad._board(qm, ax, ay, bx, by, qx, qy, dx, dy, pc, tone, aMul, h2)
-    local U = QuadMesh.UNTEXTURED
-    local q = WorldRoad._bq
-    local k = 1.35 + tone * 0.55
-    local r, gg, b = math.min(1, pc[1] * k + 0.06), math.min(1, pc[2] * k + 0.05), math.min(1, pc[3] * k + 0.03)
-    q(qm, ax, ay, bx, by, qx, qy, dx, dy, r, gg, b, aMul)
-    local tl = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
-    if tl > 0.5 then
-        local f = math.min(0.45, 1.6 / tl)
-        q(qm, ax, ay, ax + (bx - ax) * f, ay + (by - ay) * f, qx, qy, qx + (dx - qx) * f, qy + (dy - qy) * f,
-            pc[1] * 0.55, pc[2] * 0.55, pc[3] * 0.55, aMul)
-        local f2 = math.min(0.3, 1.0 / tl)
-        q(qm, bx + (ax - bx) * f2, by + (ay - by) * f2, bx, by, dx + (qx - dx) * f2, dy + (qy - dy) * f2, dx, dy,
-            math.min(1, r * 1.25), math.min(1, gg * 1.22), math.min(1, b * 1.15), aMul)
-        if h2 > 0.45 then
-            local u0, u1 = 0.12, 0.88 - h2 * 0.3
-            local lx0, ly0 = ax + (qx - ax) * u0, ay + (qy - ay) * u0
-            local rx0, ry0 = bx + (dx - bx) * u0, by + (dy - by) * u0
-            local lx1, ly1 = ax + (qx - ax) * u1, ay + (qy - ay) * u1
-            local rx1, ry1 = bx + (dx - bx) * u1, by + (dy - by) * u1
-            q(qm, lx0 + (rx0 - lx0) * 0.47, ly0 + (ry0 - ly0) * 0.47, lx0 + (rx0 - lx0) * 0.53, ly0 + (ry0 - ly0) * 0.53,
-                lx1 + (rx1 - lx1) * 0.47, ly1 + (ry1 - ly1) * 0.47, lx1 + (rx1 - lx1) * 0.53, ly1 + (ry1 - ly1) * 0.53,
-                r * 0.78, gg * 0.78, b * 0.8, aMul * 0.8)
-        end
-    end
-    for n = 1, 2 do
-        local u = n == 1 and 0.1 or 0.9
-        local x = ax + (qx - ax) * u + ((bx + (dx - bx) * u) - (ax + (qx - ax) * u)) * 0.5
-        local y = ay + (qy - ay) * u + ((by + (dy - by) * u) - (ay + (qy - ay) * u)) * 0.5
-        qm:rect(math.floor(x), math.floor(y), 1, 1, U, 0, U, 0, 0.08, 0.06, 0.05, aMul)
-    end
-end
-
-function WorldRoad._corner(B, g, cx, a, b)
-    local x = B.ccx + B.nx * a * B.lpx + B.sx * b * B.wpx
-    local y = B.cy0 + B.ny * a * B.lpx + B.sy * b * B.wpx
-    return x, y + g.latY(x - cx, B.ctt) - g.latY(B.ccx - cx + B.sx * b * B.wpx, B.ctt)
-end
-
-WorldRoad.WALK = { deckW = 1.4, deckBack = 0.6, deckLen = 2.6, hl = 0.33, attach = 0.15, convK = 0.4, pitch = 7.5, fill = 0.84, ku = 1.0,
-    exit = 0.3, tk0 = 0.72, tk1 = 0.97, post = 4 }
-
-function WorldRoad.deckSpan(fork)
-    local W = WorldRoad.WALK
-    local ai = fork.animIn or 1
-    ai = ai * ai * (3 - 2 * ai)
-    local c = fork.converge and math.min(1, (fork.converge.k or 0) / W.convK) or 0
-    local e = ai * (1 - c * c * (3 - 2 * c))
-    return FORK_REL - W.deckBack, FORK_REL + W.deckLen, 1 + (W.deckW - 1) * e, e
-end
-
-function WorldRoad.walkTk(fork, i)
-    if not fork.converge or i ~= fork.chosen then return 0 end
-    local W = WorldRoad.WALK
-    local k = math.min(1, math.max(0, ((fork.converge.k or 0) - W.tk0) / (W.tk1 - W.tk0)))
+WorldRoad.PLANK_END = { back = 4.6, fwd = 0.7, fade = 0.22 }
+function WorldRoad.plankNeed(rel)
+    local P = WorldRoad.PLANK_END
+    local k = (rel - (FORK_REL - P.back)) / (P.back + P.fwd)
+    k = math.min(1, math.max(0, k))
     return k * k * (3 - 2 * k)
 end
 
-function WorldRoad.postW(S, hs)
-    return math.max(4, 2 * math.floor(1.35 * S * hs + 0.5))
+function WorldRoad.forkE(fork)
+    if not fork then return 0 end
+    local ai = fork.animIn or 1
+    ai = ai * ai * (3 - 2 * ai)
+    return ai * (1 - (fork.converge and fork.converge.k or 0))
 end
 
-function WorldRoad._deckRow(DK, k, t, half0, c0, tL, tR, cx, R, span, rect, g, step, nRows, rowId, qm, st)
-    local RHS, RV, RDV, RREL = R.hs, R.v, R.dv, R.rel
+function WorldRoad._marshRow(span, cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, e, rel, st, vglob, half0, vd)
+    if e <= 0.002 or WorldRoad.plankNeed(rel + 1.5) <= 0.002 then
+        span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow)
+        return
+    end
+    span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, nil, st.bare)
+    local RTl = require("engine.RoadTiles")
+    local pl = RTl.plankAt(vrow)
+    if not pl then return end
+    local off = (vrow / RTl.S) % RTl.TH - pl.y0 - pl.w * 0.5
+    local ne = e * WorldRoad.plankNeed(rel - off * RTl.S / vd)
+    local th = RTl.TH * RTl.S
+    local id = math.floor(vglob / th) * 997 + pl.i
     local hash = WorldRoad._roadHash
-    local e = DK.e
-    local dc = cx + DK.uc * RHS[k]
-    local cc = c0 + (dc - c0) * e
-    local hw = DK.wk * half0
-    local xL = math.floor(cc - hw + (tL - (c0 - half0)))
-    local xR = math.floor(cc + hw + (tR - (c0 + half0)))
-    local PL = require("engine.RoadTiles")
-    local p = PL.plankAt(RV[k])
-    local jit = p and (PL.plankJitter(p.i + 23) - 0.5) * 0.22 or 0
-    span(cc, xL, xR, 0, 1, 1, RV[k], 0, RDV[k], 1 + (1.54 * DK.wk * (1 + jit) - 1) * e)
-    if e > 0.01 then
-        local front = not DK.front
-        local back = k < nRows and RREL[k + 1] <= DK.r0
-        if front or back then
-            local bc = DK.pc
-            local m0, m1 = math.floor(cc - hw * 0.9), math.floor(cc + hw * 0.9)
-            local bx, n = m0, 0
-            while bx < m1 do
-                n = n + 1
-                local len = math.floor(10 + hash(rowId * 13 + n * 7.1) * 18)
-                local gap = hash(rowId * 17 + n * 3.3) < 0.3 and 4 or 1
-                local x2 = math.min(m1, bx + len)
-                local yy = math.floor(g.latY((bx + x2) * 0.5 - cx, t)) - 1
-                rect(bx, yy, x2 - bx, 2, bc[1] * 1.45, bc[2] * 1.4, bc[3] * 1.3, 0.8 * e)
-                rect(bx, yy + 2, x2 - bx, 1, bc[1] * 0.7, bc[2] * 0.7, bc[3] * 0.7, 0.55 * e)
-                bx = x2 + gap
-            end
-            local pw = WorldRoad.postW(st.S or 1, RHS[k])
-            for sd = -1, 1, 2 do
-                local px = sd < 0 and (m0 - pw * 0.5) or (m1 + pw * 0.5)
-                WorldRoad._post(qm, px, math.floor(g.latY(px - cx, t)) + step, pw, bc, e)
-            end
-        end
-        DK.front = true
-    end
-    return xL, xR
-end
-
-function WorldRoad._post(qm, px, py, pw, pc, aMul)
-    local U = QuadMesh.UNTEXTURED
-    local ph = math.max(6, math.floor(pw * 2.4 + 0.5))
-    local x0, y0 = math.floor(px - pw / 2), math.floor(py - ph + pw * 0.4)
-    local sw = math.max(2, math.floor(pw / 3))
-    qm:rect(x0 + 2, y0 + ph, pw, math.max(2, math.floor(pw * 0.4)), U, 0, U, 0, 0.04, 0.05, 0.03, 0.5 * aMul)
-    qm:rect(x0 - 1, y0 - 1, pw + 2, ph + 2, U, 0, U, 0, 0.05, 0.04, 0.03, 0.85 * aMul)
-    qm:rect(x0, y0, pw, ph, U, 0, U, 0, pc[1] * 1.2, pc[2] * 1.2, pc[3] * 1.1, aMul)
-    qm:rect(x0, y0, sw, ph, U, 0, U, 0, pc[1] * 1.9, pc[2] * 1.8, pc[3] * 1.6, aMul)
-    qm:rect(x0 + pw - sw, y0, sw, ph, U, 0, U, 0, pc[1] * 0.6, pc[2] * 0.6, pc[3] * 0.6, aMul)
-    qm:rect(x0, y0, pw, math.max(2, math.floor(pw * 0.35)), U, 0, U, 0, pc[1] * 2.2, pc[2] * 2.1, pc[3] * 1.9, aMul)
-end
-
-function WorldRoad._walkPoints(fork, i, R, st, plan, out)
-    local W = WorldRoad.WALK
-    local DK = R.deck
-    local vd, vbase, camZ, w, vis = R.vd, R.vbase, R.camZ, R.w, R.vis
-    local function at(rel)
-        local t = (1 - math.min(rel, REL_CREST - 0.01) / REL_CREST) ^ T_POW
-        local hs = ROAD_HALF * w * (0.30 + 0.70 * t ^ 1.15) * vis / st.half
-        local x = roadWobble(camZ + rel, t, w) * WorldRoad.forkWobK(fork, i, plan)
-            + (rel > FORK_REL and forkOffset(fork, i, rel, w, plan) or 0)
-        return x / hs, (camZ + rel) * vd - vbase
-    end
-    local dir = fork.dirs[i]
-    local E = WorldRoad.FORK_END
-    local n = 0
-    local function add(u, v)
-        n = n + 1
-        local p = out[n]
-        if not p then p = {}; out[n] = p end
-        p.u, p.v = u, v
-    end
-    local uS, vS = at(DK.r1)
-    if dir ~= 0 then
-        local wk = plan and W.deckW or DK.wk
-        local side = DK.uc + dir * wk * st.half
-        local rS = DK.r1 - W.exit * (DK.r1 - DK.r0)
-        uS, vS = at(rS)
-        vS = (camZ + rS) * vd - vbase
-        local cw = (not plan and fork.converge and i == fork.chosen) and (fork.converge.k or 0) or 0
-        uS = side + (uS - side) * cw
-        add(uS, vS)
-        add(at(MARK_REL))
-        add(at(MARK_REL + E.from + E.len))
-    else
-        local rS = DK.r1 - W.attach
-        uS, vS = at(rS)
-        vS = (camZ + rS) * vd - vbase
-        add(uS, vS)
-        add(at(MARK_REL))
-    end
-    out.n = n
-    return out
-end
-
-function WorldRoad._marshWalks(qm, g, cx, groundH, step, nRows, R, st, fork)
-    local W = WorldRoad.WALK
-    local RT = require("engine.RoadTiles")
-    local S = st.S or 1
-    local RV, RHS = R.v, R.hs
-    local vd, vbase, camZ = R.vd, R.vbase, R.camZ
-    local openK = math.min(1, math.max(0, ((fork.animIn or 1) - 0.55) / 0.45))
-    openK = openK * openK * (3 - 2 * openK)
-    if openK <= 0 then return end
-    local pc = rawBiome().trunk or { 0.2, 0.14, 0.09 }
-    local PW = R.walk or { pts = {}, pd = {}, bc = {} }
-    R.walk = PW
-    local pd = PW.pd
-    pd[1], pd[2], pd[3] = pc[1] * 0.62, pc[2] * 0.62, pc[3] * 0.62
-    local B = PW.bc
-    local corner = WorldRoad._corner
-    local travel = fork.converge and (camZ - fork.converge.z0) * vd or 0
-    local ws = fork._ws
-    if not ws then ws = { t = travel }; fork._ws = ws end
-    local df = WorldRoad._drawFrame or 0
-    local newF = ws.f ~= df
-    local dT = 0
-    if newF then dT, ws.t, ws.f = travel - ws.t, travel, df end
-    if PW.bof ~= df then
-        local old = PW.prev or {}
-        for kk in pairs(old) do old[kk] = nil end
-        PW.cont = PW.bof == df - 1
-        PW.prev, PW.cur, PW.bof = PW.cur or {}, old, df
-    end
-    local BO, BN, cont = PW.prev, PW.cur, PW.cont
-    local function toScreen(u, V)
-        local lo, hi = 1, nRows
-        if V >= RV[1] then lo, hi = 1, 2
-        elseif V <= RV[nRows] then lo, hi = nRows - 1, nRows
-        else
-            while hi - lo > 1 do
-                local mid = math.floor((lo + hi) / 2)
-                if RV[mid] >= V then lo = mid else hi = mid end
-            end
-        end
-        local dvv = RV[lo] - RV[hi]
-        local f = dvv ~= 0 and (RV[lo] - V) / dvv or 0
-        local hs = RHS[lo] + (RHS[hi] - RHS[lo]) * f
-        local tt = ((lo - 1) + f * (hi - lo)) * step / groundH
-        local x = cx + u * hs
-        return x, g.latY(x - cx, tt), hs, tt
-    end
-    local function frame(x0, y0, x1, y1, xc, yc, tt)
-        local ex, ey = x1 - x0, y1 - y0
-        local wl = math.sqrt(ex * ex + ey * ey)
-        if wl < 0.5 then return nil end
-        ex, ey = ex / wl, ey / wl
-        local nx, ny = -ey, ex
-        if nx < 0 then nx, ny = -nx, -ny end
-        B.ccx, B.cy0, B.ctt = xc, yc, tt
-        B.nx, B.ny, B.sx, B.sy, B.lpx, B.wpx = nx, ny, ex, ey, 1, 1
-        return wl, ey
-    end
-    local function plank(L, Wh, sh, tone, aMul, h2, col)
-        local ax, ay = corner(B, g, cx, -(L - sh), -Wh)
-        local bx, by = corner(B, g, cx, -(L - sh), Wh)
-        local qx, qy = corner(B, g, cx, L + sh, -Wh)
-        local dx, dy = corner(B, g, cx, L + sh, Wh)
-        WorldRoad._board(qm, ax, ay, bx, by, qx, qy, dx, dy, col, tone, aMul, h2)
-        return ax, ay, dx, dy
-    end
-    local function posts(L, hs, aMul)
-        local pw = WorldRoad.postW(S, hs)
-        for sd = -1, 1, 2 do
-            local px, py = corner(B, g, cx, sd * (L + pw * 0.6), 0)
-            WorldRoad._post(qm, px, py, pw, pc, aMul)
-        end
-    end
-    for i = 1, fork.n do
-        local base = forkAlpha(fork, i) * openK * (1 - WorldRoad.walkTk(fork, i))
-        if base > 0.08 then
-            local P = WorldRoad._walkPoints(fork, i, R, st, false, PW.pts)
-            for j = 1, P.n - 1 do
-                local A, Z = P[j], P[j + 1]
-                local Du, DV = Z.u - A.u, Z.v - A.v
-                local Lm = math.sqrt((Du * W.ku) ^ 2 + DV * DV)
-                if Lm > 1e-3 then
-                    local pitch = W.pitch * S
-                    local sk = i * 16 + j
-                    if newF then ws[sk] = (ws[sk] or 0) + dT * DV / Lm end
-                    local shift = ws[sk] or 0
-                    local hb = 0.5 * W.fill * pitch
-                    local function pt(s)
-                        local f = s / Lm
-                        return A.u + Du * f, A.v + DV * f
-                    end
-                    do
-                        local relJ = (A.v + vbase) / vd - camZ
-                        local aJ = base * WorldRoad.forkFarK(fork, i, relJ)
-                        if aJ > 0.08 then
-                            local u0, v0 = pt(-0.25 * pitch)
-                            local u1, v1 = pt(0.25 * pitch)
-                            local x0, y0 = toScreen(u0, v0)
-                            local x1, y1 = toScreen(u1, v1)
-                            local xc, yc, hs, tt = toScreen(A.u, A.v)
-                            local wl, ey = frame(x0, y0, x1, y1, xc, yc, tt)
-                            if wl then
-                                local L = W.hl * st.half * hs * (0.62 + 0.24 * math.abs(ey)) * 1.08
-                                if j > 1 or fork.dirs[i] == 0 then plank(L, wl * 0.35, 0, 0.2, aJ, 0, pd) end
-                                posts(L, hs, aJ)
-                            end
-                        end
-                    end
-                    for kb = math.floor(shift / pitch) - 4, math.floor((Lm + shift) / pitch) + 4 do
-                        local s = (kb + 0.5) * pitch - shift
-                        if s > -3 * pitch and s < Lm + 3 * pitch then
-                            local dEnd = math.min(s, Lm - s) / pitch
-                            local fj = math.min(1, math.max(0, (dEnd - 0.05) / 0.45))
-                            local uC, vC = pt(s)
-                            local relC = (vC + vbase) / vd - camZ
-                            local aMul = base * fj * WorldRoad.forkFarK(fork, i, relC)
-                            local bk = (i * 16 + j) * 4096 + kb
-                            if cont then
-                                local o0 = BO[bk] or 0
-                                aMul = o0 + math.max(-0.12, math.min(0.12, aMul - o0))
-                            end
-                            BN[bk] = aMul
-                            if aMul > 0.08 then
-                                local u0, v0 = pt(s - hb)
-                                local u1, v1 = pt(s + hb)
-                                local x0, y0 = toScreen(u0, v0)
-                                local x1, y1 = toScreen(u1, v1)
-                                local xc, yc, hs, tt = toScreen(uC, vC)
-                                local wl, ey = frame(x0, y0, x1, y1, xc, yc, tt)
-                                if wl then
-                                    local id = i * 131 + j * 17 + kb * 7
-                                    local L = W.hl * st.half * hs * (0.62 + 0.24 * math.abs(ey))
-                                        * (0.94 + RT.plankJitter(id) * 0.12)
-                                    local sh = (RT.plankJitter(id + 7) - 0.5) * 2 * S * hs * 0.5
-                                    local ax, ay, dx, dy = plank(L, wl * 0.5, sh, RT.plankJitter(id + 3), aMul,
-                                        RT.plankJitter(id + 11), pc)
-                                    if WorldRoad._seq then
-                                        WorldRoad._seq("board", i, j * 1000 + kb, (ax + dx) * 0.5, (ay + dy) * 0.5,
-                                            math.abs(dx - ax), math.abs(dy - ay), aMul)
-                                    end
-                                    if kb % W.post == 1 then posts(L, hs, aMul) end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
+    local P = WorldRoad.PLANK_END
+    local nk = ne * ne
+    local ka = math.max(0, math.min(1, (hash(id * 1.37 + 11) + P.fade - nk * (1 + P.fade)) / P.fade))
+    if ka <= 0.01 then return end
+    local w0 = 1.25 - 0.66 * math.min(1, ne * 8)
+    local cut = math.min(1, ne * 2.2)
+    local hl, hr = hash(id * 2.11 + 3), hash(id * 3.07 + 5)
+    if hl > hr then hr = hr * 0.35 else hl = hl * 0.35 end
+    local uL = -w0 + cut * (0.04 + hl * 0.6)
+    local uR = w0 - cut * (0.04 + hr * 0.6)
+    local xa = math.max(sL, math.floor(cxRow + uL * half0))
+    local xb = math.min(sR, math.floor(cxRow + uR * half0))
+    if xb <= xa then return end
+    span(cxRow, xa, xb, 0, aMul * ka * (1 - 0.18 * cut), bright * (1 - 0.42 * ne), vrow, sh, lrow)
 end
 
 WorldRoad._forkLabelCache = { locale = nil, byType = {} }
@@ -4477,10 +4282,11 @@ local function drawForkMarks(g, x, w, camZ)
     for i = 1, f.n do
         local node = f.nodes[i]
         local geo = f._geo[i]
-        if geo and not f.converge then
+        local lk = f.converge and math.max(0, 1 - (f.converge.t or 0) / 0.25) or 1
+        if geo and lk > 0.01 then
             local px, py = geo.px, geo.py
             local ihs = geo.ih * geo.s
-            local aMul = geo.aMul
+            local aMul = geo.aMul * lk
             local label, desc = WorldRoad.forkLabel(node)
             local font = FontManager.getFont(13)
             love.graphics.setFont(font)
@@ -4494,7 +4300,7 @@ local function drawForkMarks(g, x, w, camZ)
             love.graphics.rectangle("line", pxc, pyc, pw, ph, 6, 6)
             love.graphics.setColor(0.92, 0.82, 0.58, aMul)
             love.graphics.print(label, math.floor(pxc + 8), math.floor(pyc + 3))
-            if geo.hovered and desc and desc ~= "" then
+            if (geo.hovered or (f.converge and f.chosen == i)) and desc and desc ~= "" then
                 local font2 = FontManager.getFont(11)
                 love.graphics.setFont(font2)
                 local dw = font2:getWidth(desc)
@@ -4544,8 +4350,16 @@ function LMG.clutterEnv(g, x, w, camZ)
     e.fork = WorldRoad._fork ~= nil
     local fk = WorldRoad._fork
     e.forkK = fk and (fk.animIn or 1) * (1 - (fk.converge and fk.converge.k or 0)) or 0
-    e.hand = WorldRoad._enemyDraw and not WorldRoad._travel and not WorldRoad._fork
+    local handOn = WorldRoad._enemyDraw and not WorldRoad._travel and not WorldRoad._fork
         and not require("src.ui.HandDeal").hidesHand() and WorldRoad._handZone or nil
+    local HK = LMG.handK or { k = 0, t = nil }
+    LMG.handK = HK
+    local now = WorldRoad._time or 0
+    local hdt = HK.t and math.max(0, math.min(0.1, now - HK.t)) or 0
+    HK.t = now
+    HK.k = HK.k + math.max(-hdt / 0.35, math.min(hdt / 0.35, (handOn and 1 or 0) - HK.k))
+    e.hand = (handOn or HK.k > 0.001) and WorldRoad._handZone or nil
+    e.handK = HK.k * HK.k * (3 - 2 * HK.k)
     return e
 end
 
@@ -4673,7 +4487,7 @@ local function drawProps(g, x, w, camZ)
         local iw, ih = img:getWidth(), img:getHeight()
         local s = g.scaleAt(lm.size or 2.0, t, LMG.refH(lm.key, ih))
         local py = g.latY(0, t)
-        local lx = g.cx + roadWobble(lm.z, t, w)
+        local lx = g.cx + roadWobble(lm.z, t, w) + WorldRoad.landmarkSlide(lm, t, w)
         lmMark.h, lmMark.w, lmMark.py, lmMark.px = ih * s, iw * s, py, lx
         LMG.Base.under(lm.key, lx, py, iw, s, t, aL, Scene.Grade.color("landmark", t, LMG.c), rel, g)
         local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
@@ -5656,6 +5470,8 @@ function WorldRoad.resetRun()
     WorldRoad._fork = nil
     WorldRoad._wallVar = nil
     WorldRoad._landmark = nil
+    WorldRoad._stop = nil
+    WorldRoad._pendingFork = nil
     WorldRoad._enemyDraw = nil
     WorldRoad._enemyBaseY = nil
     WorldRoad._nextLumZ = nil
@@ -5789,6 +5605,8 @@ function WorldRoad.clearCache()
     WorldRoad._nextLumZ = nil
     WorldRoad._fork = nil
     WorldRoad._landmark = nil
+    WorldRoad._stop = nil
+    WorldRoad._pendingFork = nil
 end
 
 return WorldRoad

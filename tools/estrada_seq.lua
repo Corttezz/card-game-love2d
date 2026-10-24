@@ -102,6 +102,7 @@ function M.capture(act, types, pick, opts)
         GameplayScene.draw()
         GameplayScene.WORLD_ONLY = nil
         love.graphics.setCanvas()
+        love.graphics.present()
     end
     warm:release()
 
@@ -212,7 +213,9 @@ function M.capture(act, types, pick, opts)
             love.graphics.print(tostring(frame), 4, 4)
             love.graphics.setCanvas()
             love.filesystem.createDirectory(opts.dir .. "/thumbs")
-            thumb:newImageData():encode("png", string.format("%s/thumbs/%s_%04d.png", opts.dir, opts.tag, frame))
+            local td = thumb:newImageData()
+            td:encode("png", string.format("%s/thumbs/%s_%04d.png", opts.dir, opts.tag, frame))
+            td:release()
         end
         local dbg = os.getenv("SEQ_DBG")
         if dbg then
@@ -227,6 +230,7 @@ function M.capture(act, types, pick, opts)
                     tostring(WorldRoad._biomeIndex), tostring(WorldRoad._blend ~= nil), tostring(WorldRoad._segBase)))
             end
         end
+        love.graphics.present()
         if frame % 30 == 0 then collectgarbage() end
     end
     local afterUpdate = nil

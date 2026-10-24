@@ -70,11 +70,13 @@ function GroundClutter.collect(out, env)
                         local pad = w * DATA.edgePad
                         local ok = px + hw > x - pad and px - hw < x + w + pad
                         local py = ok and g.latY(px - g.cx, t)
+                        local hk = 0
                         if ok and hand and py - ih * s < hand.y + DATA.handPad
                            and px + hw > hand.x1 and px - hw < hand.x2 then
-                            ok = false
+                            hk = env.handK or 1
+                            if hk >= 0.99 then ok = false end
                         end
-                        if ok and py + (e.sink or 0) * s - ih * s > g.bottomY + 2 then ok = false end
+                        if ok and py + (e.sink or 0) * s - ih * s > math.max(g.bottomY, love.graphics.getHeight()) + 12 then ok = false end
                         local fz = 0
                         if forkK > 0 then
                             fz = math.min(1, math.max(0, (rel - DATA.forkRelMax + 0.6) / 1.2))
@@ -89,7 +91,7 @@ function GroundClutter.collect(out, env)
                             p.z, p.side, p.bid, p.e, p.img, p.v = z, side, env.bid, e, img, v
                             p.px, p.py, p.s, p.t, p.rel = px, py, s, t, rel
                             p.flip = env.flipToSun(img, env.sunRight, fb)
-                            p.fk = 1 - fz
+                            p.fk = (1 - fz) * (1 - hk)
                             p.ph = hs * 1.7
                             out[#out + 1] = p
                             if side < 0 then st.left = st.left + 1 else st.right = st.right + 1 end

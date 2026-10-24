@@ -308,24 +308,26 @@ function M.run()
             WorldRoad._prevBiomeIndex = nil
             local dx0 = frame(1 / 30)
             t:truthy(("castelo centrado no início do ato (dx %.1f)"):format(dx0), math.abs(dx0) <= 1)
-            local jump = pick({ "battle", "rest", "shop" }, 1)
+            local jump = pick({ "battle", "rest", "shop" }, 2)
             t:truthy(("castelo não salta no clique do ramo (%.2f px)"):format(jump), jump <= 2)
+            local dxL = frame(1 / 30)
+            t:truthy(("ramo da esquerda leva o castelo para a direita, como quem vira (dx %.1f)"):format(dxL),
+                dxL * CD.SIGN < -W * 0.02 and math.abs(dxL) <= W * CD.MAX + 1)
             WorldRoad.travel({})
+            local back = 0
             for _ = 1, 400 do
                 if not WorldRoad.isTraveling() then break end
-                frame(1 / 30)
+                local d = frame(1 / 30)
+                back = math.max(back, math.abs(d - dxL))
             end
-            local dxL = frame(1 / 30)
-            t:truthy(("ramo da esquerda leva o castelo um pouco para a direita, como quem vira (dx %.1f)"):format(dxL),
-                dxL * CD.SIGN < -W * 0.01 and math.abs(dxL) <= W * CD.MAX + 1)
+            local dxT = frame(1 / 30)
+            t:truthy(("andando para o castelo o desvio volta ao centro (dx %.1f)"):format(dxT), math.abs(dxT) <= 1)
             local moved = 0
-            for _ = 1, 30 do moved = math.max(moved, math.abs(frame(1 / 60) - dxL)) end
-            t:truthy(("castelo parado na batalha com o desvio (%.2f px)"):format(moved), moved <= 1)
-            pick({ "battle", "shop", "rest" }, 1)
+            for _ = 1, 30 do moved = math.max(moved, math.abs(frame(1 / 60) - dxT)) end
+            t:truthy(("castelo parado na batalha (%.2f px)"):format(moved), moved <= 1)
             pick({ "battle", "shop", "rest" }, 1)
             local dxM = frame(1 / 30)
-            t:truthy(("desvio acumulado respeita o teto (dx %.1f, teto %.1f)"):format(dxM, W * CD.MAX),
-                math.abs(dxM) <= W * CD.MAX + 1)
+            t:truthy(("batalha no meio não desvia o castelo (dx %.1f)"):format(dxM), math.abs(dxM) <= 1)
             pick({ "boss" }, 1)
             WorldRoad.travel({})
             for _ = 1, 400 do
