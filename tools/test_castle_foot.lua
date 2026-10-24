@@ -34,7 +34,7 @@ function M.run()
             :format(bid, f.frames), same)
     end
 
-    local drifts = { -CD.MAX, 0, CD.MAX }
+    local drifts = { -1, -CD.WALK_K, 0, CD.WALK_K, 1 }
     for _, res in ipairs(P.RES) do
         local W, H = res[1], res[2]
         for _, top in ipairs(TOPS) do
@@ -46,7 +46,7 @@ function M.run()
                     local prog = i / 100
                     local s = WorldRoad.castleScale(g, W, bid, prog)
                     for _, dr in ipairs(drifts) do
-                        local cx = g.cx + dr * CD.envelope(prog) * W
+                        local cx = g.cx + dr * CD.envelope(prog) * CD.reach(W, f.iw * s)
                         local baseY = WorldRoad.castleBaseY(g, bid, cx, s, f.iw, f.ih, prog)
                         local ct = { s = s, cx = cx, baseY = baseY }
                         local e = P.exposure(ct, W, H, top, bid, g.crestYAt)
@@ -74,7 +74,7 @@ function M.run()
                 WorldRoad._blend = nil
                 WorldRoad._prevBiomeIndex = nil
                 WorldRoad._birdTimer = 1e9
-                for _, st in ipairs({ { p = 1, d = 0 }, { p = 0.5, d = 1 }, { p = 0.5, d = -1 } }) do
+                for _, st in ipairs({ { p = 1, d = 0 }, { p = 0.5, d = 1 }, { p = 0.5, d = -1 }, { p = 0.1, d = 1 }, { p = 0.1, d = -1 } }) do
                     WorldRoad._segBase = 0
                     WorldRoad._camZ = st.p * WorldRoad.TRAVEL_DISTANCE * 8
                     WorldRoad.update(1 / 30)
