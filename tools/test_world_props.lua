@@ -339,6 +339,73 @@ function M.run()
             WorldRoad._fork = nil
             WorldRoad.restoreProgress(1, 3)
         end
+        do
+            local MM = require("src.systems.MapManager")
+            local PC = WorldRoad.PropCut
+            local CW, CH = 1920, 1080
+            local cv2 = love.graphics.newCanvas(CW, CH)
+            WorldRoad.restoreProgress(5, 2)
+            WorldRoad._blend = nil
+            WorldRoad._prevBiomeIndex = nil
+            local nodes = {}
+            for i, ty in ipairs({ "event", "battle", "shop" }) do nodes[i] = { type = ty, label = MM.labelFor(ty) } end
+            love.graphics.setCanvas(cv2)
+            WorldRoad.draw(0, 52, CW, CH - 52, 5)
+            love.graphics.setCanvas()
+            WorldRoad.showFork(nodes, function() end)
+            for _ = 1, 25 do
+                WorldRoad.update(1 / 30)
+                love.graphics.setCanvas(cv2)
+                WorldRoad.draw(0, 52, CW, CH - 52, 5)
+                love.graphics.setCanvas()
+            end
+            local f = WorldRoad._fork
+            local r = WorldRoad._lastRect
+            local g = WorldRoad.domeGeom(r.x, r.y, r.w, r.h)
+            local camZ = WorldRoad._camZ
+            local bid = WorldRoad._castleTop and WorldRoad._castleTop.bid or "marsh"
+            local function hits(b)
+                if not b then return false end
+                for _, m in ipairs(f._placed or {}) do
+                    if b.x1 < m.x2 and b.x2 > m.x1 and b.y1 < m.y2 and b.y2 > m.y1 then return true end
+                end
+                return false
+            end
+            local found, hidden, nMain, nMember, nBox = 0, 0, 0, 0, 0
+            for side = -1, 1, 2 do
+                for zr = 8, 17.25, 0.75 do
+                    for lane = 0, 1, 0.1 do
+                        for jit = -1, 1, 0.5 do
+                        for big = 1, 1.4, 0.4 do
+                        local p = { kind = "deadtree", variant = 0, bid = bid, z = camZ + zr, side = side,
+                                    lane = lane, big = big, jitter = jit, cluster = 2 }
+                        local vb = PC.vegBox(p, camZ, g, r.w, {})
+                        if vb then nBox = nBox + 1 end
+                        local main = hits(vb)
+                        local cb1 = PC.clusterBox(p, 1, camZ, g, r.w, {})
+                        local member = hits(cb1) or hits(PC.clusterBox(p, 2, camZ, g, r.w, {}))
+                        if main then nMain = nMain + 1 end
+                        if member then nMember = nMember + 1 end
+                        if not main and member then
+                            local solo = { kind = p.kind, variant = 0, bid = bid, z = p.z, side = side, lane = lane, big = big, jitter = jit }
+                            PC.forkHideOne(solo, f, g, r.w, camZ, true)
+                            if not solo.forkHide then
+                                found = found + 1
+                                PC.forkHideOne(p, f, g, r.w, camZ, true)
+                                if p.forkHide then hidden = hidden + 1 end
+                            end
+                        end
+                        end
+                        end
+                    end
+                end
+            end
+            t:truthy(("arvore do cacho que cobre uma opcao da encruzilhada some com o cacho (%d de %d casos, ato 5; %s, %d caixas colocadas, principal cobre %d, cacho cobre %d, tela %dx%d)")
+                :format(hidden, found, tostring(bid), #(f and f._placed or {}), nMain, nMember, CW, CH), found > 0 and hidden == found)
+            cv2:release()
+            WorldRoad._fork = nil
+            WorldRoad.restoreProgress(1, 3)
+        end
         for _, b in ipairs({ 1, 2, 3, 4, 5, 6 }) do
             WorldRoad.restoreProgress(b, 3)
             WorldRoad._plan = nil

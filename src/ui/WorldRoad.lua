@@ -3004,12 +3004,11 @@ function PropCut.castleNeed(p, kind, variant, big)
     end
     return need
 end
-function PropCut.vegBox(p, camZ, g, w, out)
+function PropCut.vegGeom(p, camZ, g, w)
     local img = getSprite(p.kind, p.variant, p.bid)
     local rel = p.z - camZ
     local t = g.tOf(rel)
     if not img or not t then return nil end
-    local K = PropCut.KEEP
     local _, ihv = PropCut.get(img, p.kind)
     local s = PropCut.capS(g.scaleAt(kindSize(p.kind, p.bid) * (p.big or 1) * (PropCut.sizeK[img] or 1)
         * PropCut.crestK(p.kind, t), t, img:getHeight()), WorldRoad.enemyScreenK(g.h))
@@ -3017,9 +3016,32 @@ function PropCut.vegBox(p, camZ, g, w, out)
     local over = math.max(0, -rel)
     local x = g.cx + p.side * w * (0.11 + 0.38 * t + over * 0.09 + p.lane * 0.38)
     local y = g.latY(x - g.cx, t) + over * g.h * 0.13
+    return img, ihv, s, x, y, t
+end
+function PropCut.vegBox(p, camZ, g, w, out)
+    local img, ihv, s, x, y = PropCut.vegGeom(p, camZ, g, w)
+    if not img then return nil end
+    local K = PropCut.KEEP
     out = out or {}
     out.x1, out.x2 = x - img:getWidth() * s * K.markHalf, x + img:getWidth() * s * K.markHalf
     out.y1, out.y2 = y - ihv * s * K.markTop, y
+    return out
+end
+function PropCut.clusterBox(p, ci, camZ, g, w, out)
+    local img, _, s, x, _, t = PropCut.vegGeom(p, camZ, g, w)
+    if not img then return nil end
+    local off = p.side * (0.85 * ci + math.abs(p.jitter or 0) * 0.45) * img:getWidth() * s + (p.jitter or 0) * 10
+    local cx2 = x + off
+    local cimg = getSprite(p.kind, (p.variant + ci) % PropCut.nvar(p.bid, p.kind), p.bid)
+    if not cimg then return nil end
+    local _, cihv = PropCut.get(cimg, p.kind)
+    local cs = s * (0.5 + 0.13 * ci) * Scene.Var.of(p.z + ci * 17.3, p.kind, Scene.Grade.cfg("trees")).scale
+    local cy2 = g.latY(cx2 - g.cx, t)
+    local K = PropCut.KEEP
+    out = out or {}
+    out.x1, out.x2 = cx2 - cimg:getWidth() * cs * K.markHalf, cx2 + cimg:getWidth() * cs * K.markHalf
+    out.y1, out.y2 = cy2 - cihv * cs * K.markTop, cy2
+    out.cx = cx2
     return out
 end
 function PropCut.clearLane(p)
@@ -3683,23 +3705,36 @@ function PropCut.forkHideOne(p, f, g, w, camZ, now)
     if p.forkHide or p.ghost or p.clutter or not PropCut.kinds[p.kind] then return end
     local rel = p.z - camZ
     local hide = false
+    local nc = p.cluster or 0
     if rel < MARK_REL and rel > -3 and f._placed then
-        local b = PropCut.vegBox(p, camZ, g, w, PropCut.hideBox)
-        PropCut.hideBox = b or PropCut.hideBox
-        if b then
-            for _, m in ipairs(f._placed) do
-                if b.x1 < m.x2 and b.x2 > m.x1 and b.y1 < m.y2 and b.y2 > m.y1 then hide = true break end
+        for ci = 0, nc do
+            local b
+            if ci == 0 then b = PropCut.vegBox(p, camZ, g, w, PropCut.hideBox)
+            else b = PropCut.clusterBox(p, ci, camZ, g, w, PropCut.hideBox) end
+            PropCut.hideBox = b or PropCut.hideBox
+            if b then
+                for _, m in ipairs(f._placed) do
+                    if b.x1 < m.x2 and b.x2 > m.x1 and b.y1 < m.y2 and b.y2 > m.y1 then hide = true break end
+                end
             end
+            if hide then break end
         end
     end
     if not hide and rel > FORK_REL - 1.5 and rel <= REL_CREST + EMERGE_BAND and f.n > 1 then
         local t = g.tOf(rel) or 0
-        local x = g.cx + p.side * w * (0.11 + 0.38 * t + p.lane * 0.38)
         local halfRF = ROAD_HALF * w * (0.30 + 0.70 * (t ^ 1.15))
-        for i = 1, f.n do
-            if f.dirs[i] ~= 0 and math.abs(x - (g.cx + forkOffset(f, i, rel, w, true))) < halfRF * 0.78 + PropCut.HIDE.roadPad * w then
-                hide = true
+        for ci = 0, nc do
+            local x = g.cx + p.side * w * (0.11 + 0.38 * t + p.lane * 0.38)
+            if ci > 0 then
+                local cb = PropCut.clusterBox(p, ci, camZ, g, w, PropCut.hideBox)
+                x = cb and cb.cx or x
             end
+            for i = 1, f.n do
+                if f.dirs[i] ~= 0 and math.abs(x - (g.cx + forkOffset(f, i, rel, w, true))) < halfRF * 0.78 + PropCut.HIDE.roadPad * w then
+                    hide = true
+                end
+            end
+            if hide then break end
         end
     end
     if hide then p.forkHide = (WorldRoad._time or 0) - (now and 10 or 0) end
