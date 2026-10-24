@@ -1,7 +1,8 @@
 local M = {}
 
 function M.active()
-    return os.getenv("CARDGAME_HEADLESS") == "1"
+    if os.getenv("CARDGAME_HEADLESS") == "1" then return true end
+    return _G.CARDGAME_AUTO_HEADLESS == true
 end
 
 function M.hide()
