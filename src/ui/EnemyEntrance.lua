@@ -794,7 +794,8 @@ function EE.drawBehindAnchors(g, x, w, camZ, band, crest)
         if p.anchor and not p.front then
             local rel = p.z - camZ
             if rel > crest and rel <= crest + band then
-                EE.drawProp(p, g, x, w, 0, rel, camZ, 1 - (rel - crest) / band)
+                local relA = EE.anchorZ(p, camZ) - camZ
+                EE.drawProp(p, g, x, w, 0, rel, camZ, math.min(1, 1 - (relA - crest) / band))
             end
         end
     end
@@ -832,6 +833,52 @@ function EE.clearCache()
 end
 
 EE.STRADDLE_DZ = 0.01
+EE.PIN_EPS = 0.05
+EE.FORK_HIDE = 0.22
+
+function EE.plantedIn(spec)
+    local anc = spec and spec.anchor
+    return anc ~= nil and not anc.veil and (anc.at or "stage") == "stage"
+end
+
+function EE.anchorZ(src, camZ)
+    if src.fixZ then return src.fixZ end
+    local z = (src.stopZ or src.z) + require("src.ui.WorldRoad").BATTLE_REL + (src.back or 0)
+    if src.stopZ and camZ > src.stopZ + EE.PIN_EPS then
+        src.fixZ = z
+        src.z = z + (src.straddle and EE.STRADDLE_DZ or 0.25)
+        if src.frontRef then src.frontRef.z = z - EE.STRADDLE_DZ end
+    end
+    return z
+end
+
+function EE.groundY(g, C, L, t)
+    return g.latY(0, t) + g.latY(C + L, t) - g.latY(C, t)
+end
+
+local function flatGround(g, rel)
+    local t = g.tOf(rel) or 0
+    return g.latY(0, t) + math.max(0, -rel) * g.h * 0.13
+end
+
+local function depthFor(g, rel0, px, dir)
+    local y0 = flatGround(g, rel0)
+    local lo, hi = 0, 40
+    for _ = 1, 24 do
+        local mid = (lo + hi) * 0.5
+        if math.abs(flatGround(g, rel0 + dir * mid) - y0) < px then lo = mid else hi = mid end
+    end
+    return (lo + hi) * 0.5
+end
+
+function EE.flatK(g, rel, B, topB, botB)
+    local dT = depthFor(g, B, topB, 1)
+    local dB = depthFor(g, B, botB, -1)
+    local y = flatGround(g, rel)
+    local top = (y - flatGround(g, rel + dT)) / math.max(1e-6, topB)
+    local bot = (flatGround(g, rel - dB) - y) / math.max(1e-6, botB)
+    return top, bot
+end
 
 local function spawnAnchor(S, opts)
     local anc = S.spec.anchor
@@ -844,7 +891,7 @@ local function spawnAnchor(S, opts)
         big = 1, jitter = 0, uid = WorldRoad._uid, ts = S.enc.targetScale or 4,
         glow = anc.glow and 0 or nil, grow = anc.grow and 0 or 1, glowColor = anc.glow,
         z = opts.stopZ + WorldRoad.BATTLE_REL + 0.25 + (anc.back or 0), stopZ = opts.stopZ, offX = S.enc.offX or 0,
-        back = anc.back or 0,
+        back = anc.back or 0, bodyIh = S.enc.ih,
     }
     local img = EE.anchorImage(S.id, anc.name)
     S.anchorHalfW = img and img:getWidth() * 0.5 or 0
@@ -858,6 +905,7 @@ local function spawnAnchor(S, opts)
         local pf = { kind = "anchor", anchor = true, front = true, ref = p, bid = opts.bid, side = 0, lane = 0,
             variant = 0, big = 1, jitter = 0, uid = WorldRoad._uid, z = opts.stopZ + WorldRoad.BATTLE_REL - EE.STRADDLE_DZ }
         S.anchorFront = pf
+        p.frontRef = pf
         WorldRoad._props[#WorldRoad._props + 1] = pf
     end
 end
@@ -978,9 +1026,10 @@ local K = {}
 
 function K.andar(S, dt)
     local spec = S.spec
-    local walk = S.clips.walk
+    local planted = EE.plantedIn(spec)
+    local walk = not planted and S.clips.walk or nil
     local u = clamp01(S.t / math.max(0.01, S.dur - S.lead))
-    local D = S.red and 2 or (spec.walkDist or EE.WALK_DIST)
+    local D = planted and 0 or (S.red and 2 or (spec.walkDist or EE.WALK_DIST))
     local f = 1 - (1 - u) * (1 - u)
     S.pose.relOff = D * (1 - f)
     local cyc = legCycles(S, D) * f
@@ -1000,7 +1049,7 @@ function K.andar(S, dt)
     else
         S.img = idleImage(S, dt, true)
     end
-    if u < 1 then walkFeel(S, 1 - u, walk and cyc or nil) end
+    if u < 1 and not planted then walkFeel(S, 1 - u, walk and cyc or nil) end
     if S.stopped and S.settle > 0 and not S.fired.settleSq then
         S.fired.settleSq = true
         squashPulse(S, 0.035, 0.22)
@@ -1947,31 +1996,47 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
     if not img then return end
     local Grade = require("engine.SceneGrade")
     local iw, ih = img:getWidth(), img:getHeight()
-    if em == nil and src.side == 0 and src.stopZ and (src.back or 0) == 0 then
-        rel = src.stopZ + WorldRoad.BATTLE_REL - camZ
-        t = g.tOf(rel)
-        if not t then return end
-    elseif p.front then
-        rel = src.z - camZ
-        t = g.tOf(rel)
-        if not t then return end
+    local behind = em ~= nil
+    local zA = EE.anchorZ(src, camZ)
+    rel = zA - camZ
+    t = g.tOf(rel)
+    local sinkK = 0
+    if behind then
+        sinkK = t and 0 or (1 - em)
+        t = t or 0
     end
-    local tB = g.tOf(WorldRoad.BATTLE_REL) or 0.3
-    local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tB)))
-    local s = src.ts * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
-    local wob = WorldRoad._roadWobble and WorldRoad._roadWobble(src.z, t, w) or 0
-    local pxX = g.cx + wob - math.floor((src.offX or 0) * s)
+    if not t then return end
+    local flat = EE.isFlat(src)
+    if behind and flat then return end
+    local over = behind and 0 or math.max(0, -rel)
+    local B = WorldRoad.BATTLE_REL
+    local tB = g.tOf(B) or 0.3
+    local k = g.persp(t) / math.max(0.01, g.persp(tB))
+    local sB = src.ts * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h)
+    local s = sB * k
+    local wob = WorldRoad._roadWobble and WorldRoad._roadWobble(zA - (src.back or 0), t, w) or 0
+    local C = wob - math.floor((src.offX or 0) * s)
+    local L = 0
+    if src.side ~= 0 then L = sideX(g, w, t, src.side, iw * s * 0.5) + src.side * over * w * 0.09 end
+    local pxX = g.cx + C + math.floor(L)
     local sy
-    if src.side ~= 0 then
-        pxX = pxX + sideX(g, w, t, src.side, iw * s * 0.5)
-        sy = g.latY(pxX - g.cx, t)
+    if behind and sinkK > 0 then
+        local bih = src.bodyIh or ih
+        sy = g.crestYAt(pxX) + sinkK * bih * s * 0.95
     else
-        sy = g.crestApexY + (g.bottomY - g.crestApexY) * t
+        sy = EE.groundY(g, C, L, t) + over * g.h * 0.13
     end
     local alpha = 1
     local f = WorldRoad._fork
-    if f and not f.converge then alpha = alpha * (1 - (f.animIn or 1)) end
-    if f and f.converge then alpha = 0 end
+    if f and not f.converge and f._placed and src._box and not src.forkHide then
+        local b = src._box
+        for _, m in ipairs(f._placed) do
+            if b[1] < m.x2 and b[3] > m.x1 and b[2] < m.y2 and b[4] > m.y1 then src.forkHide = WorldRoad._time or 0 break end
+        end
+    end
+    if src.forkHide then
+        alpha = alpha * math.max(0, 1 - ((WorldRoad._time or 0) - src.forkHide) / EE.FORK_HIDE)
+    end
     local grow = src.grow or 1
     if alpha <= 0.01 or grow <= 0.001 then
         if EE._trace then EE._trace(p, pxX, sy, t, s, 0) end
@@ -1979,8 +2044,12 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
     end
     local c = Grade.color("prop", t, tmpColor)
     local half = src.straddle and math.floor(ih / 2) or ih
-    local behind = em ~= nil
     local sx, sy2 = s, s * grow
+    local fyT, fyB = 1, 1
+    if flat and src.straddle then
+        local ft, fb = EE.flatK(g, rel, B, half * sB, (ih - half) * sB)
+        fyT, fyB = ft / k, fb / k
+    end
     if src.mist then
         local ph = WorldRoad._time or 0
         local thick, ring = src.mistThick or 0.35, src.mistRing or 0
@@ -1993,8 +2062,7 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
             c[1], c[2], c[3] = c[1] * (1 - m) * 0.7 + fr * m, c[2] * (1 - m) * 0.7 + fg * m, c[3] * (1 - m) * 0.7 + fb * m
         end
     end
-    if behind then sy = sy + (1 - em) * ih * s * 0.95 end
-    local groundY = src.straddle and (sy + (ih - half) * sy2) or sy
+    local groundY = src.straddle and (sy + (ih - half) * sy2 * fyB) or sy
     local tall = EE.TALL_ANCHORS[src.name]
     if not p.front and not behind then
         if src._mk then src._mk.n = 0 end
@@ -2021,27 +2089,27 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
     love.graphics.setColor(c[1], c[2], c[3], alpha)
     local y0 = sy - ih * sy2
     if src.straddle and not behind then
-        y0 = sy - half * sy2
+        y0 = sy - half * sy2 * fyT
         if p.front then
             local qb = src._qBot or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
             src._qBot = qb
             qb:setViewport(0, half, iw, ih - half, iw, ih)
-            love.graphics.draw(img, qb, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, 0)
-            if tall then maskAdd(src, img, qb, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, 0) end
+            love.graphics.draw(img, qb, math.floor(pxX), math.floor(sy), rot, sx, sy2 * fyB, iw / 2, 0)
+            if tall then maskAdd(src, img, qb, math.floor(pxX), math.floor(sy), rot, sx, sy2 * fyB, iw / 2, 0) end
             local rg = math.min(1, (src.mistRing or 0) / EE.MIST_VEIL_END)
             local veil = src.mist and math.min(1, 4 * rg * (1 - rg) * 1.3) or 0
             if veil > 0.01 then
                 local vimg = frames and frames[1 + (fIdx + 1) % #frames] or img
                 love.graphics.setColor(c[1] * 0.55, c[2] * 0.55, c[3] * 0.6, alpha * EE.MIST_VEIL * veil)
-                love.graphics.draw(vimg, math.floor(pxX), math.floor(sy + (ih - half) * sy2), 0,
+                love.graphics.draw(vimg, math.floor(pxX), math.floor(sy + (ih - half) * sy2 * fyB), 0,
                     sx * 1.05, sx, iw / 2, ih)
             end
         else
             local qt = src._qTop or love.graphics.newQuad(0, 0, 1, 1, 1, 1)
             src._qTop = qt
             qt:setViewport(0, 0, iw, half, iw, ih)
-            love.graphics.draw(img, qt, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, half)
-            if tall then maskAdd(src, img, qt, math.floor(pxX), math.floor(sy), rot, sx, sy2, iw / 2, half) end
+            love.graphics.draw(img, qt, math.floor(pxX), math.floor(sy), rot, sx, sy2 * fyT, iw / 2, half)
+            if tall then maskAdd(src, img, qt, math.floor(pxX), math.floor(sy), rot, sx, sy2 * fyT, iw / 2, half) end
         end
     elseif src.straddle then
         love.graphics.draw(img, math.floor(pxX), math.floor(sy), 0, sx, sy2, iw / 2, half)
@@ -2064,10 +2132,15 @@ function EE.drawProp(p, g, x, w, t, rel, camZ, em)
     love.graphics.setColor(1, 1, 1, 1)
     local hsn = WorldRoad._hitScene
     if hsn and not p.front and not behind then
-        hsn[#hsn + 1] = { x1 = pxX - iw * sx / 2, y1 = y0, x2 = pxX + iw * sx / 2, y2 = src.straddle and (sy + (ih - half) * sy2) or sy,
+        hsn[#hsn + 1] = { x1 = pxX - iw * sx / 2, y1 = y0, x2 = pxX + iw * sx / 2, y2 = groundY,
             ref = p, kind = "anchor", s = s }
     end
-    if EE._trace then EE._trace(p, pxX, sy, behind and 0 or t, s, alpha) end
+    if not p.front and not behind then
+        local bx = src._box or {}
+        src._box = bx
+        bx[1], bx[2], bx[3], bx[4] = pxX - iw * sx / 2, y0, pxX + iw * sx / 2, groundY
+    end
+    if EE._trace then EE._trace(p, pxX, sy, behind and 0 or t, s, alpha, y0, groundY, iw * sx, behind) end
 end
 
 function EE.info()

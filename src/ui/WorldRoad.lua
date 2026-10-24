@@ -2617,6 +2617,7 @@ local function drawEncounterBehind(g, x, w, camZ)
     cx = cx - math.floor((e.offX or 0) * s) + math.floor(lat)
     local crest = g.crestYAt(cx)
     local feetY = crest + e.ih * s * (1 - em) * 0.95 - pz.liftK * e.ih * s
+    if EE._traceGround then EE._traceGround(cx, feetY + pz.liftK * e.ih * s, s, rel, "behind", lat) end
     love.graphics.setColor(1, 1, 1, 1)
     local bx0 = math.floor(cx - e.iw * s / 2)
     local by0 = math.floor(feetY - e.ih * s)
@@ -5107,8 +5108,9 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     local s = e.targetScale * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
     local lat = EE.dxPx(e, g, w, t, s)
-    local sy = g.latY(lat, t)
+    local sy = EE.groundY(g, cx - g.cx - math.floor((e.offX or 0) * s), lat, t)
     cx = cx - math.floor((e.offX or 0) * s) + math.floor(lat)
+    if EE._traceGround then EE._traceGround(cx, sy, s, rel, "front", lat) end
     local entLift = pz.liftK * e.ih * s
     EE.notePos(cx, sy, s, rel)
     EE.drawFlatUnder(g, x, w, camZ, rel)
