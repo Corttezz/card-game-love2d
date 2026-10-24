@@ -484,8 +484,7 @@ function GameplayScene.draw()
             * WorldRoad.enemyScreenK(height - topBarHeight)
         WorldRoad.setBattleEnemyDraw(function()
             enemyBbox = EnemyRenderer.draw(game, enemyCx, enemyCy,
-                { sizeK = sizeK, shadowMaxY = handTopReal,
-                  groundR = WorldRoad.groundRadius(WorldRoad.BATTLE_REL, width, height - topBarHeight) })
+                { sizeK = sizeK })
         end, enemyCy)
     end
 
@@ -551,7 +550,6 @@ function GameplayScene.draw()
                 hallTr = interiorHall and SceneBackground.getCoverTransform(sceneKey, width, sceneH) or nil,
                 shadowA = anchor.shadowA,
                 lightXr = anchor.lightXr,
-                shadowMaxY = handTopReal,
                 sizeK = GameplayScene.bossSizeK(
                     SceneAnchors.depthSizeK(sceneKey, width, sceneH, artCy,
                         enemyCy, WorldRoad.ENEMY_SIZE_PERSP) * GameplayScene.hallScreenK(sceneKey, width, sceneH),

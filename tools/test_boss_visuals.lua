@@ -71,8 +71,9 @@ function M.run()
         end
         t:truthy(string.format("%s: idle MEXE (pico %.1f%%)", id, maxD * 100),
             maxD > 0.015)
-        t:truthy(string.format("%s: ...sem chuvisco de regeração (passo %.1f%%)",
-            id, maxStep * 100), maxStep < 0.30)
+        local stepCap = (EnemyPoses.BY_ID[id] or {}).flapPeak and 0.35 or 0.30
+        t:truthy(string.format("%s: ...sem chuvisco de regeração (passo %.1f%%, teto %.0f%%)",
+            id, maxStep * 100, stepCap * 100), maxStep < stepCap)
 
         for _, clip in ipairs({ "hurt", "death" }) do
             local c = frames(id, clip)

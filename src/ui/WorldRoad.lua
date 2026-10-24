@@ -1295,12 +1295,6 @@ function WorldRoad.getRoadAnchor(rel, x, y, w, h)
     return math.floor(g.cx + wob), math.floor(sy)
 end
 
-function WorldRoad.groundRadius(rel, w, h)
-    local g = domeGeom(0, 0, w, h)
-    local t = g.tOf(rel or WorldRoad.BATTLE_REL) or 0
-    return g.R - (g.bottomY - g.crestApexY) * t
-end
-
 WorldRoad.ENEMY_SIZE_REF_REL = 9
 WorldRoad.ENEMY_SIZE_PERSP   = 0.6
 function WorldRoad.battleSizeK(rel)
@@ -5220,20 +5214,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     local dx0 = math.floor(cx - e.iw * s / 2)
     local dy0 = sy - e.ih * s + footY - lift
     if WorldRoad._traceEnemy then WorldRoad._traceEnemy(dx0, dy0, "encounter", lat, s) end
-    if e.anim and es.floating then
-        local pose = require("src.data.enemy_poses").get(e.spriteId)
-        local rm = _G.gameSettings and _G.gameSettings.reducedMotion
-        local FS = require("src.ui.FloatShadow")
-        FS.draw(e.anim.frames and e.anim.frames[e.anim.currentFrame], {
-            x = cx + ShadowEngine.tipShiftAt(cx) * lift * FS.LIGHT_SHIFT,
-            groundY = sy, scale = s, footPad = pad,
-            contentH = e.contentH or (e.ih - pad),
-            contentW = (e.contentW or 0) > 0 and e.contentW or nil, contentOff = e.contentOff,
-            groundR = g.R - (g.bottomY - g.crestApexY) * t,
-            liftK = lift / math.max(1, e.ih * s), hover = pose.hover,
-            bob = rm and 0 or pose.bob, alphaK = pz.shadowA or 1,
-        })
-    elseif e.anim then
+    if e.anim then
         local drawn = ShadowEngine.silhouette(shX, sy - 1 + lift * 0.16, { smear = e.iw * s * 0.035 * (es.smearK or 1),
                 widthK = es.widthK, lenK = es.lenK, alphaK = (es.alphaK or 1) * pz.shadowA,
                 baseK = e.shadowBaseK, riseK = e.shadowRiseK,

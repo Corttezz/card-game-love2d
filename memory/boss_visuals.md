@@ -341,3 +341,17 @@ nome e bytes ≠ de qualquer ícone de carta, 64x64, e TopBar/Menu não pedem ma
   Escolha, medidas e tratamento por plano em
   `tools/preview_out/arvores_novas/checklist.md` e em
   [worldroad_scene.md](worldroad_scene.md).
+
+## Idle de VOO gerado (24/Out/2026)
+
+Excecao pedida pelo dono a regra "nunca regerar idle no PixelLab": o
+carrion_king, o tower_lich e a eclipse_queen ganharam idle de voo de 12
+quadros gerado (`tools/pixellab_voo.py`, `animate_image` com o primeiro e o
+ultimo quadro pinados no idle 0, melhor de 3, olhando quadro a quadro). O
+quadro 0 continua o mesmo (hurt/death/entrada/fidgets/estados emendam). Os
+idles assados por deslocamento ficaram em
+`tools/preview_out/voo_tries/_antes_<id>/`. Checagem de deriva: paleta (0 %
+fora da paleta do idle 0 nos tres), brilho dos olhos (60 a 170 % do idle 0),
+`end` < 1 %. Rejeitados: tentativa do lich com olhos virando laranja,
+tentativas da rainha com as asas virando bolhas sem nervura. Ver
+`memory/enemy_pose_and_scene_anchor.md`, "Voo pela ANIMACAO".

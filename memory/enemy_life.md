@@ -107,3 +107,19 @@ Pedido do dono: "um estado para cada tipo de efeito... todos os mobs, todos os e
 ## Fixtures desta frente
 `ember_imp.lua` e `bog_ghoul.lua` foram escritos pelo runtime so com fx (sem fidget), antes das frentes de arte
 entregarem. As frentes de arte sao donas deles e podem reescreve-los.
+
+## Sopro de quem voa: `downdraft` (24/Out/2026)
+Tipo de fx disparado por QUADRO, nao por taxa: `{ kind = "downdraft", xr, yr = 1, spread, rate?, tint?, strokes = { q1, q2 } }`.
+`strokes` = quadros do idle (1-based, mesmo `currentFrame` do `SpriteAnimation`) em que a asa/capa desce; so vale com o
+clip `idle` tocando (fidget, estado, ataque e morte nao sopram), so com `S.spawnOk` (nunca na morte, nunca em
+reducedMotion). Cada batida solta `8 x rate` motas no pool fixo (`K_DRAFT = 16`, fora de `KINDS`; sem tabela nova por
+mota): nascem na linha do chao em pixel de arte (`EnemyLife.frame(..., groundA)`, `groundA = ih - footY/scale`, passado
+pelo `EnemyRenderer`), metade para cada lado, varrem para fora com arrasto (`drag`), sobem 3 a 9 px e assentam;
+`pseed` guarda a profundidade propria de cada mota (+-2 px, `DRAFT_DEPTH`), senao viram uma fileira de tracos.
+Desenho atras do corpo (`back`), 1x1 ou 2x1 quando rapida, alfa binario. Cor por bioma (`DRAFT_TINT`; salao = poeira,
+`SceneGrade` inativo), 1 em 3 vira folha nos biomas com folha (`DRAFT_LEAF`: campos, planalto, crepusculo). Na
+estrada a mesma batida da `GrassField.pokeAt(nx, camZ + BATTLE_REL, t, DRAFT_POKE)`: o `pokeAt` agora reaproveita a
+tabela e aceita amplitude (4o argumento, padrao 1 = o comportamento antigo; o shader multiplica por `uPoke.w`).
+Validacao: downdraft sem `strokes`, stroke nao inteiro e `strokes` em outro tipo sao rejeitados. Trava em
+`test_enemy_life` (`checkDowndraft`): so nos quadros de batida, uma rajada por batida, fidget nao sopra, sem alocacao,
+morte e reducedMotion sem sopro, todo flutuante do roster declara, nenhum apoiado declara.

@@ -22,6 +22,9 @@ for i, k in ipairs(EnemyLife.KINDS) do KIND_INDEX[k] = i end
 EnemyLife.KIND_INDEX = KIND_INDEX
 
 local K_SMOKE, K_EMBERS, K_DRIPS, K_SPORES, K_FLIES, K_MIST, K_FROST, K_ASH, K_GLINT, K_BUBBLES = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+local K_DRAFT = 16
+KIND_INDEX.downdraft = K_DRAFT
+EnemyLife.K_DRAFT = K_DRAFT
 
 EnemyLife.SPEC = {
     [K_SMOKE]   = { rate = 2.2, l0 = 1.8, l1 = 2.8, v0 = 4.5, v1 = 7.5, jit = 1.0, wind = 5.0, wob = 0.6,
@@ -56,6 +59,17 @@ EnemyLife.SPEC = {
                     c = { 0.56, 0.96, 0.56 }, a = 0.80, grade = 0.5, flicker = true },
 }
 EnemyLife.SPEC[K_SMOKE].grow = true
+EnemyLife.SPEC[K_DRAFT] = { rate = 0, l0 = 0.45, l1 = 0.80, v0 = 14.0, v1 = 26.0, jit = 0, wind = 0.5, wob = 0,
+                            c = { 0.66, 0.60, 0.50 }, a = 0.90, grade = 0.6, back = true, draft = true,
+                            drag = 3.0, grav = 30, lift0 = 3.0, lift1 = 9.0, n = 8 }
+EnemyLife.DRAFT_TINT = {
+    hall = { 0.68, 0.62, 0.52 }, fields = { 0.70, 0.62, 0.44 }, highlands = { 0.72, 0.68, 0.58 },
+    abyss = { 0.66, 0.52, 0.44 }, frost = { 0.92, 0.95, 1.00 }, marsh = { 0.56, 0.52, 0.36 },
+    dusk = { 0.66, 0.54, 0.44 },
+}
+EnemyLife.DRAFT_LEAF = { fields = { 0.40, 0.46, 0.20 }, dusk = { 0.66, 0.30, 0.18 }, highlands = { 0.50, 0.44, 0.26 } }
+EnemyLife.DRAFT_DEPTH = 4
+EnemyLife.DRAFT_POKE = 0.45
 
 local N = EnemyLife.MAX
 local pk, px, py, pvx, pvy, plife, pmax, pseed, pem = {}, {}, {}, {}, {}, {}, {}, {}, {}
@@ -72,7 +86,7 @@ local warned = {}
 local S = {
     id = nil, data = nil, gapLeft = 0, last = nil, force = nil,
     warm = {}, jobs = {}, jobN = 0, jobI = 0, emit = {}, nEmit = 0,
-    deathT = -1, alive = true, live = 0,
+    deathT = -1, alive = true, live = 0, lastFrame = -1, lastAnim = nil, groundA = 0, strokes = 0,
     ox = 0, oy = 0, scale = 1, dx = 0, dy = 0, iw = 0, ih = 0, alpha = 1, framed = false,
     wind = 0, gc = { 1, 1, 1 }, cursor = 1, playing = nil, pinned = false,
     enemy = nil, spawnOk = false,
@@ -135,6 +149,14 @@ function EnemyLife.validate(t, id)
             end
             if e.dir ~= nil and e.dir ~= "up" and e.dir ~= "down" and e.dir ~= "side" then
                 return false, "fx " .. i .. " dir"
+            end
+            if e.kind == "downdraft" then
+                if type(e.strokes) ~= "table" or #e.strokes == 0 then return false, "fx " .. i .. " downdraft sem strokes" end
+                for _, f in ipairs(e.strokes) do
+                    if type(f) ~= "number" or f < 1 or f % 1 ~= 0 then return false, "fx " .. i .. " stroke invalido" end
+                end
+            elseif e.strokes ~= nil then
+                return false, "fx " .. i .. " strokes so vale para downdraft"
             end
         end
     end
@@ -203,11 +225,18 @@ local function buildEmitters(data)
         local k = KIND_INDEX[e.kind]
         local sp = EnemyLife.SPEC[k]
         local tint = e.tint or sp.c
+        local strokes
+        if e.strokes then
+            strokes = {}
+            for _, f in ipairs(e.strokes) do strokes[f] = true end
+        end
         S.nEmit = S.nEmit + 1
         S.emit[S.nEmit] = {
             k = k, xr = e.xr, yr = e.yr, rate = sp.rate * (e.rate or 1),
             spread = e.spread or sp.spread or 0.05, dir = e.dir,
             cr = tint[1], cg = tint[2], cb = tint[3], acc = EnemyLife._rand(), alive = 0,
+            strokes = strokes, n = math.max(1, math.floor((sp.n or 1) * (e.rate or 1) + 0.5)),
+            fixedTint = e.tint ~= nil,
         }
     end
 end
@@ -218,6 +247,7 @@ function EnemyLife.setEnemy(id)
     S.data = EnemyLife.load(id)
     S.last, S.force, S.playing = nil, nil, nil
     S.deathT, S.alive, S.framed = -1, true, false
+    S.lastAnim, S.lastFrame = nil, -1
     for k in pairs(S.warm) do S.warm[k] = nil end
     for i = #S.jobs, 1, -1 do S.jobs[i] = nil end
     S.jobN, S.jobI = 0, 0
@@ -376,6 +406,68 @@ local function kill(i)
     S.live = S.live - 1
 end
 
+local function draftTint(e)
+    if e.fixedTint then return e.cr, e.cg, e.cb end
+    local key = SceneGrade.isActive() and (SceneGrade.biome() or "fields") or "hall"
+    local c = EnemyLife.DRAFT_TINT[key] or EnemyLife.DRAFT_TINT.hall
+    return c[1], c[2], c[3]
+end
+
+local function pokeGrass(e)
+    if not SceneGrade.isActive() then return end
+    local GF = package.loaded["engine.GrassField"]
+    local WR = package.loaded["src.ui.WorldRoad"]
+    local r = WR and WR._lastRect
+    if not GF or not GF.pokeAt or not r or (r.w or 0) <= 0 then return end
+    local sx = S.ox + (e.xr * S.iw + S.dx) * S.scale
+    GF.pokeAt((sx - r.x) / r.w, (WR._camZ or 0) + (WR.BATTLE_REL or 0), WR._time or 0, EnemyLife.DRAFT_POKE)
+end
+
+local function burst(e, ei)
+    local sp = EnemyLife.SPEC[K_DRAFT]
+    local R = EnemyLife._rand
+    local cr, cg, cb = draftTint(e)
+    local leaf = not e.fixedTint and SceneGrade.isActive() and EnemyLife.DRAFT_LEAF[SceneGrade.biome() or ""] or nil
+    local half = e.spread * S.iw * 0.5
+    for m = 1, e.n do
+        local i = freeSlot()
+        if not i then break end
+        local side = (m % 2 == 0) and 1 or -1
+        pk[i] = K_DRAFT
+        pem[i] = ei
+        px[i] = e.xr * S.iw + S.dx + side * R() * half
+        pseed[i] = (R() - 0.5) * EnemyLife.DRAFT_DEPTH
+        py[i] = S.groundA + pseed[i] - R() * 1.5
+        local life = sp.l0 + (sp.l1 - sp.l0) * R()
+        plife[i], pmax[i] = life, life
+        pvx[i] = side * (sp.v0 + (sp.v1 - sp.v0) * R())
+        pvy[i] = -(sp.lift0 + (sp.lift1 - sp.lift0) * R())
+        if leaf and m % 3 == 0 then
+            pcr[i], pcg[i], pcb[i] = leaf[1], leaf[2], leaf[3]
+        else
+            pcr[i], pcg[i], pcb[i] = cr, cg, cb
+        end
+        e.alive = e.alive + 1
+        S.live = S.live + 1
+    end
+    S.strokes = S.strokes + 1
+    pokeGrass(e)
+end
+
+local function tickStrokes(animName, frameIdx)
+    if animName ~= S.lastAnim then
+        S.lastAnim, S.lastFrame = animName, frameIdx
+        return
+    end
+    if frameIdx == S.lastFrame then return end
+    S.lastFrame = frameIdx
+    if animName ~= "idle" or not S.spawnOk then return end
+    for ei = 1, S.nEmit do
+        local e = S.emit[ei]
+        if e.strokes and e.strokes[frameIdx] then burst(e, ei) end
+    end
+end
+
 local function windNow()
     if not SceneGrade.isActive() then return 0 end
     local GF = package.loaded["engine.GrassField"]
@@ -397,6 +489,8 @@ local function tickFx(dt, spawning)
             if sp.orbit then
                 local want = math.max(1, math.floor(e.rate + 0.5))
                 if e.alive < want then spawn(e, ei) end
+            elseif sp.draft then
+                e.acc = 0
             else
                 e.acc = e.acc + dt * e.rate
                 while e.acc >= 1 do
@@ -416,6 +510,12 @@ local function tickFx(dt, spawning)
                 kill(i)
             elseif sp.orbit then
                 pseed[i] = pseed[i] + pvx[i] * dt / 6
+            elseif sp.draft then
+                pvx[i] = pvx[i] * math.max(0, 1 - sp.drag * dt)
+                pvy[i] = pvy[i] + sp.grav * dt
+                px[i] = px[i] + (pvx[i] + wind * sp.wind) * dt
+                py[i] = py[i] + pvy[i] * dt
+                if py[i] > S.groundA + pseed[i] then py[i], pvy[i] = S.groundA + pseed[i], 0 end
             else
                 local age = pmax[i] - plife[i]
                 if sp.hang then
@@ -461,6 +561,7 @@ function EnemyLife.update(dt, id, animName, frameIdx, busy)
         EnemyStates.update(dt, S.data, EnemyLife, dying)
         tickFx(dt, S.spawnOk and S.nEmit > 0)
     end
+    tickStrokes(animName, frameIdx)
     if EnemyLife.isFidget(animName) then
         S.playing = animName
         return nil
@@ -525,8 +626,9 @@ function EnemyLife.eyePulse(t)
 end
 EnemyLife.States = EnemyStates
 
-function EnemyLife.frame(ox, oy, scale, dxA, dyA, iw, ih, alive, alpha, enemy)
+function EnemyLife.frame(ox, oy, scale, dxA, dyA, iw, ih, alive, alpha, enemy, groundA)
     S.enemy = enemy
+    S.groundA = groundA or ih
     S.ox, S.oy, S.scale = ox, oy, scale
     S.dx, S.dy, S.iw, S.ih = dxA, dyA, iw, ih
     S.alive = alive
@@ -561,7 +663,9 @@ local function drawLayer(back, mask)
             if (sp.back == true) == back then
                 local age = pmax[i] - plife[i]
                 local on = deathK >= 0.5
-                if on and not sp.orbit then
+                if on and sp.draft then
+                    on = age >= 0.03 and plife[i] >= 0.08
+                elseif on and not sp.orbit then
                     on = age >= 0.12 and plife[i] >= 0.2
                 end
                 if on and sp.flicker then
@@ -604,6 +708,8 @@ local function drawLayer(back, mask)
                             rect(ax - 1, ay + 1, 1, 1); rect(ax + 1, ay + 1, 1, 1)
                         elseif sp.w then
                             rect(ax, ay, sp.w, 1)
+                        elseif sp.draft then
+                            rect(ax, ay, (pvx[i] > 9 or pvx[i] < -9) and 2 or 1, 1)
                         else
                             local sz = (sp.grow and age > pmax[i] * 0.45) and 2 or 1
                             if sp.flame then
@@ -626,6 +732,12 @@ function EnemyLife.drawFront(mask)
 end
 
 function EnemyLife.liveCount() return S.live end
+function EnemyLife.strokeCount() return S.strokes end
+function EnemyLife.draftCount()
+    local n = 0
+    for i = 1, N do if pk[i] == K_DRAFT then n = n + 1 end end
+    return n
+end
 function EnemyLife.playing() return S.playing end
 function EnemyLife.current() return S.id, S.data end
 function EnemyLife.gapLeft() return S.gapLeft end

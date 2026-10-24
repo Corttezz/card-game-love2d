@@ -9,5 +9,7 @@ return {
         weak = { clip = "state_weak", fps = 7 },
         enraged = { clip = "state_enraged", fps = 10 },
     },
-    fx = {},
+    fx = {
+        { kind = "downdraft", xr = 0.50, yr = 1, spread = 0.55, strokes = { 7 } },
+    },
 }

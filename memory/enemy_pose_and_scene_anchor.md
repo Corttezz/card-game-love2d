@@ -151,83 +151,75 @@ de manto que afina, farrapo que se desfaz, talão pendurado de asa aberta =
 Levantar o corpo não basta: o que comunica altura é o **vão entre corpo e
 sombra**. Então a sombra do flutuante:
 
-- **não sobe com o corpo**: continua no chão (`cy`, a linha do palco
-  `battleRelFor` na estrada, o chão do salão nos interiores);
-- é a **silhueta do próprio quadro achatada** no chão (`src/ui/FloatShadow.lua`,
-  out/2026, pedido do dono: "o boss do ato 1 e os outros que voam precisam
-  daquela coisa no pé, na base, pra saber que está voando"). Ver a seção
-  "Sombra de voo" abaixo;
+- **não sobe com o corpo** — continua no chão (`cy`);
+- fica **menor** (`shadowK`), **mais fraca** (`shadowA`) e **mais borrada**
+  (`smear × 2.4`; no fallback de elipse, duas passadas concêntricas =
+  penumbra barata);
 - **escorrega pro lado oposto à luz**, proporcional à altura. Na estrada a
   direção vem do sol do bioma (`ShadowEngine.tipShiftAt`); no interior vem
   do `lightXr` da cena.
 
-### Sombra de voo (`FloatShadow`, 23/Out/2026)
+Colar a elipse de contato embaixo de quem paira é precisamente o defeito
+original — a sombra afirma "estou apoiado" e a pose afirma "estou no ar".
 
-Antes o flutuante só tinha a silhueta PROJETADA do `ShadowEngine` (fraca:
-pico de 0,07 de escurecimento no salão do rei-carniça, invisível no
-tapete) e, sem frame de sombra, duas elipses concêntricas. Agora:
+### Sombra de voo: REJEITADA pelo dono (24/Out/2026)
 
-- **Forma (v2, mesmo dia, revisão do coordenador: "na estrada viram barras
-  retas"):** a forma vem do PERFIL DE COLUNAS do quadro atual, não das linhas
-  de baixo achatadas. Num shader de máscara em resolução de ARTE, cada coluna
-  mede a sua MASSA (fração opaca do topo ao pé, 40 amostras, vizinhas
-  ponderadas) e a sua BASE (linha opaca mais baixa). Profundidade da coluna =
-  `meia × massa^0,35 × lente` (`ROUND` 0,8 afina as pontas); a borda de trás
-  usa a massa, a da frente segue a base (barra de manto, ponta de tentáculo e
-  de asa recortam a frente); ruído por célula de 3 colunas (`RAG` 1,4 linha)
-  quebra a lisura. Meia-profundidade = `max(10% da altura, 10% da largura)`,
-  no máximo 24% da altura (morcego de asa aberta ganha corpo), mínimo 10
-  linhas. Núcleo = mesma forma a 55%, só onde a massa passa de 0,35. Composto
-  em multiply com escala inteira do inimigo: borda em degrau de pixel de
-  arte, sem brilho.
-- **Domo:** na estrada as pontas descem com a curva do chão
-  (`WorldRoad.groundRadius(rel, w, h)` → `bend = (meia-largura)² / 2R`, até 12
-  linhas); o billboard da viagem usa o raio do próprio quadro. Salão: plano.
-- **Duas camadas:** faixa (`ALPHA` 0,74) + núcleo (`CORE_ALPHA` 0,5), a cor é a
-  tinta de sombra da cena (`ShadowEngine.getTint()`: grade do bioma na
-  estrada, `GameplayScene.HALL_SHADOW` no salão; sem frame,
-  `SceneGrade.shadowTint` ou `FALLBACK_TINT`).
-- **Posição:** centro 35% da meia-profundidade à frente da linha do chão, e
-  nunca subindo além de deixar 40% do hover de vão sob o pé. Se a frente
-  passar do topo da mão (`opts.shadowMaxY` = topo das cartas, passado pelo
-  `GameplayScene` na estrada e no salão), a sombra sobe até caber (salão do
-  lich: o chão encosta nas cartas).
-- **Respira com o bob:** `FloatShadow.breath(liftK, hover, bob)`: mais alto =
-  menor e mais clara (bob normalizado, `BOB_SIZE` 0,07 e `BOB_ALPHA` 0,16, mais
-  `HOVER_SIZE` 1,6 pela altura absoluta e `HIGH_FADE` acima do bob, na
-  entrada que desce do céu). O golpe que mergulha (`atkDY`) reduz a altura e
-  a sombra cresce. `reducedMotion`: `bob = 0`, sombra parada no tamanho do
-  hover.
-- **Profundidade:** desenhada no slot da sombra do `EnemyRenderer.draw`
-  (depois de grama/terreno, antes do corpo e da aura; o que está na frente do
-  inimigo no painter continua na frente). Na viagem/entrada a mesma função é
-  chamada do `LMG.drawEncounterFront` do WorldRoad, então a passagem para a
-  batalha não salta.
-- **Morte:** `fade = 1 − contactK`: enquanto cai, a sombra de voo some no mesmo
-  ritmo em que o contato e a silhueta projetada (agora só para flutuante
-  POUSADO, `alphaK × contactK`) entram. Sem inimigo, nada.
-- A silhueta projetada do flutuante no ar e a elipse dupla de fallback saíram.
+O dono pediu "aquela coisa no pé" para saber que o chefe do ato 1 e os outros
+voam. A frente entregou `src/ui/FloatShadow.lua` (23/Out, f7d7f925..4ac056e5):
+a silhueta do quadro achatada no chão, curvada com o domo, respirando com o
+bob. Resposta do dono: "essa sombra que você colocou nos bosses voadores está
+ridícula e feia e não combina com o que a gente já tem. Eu imaginei que você
+iria GERAR alguma ANIMAÇÃO para dar a sensação de voar."
 
-`dusk_shade` mantém a sombra de voo por cima da poça escura da âncora de
-entrada (`shadepool`): a poça é prop da entrada e pode faltar (Continuar);
-dentro dela a sombra quase não aparece, fora dela segura a leitura.
+Saiu tudo (módulo, `test_floating_shadow`, `screenshot_sombra_voo`,
+`WorldRoad.groundRadius`, `ShadowEngine.getTint`, `opts.shadowMaxY/groundR`),
+e a sombra do flutuante voltou a ser a de antes (silhueta projetada do
+`ShadowEngine` com `shadowK/shadowA`, elipse dupla no fallback). Lição: "a
+coisa no pé" era MOVIMENTO, não uma forma nova; forma desenhada por código
+(mancha, disco, elipse, silhueta achatada) num jogo de pixel art pintado lê
+como enxerto. Não reintroduzir sombra de voo.
+
+### Voo pela ANIMAÇÃO (24/Out/2026)
+
+O que diz "estou voando" agora é o próprio corpo:
+
+- **Idle de voo gerado** (`tools/pixellab_voo.py run|fetch|install|restore`,
+  `animate_image` v3 com o primeiro e o último quadro pinados no idle 0, 12
+  quadros, melhor de 3; o idle antigo fica em
+  `tools/preview_out/voo_tries/_antes_<id>/`): asas BATEM com subida e
+  descida claras (carrion_king, dusk_bat, eclipse_queen), capa e barra
+  ESVOAÇAM como se o ar segurasse (tower_lich, dusk_shade), e o corpo sobe
+  dentro do quadro na batida. Quadro 0 byte a byte igual ao idle 0 de antes
+  (fidgets, estados, entradas, dano e morte continuam emendando).
+  `abyss_watcher` MANTEVE o idle antigo de 16 quadros: os tentáculos já
+  ondulam como água-viva e a única tentativa de pulsar o sino apagou os olhos
+  e saturou o vermelho (outra criatura). `abyss_wraith` não está no roster:
+  nada gerado.
+- **Bob na fase da batida** (`flapPeak` em `src/data/enemy_poses.lua`, fração
+  do loop onde o corpo está mais alto): com o idle tocando, o `bob` deixa de
+  ser senoide de relógio e segue o quadro do idle
+  (`EnemyRenderer.poseOffsetY(..., flapPh)`), então o corpo sobe na batida da
+  arte em vez de flutuar fora de ritmo. Fora do idle (ataque, fidget,
+  estado) volta ao relógio. `reducedMotion`: sem bob, como antes.
+- **Sopro no chão** (`downdraft`, tipo de fx do `EnemyLife`, ver
+  `memory/enemy_life.md`): em cada quadro de batida declarado em `strokes`
+  sai uma rajada de motas de pixel ao longo do chão sob a criatura (poeira no
+  salão, folha vermelha no crepúsculo, folha/terra nos campos, neve no gelo),
+  e na estrada a grama sob ela inclina para fora (`GrassField.pokeAt` com
+  amplitude 0,45). Sem disco, sem elipse, sem brilho, sem forma achatada.
+
+Pranchas antes/depois (cena real 1920x1080, chefes no salão, 1:1 e chão 3x)
+e GIFs: `tools/preview_out/voo/<id>_antes_depois.{gif,png}`; tira do idle
+novo: `tools/preview_out/voo/<id>_idle_novo.png`. Captura:
+`CARDGAME_HEADLESS=1 VOO_IDS=a,b lovec . test_one screenshot_voo` (modo
+`antes` sobrepõe o idle antigo no save dir e tira o downdraft) e
+`python tools/voo_compose.py <savedir>/voo <id>`. Trava: `test_enemy_life`
+(todo flutuante do roster declara downdraft; apoiado nunca).
 
 Asas que PISAM continuam `grounded` (olhado o idle a 3x, 23/Out/2026):
 `storm_harpy` (talões no chão, agachada), `storm_griffin` (quatro patas
 plantadas), `fallen_angel` (botas no chão, espada), `moon_gargoyle`
 (agachada). Asa aberta não é voo; o pé é que decide.
-
-Trava: `love . test_one test_floating_shadow` (todo flutuante na estrada, no
-salão e sem frame: sombra existe, cruza a linha do chão, vão até o pé no
-topo do bob, respira, tem forma (a fileira mais estreita à frente do pé
-mede ≤ 70% da mais larga: nunca faixa reta), curva com o domo na estrada, nunca por cima do corpo, sem elipse, reducedMotion
-parado, some no cadáver pousado e sem inimigo, contorno de luz 0). Capturas:
-`lovec . test_one screenshot_sombra_voo [tag]` (topo e base do bob em
-1920x1080 + recorte 2x; `SOMBRA_VOO_MASK=1` grava também a versão sem a
-sombra), pranchas em `tools/preview_out/sombra_voo/`.
-
-Colar a elipse de contato embaixo de quem paira é precisamente o defeito
-original — a sombra afirma "estou apoiado" e a pose afirma "estou no ar".
 
 ### Morte
 
