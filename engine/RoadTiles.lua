@@ -352,13 +352,26 @@ local function strawPick() return STRAW end
 
 local PAINT = {}
 
+local OPT = { f = { rutW = 0.09 }, h = { rutW = 0.08 }, a = { rutW = 0.1, base = ASH }, d = { rutW = 0.09 } }
+local CUR = { sho = 0, s = 0 }
+local function acceptF(uu) return abs(uu) < 1.05 end
+local function acceptH(uu) return abs(uu) < 0.95 end
+local function strawDens() return 0.08 + CUR.sho * 0.3 end
+local function duskDens(uu, yy)
+    local rr = rutK(uu, yy, 0.13)
+    local a = abs(uu)
+    local clump = vnoise(uu * HALF + CU, yy, 4, 14, CUR.s + 66)
+    local edge = sstep(0.5, 0.92, a)
+    local worn = 1 - sstep(0.12, 0.6, a)
+    return 0.32 + edge * 0.7 + rr * 0.15 + (clump - 0.45) * 0.9 - (1 - edge) * worn * 0.05
+end
+local function duskDens2(uu, yy) return (duskDens(uu, yy) - 0.25) * 1.5 end
+
 PAINT.fields = function(x, y, u, s)
-    local mat, h, val, sho, rk, worn = trail(x, y, u, s, { rutW = 0.09 })
+    local mat, h, val, sho, rk, worn = trail(x, y, u, s, OPT.f)
     local au = abs(u)
-    local patch = fbm(x, y, s + 111, 3, 10)
-    val = val + (patch - 0.5) * 0.18
     local big, bv = stone(x, y, 16, 0.22 * (1 - rk) * (0.35 + sho + (1 - worn) * 0.6), 1.6, 3.0, s + 71,
-        function(uu) return abs(uu) < 1.05 end)
+        acceptF)
     if big then return STONE, big, bv end
     local sm, sv = stone(x, y, 7, 0.2 * (1 - rk * 0.9), 0.9, 1.5, s + 75)
     if sm then return STONE, sm - 0.15, sv end
@@ -382,7 +395,8 @@ PAINT.fields = function(x, y, u, s)
             end
         end
     end
-    local st = au > 0.45 and au < 1.0 and leafAt(x, y, 9, function() return 0.08 + sho * 0.3 end, s + 85, 1.8, 2.8,
+    CUR.sho = sho
+    local st = au > 0.45 and au < 1.0 and leafAt(x, y, 9, strawDens, s + 85, 1.8, 2.8,
         0.18, 0.26, strawPick)
     if st then return STRAW, h + 0.1, 0.35 + val * 0.4 end
     local gr = gravel(x, y, s, 1.6 - worn * 0.6)
@@ -393,8 +407,8 @@ PAINT.fields = function(x, y, u, s)
 end
 
 PAINT.highlands = function(x, y, u, s)
-    local mat, h, val, sho, rk, worn = trail(x, y, u, s, { rutW = 0.08 })
-    local big, bv = stone(x, y, 24, 0.26, 2.8, 4.6, s + 67, function(uu) return abs(uu) < 0.95 end)
+    local mat, h, val, sho, rk, worn = trail(x, y, u, s, OPT.h)
+    local big, bv = stone(x, y, 24, 0.26, 2.8, 4.6, s + 67, acceptH)
     if big then
         if bv > 0.6 and h2(x, y, s + 69) < 0.07 then return MOSS, big, 0.55 end
         return STONE, big, bv
@@ -411,7 +425,7 @@ PAINT.highlands = function(x, y, u, s)
 end
 
 PAINT.abyss = function(x, y, u, s)
-    local mat, h, val, sho, rk = trail(x, y, u, s, { rutW = 0.1, base = ASH })
+    local mat, h, val, sho, rk = trail(x, y, u, s, OPT.a)
     local drift = fbm(x, y, s + 3, 4, 40)
     val = val + (drift - 0.5) * 0.32
     local streak = vnoise(x, y, 3, 60, s + 5)
@@ -583,17 +597,11 @@ PAINT.marsh = function(x, y, u, s, np)
 end
 
 PAINT.dusk = function(x, y, u, s)
-    local mat, h, val, sho, rk, worn = trail(x, y, u, s, { rutW = 0.09 })
-    local function dens(uu, yy)
-        local rr = rutK(uu, yy, 0.13)
-        local a = abs(uu)
-        local clump = vnoise(uu * HALF + CU, yy, 4, 14, s + 66)
-        local edge = sstep(0.5, 0.92, a)
-        return 0.32 + edge * 0.7 + rr * 0.15 + (clump - 0.45) * 0.9 - (1 - edge) * worn * 0.05
-    end
+    local mat, h, val, sho, rk, worn = trail(x, y, u, s, OPT.d)
+    CUR.s = s
+    local dens = duskDens
     local m2, lv, ly = fallenLeaf(x, y, 6, dens, s + 61, 2.1, 3.1)
-    local m3, lv3, ly3 = fallenLeaf(x, y, 3.5, function(uu, yy) return (dens(uu, yy) - 0.25) * 1.5 end, s + 91,
-        1.4, 2.0)
+    local m3, lv3, ly3 = fallenLeaf(x, y, 3.5, duskDens2, s + 91, 1.4, 2.0)
     if m2 then
         local wornLeaf = worn > 0.8 and rk < 0.25 and h2(floor(x), floor(y / 3), s + 63) < 0.5
         return wornLeaf and LEAF4 or m2, h + 0.3 + ly * 0.25, lv * (wornLeaf and 0.75 or 1)
@@ -607,10 +615,22 @@ PAINT.dusk = function(x, y, u, s)
     return mat, h, val
 end
 
-function V.planks(bid)
+local function marshSeed()
     local seed = 0
-    for i = 1, #bid do seed = seed + bid:byte(i) end
-    return plankTable(seed).list
+    for i = 1, #"marsh" do seed = seed + ("marsh"):byte(i) end
+    return seed
+end
+
+function V.planks()
+    return plankTable(marshSeed()).list
+end
+
+function V.plankMissing(pk)
+    return h2(pk, 3, marshSeed()) < 0.06
+end
+
+function V.plankJitter(pk)
+    return h2(pk, 41, marshSeed())
 end
 
 V.LIGHT_X = { fields = 1, highlands = 1, abyss = 1, frost = 1, marsh = 1, dusk = -1 }
@@ -620,6 +640,8 @@ function V.paint(bid, x, y, seed)
 end
 
 V.S = 2
+V.BUF = {}
+V.MEMO = {}
 V.GRAIN = { [DIRT] = 0.2, [MUD] = 0.14, [ASH] = 0.18, [SOOT] = 0.12, [SNOW] = 0.08, [STONE] = 0.12,
     [WOOD] = 0.08, [GRASS] = 0.14, [LEAF] = 0.1, [LEAF2] = 0.1, [LEAF3] = 0.1, [LEAF4] = 0.1, [LEAF5] = 0.1,
     [LEAF6] = 0.1, [STRAW] = 0.1 }
@@ -662,14 +684,22 @@ function V.bake(bid, pal, yieldEvery)
     local N = W * H
     local blocks = V.BLOCKS[bid] or 2
     local d = love.image.newImageData(W * blocks, H)
-    local M = ffi.new("uint8_t[?]", N)
-    local Hh = ffi.new("float[?]", N)
-    local Vv = ffi.new("float[?]", N)
-    local R = ffi.new("float[?]", N)
-    local G = ffi.new("float[?]", N)
-    local B = ffi.new("float[?]", N)
+    local owner = V.BUF.owner
+    local shared = not (owner and owner ~= true and coroutine.status(owner) ~= "dead")
+    local F = shared and V.BUF or {}
+    if F.n ~= N then
+        F.n = N
+        F.M = ffi.new("uint8_t[?]", N)
+        F.Hh, F.Vv = ffi.new("float[?]", N), ffi.new("float[?]", N)
+        F.R, F.G, F.B = ffi.new("float[?]", N), ffi.new("float[?]", N), ffi.new("float[?]", N)
+        F.tmp = ffi.new("float[?]", N)
+        F.bR, F.bG, F.bB = ffi.new("float[?]", N), ffi.new("float[?]", N), ffi.new("float[?]", N)
+    end
+    if shared then V.BUF.owner = coroutine.running() or true end
+    local M, Hh, Vv, R, G, B = F.M, F.Hh, F.Vv, F.R, F.G, F.B
+    V.MEMO[bid] = V.MEMO[bid] or { {}, {} }
     local function pass(np, ox)
-        memo, dmemo = {}, {}
+        memo, dmemo = V.MEMO[bid][1], V.MEMO[bid][2]
         for Y = 0, H - 1 do
             if yieldEvery and Y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
             local y = Y / S
@@ -681,7 +711,6 @@ function V.bake(bid, pal, yieldEvery)
                 M[i], Hh[i], Vv[i] = m, h, v
             end
         end
-        memo, dmemo = {}, {}
         for Y = 0, H - 1 do
             if yieldEvery and Y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
             local yu = ((Y + S) % H) * W
@@ -722,8 +751,8 @@ function V.bake(bid, pal, yieldEvery)
     end
     pass(false, 0)
     local by = ((bid == "marsh") and 13 or 7) * S
-    local tmp = ffi.new("float[?]", N)
-    local bR, bG, bB = ffi.new("float[?]", N), ffi.new("float[?]", N), ffi.new("float[?]", N)
+    local tmp = F.tmp
+    local bR, bG, bB = F.bR, F.bG, F.bB
     boxBlur(R, bR, W, H, 3 * S, by, tmp)
     if yieldEvery then coroutine.yield() end
     boxBlur(G, bG, W, H, 3 * S, by, tmp)
@@ -739,6 +768,7 @@ function V.bake(bid, pal, yieldEvery)
         end
     end
     if blocks > 2 then pass(true, 2 * W) end
+    if shared then V.BUF.owner = nil end
     local img = love.graphics.newImage(d)
     img:setFilter("nearest", "nearest")
     img:setWrap("repeat", "repeat")

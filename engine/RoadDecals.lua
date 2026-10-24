@@ -75,15 +75,18 @@ function RoadDecals.draw(ctx)
             local h1 = hash01(slot * 12.9898 + salt)
             local wz = (slot + 0.15 + h1 * 0.7) * f.cada
             local rel = wz - camZ
-            local skip = ctx.forkActive and rel > (ctx.forkRel - 1)
-            local t = (not skip) and g.tOf(rel) or nil
+            local fz = 0
+            if (ctx.forkK or 0) > 0 then
+                fz = ctx.forkK * min(1, max(0, (rel - (ctx.forkRel - 1.6)) / 1.2))
+            end
+            local t = fz < 0.99 and g.tOf(rel) or nil
             if t and t >= 0.3 and t <= 1 then
                 local h2 = hash01(slot * 78.233 + salt)
                 local h3 = hash01(slot * 37.719 + salt)
                 local cxr = ctx.roadCenter(wz, t)
                 local half = ctx.roadHalf(t) / 0.82 * (ctx.roadVis or 0.88)
-                local sc = max(1, floor(half / RoadTiles.HALF + 0.5))
-                local aDist = min(1, (t - 0.3) * 4)
+                local sc = max(1, half / RoadTiles.HALF)
+                local aDist = min(1, (t - 0.3) * 4) * (1 - fz) * min(1, (1 - t) * 14)
                 local sp = f.move * (0.5 + h3)
                 local cyc = (h2 * 2.6 + time * sp) % 2.6
                 local ux = cyc - 1.3
@@ -91,7 +94,8 @@ function RoadDecals.draw(ctx)
                 local rest = sin(time * 0.9 + h1 * 11)
                 if edgeA > 0 then
                     local px = cxr + ux * half
-                    local hop = rest > 0.2 and abs(sin(time * 2.4 + h1 * 9)) * sc * 1.5 or 0
+                    local hs = sin(time * 2.4 + h1 * 9)
+                    local hop = rest > 0.2 and hs * hs * sc * 1.5 * min(1, (rest - 0.2) * 4) or 0
                     local py = g.latY(px - g.cx, t) - hop
                     local lc = RoadDecals.LEAVES[1 + floor(h3 * 4) % 4]
                     local q = NAMES[1 + floor(h1 * 3) % 3]
@@ -101,6 +105,7 @@ function RoadDecals.draw(ctx)
                         QW[q] / 2, QH[q] / 2)
                     lg.setColor(lc[1] * gr[1], lc[2] * gr[2], lc[3] * gr[3], aDist * edgeA)
                     lg.draw(atlas, Q[q], floor(px), floor(py), 0, sc * fl, sc, QW[q] / 2, QH[q] / 2)
+                    if ctx.seq then ctx.seq("leaf", fi, slot, px, py, sc * 4, sc * 3, aDist * edgeA) end
                 end
             end
         end

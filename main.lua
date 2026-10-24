@@ -1,4 +1,5 @@
 require("src.core.Release").install()
+if jit and jit.opt then jit.opt.start("maxtrace=8000", "maxmcode=65536", "maxrecord=8000") end
 
 local Game = require("src.core.Game")
 local CardFrame = require("src.ui.CardFrame")

@@ -1,6 +1,6 @@
 local RoadFork = {}
 
-RoadFork.BAND_K = 0.22
+RoadFork.BAND_K = 0.4
 RoadFork.ALPHA_MIN = 0.02
 
 local order = {}
@@ -9,7 +9,7 @@ local function active(a)
     return a.a > RoadFork.ALPHA_MIN and a.xR > a.xL
 end
 
-function RoadFork.partition(A, n, chosen, half, hard)
+local function part(A, n, chosen, half, hard)
     for i = 1, n do
         local a = A[i]
         a.sL, a.sR, a.band = a.xL, a.xR, 0
@@ -71,18 +71,92 @@ function RoadFork.partition(A, n, chosen, half, hard)
     return order, m
 end
 
-RoadFork.DECK_K = 1.45
+function RoadFork.partition(A, n, chosen, half, hard, chosenK)
+    local k = chosenK or 1
+    if not chosen or k >= 1 then return part(A, n, chosen, half, hard) end
+    part(A, n, nil, half, hard)
+    for i = 1, n do
+        local a = A[i]
+        a.s0L, a.s0R, a.b0 = a.sL, a.sR, a.band
+    end
+    local ord, m = part(A, n, chosen, half, hard)
+    for i = 1, n do
+        local a = A[i]
+        if a.s0L then
+            a.sL = a.s0L + (a.sL - a.s0L) * k
+            a.sR = a.s0R + (a.sR - a.s0R) * k
+            a.band = math.max(a.b0 or 0, a.band or 0)
+        end
+    end
+    return ord, m
+end
 
-function RoadFork.contiguous(A, ord, m, half)
+RoadFork.DECK_K = 1.75
+
+local function sstep(e0, e1, x)
+    local t = math.min(1, math.max(0, (x - e0) / (e1 - e0)))
+    return t * t * (3 - 2 * t)
+end
+
+function RoadFork.deckK(A, ord, m, half, chosen, cTrunk, ck)
+    if m < 1 then return 0 end
+    half = math.max(1, half)
+    local spread = 0
+    for q = 2, m do
+        local a, b = A[ord[q - 1]], A[ord[q]]
+        local wgt = 1
+        if chosen then
+            local wa = ord[q - 1] == chosen and 1 or a.a
+            local wb = ord[q] == chosen and 1 or b.a
+            wgt = math.min(wa, wb)
+        end
+        spread = math.max(spread, (b.c - a.c) / half * wgt + (1 - wgt) * 9)
+    end
+    local D = m >= 2 and (1 - sstep(RoadFork.DECK_K - 0.3, RoadFork.DECK_K + 0.3, spread)) or 0
+    if cTrunk then
+        local T = chosen and A[chosen] and A[chosen].on and A[chosen] or nil
+        if not T then
+            local best = math.huge
+            for q = 1, m do
+                local a = A[ord[q]]
+                local d = math.abs(a.c - cTrunk)
+                if d < best then best, T = d, a end
+            end
+        end
+        if T then
+            local other = 0
+            for q = 1, m do
+                local a = A[ord[q]]
+                if a ~= T then other = math.max(other, a.a) end
+            end
+            local W = 1 - other
+            if chosen and T == A[chosen] then W = math.max(W, (ck or 0) * (ck or 0)) end
+            D = math.max(D, (1 - sstep(0.5, 1.1, math.abs(T.c - cTrunk) / half)) * W)
+        end
+    end
+    return D
+end
+
+function RoadFork.union(A, ord, m, chosen)
     if m < 1 then return nil end
+    local C = chosen and A[chosen]
+    if C and C.on then
+        local uL, uR = C.xL, C.xR
+        for k = 1, m do
+            local a = A[ord[k]]
+            if a ~= C then
+                uL = math.min(uL, C.xL + (a.xL - C.xL) * a.a)
+                uR = math.max(uR, C.xR + (a.xR - C.xR) * a.a)
+            end
+        end
+        return uL, uR, C.a
+    end
     local uL, uR, pa = math.huge, -math.huge, 0
     for k = 1, m do
         local a = A[ord[k]]
-        if k > 1 and (a.xL > uR or a.c - A[ord[k - 1]].c > RoadFork.DECK_K * half) then return nil end
         uL, uR = math.min(uL, a.xL), math.max(uR, a.xR)
         pa = math.max(pa, a.a)
     end
-    if m < 2 then return nil end
     return uL, uR, pa
 end
 

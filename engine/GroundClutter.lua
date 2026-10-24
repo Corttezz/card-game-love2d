@@ -46,16 +46,16 @@ function GroundClutter.collect(out, env)
     local g, w, x, camZ = env.g, env.w, env.x, env.camZ
     local C = DATA.cell
     local relMax = env.relMax
-    if env.fork then relMax = math.min(relMax, DATA.forkRelMax) end
+    local forkK = env.forkK or 0
     local hand = env.hand
     local n = 0
-    for ci = math.floor((camZ + DATA.relMin) / C), math.floor((camZ + relMax) / C) do
+    for ci = math.floor((camZ - 9) / C), math.floor((camZ + relMax) / C) do
         for side = -1, 1, 2 do
             local hs = ci * 2 + (side > 0 and 1 or 0)
             if hash01(hs * 1.37 + 0.11) < DATA.chance then
                 local z = (ci + hash01(hs * 3.11 + 0.37)) * C
                 local rel = z - camZ
-                local t = rel >= DATA.relMin and rel <= relMax and g.tOf(rel)
+                local t = rel >= -9 and rel <= relMax and (rel >= 0 and g.tOf(rel) or (1 - rel / 26) ^ 1.35)
                 if t and t >= DATA.tMin then
                     local e = pick(list, hash01(hs * 5.77 + 0.53))
                     local v = math.floor(hash01(hs * 11.3 + 0.29) * (e.n or 1))
@@ -68,13 +68,19 @@ function GroundClutter.collect(out, env)
                         local px = g.cx + env.wobble(z, t, w) + side * half * u
                         local hw = iw * s * 0.5
                         local pad = w * DATA.edgePad
-                        local ok = px - hw > x - pad and px + hw < x + w + pad
+                        local ok = px + hw > x - pad and px - hw < x + w + pad
                         local py = ok and g.latY(px - g.cx, t)
                         if ok and hand and py - ih * s < hand.y + DATA.handPad
                            and px + hw > hand.x1 and px - hw < hand.x2 then
                             ok = false
                         end
-                        if ok and py > g.bottomY + ih * s * 0.25 then ok = false end
+                        if ok and py + (e.sink or 0) * s - ih * s > g.bottomY + 2 then ok = false end
+                        local fz = 0
+                        if forkK > 0 then
+                            fz = math.min(1, math.max(0, (rel - DATA.forkRelMax + 0.6) / 1.2))
+                            fz = fz * fz * (3 - 2 * fz) * forkK
+                        end
+                        if ok and fz >= 0.99 then ok = false end
                         if ok then
                             n = n + 1
                             local p = pool[n]
@@ -83,6 +89,7 @@ function GroundClutter.collect(out, env)
                             p.z, p.side, p.bid, p.e, p.img, p.v = z, side, env.bid, e, img, v
                             p.px, p.py, p.s, p.t, p.rel = px, py, s, t, rel
                             p.flip = env.flipToSun(img, env.sunRight, fb)
+                            p.fk = 1 - fz
                             p.ph = hs * 1.7
                             out[#out + 1] = p
                             if side < 0 then st.left = st.left + 1 else st.right = st.right + 1 end
@@ -100,7 +107,7 @@ end
 
 function GroundClutter.draw(p, env)
     local e, img, s, t = p.e, p.img, p.s, p.t
-    local a = math.min(1, (t - DATA.tMin) / DATA.tFade)
+    local a = math.min(1, (t - DATA.tMin) / DATA.tFade) * (p.fk or 1)
     if a <= 0.01 then return end
     local iw, ih = img:getWidth(), img:getHeight()
     local px, py, flip = math.floor(p.px), math.floor(p.py), p.flip
@@ -118,6 +125,7 @@ function GroundClutter.draw(p, env)
     local sink = (e.sink or 0) * s
     local fr = not env.reduced and env.frames and env.frames(p.bid, e.kind, p.v)
     love.graphics.draw(fr and env.frameOf(fr, hash01(p.ph)) or img, px, py + sink, rot, s * flip, s, iw / 2, ih)
+    if env.seq then env.seq("clutter", p, 0, px, py + sink, iw * s, ih * s, a) end
     ShadowEngine.mask(img, nil, px, py + sink, rot, s * flip, s, iw / 2, ih, 0, t)
     if e.solid then
         GrassField.requireTufts(p.rel - 0.05, px, iw * s * 0.7, 2,

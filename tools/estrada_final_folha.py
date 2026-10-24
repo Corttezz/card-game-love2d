@@ -49,7 +49,7 @@ def run():
                 continue
             half = (960, 540)
             sheet = Image.new("RGB", (1920, 540 + 480 + 520))
-            sheet.paste(label(a.resize(half, Image.LANCZOS), "antes (8b4db32e) ato %d %s" % (ato, NAMES[ato])), (0, 0))
+            sheet.paste(label(a.resize(half, Image.LANCZOS), "antes (" + os.environ.get("ESTRADA_BASE", "302b5018") + ") ato %d %s" % (ato, NAMES[ato])), (0, 0))
             sheet.paste(label(b.resize(half, Image.LANCZOS), "depois ato %d %s" % (ato, NAMES[ato])), (960, 0))
             na, ja = crops(a)
             nb, jb = crops(b)
@@ -59,6 +59,12 @@ def run():
             sheet.paste(label(jb.crop((0, 0, 960, 520)), "depois encruzilhada 2x"), (960, 1020))
             sheet.save(os.path.join(dst, "antes_depois_%s.png" % scene))
             n += 1
+            if scene in ("fork3", "fork2", "converge"):
+                own = Image.new("RGB", (1035, 584 * 2))
+                own.paste(label(a.crop((443, 400, 1478, 984)), "antes " + scene), (0, 0))
+                own.paste(label(b.crop((443, 400, 1478, 984)), "depois " + scene), (0, 584))
+                own.save(os.path.join(dst, "enquadramento_dono_%s.png" % scene))
+                n += 1
     print(OUT, n)
 
 
