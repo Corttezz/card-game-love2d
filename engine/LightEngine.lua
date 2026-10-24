@@ -200,16 +200,33 @@ function LightEngine._entryOrder(a, b)
     return (a.occ and 0 or 1) < (b.occ and 0 or 1)
 end
 
+local LS = { sh = nil, bm = nil }
+local function useShader(sh)
+    if LS.sh ~= sh then
+        love.graphics.setShader(sh)
+        LS.sh = sh
+    end
+end
+local function useBlend(m)
+    if LS.bm ~= m then
+        love.graphics.setBlendMode(m, "alphamultiply")
+        LS.bm = m
+    end
+end
+
 local function drawOccluder(e, S, cr, cg, cb)
-    love.graphics.setBlendMode("alpha", "alphamultiply")
+    useBlend("alpha")
     love.graphics.setColor(1, 1, 1, 1)
     if occShader then
-        love.graphics.setShader(occShader)
+        useShader(occShader)
         local fc = pool.fc
-        fc[1], fc[2], fc[3] = cr, cg, cb
-        occShader:send("flatColor", fc)
+        if LS.fr ~= cr or LS.fg ~= cg or LS.fb ~= cb then
+            fc[1], fc[2], fc[3] = cr, cg, cb
+            occShader:send("flatColor", fc)
+            LS.fr, LS.fg, LS.fb = cr, cg, cb
+        end
     else
-        love.graphics.setShader()
+        useShader(nil)
         love.graphics.setColor(cr, cg, cb, 1)
     end
     local d = e.cover and S * 0.375 or 0
@@ -229,8 +246,6 @@ local function drawOccluder(e, S, cr, cg, cb)
             end
         end
     end
-    love.graphics.setShader()
-    love.graphics.setBlendMode("add", "alphamultiply")
 end
 
 local function drawLight(e, S, snap)
@@ -238,19 +253,28 @@ local function drawLight(e, S, snap)
     local ww = whiteImg and whiteImg:getWidth() or 2
     local lx, ly = e.x / S, e.y / S
     if snap then lx, ly = math.floor(lx), math.floor(ly) end
+    useBlend("add")
     if e.micro or not shaderOk then
-        love.graphics.setShader()
+        useShader(nil)
         local sc = (e.r * 2 / S) / mw
         love.graphics.setColor(e.color[1] * e.i, e.color[2] * e.i,
             e.color[3] * e.i, 1)
         love.graphics.draw(microImg, lx, ly, 0, sc, sc * (e.micro and 1 or (e.sy or 1)), mw / 2, mw / 2)
         return
     end
-    love.graphics.setShader(shader)
-    shader:send("intensity", e.i)
-    shader:send("wobble", (e.sy or 1) < 0.9 and LightEngine.POOL_WOBBLE or 0)
-    shader:send("seed", e.seed or 0)
-    love.graphics.setColor(e.color[1], e.color[2], e.color[3], 1)
+    if LS.sh ~= shader then
+        useShader(shader)
+        shader:send("wobbleK", LightEngine.POOL_WOBBLE)
+        LS.gain = nil
+    end
+    local r, g, b = e.color[1] * e.i, e.color[2] * e.i, e.color[3] * e.i
+    local gn = math.max(1, r, g, b)
+    if LS.gain ~= gn then
+        shader:send("gain", gn)
+        LS.gain = gn
+    end
+    local wf = (e.sy or 1) < 0.9 and 0.5 or 0
+    love.graphics.setColor(r / gn, g / gn, b / gn, wf + math.min(1, math.max(0, (e.seed or 0) / 71)) * 0.49)
     local sc = (e.r * 2 / S) / ww
     love.graphics.draw(whiteImg, lx, ly, 0, sc, sc * (e.sy or 1), ww / 2, ww / 2)
 end
@@ -263,8 +287,30 @@ local function drawEntries(entries, target, mode, useCover)
     else
         love.graphics.clear(ambient[1], ambient[2], ambient[3], 1)
     end
+    love.graphics.setShader()
     love.graphics.setBlendMode("add", "alphamultiply")
-    for _, e in ipairs(entries) do
+    LS.sh, LS.bm, LS.fr = nil, "add", nil
+    local n = #entries
+    local i = 1
+    while i <= n do
+        local e = entries[i]
+        if not e.occ and mode ~= "hard" then
+            local j = i
+            while j + 1 <= n and not entries[j + 1].occ do j = j + 1 end
+            for pass = 1, 2 do
+                for q = i, j do
+                    local l = entries[q]
+                    local isMicro = (l.micro or not shaderOk) and true or false
+                    if (pass == 1) == (not isMicro)
+                       and not (l.micro and l.bodyOnly and useCover and mode ~= "all") then
+                        drawLight(l, S, mode == "all")
+                    end
+                end
+            end
+            i = j + 1
+        else
+            i = i + 1
+        end
         if e.occ then
             if e.cover and useCover and mode ~= "all" then
             elseif mode == "soft" then
@@ -280,11 +326,11 @@ local function drawEntries(entries, target, mode, useCover)
                 end
                 drawOccluder(e, S, cr, cg, cb)
             end
-        elseif mode ~= "hard" and not (e.micro and e.bodyOnly and useCover and mode ~= "all") then
-            drawLight(e, S, mode == "all")
         end
     end
     love.graphics.setShader()
+    love.graphics.setBlendMode("add", "alphamultiply")
+    LS.sh, LS.bm = nil, "add"
 end
 
 function LightEngine.composite(x, y, w, h)
@@ -346,6 +392,7 @@ function LightEngine.composite(x, y, w, h)
         if occShader then
             love.graphics.setShader(occShader)
             occShader:send("flatColor", pool.white)
+            LS.fr = nil
         end
         for _, e in ipairs(entries) do
             if e.occ and e.cover then

@@ -119,3 +119,43 @@ com sombra. Sem poça, anel, pegada, brasa ou junco (todos eram elipses).
 - **Ato 4:** neve pisada mais escura e azulada no centro (-0,28), berma clara (+0,34).
 - Pântano no `test_castle_light`: borrão da crista guarda só 8% do detalhe (`k`) e tom de tábua
   0,32 de faixa: a sobra de listra de tábua no borrão dava "subida" 5,3 contra 4,96.
+
+## Rodada 3 (23/Out/2026): passarela do ato 5, ponta dos ramos, sequência quadro a quadro
+
+- **Ramo termina no marco.** `WorldRoad.forkFarK` apaga cada ramo lateral entre `MARK_REL + 0,4` e
+  `+2,8` (`FORK_END`), na estrada e na clareira da grama juntos; o escolhido volta a inteiro com a
+  convergência. Era o "retângulo escuro" atrás de Battle/Rest no ato 5 (e a faixa em todos os atos):
+  os ramos continuavam até a crista por trás dos marcos. `test_road_edge_rhythm` mede a cunha também
+  acima dos marcos; pisos do ato 3/4 recalibrados para 0,82/0,28 do carpete (antes o ramo invisível
+  atrás do marco contava como cunha).
+- **Passarela do ato 5.** Deck (`RoadFork.deckK`, 0..1, suavizado no tempo por linha) enquanto os
+  ramos estão colados ou um ramo está no tronco; fora dele o chão é lama/água (bloco 3) e cada tábua
+  é um quad reto de largura constante, perpendicular à direção do ramo NA TELA (pontas
+  perpendiculares ao eixo do ramo, encurtamento pela perspectiva), com veio/nó/rachadura e pregos
+  (`WorldRoad._board`), estacas nas laterais a cada 6 tábuas, sombra nas bordas do ramo. As tábuas
+  são numeradas pelo v integrado do ramo a partir do início do ramo (FORK_REL), não da primeira
+  linha visível: antes elas reindexavam quando a câmera andava (teleporte de todas as tábuas).
+  Um pixel só pertence a um ramo; tábua perto do limite do dono some aos poucos.
+- **Abertura e fechamento contínuos.** `forkOffset` cresce com `animIn` e `forkWobK` leva o
+  balanço do ramo de 1 (tronco) a 0,5 (ramo) e de volta no escolhido; o tronco extra que fazia
+  crossfade com os ramos na abertura saiu. Na convergência a partição passa ao escolhido em ~0,4 s
+  (`partition(..., chosenK)`), sem salto de dono no clique.
+- **Coisas que estalavam na sequência** (achadas pelo `tools/estrada_seq.lua`): GroundClutter cortava
+  tudo além de rel 8 enquanto a encruzilhada existia e voltava de uma vez (agora some suave pela
+  borda da encruzilhada) e sumia ao cruzar rel 0,25 e com o recorte da mão durante a viagem;
+  marcos da encruzilhada nasciam opacos (agora com `animIn`); o marco escolhido do andar anterior
+  sumia no `showFork`; props reciclados reapareciam dentro da faixa de emergência; folhas sopradas do
+  ato 6 sumiam no limite da encruzilhada e mudavam de tamanho em degrau; o tom de viagem (vermelho
+  de encontro) ligava em 1 quadro (agora entra/sai em 0,6 s).
+- **Detector** `lovec . test_one estrada_seq "<atos>:<planos>"` (`SEQ_RES`, `SEQ_THUMBS`, `SEQ_RAW`,
+  `SEQ_RAWF=a-b`, `SEQ_KEY`): 60 fps fixos, do `showFork` ao clique, convergência, viagem, chegada e a
+  próxima encruzilhada. Cada elemento (prop, árvore, poste, marco, clutter, tábua, folha) tem id
+  estável e é sinalizado quando aparece/some/salta de alfa ou tamanho/teleporta DENTRO da tela fora
+  da faixa da crista, CONFIRMADO pelo pixel (mudança na caixa dele maior que 2x a do quadro anterior);
+  o chão inteiro é comparado com a mediana local. Trava: `test_fork_sequence` (4 casos).
+  Folhas de contato: `python tools/estrada_seq_folha.py` → `tools/preview_out/estrada_seq/<res>/`.
+- **Perf.** LightEngine com cache de shader/blend/uniform e a cor/intensidade/semente da luz no
+  vértice (`light_dither.glsl` sem uniform por luz): ~20 draw calls a menos. Bake sem lixo
+  (closures e tabelas por texel içadas, buffers FFI reaproveitados) e `jit.opt maxtrace/maxmcode`
+  maiores no boot (`main.lua`): os 100-370 KB/quadro na encruzilhada eram o LuaJIT abortando traços
+  (código interpretado aloca), não o bake.

@@ -14,7 +14,7 @@ local SMOOTH = 6
 local WEDGE_MIN_W = 6
 local GROUND_TOL = 0.15
 local WEDGE_COVER = 0.55
-local WEDGE_CARPET = { [3] = 0.9, [4] = 0.45 }
+local WEDGE_CARPET = { [3] = 0.82, [4] = 0.28 }
 local ROUGH_MIN = 0.42
 local ROUGH_EDGE_MIN = 0.12
 
