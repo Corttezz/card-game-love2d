@@ -248,7 +248,9 @@ rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_w
   "sumia") e ninguém testava sair de um nó, porque o `estrada_seq` só cobria encruzilhada → viagem → chegada.
   Correção: `showFork` com um marco visitado na frente (rel entre -1 e `MARK_REL - 1`) não abre a encruzilhada,
   faz a **partida** (`WorldRoad.DEPART`: viagem de 10 em 2,9 s com `WorldRoad.travel`) e abre a encruzilhada
-  no fim dela (`WorldRoad._openFork`). Durante a partida `isForkActive()` é verdade (o `main.lua` só roda o
+  no fim dela (`WorldRoad._openFork`). Uma viagem nova (`WorldRoad.travel`) cancela a partida pendente; `isDeparting()` só vale com a
+  viagem marcada `depart`. O cheat espera a partida acabar para clicar na encruzilhada de verdade (antes o
+  `pressFork` escolhia o nó direto e a encruzilhada abria depois por cima do chefe). Durante a partida `isForkActive()` é verdade (o `main.lua` só roda o
   `WorldRoad.update` no `mapSelection` com encruzilhada ativa) e `_fork` é nil (clique não faz nada). O marco
   sai de cena pelo lado do ramo dele (`WorldRoad.landmarkSlide`, lado = `dirs` do ramo; do meio, lado por hash
   do z), deslizando em 62 % da partida, como a estrada contornando o lugar.

@@ -439,6 +439,7 @@ function CheatMode.pending() return pending end
 local function pressFork(idx)
     local WorldRoad = require("src.ui.WorldRoad")
     local f = WorldRoad._fork
+    if not f and WorldRoad.isDeparting and WorldRoad.isDeparting() then return false end
     if not f then
         local r = run()
         local nodes = r and r.pendingNodes

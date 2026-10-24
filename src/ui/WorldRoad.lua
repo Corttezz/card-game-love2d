@@ -1236,6 +1236,7 @@ function WorldRoad.travel(opts)
     opts = opts or {}
     local dist = opts.distance or WorldRoad.TRAVEL_DISTANCE
     require("src.ui.CastleDrift").back(WorldRoad._camZ, dist)
+    WorldRoad._pendingFork = nil
     WorldRoad._travel = {
         from = WorldRoad._camZ,
         dist = dist,
@@ -3378,15 +3379,15 @@ end
 WorldRoad.DEPART = { dist = 10, dur = 2.9, slideLen = 0.62, reveal = 0.8 }
 function WorldRoad.showFork(nodes, onChosen)
     if not nodes or #nodes == 0 then return false end
-    if WorldRoad._pendingFork then
+    if WorldRoad._pendingFork and WorldRoad._travel and WorldRoad._travel.depart then
         WorldRoad._pendingFork.nodes, WorldRoad._pendingFork.onChosen = nodes, onChosen
         return true
     end
+    WorldRoad._pendingFork = nil
     local lm = WorldRoad._landmark
     local rel = lm and (lm.z - WorldRoad._camZ)
     if rel and rel < MARK_REL - 1 and rel > -1 and not WorldRoad._travel then
         local D = WorldRoad.DEPART
-        WorldRoad._pendingFork = { nodes = nodes, onChosen = onChosen }
         local s = WorldRoad._stop or { z = lm.z, reveal = 1 }
         WorldRoad._stop = s
         s.revealing = s.reveal < 1
@@ -3396,6 +3397,8 @@ function WorldRoad.showFork(nodes, onChosen)
             WorldRoad._pendingFork = nil
             if p then WorldRoad._openFork(p.nodes, p.onChosen) end
         end })
+        WorldRoad._pendingFork = { nodes = nodes, onChosen = onChosen }
+        WorldRoad._travel.depart = true
         return true
     end
     return WorldRoad._openFork(nodes, onChosen)
@@ -3613,11 +3616,12 @@ function LMG.layoutMarks(f)
 end
 
 function WorldRoad.isForkActive()
-    return WorldRoad._fork ~= nil or WorldRoad._pendingFork ~= nil
+    return WorldRoad._fork ~= nil or WorldRoad.isDeparting()
 end
 
 function WorldRoad.isDeparting()
-    return WorldRoad._pendingFork ~= nil
+    local tr = WorldRoad._travel
+    return WorldRoad._pendingFork ~= nil and tr ~= nil and tr.depart == true
 end
 
 function WorldRoad.stopFarK(rel)
