@@ -214,6 +214,8 @@ function M.run()
     local passed, failed, crashed = 0, 0, 0
     local leaks = {}
 
+    local MemGuard = require("tools.mem_guard")
+    MemGuard.install()
     local shardI, shardN = (os.getenv("TEST_SHARD") or ""):match("^(%d+)/(%d+)$")
     shardI, shardN = tonumber(shardI), tonumber(shardN)
     for si, suite in ipairs(SUITES) do
@@ -221,6 +223,7 @@ function M.run()
         print("\n========================================")
         print("  SUITE: " .. suite.name .. "  [" .. suite.group .. "]")
         print("========================================")
+        MemGuard.current = suite.name
         local mod = require("tools." .. suite.name)
         local snap = snapshotGuarded()
         local ok, res = pcall(mod.run)
@@ -245,6 +248,11 @@ function M.run()
         results[#results + 1] = { name = suite.name, group = suite.group, status = status }
         collectgarbage("collect")
         collectgarbage("collect")
+        pcall(love.graphics.setCanvas)
+        pcall(love.graphics.present)
+        local luaMB, privMB, peakMB = MemGuard.mem()
+        print(string.format("  [mem] %s lua=%.0fMB privado=%.0fMB pico=%.0fMB", suite.name, luaMB, privMB, peakMB))
+        MemGuard.check("fim da suite")
         ::continue::
     end
 
@@ -261,6 +269,8 @@ function M.run()
             print("    [leak] " .. l.name .. ": " .. table.concat(l.what, ", "))
         end
     end
+    local _, _, peakAll = require("tools.mem_guard").mem()
+    print(string.format("  memoria: pico do processo %.0f MB", peakAll))
     print(string.format("\n  %d suites: %d PASS / %d FAIL / %d CRASH",
         #results, passed, failed, crashed))
 

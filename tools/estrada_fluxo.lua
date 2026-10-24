@@ -77,9 +77,11 @@ function M.boot(VW, VH)
     local okLoad, errLoad = pcall(love.load, {})
     if not okLoad then return false, errLoad end
     if _G.audioSystem and _G.audioSystem.setMasterVolume then _G.audioSystem:setMasterVolume(0) end
+    Ctx.crtWas = require("src.ui.CRTShader").isEnabled()
     require("src.ui.CRTShader").setEnabled(false)
     local CheatMode = require("src.systems.CheatMode")
     CheatMode.activate({ isolate = false })
+    Ctx.panelOpen = CheatMode.panelOpen
     CheatMode.panelOpen = false
     Ctx.mouse = { love.mouse.getPosition, love.mouse.getX, love.mouse.getY }
     Ctx.mx, Ctx.my = VW * 0.5, VH * 0.08
@@ -112,6 +114,10 @@ end
 
 function M.shutdown()
     local CheatMode = require("src.systems.CheatMode")
+    CheatMode.rush, CheatMode.god = false, false
+    if Ctx.panelOpen ~= nil then CheatMode.panelOpen = Ctx.panelOpen end
+    if Ctx.crtWas ~= nil then require("src.ui.CRTShader").setEnabled(Ctx.crtWas) end
+    if api() and api().returnToMenu then pcall(api().returnToMenu) end
     CheatMode.deactivate()
     if Ctx.mouse then
         love.mouse.getPosition, love.mouse.getX, love.mouse.getY = Ctx.mouse[1], Ctx.mouse[2], Ctx.mouse[3]
