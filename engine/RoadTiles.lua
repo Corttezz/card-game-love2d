@@ -587,11 +587,40 @@ PAINT.marsh = function(x, y, u, s, np)
     if (not np) and au < 0.64 and not missing and yy == PLW - 1 then
         return WATER, 0.1, 0.1 + (h2(x, y, s) > 0.9 and 0.55 or 0)
     end
+    if np then
+        local fr = h2(pk, 51, s)
+        if fr < 0.3 and yy < PLW - 2 then
+            local a0 = (h2(pk, 52, s) - 0.5) * 1.2
+            local len = 0.12 + h2(pk, 53, s) * 0.22
+            local sk = (h2(pk, 54, s) - 0.5) * 0.08 * (yy - PLW * 0.5)
+            local uu = u - a0 - sk
+            if uu > 0 and uu < len then
+                local val = 0.24 + h2(pk, 55, s) * 0.18 + (vnoise(x, y, 6, TH * 0.9, s + 56) - 0.5) * 0.2
+                if yy == 0 then val = val + 0.12 end
+                if uu * HALF < 1 or (len - uu) * HALF < 1 then val = val - 0.12 end
+                return WOOD, 0.75, val
+            end
+        end
+        local rc = floor(x)
+        local rr = h2(rc, floor(y / 6), s + 57)
+        local rd = vnoise(x, y, 7, 24, s + 58)
+        if rr < 0.09 * sstep(0.45, 0.8, rd) * (0.4 + sstep(0.35, 0.9, au)) then
+            local hgt = 3 + floor(h2(rc, floor(y / 6), s + 59) * 4)
+            local ly = y % 6
+            if ly < hgt then return GRASS, 0.7, 0.35 + (1 - ly / hgt) * 0.55 end
+        end
+    end
     local wet = vnoise(x, y, 5, 20, s + 17) + ((missing or np) and 0.25 or 0)
     if wet > 0.5 then
         local rip = (sin(y * 0.9 + vnoise(x, y, 8, 40, s + 24) * 6) > 0.92 and h2(x, y, s + 23) > 0.4) and 0.3 or 0
         local edgeW = (wet < 0.54) and -0.15 or 0
-        return WATER, 0.0, 0.3 + (wet - 0.5) * 0.6 + rip + edgeW
+        local gl = 0
+        if np and h2(floor(x / 3), floor(y), s + 61) > 0.965 and vnoise(x, y, 9, 30, s + 62) > 0.5 then gl = 0.5 end
+        return WATER, 0.0, 0.34 + (wet - 0.5) * 0.7 + rip + edgeW + gl
+    end
+    if np then
+        local m = fbm(x, y, s + 23, 6, 26)
+        return MUD, 0.2, 0.42 + (m - 0.5) * 0.4 + (vnoise(x, y, 14, 50, s + 63) > 0.7 and 0.12 or 0)
     end
     return MUD, 0.2, 0.36 + (fbm(x, y, s + 23, 6, 26) - 0.5) * 0.3
 end

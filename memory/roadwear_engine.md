@@ -159,3 +159,32 @@ com sombra. Sem poça, anel, pegada, brasa ou junco (todos eram elipses).
   (closures e tabelas por texel içadas, buffers FFI reaproveitados) e `jit.opt maxtrace/maxmcode`
   maiores no boot (`main.lua`): os 100-370 KB/quadro na encruzilhada eram o LuaJIT abortando traços
   (código interpretado aloca), não o bake.
+
+## Rodada 4 (24/Out/2026): passarela contínua no ato 5, lama viva, sombras em lote
+
+- **Ramo central = continuação da passarela.** Com 3 opções o ramo de `dirs == 0` é desenhado com
+  o tile de tábuas do tronco (não lama + tábuas soltas) até o marco, e a partição dá a ele a largura
+  inteira (`RoadFork.partition(..., base = central)`); os ramos laterais saem pelos lados dele. Sem
+  ramo central (2 opções) o deck por `deckK` continua; com central o deck só entra pelo escolhido
+  na convergência.
+- **Tábuas dos ramos laterais contínuas.** Alfa da tábua = alfa do ramo × fração da largura que o
+  ramo de fato possui naquela linha (0,3 a 0,65 → 0 a 1): nada de tábua por cima do vizinho e a
+  passarela lateral começa colada ao central.
+- **Escolhido na convergência.** O ramo escolhido (não central) troca tábuas soltas pelo tile de
+  tábuas em ~0,3 s da convergência (`tk`): o caminho até a loja/batalha fica inteiro, sem sobras de
+  tábua na lama.
+- **Lama do pântano viva** (bloco 3 do tile): pedaços de tábua quebrada (30% das fileiras),
+  juncos em tufos verticais concentrados nas bordas, brilho d'água em traço, lama mais clara com
+  manchas.
+- **Sombras em lote.** `ShadowEngine.sprite` cortava cada sombra com `setScissor` (quebra o lote:
+  1 draw call por sombra). Agora o corte vira um `Quad` com as linhas de origem equivalentes
+  (pool `SH.qp`, zerado no `endFrame`): mesmas sombras (A/B pixel: 0 px diferentes nos atos 1 e 6,
+  7 px no ato 3) e ~100 draw calls a menos por quadro. Encruzilhada: 438 a 498 em todos os atos.
+- **Tábua quase invisível não desenha.** Tábua solta com alfa < 0,08 sai do lote (era 0,02): na
+  convergência em 3440x1440 uma tábua a 3% de alfa do ramo descartado desacelerava com o ramo e o
+  `estrada_seq` acusava teleporte. 0,08 fica abaixo do passo de alfa por quadro (0,12), então o
+  fade não muda.
+- **Raio não é chão mudando.** O `estrada_seq` marca como corte os quadros com
+  `WeatherEngine.isStriking()` (e o seguinte): rodando os 6 atos num processo, o relógio do clima
+  carrega a tempestade de um ato para o outro e o clarão do ato 4 aparecia como `chao_muda`.
+  Sozinho o ato 4 dava 0.

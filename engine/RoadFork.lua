@@ -71,10 +71,11 @@ local function part(A, n, chosen, half, hard)
     return order, m
 end
 
-function RoadFork.partition(A, n, chosen, half, hard, chosenK)
+function RoadFork.partition(A, n, chosen, half, hard, chosenK, base)
     local k = chosenK or 1
-    if not chosen or k >= 1 then return part(A, n, chosen, half, hard) end
-    part(A, n, nil, half, hard)
+    if not chosen then return part(A, n, base, half, hard) end
+    if k >= 1 or chosen == base then return part(A, n, chosen, half, hard) end
+    part(A, n, base, half, hard)
     for i = 1, n do
         local a = A[i]
         a.s0L, a.s0R, a.b0 = a.sL, a.sR, a.band
@@ -98,7 +99,7 @@ local function sstep(e0, e1, x)
     return t * t * (3 - 2 * t)
 end
 
-function RoadFork.deckK(A, ord, m, half, chosen, cTrunk, ck)
+function RoadFork.deckK(A, ord, m, half, chosen, cTrunk, ck, hasCentral)
     if m < 1 then return 0 end
     half = math.max(1, half)
     local spread = 0
@@ -112,7 +113,7 @@ function RoadFork.deckK(A, ord, m, half, chosen, cTrunk, ck)
         end
         spread = math.max(spread, (b.c - a.c) / half * wgt + (1 - wgt) * 9)
     end
-    local D = m >= 2 and (1 - sstep(RoadFork.DECK_K - 0.3, RoadFork.DECK_K + 0.3, spread)) or 0
+    local D = (m >= 2 and not hasCentral) and (1 - sstep(RoadFork.DECK_K - 0.3, RoadFork.DECK_K + 0.3, spread)) or 0
     if cTrunk then
         local T = chosen and A[chosen] and A[chosen].on and A[chosen] or nil
         if not T then
@@ -129,7 +130,7 @@ function RoadFork.deckK(A, ord, m, half, chosen, cTrunk, ck)
                 local a = A[ord[q]]
                 if a ~= T then other = math.max(other, a.a) end
             end
-            local W = 1 - other
+            local W = hasCentral and 0 or (1 - other)
             if chosen and T == A[chosen] then W = math.max(W, (ck or 0) * (ck or 0)) end
             D = math.max(D, (1 - sstep(0.5, 1.1, math.abs(T.c - cTrunk) / half)) * W)
         end

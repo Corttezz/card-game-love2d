@@ -4076,13 +4076,18 @@ local function drawRoad(g, x, w, camZ)
                     probe.half = half0
                 end
             end
+            local central = nil
+            if st.platform then
+                for ci = 1, nArm do if fork.dirs[ci] == 0 then central = ci end end
+            end
             local ck = fork.converge and math.min(1, (fork.converge.k or 0) / 0.18) or 1
-            local ord, m = RoadFork.partition(A, nArm, chosen, half0, st.platform, ck * ck * (3 - 2 * ck))
+            local ord, m = RoadFork.partition(A, nArm, chosen, half0, st.platform, ck * ck * (3 - 2 * ck), central)
             local fp = WorldRoad._forkSurfaceProbe
             if fp then RoadFork.probeRow(fp, A, ord, m, arms, k, RDV[k], RHS[k], step) end
             local D = 0
             if st.platform then
-                D = RoadFork.deckK(A, ord, m, half0, chosen, cx + RWOB[k], fork.converge and fork.converge.k or 0)
+                D = RoadFork.deckK(A, ord, m, half0, chosen, cx + RWOB[k], fork.converge and fork.converge.k or 0,
+                    central ~= nil)
                 local DP = R.dprev
                 if not DP then DP = {}; R.dprev = DP end
                 local dp = DP[k]
@@ -4094,17 +4099,31 @@ local function drawRoad(g, x, w, camZ)
             for q = 1, m do
                 local i = ord[q]
                 local a, arm = A[i], arms[i]
+                local isC = i == central
+                local tk = 0
+                if st.platform and not isC and fork.converge and i == chosen then
+                    tk = math.min(1, (fork.converge.k or 0) / 0.3)
+                    tk = tk * tk * (3 - 2 * tk)
+                end
                 if D < 0.999 then
                     local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
-                    span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k], nil, st.bare)
-                    if st.bare and a.sR > a.sL then
+                    if tk < 0.999 then
+                        span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k], nil,
+                            (not isC) and st.bare or nil)
+                    end
+                    if tk > 0.001 then
+                        span(a.c, a.sL, a.sR, a.band, a.a * tk, bright, arm.va[k], arm.sh[k], arm.L[k], nil, nil)
+                    end
+                    if st.bare and not isC and a.sR > a.sL then
                         local yy = math.floor(g.latY(a.c - cx, t))
                         if a.dL then rect(a.xL, yy, 2, step, 0.05, 0.06, 0.03, 0.5 * a.a * (1 - D)) end
                         if a.dR then rect(a.xR - 2, yy, 2, step, 0.05, 0.06, 0.03, 0.5 * a.a * (1 - D)) end
                     end
                 end
                 if st.bare then
-                    arm.bare[k], arm.alpha[k], arm.oL[k], arm.oR[k] = true, a.a * (1 - D), a.sL, a.sR
+                    local fr = (a.sR - a.sL) / math.max(1, a.xR - a.xL)
+                    fr = math.min(1, math.max(0, (fr - 0.3) / 0.35))
+                    arm.bare[k], arm.alpha[k], arm.oL[k], arm.oR[k] = not isC, a.a * (1 - D) * fr * (1 - tk), a.sL, a.sR
                 end
             end
             if D > 0.001 then
@@ -4300,7 +4319,7 @@ function WorldRoad._forkPlanks(qm, g, cx, groundH, step, nRows, nArm, arms, R, s
                         BN[bkey] = okm
                         aMul = okm
                         om = okm > 0.001 and 1 or -1
-                        if om > 0 and aMul > 0.02 and RT.plankMissing(p.i) == false then
+                        if om > 0 and aMul > 0.08 and RT.plankMissing(p.i) == false then
                             local kA, kZ = math.min(k0, k + 4), math.max(ke, k - 4)
                             local tu, tv = (C[kZ] - C[kA]) / RHS[k], PV[kZ] - PV[kA]
                             local tl = math.sqrt(tu * tu + tv * tv)

@@ -52,7 +52,7 @@ ShadowEngine.SCALE = SCALE
 ShadowEngine.STEPS = 3
 local scratch, batching, batchPrev
 local soloAlphaK
-local SH = { cv = {}, vT = { 0, 0, 0, 0 }, depth = 1, alpha = 1,
+local SH = { cv = {}, vT = { 0, 0, 0, 0 }, depth = 1, alpha = 1, qp = {}, qn = 0,
              mq = {}, mn = 0, oq = {}, on = 0, done = {}, odone = {}, mdone = {} }
 ShadowEngine.FADE = 0.45
 ShadowEngine.SELF_BIAS = 2.5
@@ -285,18 +285,39 @@ function ShadowEngine.sprite(img, feetX, feetY, s, opts)
     local solo = not batching
     if solo then ShadowEngine.beginBatch() end
     local shd = tipShift(feetX)
-    if yCut then cutScissor(ay, yCut) end
     love.graphics.setColor(SH.depth, 0, 1, SH.alpha)
-    for pi = 1, #SMEAR do
-        love.graphics.draw(img,
-            math.floor(feetX + SMEAR[pi][1] * d),
-            math.floor(ay + SMEAR[pi][2] * d * 0.5), 0,
-            s * 1.18 * (opts.flip or 1),
-            -s * frame.len * lenK,
-            iw / 2, ih - pad - baseH,
-            -shd * 0.78 * (opts.flip or 1), 0)
+    local oy = ih - pad - baseH
+    local sl = s * frame.len * lenK
+    if yCut and sl > 0 then
+        local ayD = math.floor(ay)
+        local y0 = math.floor(ay / SCALE) * SCALE
+        local r1 = math.min(ih, oy - (y0 - ayD) / sl)
+        local r0 = math.max(0, oy - (yCut - ayD) / sl)
+        if r1 > r0 then
+            SH.qn = (SH.qn or 0) + 1
+            local q = SH.qp[SH.qn]
+            if not q then q = love.graphics.newQuad(0, 0, 1, 1, 1, 1); SH.qp[SH.qn] = q end
+            q:setViewport(0, r0, iw, r1 - r0, iw, ih)
+            for pi = 1, #SMEAR do
+                love.graphics.draw(img, q,
+                    math.floor(feetX + SMEAR[pi][1] * d),
+                    math.floor(ay + SMEAR[pi][2] * d * 0.5), 0,
+                    s * 1.18 * (opts.flip or 1), -sl,
+                    iw / 2, oy - r0,
+                    -shd * 0.78 * (opts.flip or 1), 0)
+            end
+        end
+    else
+        for pi = 1, #SMEAR do
+            love.graphics.draw(img,
+                math.floor(feetX + SMEAR[pi][1] * d),
+                math.floor(ay + SMEAR[pi][2] * d * 0.5), 0,
+                s * 1.18 * (opts.flip or 1),
+                -s * frame.len * lenK,
+                iw / 2, oy,
+                -shd * 0.78 * (opts.flip or 1), 0)
+        end
     end
-    if yCut then love.graphics.setScissor() end
     if solo then ShadowEngine.endBatch() end
     return true
 end
@@ -446,6 +467,7 @@ function ShadowEngine.endFrame(extraFn)
     for i = 1, SH.mn do SH.mq[i].img, SH.mq[i].quad = nil, nil end
     for i = 1, squeueN do squeue[i].img, squeue[i].o = nil, nil end
     squeueN, SH.mn, SH.on = 0, 0, 0
+    SH.qn = 0
     SH.depth, SH.alpha = 1, 1
 end
 

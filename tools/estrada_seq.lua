@@ -164,6 +164,10 @@ function M.capture(act, types, pick, opts)
         cur = {}
         log.frames[frame] = cur
         log.phase[frame] = phase
+        if WE.isStriking() then
+            log.cuts[frame] = log.cuts[frame] or "raio"
+            log.cuts[frame + 1] = log.cuts[frame + 1] or "raio"
+        end
         love.graphics.setCanvas(cv)
         love.graphics.clear(0, 0, 0, 1)
         GameplayScene.WORLD_ONLY = true
