@@ -109,10 +109,10 @@ local function palettes(bid, p)
     P[ICE] = ramp(mix(sky, { 0.3, 0.38, 0.5 }, 0.5), mix(sky, { 0.75, 0.85, 0.95 }, 0.5), { 0.9, 0.96, 1.0 }, 4)
     P[EMBER] = { { 0.22, 0.05, 0.03 }, { 0.46, 0.1, 0.04 }, { 0.78, 0.26, 0.06 }, { 1.0, 0.5, 0.14 },
         { 1.0, 0.76, 0.34 } }
-    P[ASH] = ramp(mul(edge, 0.9), mix(roadB, rock, 0.45), mix(mul(roadA, 1.55), { 0.6, 0.5, 0.45 }, 0.3), 7)
-    P[SOOT] = ramp(mul(edge, 0.6), mix(rockD, roadB, 0.5), mix(mul(rock, 1.6), { 0.5, 0.42, 0.4 }, 0.3), 6)
-    P[SCORIA] = ramp({ 0.14, 0.06, 0.05 }, { 0.34, 0.15, 0.09 }, { 0.56, 0.3, 0.19 }, 5)
-    P[HEAT] = ramp(mix(roadB, { 0.3, 0.1, 0.05 }, 0.5), { 0.5, 0.19, 0.07 }, { 0.78, 0.36, 0.12 }, 4)
+    P[ASH] = ramp(mul(edge, 0.75), mix(roadB, rock, 0.45), mix(mul(roadA, 1.85), { 0.7, 0.58, 0.5 }, 0.35), 9)
+    P[SOOT] = ramp(mul(edge, 0.45), mix(rockD, roadB, 0.5), mix(mul(rock, 2.0), { 0.6, 0.5, 0.46 }, 0.35), 7)
+    P[SCORIA] = ramp({ 0.1, 0.04, 0.04 }, { 0.36, 0.16, 0.1 }, { 0.7, 0.4, 0.26 }, 7)
+    P[HEAT] = ramp(mix(roadB, { 0.32, 0.12, 0.06 }, 0.45), { 0.56, 0.22, 0.08 }, { 0.9, 0.46, 0.16 }, 5)
     P[RUST] = { { 0.24, 0.12, 0.07 }, { 0.42, 0.22, 0.1 }, { 0.55, 0.32, 0.14 } }
     P[STRAW] = { { 0.42, 0.33, 0.14 }, { 0.62, 0.52, 0.26 }, { 0.8, 0.7, 0.4 } }
     P[LEAF] = { { 0.36, 0.13, 0.06 }, { 0.6, 0.24, 0.08 }, { 0.82, 0.4, 0.12 }, { 0.95, 0.58, 0.2 } }
@@ -203,7 +203,7 @@ local function stone(x, y, cell, dens, rmin, rmax, s, accept)
     elseif lit > -0.2 then val = 0.5 + tv
     else val = 0.3 + tv end
     if d > 0.8 and lit < 0.1 then val = 0.14 + tv * 0.5 end
-    return 0.7 + (1 - d) * 0.3, val, c
+    return 0.7 + (1 - d) * 0.3, val, c, d, c.si[bestF]
 end
 
 local function leafAt(x, y, cell, dens, s, len0, len1, wk0, wk1, pick)
@@ -339,7 +339,7 @@ local function trail(x, y, u, s, o)
         local outer = du * side
         if outer > 0.75 and outer < 1.35 then lip = (1 - abs(outer - 1.05) / 0.3) end
     end
-    if lip > 0 then val = val + lip * 0.12; h = h + lip * 0.08 end
+    if lip > 0 then val = val + lip * (o.lip or 0.12); h = h + lip * 0.08 end
     return o.base or DIRT, h, val, sho, rk, worn
 end
 
@@ -357,7 +357,7 @@ local function strawPick() return STRAW end
 
 local PAINT = {}
 
-local OPT = { f = { rutW = 0.09 }, h = { rutW = 0.08 }, a = { rutW = 0.1, rutDepth = 0.35, base = ASH }, d = { rutW = 0.09 } }
+local OPT = { f = { rutW = 0.09 }, h = { rutW = 0.08 }, a = { rutW = 0.075, rutDepth = 0.75, lip = 0.26, base = ASH }, d = { rutW = 0.09 } }
 local CUR = { sho = 0, s = 0 }
 local function acceptF(uu) return abs(uu) < 1.05 end
 local function acceptH(uu) return abs(uu) < 0.95 end
@@ -455,49 +455,64 @@ local function scoriaOr(c, s, a, b)
     return h2(floor(c.px * 7.3), floor(c.py * 3.1), s) < 0.42 and a or b
 end
 
+local function rim(v, d, si, k)
+    k = k or 1
+    if d > 0.5 then
+        if si > 0.25 then return v + 0.42 * k end
+        if si < -0.25 then return v - 0.42 * k end
+    end
+    return v
+end
+
 PAINT.abyss = function(x, y, u, s)
     local mat, h, val, sho, rk, worn = trail(x, y, u, s, OPT.a)
     local jx = x + (vnoise(x, y, 24, 80, s + 21) - 0.5) * 2.2
     local jy = y + (vnoise(x, y, 24, 80, s + 22) - 0.5) * 2.2
-    local cd, ce = crackNet(jx, jy, 9, 26, s + 23)
-    local open = vnoise(x, y, 3, 10, s + 25)
-    local hot = vnoise(x, y, 3, 9, s + 29)
-    local wid = 0.013 + h2(floor(ce * 977), 1, s) * 0.014
-    local crack = ce < 0.22 + open * 0.35 and open > 0.35
+    local cd, ce = crackNet(jx, jy, 9, 30, s + 23)
+    local open = vnoise(x, y, 3, 12, s + 25)
+    local hot = vnoise(x, y, 4, 22, s + 29)
+    local wid = 0.014 + h2(floor(ce * 977), 1, s) * 0.016
+    local crack = ce < 0.22 + open * 0.35 and open > 0.32
+    local lava = crack and hot > 0.47 and ce < 0.38
+    if lava then wid = wid * 1.35 end
     if crack and cd < wid then
         local depth = 1 - cd / wid
-        if hot > 0.54 and ce < 0.36 then return EMBER, 0.0, 0.25 + depth * 0.5 + (hot - 0.54) * 1.1 end
-        return GAP, 0.05, 0.3 + (1 - depth) * 0.5
+        if lava then return EMBER, 0.0, 0.32 + depth * 0.5 + (hot - 0.42) * 0.9 end
+        return GAP, 0.05, 0.2 + (1 - depth) * 0.45
     end
-    local plate, pv = stone(x, y, 27, 0.5 * (sho + 0.15) * (1 - worn * 0.8), 4.2, 7.2, s + 61, acceptF)
+    local plate, pv, _, pd, psi = stone(x, y, 25, 0.55 * (sho + 0.35) * (1 - worn * 0.7), 4.0, 7.0, s + 61, acceptF)
     if plate then
         local pcr = abs(vnoise(jx, jy, 11, 36, s + 63) - 0.5)
-        if pcr < 0.018 then return GAP, 0.4, 0.3 end
+        if pcr < 0.016 then return GAP, 0.4, 0.18 end
         local rope = sin(jx * 0.7 + jy * 1.3 + vnoise(x, y, 5, 16, s + 31) * 6)
-        local pt = (h2(floor(x), floor(y), s + 65) - 0.5) * 0.1 + (rope > 0.7 and 0.07 or 0)
-        return SOOT, 0.56, pv * 0.8 + 0.12 + pt
+        local pt = (h2(floor(x), floor(y), s + 65) - 0.5) * 0.14 + (rope > 0.65 and 0.12 or rope < -0.8 and -0.1 or 0)
+        local v = 0.42 + pt + (pv - 0.5) * 0.3
+        if pd > 0.86 then v = psi > 0 and v + 0.32 or v - 0.3 end
+        return SOOT, 0.58, v
     end
-    local big, bv, bc = stone(x, y, 17, 0.22 * (1 - rk) * (0.45 + sho + (1 - worn) * 0.5), 1.7, 3.0, s + 71,
-        acceptF)
+    local big, bv, bc, bd, bsi = stone(x, y, 15, 0.3 * (1 - rk) * (0.45 + sho + (1 - worn) * 0.5), 1.7, 3.0,
+        s + 71, acceptF)
     if big then
         if bv > 0.55 and bc.tone < 0.06 then return EMBER, big, 0.18 + (bv - 0.55) * 1.4 end
-        return scoriaOr(bc, s + 72, SCORIA, SOOT), big, bv * 0.9 + 0.08
+        return scoriaOr(bc, s + 72, SCORIA, SOOT), big, rim(bv * 0.9 + 0.04, bd, bsi)
     end
-    local cdn = (1 - rk * 0.8) * (0.35 + sho * 0.8 + (1 - worn) * 0.45)
-    local md, mv, mc = stone(x, y, 9, 0.32 * cdn, 1.2, 2.0, s + 75)
-    if md then return scoriaOr(mc, s + 76, SCORIA, SOOT), md - 0.1, mv + 0.04 end
-    local sm, sv, sc = stone(x, y, 4.5, 0.55 * cdn, 0.6, 1.1, s + 79)
-    if sm then return scoriaOr(sc, s + 80, SCORIA, SOOT), sm - 0.25, sv * 0.85 + 0.05 end
-    local tp, tv = stone(x, y, 3, 0.5 * (1 - rk * 0.6), 0.45, 0.75, s + 83)
-    if tp then return ASH, tp - 0.45, tv * 0.6 + 0.2 + (fbm(x, y, s + 13, 8, 34) - 0.5) * 0.2 end
+    local cdn = (1 - rk * 0.85) * (0.35 + sho * 0.8 + (1 - worn) * 0.45)
+    local md, mv, mc, mdd, msi = stone(x, y, 8.5, 0.36 * cdn, 1.4, 2.4, s + 75)
+    if md then return scoriaOr(mc, s + 76, SCORIA, SOOT), md - 0.1, rim(mv, mdd, msi) end
+    local sm, sv, sc, sdd, ssi = stone(x, y, 4.5, 0.55 * cdn, 0.6, 1.1, s + 79)
+    if sm then return scoriaOr(sc, s + 80, SCORIA, SOOT), sm - 0.25, rim(sv * 0.85, sdd, ssi, 0.8) end
+    local heat = lava and cd < wid * 6 and (1 - cd / (wid * 6)) or 0
+    local tp, tv, _, td, tsi = stone(x, y, 3, 0.5 * (1 - rk * 0.7), 0.45, 0.75, s + 83)
+    if tp and heat < 0.35 then
+        return ASH, tp - 0.45, rim(tv * 0.5 + 0.25 + (fbm(x, y, s + 13, 8, 34) - 0.5) * 0.2, td, tsi, 0.6)
+    end
     local ash = fbm(x, y, s + 15, 3, 9)
-    val = val + (fbm(x, y, s + 13, 8, 34) - 0.5) * 0.2 - worn * 0.06 + sstep(0.5, 0.72, ash) * 0.2 + (fbm(x, y, s + 17, 24, 90) - 0.5) * 0.16 * worn
-    if crack and cd < wid * 3.2 then
-        if hot > 0.54 and ce < 0.36 then
-            return HEAT, h, 0.1 + (1 - cd / (wid * 3.2)) * 0.5 + (hot - 0.54) * 0.5
-        end
-        if cd < wid * 1.6 then val = val - 0.06 end
+    local gr = (h2(floor(x), floor(y), s + 49) - 0.5) * 0.16 + (h2(floor(x / 2), floor(y / 2), s + 51) - 0.5) * 0.14
+    val = val + (fbm(x, y, s + 13, 8, 34) - 0.5) * 0.24 - worn * 0.06 + sstep(0.5, 0.72, ash) * 0.22 + gr
+    if heat > 0 then
+        return HEAT, h, 0.08 + heat * heat * 0.75 + (hot - 0.42) * 0.35 + gr * 0.5
     end
+    if crack and cd < wid * 1.8 then val = val - 0.1 end
     if worn < 0.5 and h2(floor(x / 2), floor(y / 2), s + 47) < 0.0008 then return EMBER, h + 0.05, 0.3 end
     return ASH, h, val
 end

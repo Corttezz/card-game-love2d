@@ -339,3 +339,21 @@ só um caminho, com poças". E o chão do ato 3 "ainda muito feio, muito estranh
   (`prop:aparece` de árvore morta na viagem do plano 2dir, igual no main 02bd0c2d, só rodando o ato inteiro).
 - Perf (`perf_estrada_final`): encruzilhada ato 3 ~500 dc, ato 5 ~445 dc; bake do ato 3 2,6 a 2,9 s (cede no
   pré-aquecimento), ato 5 1 a 1,6 s.
+
+## Rodada 8b (24/Out/2026): ato 3 com detalhe perto da câmera
+
+Lead: o ato 3 da rodada 8 lia como faixa marrom lisa e borrada perto da câmera. Sobre b80f0cc7:
+- `stone` devolve também `d` e o `si` da faceta (`return h, val, c, d, si`); `rim` (só no ato 3) acende a borda de
+  CIMA da pedra (faceta com `si > 0,25`, y maior = mais longe = acima na tela) e escurece a de baixo, ±0,42.
+- Placas de lava fria com borda nítida (`pd > 0,86`: +0,32 em cima, -0,3 embaixo) e corda de pahoehoe mais forte;
+  mais placas (`0,55 × (sho + 0,35)`).
+- Fendas com brasa mais frequentes e 1,35x mais largas (`hot > 0,47`, `ce < 0,38`, ruído `hot` 4x22) para cair
+  uma na frente da câmera; halo `HEAT` até 6 larguras com queda quadrática; o grão miúdo some dentro do halo.
+- Grão da cinza em blocos de 1 e 2 texels (±0,15) e manchas de cinza soprada.
+- Sulcos de pneu: `OPT.a = { rutW 0,075, rutDepth 0,75, lip 0,26 }` (o lábio de `trail` aceita `o.lip`).
+- Contraste local, não brilho: rampas `ASH` (9 tons), `SOOT` (7), `SCORIA` (7) e `HEAT` (5) com pontas mais
+  escuras e mais claras; o meio da rampa ficou onde estava.
+- Longe continua o borrão de sempre (`k` 0,22). Ponto fraco: na junção da encruzilhada, a meia distância, a rede
+  de fendas acesas fica densa (a perspectiva comprime várias fileiras do tile).
+- Provas: `tools/preview_out/chao_v8/ato3/` (antes = b80f0cc7). `estrada_fluxo 3` e `estrada_seq 3`: 0 sinais;
+  encruzilhada 500 dc, bake 1,7 a 2,9 s.
