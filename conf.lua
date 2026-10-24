@@ -3,6 +3,22 @@ if not okRelease then
     Release = nil
 end
 
+local function autoHeadless()
+    local env = os.getenv("CARDGAME_HEADLESS")
+    if env == "1" then return true end
+    if env == "0" then return false end
+    for _, a in ipairs(arg or {}) do
+        if type(a) == "string" and (a:match("^test_") or a:match("^smoke_") or a:match("^screenshot")
+            or a:match("^shot_") or a:match("^perf_") or a:match("^probe_") or a:match("^preview_")
+            or a:match("^balance") or a:match("^validate") or a:match("^estrada_")) then
+            return true
+        end
+    end
+    return false
+end
+
+_G.CARDGAME_AUTO_HEADLESS = autoHeadless()
+
 function love.conf(t)
     t.identity = Release and Release.identity() or (os.getenv("CARDGAME_IDENTITY") or "card-game")
     t.version = "11.5"
@@ -30,7 +46,7 @@ function love.conf(t)
     t.window.x = nil
     t.window.y = nil
 
-    if os.getenv("CARDGAME_HEADLESS") == "1" and not (Release and Release.isRelease()) then
+    if _G.CARDGAME_AUTO_HEADLESS and not (Release and Release.isRelease()) then
         t.window.width, t.window.height = 1, 1
         t.window.minwidth, t.window.minheight = 1, 1
         t.window.borderless = true
