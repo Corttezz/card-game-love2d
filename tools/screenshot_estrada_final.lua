@@ -39,6 +39,7 @@ local function setup(WorldRoad, bio, scene, width, height, topBarH, canvas, tod)
                 love.graphics.clear(0, 0, 0, 1)
                 WorldRoad.draw(0, topBarH, width, height - topBarH, bio)
                 love.graphics.setCanvas()
+                love.graphics.present()
             end
         end
     end
@@ -115,6 +116,7 @@ local function battleSetup(act, tod)
     for _ = 1, 120 do
         WorldRoad.update(1 / 30)
         EnemyRenderer.update(1 / 30)
+        love.graphics.present()
     end
     GameplayScene.WORLD_ONLY = true
     return GameplayScene
@@ -159,9 +161,12 @@ function M.run(arg)
                 love.graphics.clear(0, 0, 0, 1)
                 drawFn()
                 love.graphics.setCanvas()
+                love.graphics.present()
             end
             local path = string.format("%s/ato%d_%s_%dx%d.png", dir, bio, scene, width, height)
-            canvas:newImageData():encode("png", path)
+            local idata = canvas:newImageData()
+            idata:encode("png", path)
+            idata:release()
             n = n + 1
             if scene == "battle" then require("src.scenes.GameplayScene").WORLD_ONLY = nil end
         end
