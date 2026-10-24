@@ -303,7 +303,8 @@ local function startSplashSequence()
     end
 
     state.titleLetters = {}
-    do
+    local brandNext = require("src.ui.MenuBrand").stingPending()
+    if not brandNext then
         local utf8 = require("utf8")
         local title = I18n.t("menu.title")
         for _, cp in utf8.codes(title) do
@@ -396,6 +397,10 @@ local function startSplashSequence()
     end
     local tTitleEnd = T_TITLE + nLetters * 0.09
 
+    if brandNext then
+        EM.parallel(tCascadeEnd + 0.35, function() BootScene._finish() end, QUEUE)
+        return
+    end
     local tFlash = tTitleEnd + 1.0
     EM.parallel(tFlash, function()
         if reduced then sigil.flare = 1; Sfx.play("bootImpact"); return end
@@ -710,5 +715,6 @@ function BootScene.cardPositions()
 end
 function BootScene.splashTime() return state.splashTime end
 function BootScene.phase() return state.phase end
+function BootScene.titleCount() return #state.titleLetters end
 
 return BootScene

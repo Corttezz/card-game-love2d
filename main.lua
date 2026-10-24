@@ -1738,6 +1738,7 @@ function love.keypressed(key)
         BootScene.keypressed(key)
         return
     end
+    if currentState == "menu" and menu:skipIntro() then return end
 
     do
         local NC = require("src.ui.NavCursor")
@@ -1868,6 +1869,7 @@ end
 
 function love.gamepadpressed(joystick, button)
     local NC = require("src.ui.NavCursor")
+    if currentState == "menu" and menu:skipIntro() then return end
     if button == "start" or button == "back" then
         NC.noteDevice("pad")
         if require("src.ui.InputFocus").captor()
@@ -1945,6 +1947,7 @@ function love.mousepressed(x, y, button)
         BootScene.mousepressed(x, y, button)
         return
     end
+    if currentState == "menu" and menu:skipIntro() then return end
 
     do
         local captor = require("src.ui.InputFocus").captor()
