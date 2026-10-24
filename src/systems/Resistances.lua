@@ -62,7 +62,9 @@ end
 
 function Resistances.level(enemy, dtype)
     if not Resistances.ENABLED or not dtype then return nil end
-    return Resistances.tableFor(enemy)[dtype]
+    local lvl = Resistances.tableFor(enemy)[dtype]
+    if lvl == "resist" and require("src.systems.CounterJokers").piercesResist(enemy) then return nil end
+    return lvl
 end
 
 function Resistances.scale(level, v)
@@ -87,9 +89,9 @@ end
 function Resistances.entries(enemy)
     local out = {}
     if not Resistances.ENABLED then return out end
-    local t = Resistances.tableFor(enemy)
     for _, ty in ipairs(Resistances.TYPES) do
-        if t[ty] then out[#out + 1] = { type = ty, level = t[ty] } end
+        local lvl = Resistances.level(enemy, ty)
+        if lvl then out[#out + 1] = { type = ty, level = lvl } end
     end
     table.sort(out, function(a, b)
         local oa, ob = Resistances.LEVEL_ORDER[a.level], Resistances.LEVEL_ORDER[b.level]

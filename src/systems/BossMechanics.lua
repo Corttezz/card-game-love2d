@@ -280,8 +280,10 @@ function BM.applyIntentStep(game, step)
     local m = BM.frostSpec(game)
     if not p or not m or not game.enemy:isAlive() then return nil end
     if step.kind == "frost_gain" then
-        p.frost = (p.frost or 0) + step.n
-        return { kind = "frost_gain", n = step.n, total = p.frost, threshold = m.threshold }
+        local n = require("src.systems.CounterJokers").frostGain(game, step.n)
+        if (n or 0) <= 0 then return nil end
+        p.frost = (p.frost or 0) + n
+        return { kind = "frost_gain", n = n, total = p.frost, threshold = m.threshold }
     end
     return nil
 end
@@ -305,7 +307,12 @@ function BM.onPlayerDraw(game)
     local m = BM.frostSpec(game)
     local p = game and game.player
     if not m or not p or (p.frost or 0) < m.threshold then return nil end
-    local picks = BM.freezePicks(game.hand, m.freeze)
+    local freeze = require("src.systems.CounterJokers").freezeCount(game, m.freeze)
+    if (freeze or 0) <= 0 then
+        p.frost = p.frost - m.threshold
+        return nil
+    end
+    local picks = BM.freezePicks(game.hand, freeze)
     for _, c in ipairs(picks) do
         c.frozen = true
         c._thawAt = nil

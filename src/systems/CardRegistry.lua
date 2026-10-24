@@ -217,6 +217,8 @@ function CardRegistry:pickRewardCard(opts)
                 weight = weight * (1 + bonus)
             end
 
+            weight = weight * require("src.systems.CounterJokers").offerWeight(cd, actNumber)
+
             if (copies[cardId] or 0) >= cfg.DUPE_THRESHOLD then
                 weight = weight * cfg.DUPE_PENALTY
             end

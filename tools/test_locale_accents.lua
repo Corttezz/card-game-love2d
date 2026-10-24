@@ -148,6 +148,9 @@ function M.run()
         retain        = "warrior_kite_guard", innate = "mage_chill",
         block         = "warrior_defend",  focus     = "mage_arcane_focus",
         strength      = "warrior_inflame", dexterity = "warrior_inflame",
+        immune        = "joker_counter_antidote", fog = "joker_counter_lantern",
+        frost         = "joker_counter_brazier", frail = "joker_counter_frail",
+        burn          = "joker_counter_salamander", resist = "joker_counter_whetstone",
     }
     for _, kw in ipairs(Keywords) do
         t:truthy("keyword " .. kw.id .. " tem carta-exemplo", SAMPLE[kw.id])

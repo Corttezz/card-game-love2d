@@ -55,6 +55,7 @@ local PROCESSED_EFFECT_TYPES = {
     damage_multiplier = true, defense_multiplier = true,
     echo_first_attack = true,
     combo_boost = true,
+    counter_debuff = true, counter_frost = true, counter_sight = true, counter_pierce = true,
     damage_bonus = true, defense_bonus = true,
     strength_scaling = true, dexterity_scaling = true,
     multi_hit = true, damage_bonus_self = true,

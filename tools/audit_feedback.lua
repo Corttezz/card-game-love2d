@@ -23,6 +23,7 @@ local SOURCES = {
     "src/systems/EffectSystem.lua",
     "src/core/Game.lua",
     "src/systems/ComboSystem.lua",
+    "src/systems/CounterJokers.lua",
 }
 
 local FUNCTION_ATTRIBUTION = {
@@ -41,6 +42,7 @@ local DELEGATION = {
     ["showEnemyDamage"]   = "showEnemyDamage",
     ["enemyHurt"]         = "enemyHurt",
     ["landPulse"]         = "landPulse",
+    ["proc"]              = "proc",
 }
 
 local BASELINE_SILENT = {
