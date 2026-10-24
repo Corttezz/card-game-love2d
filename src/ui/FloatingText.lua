@@ -14,6 +14,9 @@ local KINDS = {
     chips  = { color = {0.40, 0.75, 1.0, 1}, fontSize = 16 },
     mult   = { color = {1.0, 0.55, 0.20, 1}, fontSize = 16 },
     movename = { color = {0.95, 0.90, 0.78, 1}, fontSize = 15 },
+    immune = { color = {0.86, 0.90, 0.96, 1}, fontSize = 22, hold = 0.75, lift = 30 },
+    resist = { color = {0.66, 0.74, 0.84, 1}, fontSize = 15, hold = 0.5, lift = 22 },
+    weakhit = { color = {1.0, 0.62, 0.22, 1}, fontSize = 17, hold = 0.55, lift = 28 },
 }
 
 function FloatingText.spawn(text, x, y, opts)
@@ -31,9 +34,9 @@ function FloatingText.spawn(text, x, y, opts)
         fontSize = fontSize,
         timer = 0,
         popIn = 0.15,
-        hold = opts.hold or 0.35,
+        hold = opts.hold or kindCfg.hold or 0.35,
         fadeOut = 0.25,
-        lift = opts.lift or 24,
+        lift = opts.lift or kindCfg.lift or 24,
         scale = 0,
     }
     table.insert(active, entry)

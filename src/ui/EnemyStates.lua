@@ -51,7 +51,7 @@ local ST = {
     k = {}, forced = nil, enemy = nil, dmg0 = nil, enemyRef = nil, prevArmor = 0,
     sweepT = -1, shudderT = 0, shudderNext = 3, trembleT = 0, trembleNext = 2.5, rageT = 0,
     burstT = 0, active = {}, nActive = 0, kinds = {}, nKinds = 0, clock = 0,
-    acc = {}, emitters = {}, nEmit = 0,
+    acc = {}, emitters = {}, nEmit = 0, shrugT = 0,
 }
 for i = 1, #EnemyStates.LIST do ST.k[EnemyStates.LIST[i]] = 0 end
 for i = 1, 8 do ST.active[i] = false end
@@ -250,8 +250,23 @@ function EnemyStates.rate()
     return clamp(r, 0.6, 1.45)
 end
 
+EnemyStates.SHRUG_DUR = 0.42
+
+function EnemyStates.shrug()
+    if _G.gameSettings and _G.gameSettings.reducedMotion then return end
+    ST.shrugT = EnemyStates.SHRUG_DUR
+end
+
+function EnemyStates.shrugging()
+    return ST.shrugT > 0
+end
+
 function EnemyStates.stretchPx()
     local s = 0
+    if ST.shrugT > 0 then
+        local p = 1 - ST.shrugT / EnemyStates.SHRUG_DUR
+        s = s + ((p < 0.25 or p > 0.75) and 1 or 3)
+    end
     if ST.k.weak > 0 then s = s - (ST.k.weak > 0.7 and 3 or 2) end
     if ST.k.strength > 0 then s = s + 1 end
     return s
@@ -356,6 +371,7 @@ function EnemyStates.update(dt, data, L, dying)
     if ST.shudderT > 0 then ST.shudderT = ST.shudderT - dt end
     if ST.trembleT > 0 then ST.trembleT = ST.trembleT - dt end
     if ST.rageT > 0 then ST.rageT = ST.rageT - dt end
+    if ST.shrugT > 0 then ST.shrugT = math.max(0, ST.shrugT - dt) end
     if ST.sweepT >= 0 then
         ST.sweepT = ST.sweepT + dt
         if ST.sweepT > 0.6 then ST.sweepT = -1 end

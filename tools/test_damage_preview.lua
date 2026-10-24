@@ -28,6 +28,15 @@ function M.run()
     local EDITIONS = { "foil", "holo", "polychrome" }
     local SEALS = { "Red", "Purple", "Gold", "Blue" }
     local ORBS = { "lightning", "ice", "dark", "fire", "holy" }
+    local RESIST_IDS, IMMUNE_IDS = {}, {}
+    for id, tb in pairs(require("src.data.enemies").RESIST) do
+        if next(tb) then RESIST_IDS[#RESIST_IDS + 1] = id end
+        for _, lvl in pairs(tb) do
+            if lvl == "immune" then IMMUNE_IDS[#IMMUNE_IDS + 1] = id break end
+        end
+    end
+    table.sort(RESIST_IDS); table.sort(IMMUNE_IDS)
+    local resistTrials, immuneHits = 0, 0
 
     local mismatches, checked, lethal, withCombo = 0, 0, 0, 0
     local absorbedTrials, orbTrials, totalDmg = 0, 0, 0
@@ -54,6 +63,10 @@ function M.run()
         e.maxArmor = math.max(e.maxArmor or 0, e.armor, 999)
         if rng:random() < 0.25 then
             e:addStatusEffect({ name = "vulnerable", stacks = 1, duration = 2 })
+        end
+        if rng:random() < 0.6 then
+            e.kitId = pick(rng:random() < 0.5 and IMMUNE_IDS or RESIST_IDS)
+            e.spriteId = e.kitId
         end
         g.jokerSlots = {}
         for _ = 1, rng:random(0, 3) do
@@ -87,6 +100,10 @@ function M.run()
         checked = checked + 1
         if prev.lethal then lethal = lethal + 1 end
         if #prev.combos > 0 then withCombo = withCombo + 1 end
+        if #(prev.resists or {}) > 0 then resistTrials = resistTrials + 1 end
+        for _, r in ipairs(prev.resists or {}) do
+            if r.level == "immune" then immuneHits = immuneHits + 1 end
+        end
         if prev.blocked > 0 then absorbedTrials = absorbedTrials + 1 end
         for _, x in ipairs(prev.extras) do
             if x.kind == "orb" then orbTrials = orbTrials + 1; break end
@@ -116,6 +133,8 @@ function M.run()
         absorbedTrials > 20)
     t:truthy("amostra tem orbe evocado causando dano (" .. orbTrials .. ")", orbTrials > 10)
     t:truthy("amostra causa dano de verdade (" .. totalDmg .. ")", totalDmg > 3000)
+    t:truthy("amostra tem levas contra resistencia (" .. resistTrials .. ")", resistTrials > 40)
+    t:truthy("amostra tem golpes em imunidade (" .. immuneHits .. ")", immuneHits > 4)
 
     local g = TK.newRunGame("warrior"); TK.pump(g, 0.5)
     local c = db:createCardInstance(db:getCard("warrior_strike"))

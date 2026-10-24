@@ -26,6 +26,7 @@ M.TOOL_RESULT_PRINTERS = {
     "tools/preview_rareglow.lua", "tools/preview_shop_props.lua", "tools/probe_continue.lua",
     "tools/realismo_measure.lua", "tools/escala_humana.lua", "tools/revisao_cenas.lua", "tools/revisao_catalogo.lua",
     "tools/screenshot_rare_joker.lua", "tools/screenshot_cheat.lua", "tools/screenshot_musica_reativa.lua",
+    "tools/screenshot_imunidade.lua",
     "tools/screenshot_icones_pausa.lua", "tools/screenshot_postes_por_ato.lua", "tools/screenshot_castelo_curva.lua", "tools/screenshot_revisao_monstros.lua", "tools/screenshot_voo.lua",
     "tools/probe_i18n_key.lua", "tools/probe_locale_keys.lua", "tools/probe_shop_i18n.lua",
     "tools/probe_shop_shadow.lua", "tools/probe_skip_label.lua", "tools/scan_clones.lua",
