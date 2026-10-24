@@ -116,6 +116,17 @@ end
 
 function MenuBrand._resetForTests() res = nil end
 
+local stingPlayed = false
+
+function MenuBrand.stingPending()
+    if stingPlayed then return false end
+    if _G.gameSettings and _G.gameSettings.reducedMotion then return false end
+    return MenuBrand.canSting()
+end
+
+function MenuBrand.markStingPlayed() stingPlayed = true end
+function MenuBrand.resetSting() stingPlayed = false end
+
 function MenuBrand.available() return MenuBrand.load() ~= nil end
 
 function MenuBrand.canSting()
@@ -287,18 +298,37 @@ local function emberColor(u)
     return EMBER[math.min(#EMBER, math.floor(u * #EMBER) + 1)]
 end
 
-function MenuBrand:_sealPos(L)
+function MenuBrand.stingScale(L)
+    local Ps = L.P * 2
+    while Ps > L.P and Data.seal.h * Ps > L.H * 0.62 do Ps = Ps - 1 end
+    return Ps
+end
+
+function MenuBrand:_sealGeom(L)
     local t = self.clock
-    local sy0 = math.floor(L.cNY - Data.seal.h / 2 + 0.5) - 4
-    local u = self.mode == "sting" and easeOut((t - T.MOVE) / (T.MOVE_END - T.MOVE)) or 1
-    local sy = math.floor(sy0 + (L.sealY - sy0) * u + 0.5)
-    local jx, jy = 0, 0
-    if self.mode == "sting" and t >= T.CHARGE + 0.14 and t < T.FLASH then
+    local w, h = Data.seal.w, Data.seal.h
+    local sting = self.mode == "sting"
+    local Ps = sting and MenuBrand.stingScale(L) or L.P
+    local sox = math.floor((L.W - w * Ps) / 2 + 0.5)
+    local soy = math.floor((L.H - h * Ps) / 2 + 0.5) - 4 * Ps
+    local fx = L.ox + L.sealX * L.P
+    local fy = L.oy + L.sealY * L.P
+    local u = sting and easeOut((t - T.MOVE) / (T.MOVE_END - T.MOVE)) or 1
+    local s = Ps - math.floor((Ps - L.P) * u + 0.5)
+    local c0x, c0y = sox + w * Ps / 2, soy + h * Ps / 2
+    local c1x, c1y = fx + w * L.P / 2, fy + h * L.P / 2
+    local ccx, ccy = c0x + (c1x - c0x) * u, c0y + (c1y - c0y) * u
+    local G = {
+        x = math.floor(ccx - w * s / 2 + 0.5), y = math.floor(ccy - h * s / 2 + 0.5), s = s,
+        jx = 0, jy = 0, Ps = Ps, sox = sox, soy = soy,
+    }
+    if u >= 1 then G.x, G.y = fx, fy end
+    if sting and t >= T.CHARGE + 0.14 and t < T.FLASH then
         local k = math.floor(t * 60) % 4
         local J = { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 } }
-        jx, jy = J[k + 1][1], J[k + 1][2]
+        G.jx, G.jy = J[k + 1][1], J[k + 1][2]
     end
-    return L.sealX, sy, jx, jy, sy0
+    return G
 end
 
 local function sendRing(sh, name, col, on, R, thick, dens, c)
@@ -310,7 +340,7 @@ local function sendRing(sh, name, col, on, R, thick, dens, c)
     end
 end
 
-function MenuBrand:_fxPass(L, under, bgAmt, cx, cy, alpha)
+function MenuBrand:_fxPass(L, G, under, bgAmt, cx, cy)
     local r = res
     if not (r and r.fxShader) then return end
     local t = self.clock
@@ -318,11 +348,12 @@ function MenuBrand:_fxPass(L, under, bgAmt, cx, cy, alpha)
     local g = love.graphics
     local x0, y0 = g.transformPoint(0, 0)
     local x1 = g.transformPoint(1, 0)
+    local Ps = G.Ps
     sh:send("cell", math.max(1, x1 - x0))
     sh:send("gridOrigin", { x0, y0 })
     sh:send("center", { cx, cy })
-    sh:send("bgCenter", { L.cNX, (L.H * 0.44 - L.oy) / L.P })
-    sh:send("screenN", { L.nW, L.nH })
+    sh:send("bgCenter", { (L.W / 2 - G.sox) / Ps, (L.H * 0.44 - G.soy) / Ps })
+    sh:send("screenN", { L.W / Ps, L.H / Ps })
     local tf = t - T.FLASH
     if under then
         sh:send("bgAmt", bgAmt)
@@ -330,27 +361,22 @@ function MenuBrand:_fxPass(L, under, bgAmt, cx, cy, alpha)
         local uu = easeOut((t - 0.06) / 0.66)
         sendRing(sh, "ringA", "colA", on, 150 - 100 * uu, 1.0, 0.15 + 0.6 * uu, { 150, 104, 52 })
         sendRing(sh, "ringB", "colB", false)
-        sendRing(sh, "ringC", "colC", false)
-        sh:send("flashT", -1)
         if bgAmt <= 0 and not on then return end
     else
         sh:send("bgAmt", 0)
         local on1 = tf >= 0 and tf < 0.62
         local uu = tf / 0.62
-        local cols = { { 255, 248, 226 }, SPARK[2], SPARK[3], EMBER[4] }
-        sendRing(sh, "ringA", "colA", on1, 10 + 320 * easeOut(uu), 4 - 2.5 * uu, 1.05 - uu,
+        local cols = { SPARK[1], SPARK[2], SPARK[3], EMBER[4] }
+        sendRing(sh, "ringA", "colA", on1, 10 + 320 * easeOut(uu), 1.5 - 0.5 * uu, 1.05 - uu,
             cols[math.min(4, math.floor(uu * 4) + 1)])
         local on2 = on1 and tf > 0.06
         local u2 = (tf - 0.06) / 0.56
         sendRing(sh, "ringB", "colB", on2, 6 + 220 * easeOut(u2), 1.0, 0.7 - 0.7 * u2, EMBER[3])
-        sendRing(sh, "ringC", "colC", false)
-        local fl = tf >= 0 and tf < 0.3
-        sh:send("flashT", fl and tf or -1)
-        if not on1 and not fl then return end
+        if not on1 then return end
     end
     g.setShader(sh)
-    g.setColor(1, 1, 1, alpha)
-    g.rectangle("fill", -L.ox / L.P - 2, -L.oy / L.P - 2, L.nW + 4, L.nH + 4)
+    g.setColor(1, 1, 1, 1)
+    g.rectangle("fill", -G.sox / Ps - 2, -G.soy / Ps - 2, L.W / Ps + 4, L.H / Ps + 4)
     g.setShader()
 end
 
@@ -403,6 +429,8 @@ function MenuBrand:_drawWord(L, t, sweepP, reduced)
     end
 end
 
+MenuBrand.PULSE = { dur = 0.16, alpha = 0.18 }
+
 function MenuBrand:draw(alpha, bgAmt, reduced)
     local r = MenuBrand.load()
     if not r then return false end
@@ -415,78 +443,68 @@ function MenuBrand:draw(alpha, bgAmt, reduced)
     local t = self.clock
     local sting = self.mode == "sting" and not reduced
     alphaMul = alpha
+    local G = self:_sealGeom(L)
+    if not sting then
+        G.x, G.y, G.s, G.jx, G.jy = L.ox + L.sealX * L.P, L.oy + L.sealY * L.P, L.P, 0, 0
+    end
+    self._seal = G
+    local cx, cy = Data.seal.cx, Data.seal.cy
+
+    local lastLetter = T.WORD0 + (#r.quads - 1) * T.WORDSTEP + 4 / 60
+    local shake = (sting and t - lastLetter >= 0 and t - lastLetter < 3 / 60) and L.P or 0
 
     g.push()
     g.scale(1 / k, 1 / k)
-    g.translate(L.ox, L.oy)
-    g.scale(L.P, L.P)
 
-    local lastLetter = T.WORD0 + (#r.quads - 1) * T.WORDSTEP + 4 / 60
-    if sting and t - lastLetter >= 0 and t - lastLetter < 3 / 60 then g.translate(0, 1) end
-
-    local sx, sy, jx, jy, sy0 = self:_sealPos(L)
-    if reduced or self.mode ~= "sting" then sy = L.sealY; jx, jy = 0, 0 end
-    local scx, scy = sx + Data.seal.cx, sy0 + Data.seal.cy
-
-    if sting then self:_fxPass(L, true, bgAmt, scx, scy, 1) end
-
-    if sting and t >= T.CHARGE and t < T.FLASH then
-        for _, c in ipairs(self.converge) do
-            local u = (t - c.t0) / (T.FLASH - c.t0)
-            if u >= 0 and u < 1 then
-                local rr = c.r0 * (1 - u * u)
-                local ca, sa = math.cos(c.a), math.sin(c.a)
-                px(scx + ca * rr, scy + sa * rr, u > 0.6 and SPARK[2] or SPARK[3])
-                px(scx + ca * (rr + 3), scy + sa * (rr + 3), EMBER[4])
+    if sting then
+        g.push()
+        g.translate(G.sox, G.soy)
+        g.scale(G.Ps, G.Ps)
+        self:_fxPass(L, G, true, bgAmt, cx, cy)
+        if t >= T.CHARGE and t < T.FLASH then
+            for _, c in ipairs(self.converge) do
+                local u = (t - c.t0) / (T.FLASH - c.t0)
+                if u >= 0 and u < 1 then
+                    local rr = c.r0 * (1 - u * u)
+                    local ca, sa = math.cos(c.a), math.sin(c.a)
+                    px(cx + ca * rr, cy + sa * rr, u > 0.6 and SPARK[2] or SPARK[3])
+                    px(cx + ca * (rr + 3), cy + sa * (rr + 3), EMBER[4])
+                end
             end
         end
+        g.pop()
     end
 
     local sweepP = (not reduced) and self:sweepP() or nil
+    g.push()
+    g.translate(G.x, G.y + shake)
+    g.scale(G.s, G.s)
     local animSeal = sting and t < T.FLASH + 0.4
     if (animSeal or sweepP) and r.sealShader then
         local sh = r.sealShader
         g.setShader(sh)
         sh:send("T", animSeal and t or 99)
-        sh:send("origin", { sx, sy })
+        sh:send("origin", { L.sealX, L.sealY })
         sh:send("sweepP", sweepP or -10000)
         g.setColor(1, 1, 1, alpha)
-        g.draw(r.sealData, sx + jx, sy + jy)
+        g.draw(r.sealData, G.jx, G.jy)
         g.setShader()
     elseif not sting or t >= T.FLASH then
         g.setColor(1, 1, 1, alpha)
-        g.draw(r.seal, sx, sy)
+        g.draw(r.seal, 0, 0)
     end
-
     if not reduced then
         for _, tw in ipairs(self.twinkles) do
             local tip = Data.tips[tw[2]]
-            sparkle(sx + tip[1], sy + tip[2], t - tw[1])
+            sparkle(tip[1], tip[2], t - tw[1])
         end
     end
+    g.pop()
 
+    g.push()
+    g.translate(L.ox, L.oy + shake)
+    g.scale(L.P, L.P)
     if not sting or t >= T.WORD0 - 0.01 then self:_drawWord(L, t, sweepP, reduced) end
-
-    if sting then
-        self:_fxPass(L, false, 0, scx, sy + Data.seal.cy, 1)
-        local tf = t - T.FLASH
-        if tf >= 0 then
-            for _, b in ipairs(self.burst) do
-                if tf <= b.life then
-                    local drag = 2.2
-                    local f = (1 - math.exp(-drag * tf)) / drag
-                    local x = scx + b.vx * f
-                    local y = scy + b.vy * f + 26 * tf * tf
-                    local c = emberColor(tf / b.life)
-                    px(x, y, c)
-                    if b.big and tf < b.life * 0.5 then
-                        px(x + 1, y, c); px(x, y + 1, c); px(x + 1, y + 1, c)
-                    end
-                end
-            end
-        end
-    end
-
     if not reduced and t >= self.emberT0 then
         for _, e in ipairs(self.embers) do
             local te = t - self.emberT0 - e.t0
@@ -497,6 +515,40 @@ function MenuBrand:draw(alpha, bgAmt, reduced)
                     px(e.x0 + math.sin(e.ph + te * 1.7) * e.amp, e.y0 + e.vy * te, emberColor(0.25 + u * 0.75))
                 end
             end
+        end
+    end
+    g.pop()
+
+    if sting then
+        local tf = t - T.FLASH
+        g.push()
+        g.translate(G.sox, G.soy)
+        g.scale(G.Ps, G.Ps)
+        local ccx = (G.x + cx * G.s - G.sox) / G.Ps
+        local ccy = (G.y + cy * G.s - G.soy) / G.Ps
+        self:_fxPass(L, G, false, 0, ccx, ccy)
+        if tf >= 0 then
+            for _, b in ipairs(self.burst) do
+                if tf <= b.life then
+                    local drag = 2.2
+                    local f = (1 - math.exp(-drag * tf)) / drag
+                    local x = cx + b.vx * f
+                    local y = cy + b.vy * f + 26 * tf * tf
+                    local c = emberColor(tf / b.life)
+                    px(x, y, c)
+                    if b.big and tf < b.life * 0.5 then
+                        px(x + 1, y, c); px(x, y + 1, c); px(x + 1, y + 1, c)
+                    end
+                end
+            end
+        end
+        g.pop()
+        if tf >= 0 and tf < MenuBrand.PULSE.dur then
+            local a = MenuBrand.PULSE.alpha * (1 - tf / MenuBrand.PULSE.dur) ^ 2
+            g.setBlendMode("add")
+            g.setColor(1, 0.94, 0.82, a)
+            g.rectangle("fill", 0, 0, L.W, L.H)
+            g.setBlendMode("alpha")
         end
     end
 

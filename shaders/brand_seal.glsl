@@ -46,8 +46,7 @@ vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
     vec3 c = palAt(lit, idx);
     float fl = T - tFlash;
     if (fl >= 0.0 && fl < 0.36) {
-        if (fl < 0.05) c = vec3(1.0, 0.9725, 0.8863);
-        else c = palAt(fl < 0.14 ? 3.0 : 2.0, idx);
+        c = palAt(fl < 0.14 ? 3.0 : 2.0, idx);
     }
     if (a < 0.05) c = palAt(3.0, max(idx, 5.0));
     else if (a < 0.13) c = palAt(2.0, idx);

@@ -9,9 +9,6 @@ extern vec4 ringA;
 extern vec3 colA;
 extern vec4 ringB;
 extern vec3 colB;
-extern vec4 ringC;
-extern vec3 colC;
-extern number flashT;
 
 vec4 ring(vec4 outc, vec4 r, vec3 col, vec2 n, float by) {
     if (r.w < 0.5) return outc;
@@ -36,16 +33,5 @@ vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
     }
     outc = ring(outc, ringA, colA, n, by);
     outc = ring(outc, ringB, colB, n, by);
-    outc = ring(outc, ringC, colC, n, by);
-    if (flashT >= 0.0) {
-        float dd = length(vec2(n.x - center.x, (n.y - center.y) * 1.2)) / (70.0 + 520.0 * flashT);
-        float lv = clamp(1.1 - dd, 0.0, 1.0) * pow(max(0.0, 1.0 - flashT / 0.22), 1.5);
-        if (by < lv) {
-            vec3 w = vec3(1.0, 0.9725, 0.8863);
-            if (outc.a > 0.99) outc = vec4(mix(outc.rgb, w, 0.75), 1.0);
-            else if (outc.a < 0.01) outc = vec4(w, 0.75);
-            else outc = vec4(mix(outc.rgb, w, 0.75), max(outc.a, 0.75));
-        }
-    }
     return outc * color;
 }

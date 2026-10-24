@@ -159,6 +159,25 @@ function M.run()
             was = on
         end
         t:truthy(("parado: varredura a cada 8 a 12 s (%d em 40 s)"):format(nSweeps), nSweeps >= 3 and nSweeps <= 5)
+        local BootScene = require("src.scenes.BootScene")
+        local function splashTitle()
+            local done = false
+            BootScene.init({ onComplete = function() done = true end })
+            for _ = 1, 60 * 12 do
+                _G.EventManager.update(1 / 60)
+                BootScene.update(1 / 60)
+                if BootScene.phase() == "splash" and BootScene.splashTime() > 0.2 then break end
+            end
+            local n = BootScene.titleCount()
+            BootScene.skip()
+            return n, done
+        end
+        MenuBrand.resetSting()
+        t:truthy("vinheta pendente antes do 1o menu", MenuBrand.stingPending())
+        t:eq("boot nao carimba o titulo quando a vinheta vem", (splashTitle()), 0)
+        MenuBrand.markStingPlayed()
+        t:truthy("boot carimba o titulo quando a vinheta ja passou", (splashTitle()) > 0)
+        MenuBrand.resetSting()
     end)
     restore()
     t:check("sem excecao na entrada" .. (ok and "" or (": " .. tostring(err))), ok)

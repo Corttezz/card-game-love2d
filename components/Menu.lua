@@ -344,7 +344,7 @@ function Menu:skipIntro()
     return true
 end
 
-function Menu._resetSting() Menu._stingPlayed = nil end
+function Menu._resetSting() MenuBrand.resetSting() end
 
 function Menu:_ensureTitleDyna()
     local height = love.graphics.getHeight()
@@ -952,8 +952,8 @@ function Menu:enterWithIntro()
     self.osdTimer = 0
     self._candleFlare = 1
 
-    local full = not Menu._stingPlayed and not reducedMotion() and MenuBrand.canSting()
-    Menu._stingPlayed = true
+    local full = MenuBrand.stingPending()
+    MenuBrand.markStingPlayed()
     if full then
         if _G.EventManager then _G.EventManager.clear("menu_intro") end
         self.intro.active = true
