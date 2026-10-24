@@ -53,3 +53,16 @@ dados (como aconteceu com as 17 do gameplay-overhaul antes da cobrança)
 
 Gerador pronto: `python3 tools/pixellab_generate_new_cards.py queue|poll`
 (adicionar as cartas novas no dict CARDS com prompt temático).
+
+## Vale também para coringas e itens (dono, 24/Out/2026)
+
+Toda vez que o dono pede coringa, relíquia, poção ou qualquer item novo, este fluxo e memory/new_card_creation.md são lidos a fundo e seguidos inteiros:
+- dados;
+- arte PixelLab com ícone animado pela raridade;
+- atlas;
+- i18n x5;
+- som-assinatura do coringa;
+- preview e validate_cards;
+- balanceamento medido.
+
+Nada entra só com os dados.
