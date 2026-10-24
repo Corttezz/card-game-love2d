@@ -1048,7 +1048,7 @@ return {
         shop_bell   = { name = "Glocke für neue Angebote", desc = "Läute die Glocke und der Händler füllt beide Regale neu. Kostet ${n} bei diesem Besuch und steigt mit jedem Läuten um $2." },
         shop_ledger = { name = "Kassenbuch", desc = "Schließt die Rechnung ab und zieht weiter. Den Laden zu verlassen bringt +${bonus} Gold." },
         shop_dice   = { name = "Würfelbecher", desc = "Die Würfel des Schreibers: ein Einsatz pro Besuch. Klicken, um den Tisch zu öffnen." },
-        poison     = { name = "Gift",       desc = "Fügt {stacks} Schaden am Zugende zu und verliert dann 1 Stapel." },
+        poison     = { name = "Gift",       desc = "Fügt {stacks} Schaden am Zugende zu und verliert dann 1 Stapel.", desc_immune = "Immun: Gift haftet und nimmt ab, verursacht aber keinen Schaden.", desc_resist = "Resistent: verursacht die Hälfte von {stacks} am Zugende und verliert dann 1 Stapel.", desc_weak = "Schwäche: verursacht 50 % mehr als {stacks} am Zugende und verliert dann 1 Stapel." },
         weak       = { name = "Schwach",    desc = "Verursachter Schaden um 25% reduziert für {duration} Zug(e)." },
         vulnerable = { name = "Verwundbar", desc = "Erleidet 50% mehr Schaden (Gift und Brand ausgenommen) für {duration} Zug(e)." },
         strength   = { name = "Stärke",    desc = "Jeder Angriffstreffer verursacht +{stacks} Schaden." },
@@ -1060,7 +1060,7 @@ return {
         orb_dark      = { name = "Schatten-Orb",    desc = "Pulsiert nicht: wächst +2 pro Zug. Auslösen verursacht {duration} Schaden (doppelter Wert)." },
         orb_holy      = { name = "Heiliger Orb",   desc = "Pulsiert {stacks} Heilung am Ende deines Zuges. Auslösen heilt {duration} LP." },
         orb_empty     = { name = "Orb-Platz",      desc = "Leer. Kanalisieren-Karten erzeugen hier Orbs (max {stacks}). Voll: Kanalisieren löst den ältesten aus." },
-        burn       = { name = "Brand",      desc = "Fügt {stacks} Feuerschaden am Zugende zu, für {duration} Zug(e)." },
+        burn       = { name = "Brand",      desc = "Fügt {stacks} Feuerschaden am Zugende zu, für {duration} Zug(e).", desc_immune = "Immun gegen Feuer: Brand verursacht keinen Schaden.", desc_resist = "Resistent gegen Feuer: verursacht die Hälfte von {stacks} am Zugende, für {duration} Zug(e).", desc_weak = "Schwach gegen Feuer: verursacht 50 % mehr als {stacks} am Zugende, für {duration} Zug(e)." },
         thorn        = { name = "Dornen",
             desc = "Bereit: wenn der Gegner dich trifft, erleidet er {stacks} Schaden zurück. Hält {duration} Zug(e).",
             desc_permanent = "Wenn der Gegner dich trifft, erleidet er {stacks} Schaden zurück." },
@@ -1419,6 +1419,7 @@ return {
     cheat = require("src.i18n.locales.cheat.de"),
 
     bestiary = require("src.i18n.locales.bestiary.de"),
+    resist = require("src.i18n.locales.resist.de"),
 
     seals = require("src.i18n.locales.run_modifiers.de").seals,
     seal_ui = require("src.i18n.locales.run_modifiers.de").seal_ui,

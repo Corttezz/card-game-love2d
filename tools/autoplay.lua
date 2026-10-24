@@ -51,6 +51,7 @@ local Events       = require("src.data.events")
 local MapManager   = require("src.systems.MapManager")
 local TagSystem    = require("src.systems.TagSystem")
 local ComboSystem  = require("src.systems.ComboSystem")
+local Resistances  = require("src.systems.Resistances")
 
 local report = {}
 local anomalies = {}
@@ -264,9 +265,9 @@ end
 
 local function evokeDmgOfOrb(orb, focus)
     local v = (orb.value or 1) + focus
-    if orb.type == "lightning" then return v
-    elseif orb.type == "dark" then return v * 2
-    elseif orb.type == "fire" then return v end
+    if orb.type == "lightning" then return v, "lightning"
+    elseif orb.type == "dark" then return v * 2, "dark"
+    elseif orb.type == "fire" then return v, "fire" end
     return 0
 end
 
@@ -287,19 +288,20 @@ local function simulateSetDamage(game, set)
     end
     local slots = p.orbSlots or 3
     local total = 0
-    local function addDmg(d)
+    local function addDmg(d, dtype)
         if d > 0 then
+            d = Resistances.apply(game.enemy, dtype, d)
             if vuln then d = math.floor(d * 1.5) end
             total = total + d
         end
     end
     for _, c in ipairs(sortedForPlay(set)) do
         if c.type == "attack" then
-            addDmg(simulateCardValue(game, c, ctx))
+            addDmg(simulateCardValue(game, c, ctx), Resistances.ofCard(c))
         end
         for _, e in ipairs(c.effects or {}) do
             if e.type == "magic_damage" or e.type == "aoe_magic_damage" then
-                addDmg(e.value or 0)
+                addDmg(e.value or 0, Resistances.ofSpell(c))
             elseif e.type == "channel_orb" then
                 if #orbs >= slots then
                     addDmg(evokeDmgOfOrb(table.remove(orbs, 1), focus))
@@ -322,14 +324,17 @@ end
 local function freeDamageThisTurn(game)
     local enemy = game.enemy
     local poison = enemy:hasStatus("poison") and enemy:getStatusStacks("poison") or 0
-    local freePoison = poison
+    local freePoison = Resistances.apply(enemy, "poison", poison)
     local p = game.player
     local focus = getFocus(p)
     local pulse = 0
     for _, orb in ipairs(p.orbs or {}) do
         local ev = (orb.value or 1) + focus
-        if orb.type == "lightning" then pulse = pulse + math.ceil(ev / 2)
-        elseif orb.type == "fire" then pulse = pulse + math.ceil(ev / 3) end
+        if orb.type == "lightning" then
+            pulse = pulse + Resistances.apply(enemy, "lightning", math.ceil(ev / 2))
+        elseif orb.type == "fire" then
+            pulse = pulse + Resistances.apply(enemy, "fire", math.ceil(ev / 3))
+        end
     end
     return freePoison + pulse, freePoison, pulse
 end

@@ -1048,7 +1048,7 @@ return {
         shop_bell   = { name = "Cloche des nouvelles offres", desc = "Sonnez la cloche et le marchand regarnit les deux étagères. Coûte ${n} lors de cette visite et augmente de $2 à chaque coup." },
         shop_ledger = { name = "Livre de comptes", desc = "Clôture le compte et reprend la route. Quitter la boutique rapporte +${bonus} d'or." },
         shop_dice   = { name = "Gobelet à dés", desc = "Les Dés du Scribe : une mise par visite. Cliquez pour ouvrir la table." },
-        poison     = { name = "Poison",     desc = "Inflige {stacks} dégâts en fin de tour, puis perd 1 cumul." },
+        poison     = { name = "Poison",     desc = "Inflige {stacks} dégâts en fin de tour, puis perd 1 cumul.", desc_immune = "Immunité : le poison s'accroche et diminue, mais n'inflige aucun dégât.", desc_resist = "Résistance : inflige la moitié de {stacks} en fin de tour, puis perd 1 cumul.", desc_weak = "Faiblesse : inflige 50 % de plus que {stacks} en fin de tour, puis perd 1 cumul." },
         weak       = { name = "Faible",     desc = "Les dégâts infligés sont réduits de 25% pendant {duration} tour(s)." },
         vulnerable = { name = "Vulnérable", desc = "Subit 50% de dégâts en plus (poison et brûlure exclus) pendant {duration} tour(s)." },
         strength   = { name = "Force",      desc = "Chaque coup d'attaque inflige +{stacks} dégâts." },
@@ -1060,7 +1060,7 @@ return {
         orb_dark      = { name = "Orbe d'Ombre",    desc = "Ne pulse pas : grandit de +2 par tour. Évoquer inflige {duration} dégâts (double de sa valeur)." },
         orb_holy      = { name = "Orbe Sacré",     desc = "Pulse {stacks} de soin à la fin de votre tour. Évoquer soigne {duration} PV." },
         orb_empty     = { name = "Emplacement d'Orbe", desc = "Vide. Les cartes Canaliser créent des orbes ici (max {stacks}). Plein, canaliser évoque le plus ancien." },
-        burn       = { name = "Brûlure",    desc = "Inflige {stacks} dégâts de feu en fin de tour, pendant {duration} tour(s)." },
+        burn       = { name = "Brûlure",    desc = "Inflige {stacks} dégâts de feu en fin de tour, pendant {duration} tour(s).", desc_immune = "Immunité au feu : la brûlure n'inflige aucun dégât.", desc_resist = "Résistance au feu : inflige la moitié de {stacks} en fin de tour, pendant {duration} tour(s).", desc_weak = "Faiblesse au feu : inflige 50 % de plus que {stacks} en fin de tour, pendant {duration} tour(s)." },
         thorn        = { name = "Épines",
             desc = "Armées : quand l'ennemi vous frappe, il subit {stacks} dégâts en retour. Dure {duration} tour(s).",
             desc_permanent = "Quand l'ennemi vous frappe, il subit {stacks} dégâts en retour." },
@@ -1419,6 +1419,7 @@ return {
     cheat = require("src.i18n.locales.cheat.fr"),
 
     bestiary = require("src.i18n.locales.bestiary.fr"),
+    resist = require("src.i18n.locales.resist.fr"),
 
     seals = require("src.i18n.locales.run_modifiers.fr").seals,
     seal_ui = require("src.i18n.locales.run_modifiers.fr").seal_ui,

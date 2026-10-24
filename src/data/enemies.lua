@@ -563,4 +563,57 @@ Enemies.KITS = {
 Enemies.PLAYER_DEBUFFS = { weak = true, frail = true, vulnerable = true,
     poison = true, burn = true }
 
+local IM, RS, WK = "immune", "resist", "weak"
+
+Enemies.RESIST = {
+    cursed_scarecrow  = { fire = WK },
+    hollow_farmer     = {},
+    plague_rats       = { poison = RS, fire = WK },
+    harvest_reaper    = { dark = RS },
+    blight_bull       = { poison = RS },
+    wicker_effigy     = { fire = IM, ice = WK },
+    carrion_king      = { dark = RS, fire = WK },
+
+    moon_gargoyle     = { poison = RS },
+    ram_cultist       = { dark = RS },
+    storm_harpy       = { lightning = RS },
+    rune_golem        = { poison = IM, arcane = RS, lightning = WK },
+    spectral_knight   = { poison = IM, physical = RS, arcane = WK },
+    storm_griffin     = { lightning = IM, ice = WK },
+    tower_lich        = { poison = IM, ice = IM, fire = WK },
+
+    ember_imp         = { fire = IM, ice = WK },
+    hellhound         = { fire = RS, ice = WK },
+    abyss_acolyte     = { dark = RS },
+    obsidian_sentinel = { poison = IM, fire = IM, physical = WK },
+    pit_brute         = {},
+    abyss_watcher     = { dark = IM, lightning = WK },
+    abyss_tyrant      = { fire = IM, ice = WK },
+
+    frost_wight       = { ice = IM, poison = RS, fire = WK },
+    frost_wolf        = { ice = IM, fire = WK },
+    rime_shaman       = { ice = IM },
+    glacier_knight    = { ice = IM, fire = WK },
+    frost_troll       = { ice = RS, fire = WK },
+    ice_wyrm          = { ice = IM, fire = WK },
+    winter_monarch    = { ice = IM, poison = RS, fire = WK },
+
+    bog_ghoul         = { poison = RS, fire = WK },
+    plague_toad       = { poison = IM, lightning = WK },
+    leech_horror      = { fire = WK },
+    mire_hag          = { poison = RS },
+    croc_warrior      = {},
+    spore_mother      = { poison = IM, fire = WK },
+    rot_colossus      = { lightning = RS, fire = WK },
+
+    dusk_shade        = { dark = IM, poison = RS },
+    dusk_bat          = {},
+    grave_thrall      = { poison = IM },
+    blood_duke        = { dark = RS, fire = WK },
+    dullahan          = { poison = IM },
+    fallen_angel      = { arcane = RS },
+    eclipse_queen     = { dark = IM, poison = RS, ice = RS, arcane = RS,
+                          fire = WK, lightning = WK },
+}
+
 return Enemies

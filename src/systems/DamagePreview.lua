@@ -1,6 +1,7 @@
 local EffectSystem = require("src.systems.EffectSystem")
 local ComboSystem  = require("src.systems.ComboSystem")
 local TagSystem    = require("src.systems.TagSystem")
+local Resistances  = require("src.systems.Resistances")
 
 local DamagePreview = {}
 
@@ -140,7 +141,7 @@ end
 
 function DamagePreview.simulate(game, cards)
     local R = { damage = 0, blocked = 0, block = 0, heal = 0, thorn = 0, poison = 0,
-        lethal = false, cards = {}, extras = {}, uncertain = false }
+        lethal = false, cards = {}, extras = {}, uncertain = false, resists = {} }
     if not game or not game.player or not game.enemy or not cards or #cards == 0 then
         R.combos = {}
         return R
@@ -152,8 +153,14 @@ function DamagePreview.simulate(game, cards)
     local P = simPlayer(game)
     R.enemyHealth = E.health
 
-    local function hitEnemy(dmg, source)
+    local function hitEnemy(dmg, dtype)
         if dmg <= 0 then return 0 end
+        local level
+        dmg, level = Resistances.apply(game.enemy, dtype, dmg)
+        if level then
+            R.resists[#R.resists + 1] = { type = dtype, level = level }
+        end
+        if dmg <= 0 then return 0, 0, 0, level end
         if E.vuln then dmg = math.floor(dmg * 1.5) end
         local through = math.max(0, dmg - E.armor)
         local absorbed = dmg - through
@@ -162,7 +169,7 @@ function DamagePreview.simulate(game, cards)
         E.health = math.max(0, E.health - through)
         R.damage = R.damage + dealt
         R.blocked = R.blocked + absorbed
-        return dealt, absorbed, dmg
+        return dealt, absorbed, dmg, level
     end
     local function addArmor(v)
         local before = P.armor
@@ -179,8 +186,8 @@ function DamagePreview.simulate(game, cards)
         if not orb then return end
         local v = (orb.value or 1) + P.focus
         if orb.type == "lightning" or orb.type == "fire" or orb.type == "dark" then
-            extra("orb", (hitEnemy(EffectSystem.orbEvokeValue(orb, P.focus))),
-                { orb = orb.type, why = why })
+            extra("orb", (hitEnemy(EffectSystem.orbEvokeValue(orb, P.focus),
+                Resistances.ORB_TYPE[orb.type])), { orb = orb.type, why = why })
         elseif orb.type == "ice" then
             addArmor(v)
             extra("orb_block", v, { orb = orb.type, why = why })
@@ -193,10 +200,10 @@ function DamagePreview.simulate(game, cards)
         P.orbs[#P.orbs + 1] = orb
     end
 
-    local function effect(e)
+    local function effect(e, card)
         local t, v = e.type, e.value or 0
         if t == "magic_damage" or t == "aoe_magic_damage" then
-            extra("magic", (hitEnemy(v)))
+            extra("magic", (hitEnemy(v, Resistances.ofSpell(card))))
         elseif t == "add_armor" then
             addArmor(v)
         elseif t == "apply_debuff" then
@@ -226,7 +233,7 @@ function DamagePreview.simulate(game, cards)
             local t = e.type
             if t ~= "strength_scaling" and t ~= "dexterity_scaling"
                 and t ~= "multi_hit" and t ~= "damage_bonus_self" then
-                effect(e)
+                effect(e, card)
             end
         end
     end
@@ -287,9 +294,19 @@ function DamagePreview.simulate(game, cards)
                 local v, steps, _, echoUsed = DamagePreview.cardValue(game, card, ctx, P)
                 if echoUsed then P.echoFired = true end
                 entry.value, entry.steps = v, steps
-                local dealt, absorbed, landed = hitEnemy(v)
+                local dtype = Resistances.ofCard(card)
+                local dealt, absorbed, landed, level = hitEnemy(v, dtype)
                 entry.dealt, entry.absorbed, entry.landed = dealt, absorbed, landed
                 entry.vuln = E.vuln
+                entry.dtype = dtype
+                if level then
+                    entry.resist = level
+                    entry.raw = v
+                    entry.value = Resistances.scale(level, v)
+                    entry.steps[#entry.steps + 1] = { kind = "resist", level = level,
+                        dtype = dtype, op = "mult", value = Resistances.MULT[level],
+                        after = entry.value }
+                end
                 if game.selectedClass == "rogue" and not toxinsUsed and E.health > 0 then
                     toxinsUsed = true
                     R.poison = R.poison + (game.toxinStacks and game:toxinStacks(toxinBonus) or 1)
@@ -312,7 +329,7 @@ function DamagePreview.simulate(game, cards)
                 P.orbs[#P.orbs + 1] = { type = "lightning", value = 1 }
             end
         elseif card.type == "effect" then
-            for _, e in ipairs(card.effects or {}) do effect(e) end
+            for _, e in ipairs(card.effects or {}) do effect(e, card) end
         end
         R.cards[#R.cards + 1] = entry
     end

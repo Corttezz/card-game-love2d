@@ -655,7 +655,7 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             local t = effect.type
             if t ~= "strength_scaling" and t ~= "dexterity_scaling"
                 and t ~= "multi_hit" and t ~= "damage_bonus_self" then
-                self.effectSystem:processEffectCardStepped(self, effect, false)
+                self.effectSystem:processEffectCardStepped(self, effect, false, card)
             end
         end
     end
@@ -675,7 +675,10 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
 
         local damage = computeCardValue()
 
-        self.enemy:takeDamage(damage)
+        local landed, resistLvl = self.enemy:takeDamage(damage,
+            require("src.systems.Resistances").ofCard(card))
+        damage = landed or damage
+        result.resist = resistLvl
         AchievementSystem.onCardDamage(self, card, damage)
         do
             local melt = BossMechanics.onPlayerAttack(self, card)
@@ -698,8 +701,10 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             end, "STATUS")
         end
 
-        local FloatingText = require("src.ui.FloatingText")
-        FloatingText.atCard(card, "-" .. tostring(damage), { kind = "damage" })
+        if resistLvl ~= "immune" then
+            local FloatingText = require("src.ui.FloatingText")
+            FloatingText.atCard(card, "-" .. tostring(damage), { kind = "damage" })
+        end
 
         self:settleEnemyDamage(sink)
 
@@ -749,10 +754,12 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
     elseif card.type == "effect" then
         if sink and card.effects then
             for _, effect in ipairs(card.effects) do
-                self.effectSystem:processEffectCardStepped(self, effect, true)
+                self.effectSystem:processEffectCardStepped(self, effect, true, card)
             end
         else
+            self._effectSourceCard = card
             card.passive(self)
+            self._effectSourceCard = nil
         end
         result.effect = true
     end
@@ -1232,6 +1239,14 @@ function Game:_pushEnemyTurnTail(beat)
 
     CombatBeats.push("enemy.dot", beat(function()
         local poisonDmg, burnDmg = self.enemy:onTurnEnd()
+        local dotInfo = self.enemy.lastDot
+        local ResistFx = require("src.ui.ResistFx")
+        if dotInfo and ResistFx.dotTick(self.enemy, "poison", dotInfo.poison) then
+            poisonDmg = 0
+        end
+        if dotInfo and ResistFx.dotTick(self.enemy, "burn", dotInfo.burn) then
+            burnDmg = 0
+        end
         if poisonDmg and poisonDmg > 0 then
             Sfx.playWithVariation("poisonTick", 1.0, 0.2)
             local okER, ER = pcall(require, "src.ui.EnemyRenderer")
