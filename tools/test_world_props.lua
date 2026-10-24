@@ -312,7 +312,7 @@ function M.run()
             t:truthy(("castelo não salta no clique do ramo (%.2f px)"):format(jump), jump <= 2)
             local dxL = frame(1 / 30)
             t:truthy(("ramo da esquerda leva o castelo para a direita, como quem vira (dx %.1f)"):format(dxL),
-                dxL * CD.SIGN < -W * 0.02 and math.abs(dxL) <= W * CD.MAX + 1)
+                dxL * CD.SIGN < -W * 0.2 and math.abs(dxL) <= W * 0.5 + 1)
             WorldRoad.travel({})
             local back = 0
             for _ = 1, 400 do

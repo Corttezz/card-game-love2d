@@ -265,6 +265,9 @@ rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_w
 - **Castelo vende a curva.** `CastleDrift.pick` leva o castelo a `SIGN × dir × MAX` (0,05 da largura, oposto ao
   ramo) só durante a convergência; `WorldRoad.travel` chama `CastleDrift.back` e o desvio volta a 0 ao longo da
   viagem (partida do nó ou caminho da batalha). Não acumula mais (`STEP`/`KEEP` saíram). Ramo do meio: 0.
+  **Revisto no mesmo dia (castelo-curva v2):** no ramo lateral o castelo vai até o canto oposto e volta com uma
+  passada pequena (só o castelo; estrada, ramos e câmera iguais), e o nó de luta num ramo lateral (elite) não
+  termina no marco: ver `memory/worldroad_scene.md` "CASTELO VAI AO CANTO OPOSTO".
 - **Batalha sempre no meio** (`WorldRoad.forkDirs`): nós que se atravessam andando (`WALK_TYPES`: battle 1,
   elite 2, mini_boss 3, boss 4, a prioridade decide quem fica no meio quando há dois) vão para o ramo do meio;
   os outros saem para a esquerda e a direita na ordem original. 2 opções com luta: luta no meio e a outra do lado
