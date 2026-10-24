@@ -195,6 +195,7 @@ function M.run()
 
     _G.gameSettings.reducedMotion = prevReduced
     Menu._resetSting()
+    UiScale.force(1)
     return t:done()
 end
 
