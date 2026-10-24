@@ -576,10 +576,10 @@ Enemies.RESIST = {
 
     moon_gargoyle     = { poison = RS },
     ram_cultist       = { dark = RS },
-    storm_harpy       = { lightning = RS },
+    storm_harpy       = { lightning = RS, ice = WK },
     rune_golem        = { poison = IM, arcane = RS, lightning = WK },
     spectral_knight   = { poison = IM, physical = RS, arcane = WK },
-    storm_griffin     = { lightning = IM, ice = WK },
+    storm_griffin     = { lightning = RS, ice = WK },
     tower_lich        = { poison = IM, ice = IM, fire = WK },
 
     ember_imp         = { fire = IM, ice = WK },
