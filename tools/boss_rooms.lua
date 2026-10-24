@@ -45,7 +45,6 @@ function M.run(startAct)
     local function mount(a)
         act = a
         _G.EventManager.clear()
-        require("src.ui.InteriorDepth").reset()
         local game = Game:new()
         game:startNewRun("warrior")
         game:startGame()

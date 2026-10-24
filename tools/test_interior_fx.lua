@@ -85,18 +85,8 @@ function M.run()
         t:eq("cena que não é salão não muda", GS.hallScreenK("gameplay", 2560, 1440), 1)
     end
 
-    do
-        local D = require("src.ui.InteriorDepth")
-        local canvas = love.graphics.newCanvas(32, 32)
-        t:noerror("InteriorDepth desenha sob o tirano", function()
-            D.noteBbox({ width = 300, height = 330 })
-            love.graphics.setCanvas(canvas)
-            D.drawContact(3, "abyss_tyrant", 512, 560)
-            D.drawContact(2, "tower_lich", 512, 560)
-            love.graphics.setCanvas()
-        end)
-        D.reset()
-    end
+    t:falsy("salao sem poca de contato sob o chefe (dono: so a sombra projetada)",
+        love.filesystem.getInfo("src/ui/InteriorDepth.lua") ~= nil)
 
     t:falsy("InteriorFX não desenha círculo (as 'bolas de luz')",
         readSrc("src/ui/InteriorFX.lua"):find("graphics.circle", 1, true) ~= nil)

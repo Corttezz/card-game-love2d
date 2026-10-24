@@ -153,8 +153,7 @@ sombra**. Então a sombra do flutuante:
 
 - **não sobe com o corpo** — continua no chão (`cy`);
 - fica **menor** (`shadowK`), **mais fraca** (`shadowA`) e **mais borrada**
-  (`smear × 2.4`; no fallback de elipse, duas passadas concêntricas =
-  penumbra barata);
+  (`smear × 2.4`);
 - **escorrega pro lado oposto à luz**, proporcional à altura. Na estrada a
   direção vem do sol do bioma (`ShadowEngine.tipShiftAt`); no interior vem
   do `lightXr` da cena.
@@ -174,10 +173,32 @@ iria GERAR alguma ANIMAÇÃO para dar a sensação de voar."
 Saiu tudo (módulo, `test_floating_shadow`, `screenshot_sombra_voo`,
 `WorldRoad.groundRadius`, `ShadowEngine.getTint`, `opts.shadowMaxY/groundR`),
 e a sombra do flutuante voltou a ser a de antes (silhueta projetada do
-`ShadowEngine` com `shadowK/shadowA`, elipse dupla no fallback). Lição: "a
+`ShadowEngine` com `shadowK/shadowA`). Lição: "a
 coisa no pé" era MOVIMENTO, não uma forma nova; forma desenhada por código
 (mancha, disco, elipse, silhueta achatada) num jogo de pixel art pintado lê
 como enxerto. Não reintroduzir sombra de voo.
+
+### Sem sombrinha sob o pé: SÓ a silhueta projetada (dono, 24/Out/2026)
+
+O dono jogou e reclamou: "vocês colocaram uma sombra adicional em cada
+monstro. A gente já tem a sombra deles projetada pra frente e agora tem uma
+sombrinha redonda embaixo do pé. Qual o sentido? Tira, usa só a que já
+existia." Eram três camadas por baixo da silhueta do `ShadowEngine`:
+
+- `EnemyRenderer.drawFootContact` (três barras em degrau 0,62/1,0/0,80 da
+  largura do pé, que lia como uma elipse) na batalha e no billboard da
+  estrada (`WorldRoad`), com `EnemyRenderer.contactK` decidindo flutuante e
+  cadáver;
+- `src/ui/InteriorDepth.lua` (poça elíptica em degraus sob o chefe no salão);
+- a elipse de fallback (dupla para quem flutua) quando o `ShadowEngine` não
+  tinha frame.
+
+Saiu tudo: as funções, o módulo e a elipse. Sem frame de sombra o inimigo
+fica sem sombra (o salão e a estrada sempre ligam o frame; o salão por
+`GameplayScene.hallShadowFrame`). Trava em `test_enemy_shadow_motion`
+(nenhuma elipse, nada desenhado no chão 4 a 16 px abaixo do pé com a
+silhueta desligada, em seis criaturas) e `test_interior_fx`. Não
+reintroduzir sombra de contato, poça, disco ou elipse sob o monstro.
 
 ### Voo pela ANIMAÇÃO (24/Out/2026)
 

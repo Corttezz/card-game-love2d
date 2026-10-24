@@ -8,44 +8,48 @@ EnemyStates.INDEX = INDEX
 EnemyStates.ALIAS = { fury = "enraged", frail = "vulnerable", eclipse = "enraged", armor = "block" }
 EnemyStates.TOKEN_ONLY = { swarm = true }
 EnemyStates.PRIORITY = { "burn", "poison", "enraged", "block", "strength", "regen", "vulnerable", "weak", "veil" }
-EnemyStates.MAX_KINDS = 2
+EnemyStates.MAX_KINDS = 4
 EnemyStates.RATE = { poison = 0.9, weak = 0.7, strength = 1.15, enraged = 1.3 }
 EnemyStates.PRESETS = {
     {}, { "poison" }, { "burn" }, { "weak" }, { "vulnerable" }, { "strength" }, { "enraged" },
     { "regen" }, { "block" }, { "veil" }, { "poison", "weak" }, { "burn", "enraged" },
 }
 
-local K_DRIPS, K_MIST, K_GLINT, K_BUBBLES, K_EMBERS = 3, 6, 9, 10, 2
-local K_FLAME, K_SWEAT, K_STEAM, K_SPARK, K_MOTE = 11, 12, 13, 14, 15
-EnemyStates.K_FLAME, EnemyStates.K_SWEAT, EnemyStates.K_STEAM = K_FLAME, K_SWEAT, K_STEAM
-EnemyStates.K_SPARK, EnemyStates.K_MOTE = K_SPARK, K_MOTE
+local K_DRIPS, K_MIST, K_GLINT, K_EMBERS, K_ASH = 3, 6, 9, 2, 8
+local K_SWEAT, K_STEAM, K_SPARK = 12, 13, 14
+local K_STAR, K_MIASMA, K_VAPOR, K_ABSORB = 18, 19, 20, 21
+EnemyStates.K_SWEAT, EnemyStates.K_STEAM, EnemyStates.K_SPARK = K_SWEAT, K_STEAM, K_SPARK
+EnemyStates.K_STAR, EnemyStates.K_MIASMA, EnemyStates.K_VAPOR, EnemyStates.K_ABSORB = K_STAR, K_MIASMA, K_VAPOR, K_ABSORB
+EnemyStates.K_MOTE = K_ABSORB
 
 EnemyStates.GEN = {
-    poison     = { { k = K_BUBBLES, rate = 1.6, at = "upper", c = { 0.55, 0.86, 0.32 } },
-                   { k = K_DRIPS, rate = 0.9, at = "lower", c = { 0.42, 0.70, 0.22 } } },
-    burn       = { { k = K_FLAME, rate = 18.0, at = "baseRow" },
-                   { k = K_EMBERS, rate = 2.2, at = "base" } },
-    weak       = { { k = K_SWEAT, rate = 0.9, at = "head" } },
-    vulnerable = { { k = K_GLINT, rate = 1.2, at = "edge", c = { 1.0, 1.0, 1.0 } } },
-    strength   = { { k = K_SPARK, rate = 2.4, at = "upper" } },
-    enraged    = { { k = K_STEAM, rate = 0, burst = 4, every = 1.2, at = "head" } },
-    regen      = { { k = K_MOTE, rate = 2.0, at = "edge" } },
-    block      = { { k = K_GLINT, rate = 0, sweep = true, at = "edge", c = { 0.86, 0.93, 1.0 } } },
-    veil       = { { k = K_MIST, rate = 2.6, at = "base", back = true } },
+    poison     = { { k = K_DRIPS, rate = 2.2, at = "under", c = { 0.46, 0.82, 0.24 } },
+                   { k = K_MIASMA, rate = 1.6, at = "upper" } },
+    burn       = { { k = K_EMBERS, rate = 7.0, at = "top" },
+                   { k = K_ASH, rate = 1.6, at = "head", c = { 0.22, 0.20, 0.20 } } },
+    weak       = { { k = K_STAR, rate = 0, stars = 3, at = "head" },
+                   { k = K_SWEAT, rate = 1.6, at = "head", sweat = true } },
+    vulnerable = { { k = K_GLINT, rate = 2.4, at = "edge", c = { 0.92, 0.74, 1.0 } } },
+    strength   = { { k = K_SPARK, rate = 20.0, at = "top" } },
+    enraged    = { { k = K_STEAM, rate = 0, burst = 10, every = 1.0, at = "head" } },
+    regen      = { { k = K_ABSORB, rate = 9.0, at = "edge" } },
+    block      = { { k = K_GLINT, rate = 0, sweep = true, at = "edge", c = { 0.90, 0.95, 1.0 } },
+                   { k = K_GLINT, rate = 0.9, at = "edge", c = { 0.86, 0.93, 1.0 } } },
+    veil       = { { k = K_MIST, rate = 1.2, at = "base", back = true } },
 }
 
 local NB = 256
-local ex, ey = {}, {}
-for i = 1, NB do ex[i], ey[i] = 0, 0 end
+local ex, ey, eu, ed = {}, {}, {}, {}
+for i = 1, NB do ex[i], ey[i], eu[i], ed[i] = 0, 0, false, false end
 local B = {
     id = nil, n = 0, headX = 0, headY = 0, baseY = 0, baseL = 0, baseR = 0,
-    top = 0, h = 1, w = 1, eyes = {}, nEyes = 0,
+    top = 0, h = 1, w = 1, eyes = {}, nEyes = 0, nUp = 0, nDown = 0, cx = 0, cy = 0,
 }
 EnemyStates._B = B
 
 local ST = {
     k = {}, forced = nil, enemy = nil, dmg0 = nil, enemyRef = nil, prevArmor = 0,
-    sweepT = -1, shudderT = 0, shudderNext = 3, trembleT = 0, trembleNext = 2.5,
+    sweepT = -1, shudderT = 0, shudderNext = 3, trembleT = 0, trembleNext = 2.5, rageT = 0,
     burstT = 0, active = {}, nActive = 0, kinds = {}, nKinds = 0, clock = 0,
     acc = {}, emitters = {}, nEmit = 0,
 }
@@ -73,6 +77,7 @@ function EnemyStates.prepare(id)
     B.id = id
     B.n = 0
     B.nEyes = 0
+    B.nUp, B.nDown = 0, 0
     local path = "assets/sprites/characters/enemies/" .. id .. "/animations/idle/south/0.png"
     if not love.filesystem.getInfo(path) then path = "assets/sprites/characters/enemies/" .. id .. "/south.png" end
     local ok, d = pcall(love.image.newImageData, path)
@@ -117,18 +122,22 @@ function EnemyStates.prepare(id)
                     if x > br then br = x end
                 end
                 local edge = x == 0 or y == 0 or x == w - 1 or y == h - 1
+                local up, dn = y == 0, y == h - 1
                 if not edge then
                     local _, _, _, a1 = d:getPixel(x - 1, y)
                     local _, _, _, a2 = d:getPixel(x + 1, y)
                     local _, _, _, a3 = d:getPixel(x, y - 1)
                     local _, _, _, a4 = d:getPixel(x, y + 1)
-                    edge = a1 <= 0.1 or a2 <= 0.1 or a3 <= 0.1 or a4 <= 0.1
+                    up, dn = a3 <= 0.1, a4 <= 0.1
+                    edge = a1 <= 0.1 or a2 <= 0.1 or up or dn
                 end
                 if edge then
                     c = c + 1
                     if c % stride == 0 and B.n < NB then
                         B.n = B.n + 1
-                        ex[B.n], ey[B.n] = x, y
+                        ex[B.n], ey[B.n], eu[B.n], ed[B.n] = x, y, up, dn
+                        if up then B.nUp = B.nUp + 1 end
+                        if dn then B.nDown = B.nDown + 1 end
                     end
                 end
             end
@@ -138,6 +147,7 @@ function EnemyStates.prepare(id)
     B.headX = hn > 0 and hx / hn or (minX + maxX) / 2
     B.headY = top + 1
     B.baseL, B.baseR = bl, br
+    B.cx, B.cy = (minX + maxX) / 2, (top + bot) / 2
     local em = require("src.data.enemy_emissives")[id]
     for i = #B.eyes, 1, -1 do B.eyes[i] = nil end
     if em then
@@ -242,19 +252,20 @@ end
 
 function EnemyStates.stretchPx()
     local s = 0
-    if ST.k.weak > 0 then s = s - (ST.k.weak > 0.7 and 2 or 1) end
+    if ST.k.weak > 0 then s = s - (ST.k.weak > 0.7 and 3 or 2) end
     if ST.k.strength > 0 then s = s + 1 end
     return s
 end
 
 function EnemyStates.jitterPx()
-    if ST.shudderT > 0 or ST.trembleT > 0 then
+    if ST.shudderT > 0 or ST.trembleT > 0 or ST.rageT > 0 then
         return (math.floor(ST.clock * 30) % 2 == 0) and 1 or -1
     end
     return 0
 end
 
 function EnemyStates.tint(r, g, b, t)
+    if EnemyStates.shader() then return r, g, b end
     local k = ST.k.poison
     if k > 0 then
         r = r * (1 - 0.20 * k)
@@ -272,12 +283,6 @@ function EnemyStates.tint(r, g, b, t)
         g = g * (1 - 0.03 * k)
     end
     return r, g, b
-end
-
-function EnemyStates.charK(t)
-    local k = ST.k.burn
-    if k <= 0 then return 0 end
-    return k * (0.75 + 0.25 * math.sin((t or 0) * 13) * math.sin((t or 0) * 5.3))
 end
 
 function EnemyStates.eyePulse(t)
@@ -330,7 +335,9 @@ local function pickPoint(at, R)
         local i = math.floor(R() * B.n) + 1
         local x, y = ex[i], ey[i]
         local f = (y - B.top) / H
-        if at == "edge"
+        if (at == "top" and eu[i] and f < 0.85)
+            or (at == "under" and ed[i] and f > 0.3)
+            or at == "edge"
             or (at == "upper" and f < 0.7)
             or (at == "lower" and f > 0.45)
             or (at == "head" and f < 0.25)
@@ -348,6 +355,7 @@ function EnemyStates.update(dt, data, L, dying)
     ST.clock = ST.clock + dt
     if ST.shudderT > 0 then ST.shudderT = ST.shudderT - dt end
     if ST.trembleT > 0 then ST.trembleT = ST.trembleT - dt end
+    if ST.rageT > 0 then ST.rageT = ST.rageT - dt end
     if ST.sweepT >= 0 then
         ST.sweepT = ST.sweepT + dt
         if ST.sweepT > 0.6 then ST.sweepT = -1 end
@@ -396,9 +404,38 @@ function EnemyStates.update(dt, data, L, dying)
             ST.burstT = ST.burstT - dt
             if ST.burstT <= 0 then
                 ST.burstT = src.every * (0.7 + 0.6 * R())
-                for _ = 1, src.burst do
-                    L.spawnRaw(e.kind, B.headX + (R() - 0.5) * 6, B.headY + R() * 2, src.c)
+                ST.rageT = 0.32
+                for m = 1, src.burst do
+                    local side = (m % 2 == 0) and 1 or -1
+                    L.spawnRaw(e.kind, B.headX + side * (1 + R() * 4), B.headY + R() * 3, src.c,
+                        side * (5 + R() * 9), -(7 + R() * 7))
                 end
+            end
+        elseif src.stars then
+            local have = L.countKind(e.kind)
+            for m = have + 1, src.stars do
+                L.spawnRaw(e.kind, B.headX, B.top + 1, src.c, 0, 0, 1e9, (m - 1) * 2.0944)
+            end
+        elseif e.kind == K_ABSORB then
+            e.acc = e.acc + dt * src.rate * k
+            while e.acc >= 1 do
+                e.acc = e.acc - 1
+                local x, y = pickPoint("under", R)
+                local side = (x < B.cx) and -1 or 1
+                local sx = x + side * (2 + R() * 5)
+                local sy = y + 4 + R() * 6
+                local vy = -(14 + R() * 8)
+                local life = 0.9 + R() * 0.5
+                L.spawnRaw(e.kind, sx, sy, src.c, -side * (3 + R() * 3), vy, life)
+            end
+        elseif src.sweat then
+            e.acc = e.acc + dt * src.rate * k
+            while e.acc >= 1 do
+                e.acc = e.acc - 1
+                local side = (R() < 0.5) and -1 or 1
+                local hw = math.max(3, (B.baseR - B.baseL) * 0.12)
+                L.spawnRaw(e.kind, B.headX + side * hw * (0.6 + R() * 0.6), B.headY + 2 + R() * 4, src.c,
+                    side * (6 + R() * 8), -(10 + R() * 8))
             end
         else
             e.acc = e.acc + dt * src.rate * k
@@ -423,5 +460,86 @@ function EnemyStates.loopFor(data, warm)
 end
 
 function EnemyStates.eyes() return B.eyes, B.nEyes end
+
+local SH = { ok = nil, sh = nil, quads = {}, l1 = { 0, 0, 0, 0 }, l2 = { 0, 0, 0, 0 },
+             size = { 1, 1 }, rows = { 0, 1 }, grade = { 1, 1, 1 } }
+EnemyStates.PAD = 10
+EnemyStates._SH = SH
+
+function EnemyStates.shader()
+    if SH.ok == nil then
+        local ok, sh = pcall(love.graphics.newShader, "shaders/enemy_states.glsl")
+        SH.ok = ok and true or false
+        SH.sh = ok and sh or nil
+        if not ok then require("src.core.Debug").warn("[EnemyStates] shader de estados nao compilou: " .. tostring(sh)) end
+    end
+    return SH.sh
+end
+
+function EnemyStates.shaderLevels()
+    local k = ST.k
+    return k.poison, k.burn, k.weak, k.vulnerable, k.strength, k.enraged, k.regen, k.block, k.veil
+end
+
+local function quadFor(w, h)
+    local key = w * 8192 + h
+    local q = SH.quads[key]
+    if not q then
+        local P = EnemyStates.PAD
+        q = love.graphics.newQuad(-P, -P, w + 2 * P, h + 2 * P, w, h)
+        SH.quads[key] = q
+    end
+    return q
+end
+
+function EnemyStates.drawBody(img, x, y, scale, r, g, b, a, grade)
+    if not img or not EnemyStates.any() then return false end
+    local sh = EnemyStates.shader()
+    if not sh then return false end
+    local w, h = img:getDimensions()
+    local k = ST.k
+    SH.l1[1], SH.l1[2], SH.l1[3], SH.l1[4] = k.poison, k.burn, k.weak, k.vulnerable
+    SH.l2[1], SH.l2[2], SH.l2[3], SH.l2[4] = k.strength, k.enraged, k.regen, k.block
+    SH.size[1], SH.size[2] = w, h
+    if B.id and B.w == w and B.h == h then
+        SH.rows[1], SH.rows[2] = B.top, B.baseY
+    else
+        SH.rows[1], SH.rows[2] = 0, h - 1
+    end
+    if grade then SH.grade[1], SH.grade[2], SH.grade[3] = grade[1], grade[2], grade[3]
+    else SH.grade[1], SH.grade[2], SH.grade[3] = 1, 1, 1 end
+    sh:send("texSize", SH.size)
+    sh:send("time", ST.clock)
+    sh:send("L1", SH.l1)
+    sh:send("L2", SH.l2)
+    sh:send("veilK", k.veil)
+    sh:send("grade", SH.grade)
+    sh:send("rows", SH.rows)
+    sh:send("flick", (ST.trembleT > 0 and k.vulnerable > 0) and 1 or 0)
+    sh:send("seed", ((B.w * 7 + B.h * 13) % 29) * 0.37)
+    local prev = love.graphics.getShader()
+    love.graphics.setShader(sh)
+    love.graphics.setColor(r, g, b, a)
+    local P = EnemyStates.PAD
+    love.graphics.draw(img, quadFor(w, h), math.floor(x) - P * scale, math.floor(y) - P * scale, 0, scale, scale)
+    love.graphics.setShader(prev)
+    love.graphics.setColor(1, 1, 1, 1)
+    return true
+end
+
+local FIRE = { x = 0, y = 0, radius = 100, color = { 1.0, 0.52, 0.18 }, intensity = 0.6, flicker = "fire",
+               seed = 7, z = 0, dither = false }
+EnemyStates._fire = FIRE
+
+function EnemyStates.submitLight(LE, x, y, w, z)
+    local k = ST.k.burn
+    if k <= 0 or not LE or not LE.submit then return false end
+    FIRE.x, FIRE.y = x, y
+    FIRE.radius = math.max(40, w * 0.85)
+    FIRE.intensity = 0.55 * k
+    FIRE.z = z
+    LE.submit(FIRE)
+    return true
+end
 
 return EnemyStates

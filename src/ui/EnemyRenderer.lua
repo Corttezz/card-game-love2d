@@ -809,18 +809,6 @@ end
 
 EnemyRenderer.SHADOW_LEN = 0.75
 
-function EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA)
-    local P = math.max(1, math.floor(scale + 0.5))
-    local a = 0.26 * (sceneShadowA or 1)
-    local yBase = math.floor(shY - P)
-    for i, k in ipairs({ 0.62, 1.0, 0.80 }) do
-        local wk = math.floor(footW * 1.06 * k / P + 0.5) * P
-        love.graphics.setColor(0, 0, 0, a * ((i == 2) and 1 or 0.7))
-        love.graphics.rectangle("fill", math.floor(footCx - wk / 2),
-            yBase + (i - 1) * P - P, wk, P)
-    end
-end
-
 EnemyRenderer.RIM = { max = 0, lumaHi = 0.85, lumaLo = 0.40, lift = 1.35 }
 EnemyRenderer._rimColor = { 0, 0, 0 }
 
@@ -867,13 +855,6 @@ function EnemyRenderer.drawRim(drawAt, cx, scale)
     love.graphics.setBlendMode(bm, am)
     love.graphics.setColor(1, 1, 1, 1)
     return true
-end
-
-function EnemyRenderer.contactK(floating, animName, sinkK)
-    if not floating then return 1 end
-    if animName ~= "death" then return 0 end
-    local k = math.max(0, math.min(1, sinkK or 0))
-    return k * k
 end
 
 function EnemyRenderer.shadowProfile(pose, animName, frameH, idleH)
@@ -1069,7 +1050,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         if not idleH or idleH <= 0 then idleH = idleM.h - idleM.pad end
         local pBaseK, pRiseK, pLenK = EnemyRenderer.shadowProfile(
             pose, currentAnimName, frameH, idleH)
-        local drawn = ShadowEngine.silhouette(shX, shY,
+        ShadowEngine.silhouette(shX, shY,
             { smear = iw * scale * 0.035 * smearK,
               widthK = shK,
               lenK = shK * pLenK * EnemyRenderer.SHADOW_LEN,
@@ -1089,35 +1070,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                     end
                 end
             end)
-        local footW, footCx = nil, nil
-        local fL, fR = curM.footL, curM.footR
-        local ff = currentAnimName == "death" and curM.frameFeet and curM.frameFeet[frameIdx]
-        if ff then fL, fR = ff[1], ff[2] end
-        if fL and fR then
-            footW = (fR - fL + 1) * scale
-            footCx = cx + ((fL + fR + 1) / 2 - curM.w / 2) * scale
-                + jitter * 0.5 + gdx
-        end
-        local contactK = EnemyRenderer.contactK(floating, currentAnimName, poseSink)
-        if drawn and footW and contactK > 0 then
-            EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA * contactK)
-        end
-        if not drawn then
-            local baseW = footW or (((curM.cw > 0) and curM.cw or iw) * scale)
-            shX = (footCx or (bodyCx + jitter * 0.5 + gdx)) + shDX
-            local rx = baseW * 0.46 * shK
-            local ry = math.max(3, baseW * 0.060 * shK)
-            local a = 0.30 * shA * sceneShadowA
-            if floating then
-                love.graphics.setColor(0, 0, 0, a * 0.5)
-                love.graphics.ellipse("fill", shX, shY, rx * 1.45, ry * 1.45)
-                love.graphics.setColor(0, 0, 0, a * 0.7)
-                love.graphics.ellipse("fill", shX, shY, rx, ry)
-            else
-                love.graphics.setColor(0, 0, 0, a)
-                love.graphics.ellipse("fill", shX, shY, rx, ry)
-            end
-        end
     end
 
     if #dust > 0 then
@@ -1204,7 +1156,10 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     love.graphics.setColor(tintR, tintG, tintB, bodyA)
 
     if hasAnim then
-        currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, bodyA })
+        if not EnemyLife.States.drawBody(currentAnim.frames[currentAnim.currentFrame], drawX, drawY, scale,
+            tintR, tintG, tintB, bodyA, gradeC) then
+            currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, bodyA })
+        end
     else
         local sprites = loadStatic(id)
         local staticImg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
@@ -1214,19 +1169,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
 
     if hasAnim and bodyA >= 1 then
-        local ck = EnemyLife.charK(t)
-        if ck > 0 then
-            local sx0, sy0, sw0, sh0 = love.graphics.getScissor()
-            local cH = curM.frameHeights and curM.frameHeights[frameIdx]
-            if not cH or cH <= 0 then cH = ih - footPad end
-            local yTop = drawY + (ih - footPad - cH * 0.40) * scale
-            local qx, qy = love.graphics.transformPoint(drawX - 4, yTop)
-            local qx2, qy2 = love.graphics.transformPoint(drawX + iw * scale + 4, drawY + ih * scale + 4)
-            love.graphics.intersectScissor(math.floor(qx), math.floor(qy),
-                math.max(1, math.floor(qx2 - qx)), math.max(1, math.floor(qy2 - qy)))
-            currentAnim:draw(drawX, drawY, scale, { 0.14, 0.08, 0.04, 0.58 * ck })
-            if sx0 then love.graphics.setScissor(sx0, sy0, sw0, sh0) else love.graphics.setScissor() end
-        end
         local ep = EnemyLife.eyePulse(t)
         if ep > 0 then
             local eyes, ne = EnemyLife.States.eyes()
@@ -1368,6 +1310,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     if currentAnimName ~= "death" then
         local exT, eyT = love.graphics.transformPoint(drawX, drawY)
         submitEmissives(id, exT, eyT, iw, ih, scale, 9)
+        if not reducedMotion() then
+            EnemyLife.States.submitLight(LightEngine, exT + iw * scale * 0.5, eyT + (ih - footPad) * scale * 0.78,
+                ((curM.cw > 0) and curM.cw or iw) * scale,
+                (((package.loaded["src.ui.WorldRoad"] or {}).BATTLE_REL) or 9) + 5)
+        end
     end
 
     do

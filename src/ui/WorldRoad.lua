@@ -5133,18 +5133,13 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     local dy0 = sy - e.ih * s + footY - lift
     if WorldRoad._traceEnemy then WorldRoad._traceEnemy(dx0, dy0, "encounter", lat, s) end
     if e.anim then
-        local drawn = ShadowEngine.silhouette(shX, sy - 1 + lift * 0.16, { smear = e.iw * s * 0.035 * (es.smearK or 1),
+        ShadowEngine.silhouette(shX, sy - 1 + lift * 0.16, { smear = e.iw * s * 0.035 * (es.smearK or 1),
                 widthK = es.widthK, lenK = es.lenK, alphaK = (es.alphaK or 1) * pz.shadowA,
                 baseK = e.shadowBaseK, riseK = e.shadowRiseK,
                 contentH = (e.contentH or (e.ih - pad)) * s },
             function(tint)
                 e.anim:draw(-(e.iw * s) / 2, -(e.ih * s) + footY, s, tint)
             end)
-        if drawn and es.footL and es.footR and not es.floating then
-            require("src.ui.EnemyRenderer").drawFootContact(
-                cx + ((es.footL + es.footR + 1) / 2 - es.mw / 2) * s,
-                (es.footR - es.footL + 1) * s, sy - 1, s, 1)
-        end
     else
         ShadowEngine.sprite(e.img, cx, sy - 1, s,
             { alphaK = 0.9, footPad = e.footPad,

@@ -529,13 +529,8 @@ function GameplayScene.draw()
 
         local tetoY = math.floor(handTopReal - ENEMY_HAND_CLEARANCE * uiK)
         if enemyCy > tetoY then enemyCy = tetoY end
-        local InteriorDepth = interiorHall and require("src.ui.InteriorDepth")
         local cineHidden = BossCinematic.hidesBoss()
         if interiorHall then GameplayScene.hallShadowFrame(anchor, width) end
-        if InteriorDepth and not cineHidden then
-            InteriorDepth.drawContact(interiorHall, game.enemy and game.enemy.spriteId,
-                enemyCx, enemyCy, BossCinematic.bossAlpha())
-        end
         local deathCy = nil
         if anchor.deathYr then
             local _, dy = SceneAnchors.groundAnchor(sceneKey, width, sceneH,
@@ -561,7 +556,6 @@ function GameplayScene.draw()
         else
             enemyBbox = drawEnemy()
         end
-        if InteriorDepth then InteriorDepth.noteBbox(enemyBbox) end
         if interiorHall then
             BossCinematic.setStage({
                 cx = enemyCx, cy = enemyCy, bbox = enemyBbox or nil,
@@ -830,7 +824,6 @@ function GameplayScene.update(dt)
             require("src.systems.MusicReact").reset()
             if isInt then
                 InteriorFX.clear()
-                require("src.ui.InteriorDepth").reset()
             end
         end
         lastInterior = isInt

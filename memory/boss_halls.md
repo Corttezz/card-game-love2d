@@ -62,10 +62,9 @@ type: project
   chefe ocupava ~27% da altura em 1080p. Hoje 1080p = 1.3x (comparação lado a
   lado 1.0/1.2/1.35), 1440p/4K mantêm a mesma proporção da sala, 1024x768 e
   1366x768 intactos. A estrada usa `WorldRoad.enemyScreenK` (outra regra).
-- `src/ui/InteriorDepth.lua`: poça de oclusão em degraus na grade da arte sob
-  os pés de quem APOIA (desenhada antes do chefe; largura do bbox do quadro
-  anterior), mais longa pra frente quando a luz vem do fundo. Em piso escuro
-  (hall 3/5) quase não aparece — fisicamente certo; o contato ali vem da laje.
+- `src/ui/InteriorDepth.lua` (poça de contato sob o chefe) foi REMOVIDO em
+  24/Out/2026 a pedido do dono: sob o monstro fica só a silhueta projetada do
+  `ShadowEngine` (ver `memory/enemy_pose_and_scene_anchor.md`).
 
 ## Sala 5, round 3
 - As "poças" pintadas no chão (traços horizontais claros perto dos cantos da
