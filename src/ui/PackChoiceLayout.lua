@@ -7,6 +7,7 @@ PackChoiceLayout.ACTION_H = 52
 PackChoiceLayout.MARGIN   = 14
 PackChoiceLayout.GAP_MIN  = 10
 PackChoiceLayout.GAP_MAX  = 34
+PackChoiceLayout.LIFT_RESERVE = 30
 
 PackChoiceLayout.CARD_SCALE_BASE = 1.90
 PackChoiceLayout.CARD_SCALE_CAP  = 2.80
@@ -15,7 +16,7 @@ PackChoiceLayout.CARD_SPACING   = 0.34
 
 local function fixedHeight()
     local L = PackChoiceLayout
-    return L.HEADER_H + L.TAG_H + L.DETAIL_H + L.ACTION_H
+    return L.HEADER_H + L.LIFT_RESERVE + L.TAG_H + L.DETAIL_H + L.ACTION_H
 end
 
 function PackChoiceLayout.cardScale(n, imgW, imgH, sw, sh)
@@ -53,7 +54,7 @@ function PackChoiceLayout.compute(n, imgW, imgH, sw, sh, topInset)
     local y = math.floor(topPad) + topInset
 
     local header = { x = bandX, y = y, w = bandW, h = L.HEADER_H }
-    y = y + L.HEADER_H + gapI
+    y = y + L.HEADER_H + gapI + L.LIFT_RESERVE
 
     local cards = { x = 0, y = y, w = sw, h = cardHi }
     y = y + cardHi
@@ -74,6 +75,7 @@ function PackChoiceLayout.compute(n, imgW, imgH, sw, sh, topInset)
         detail = detail, action = action,
         cardScale = scale, cardW = cardW, cardH = cardH,
         spacing = spacing,
+        liftRoom = gapI + L.LIFT_RESERVE,
         rowStartX = (sw - totalW) * 0.5,
     }
 end
