@@ -27,6 +27,7 @@ local SUITES = {
     { group = "unit",  name = "test_card_top_frame" },
     { group = "unit",  name = "test_tooltip_order" },
     { group = "unit",  name = "test_pack_choice_layout" },
+    { group = "unit",  name = "test_pack_open_beats" },
     { group = "unit",  name = "test_collection_hover" },
     { group = "unit",  name = "test_reward_tooltip" },
     { group = "unit",  name = "test_reward_jokers" },
