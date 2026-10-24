@@ -92,16 +92,19 @@ uma linha preta reta do torso ao pe" (era o sprite redesenhado escuro sob scisso
   cabeca, 3 estrelinhas tontas orbitando a cabeca (passam atras/na frente pela fase).
 - vulnerable: pulso violeta (mistura + aditivo), rachaduras em zigue-zague perto da borda que brilham em
   sequencia e acendem todas no tremor (guarda quebrada), brilhos lilas na borda.
-- strength: tom dourado e onda de forca subindo com frente ondulada (ruido), borda acende so quando a onda
-  passa, lambidas douradas de 1-3 texels acima da borda na onda, faiscas douradas com rastro de 2 px.
-- enraged: vermelho em batimento duplo (+ aditivo), olhos pulsando, rajadas de 10 baforadas de vapor
+- strength (revisto pelo lead): pulso quente vermelho-alaranjado CONSTANTE no corpo (4,2 rad/s), borda de 1 px
+  de arte (dentro do sprite) acendendo a cada pulso, onda dourada ondulada subindo por cima, lambidas de 1-3
+  texels acima da borda na onda, faiscas continuas das bordas de cima (ombros, bracos) com rastro de 2 px.
+- enraged: vermelho em batimento duplo com teto (o pico nao vira flash de dano), olhos pulsando, rajadas de 10 baforadas de vapor
   (1->2x2->cruz 3x3) com tremedeira de 0,3 s em cada rajada, idle 1,3x.
-- regen: onda verde-menta sobe pelo corpo (frente por ruido), centelhas no corpo, cruzes verdes nascem fora
-  do contorno e voam para dentro (`absorb`).
-- block: tom de aco frio, faixa de reflexo diagonal varrendo a cada 1,7 s (clara na frente, escura atras,
-  pela luminancia do pixel), borda brilha na faixa, brilhos de aco ocasionais.
-- veil: corpo translucido que respira (alfa 0,66-0,94), lavado frio, faixas de nevoa inclinadas atravessando o
-  corpo e em volta (ate 6 texels), nevoa nos pes.
+- regen: onda verde-menta sobe pelo corpo (frente por ruido), centelhas no corpo, cruzes verdes nascem
+  abaixo das bordas de baixo e SOBEM para dentro do corpo (`absorb`), para nao ler como veneno.
+- block (revisto pelo lead): SEM dessaturar e sem escurecer (so `max(c, ...)`: emissivo da criatura, como o
+  fogo do diabrete, fica intacto); faixa de reflexo aco-azulada diagonal a cada 1,5 s, contorno de aco de
+  1 px de arte nas bordas DENTRO do sprite, brilhos brancos piscando em pixels de borda.
+- veil (revisto pelo lead: as manchas cinza liam como sujeira): transparencia em dither ordenado que corre em
+  faixas diagonais pelo corpo (no maximo metade dos pixels some no pico da faixa, a criatura segue nitida),
+  lavado frio leve, fiapos de nevoa finos (1-2 texels da borda, poucos), nevoa baixa nos pes.
 - reducedMotion: o relogio do estado para (`ST.clock` so anda no update) e o shader fica num quadro fixo:
   tinta, chamas, bolhas e rachaduras paradas continuam informando; sem particula, tremida e ritmo.
 - Provas: `lovec . test_one screenshot_estados` (env `ESTADOS_IDS`, `ESTADOS_LIST`, `ESTADOS_TAG`,
@@ -121,7 +124,7 @@ uma linha preta reta do torso ao pe" (era o sprite redesenhado escuro sob scisso
   ficam (informacao), sem particula, sem tremida e sem mudar o ritmo.
 - Trava (`test_enemy_life`, `checkStatePixels`): shader compila; em 6 criaturas cada estado muda >= 4% do
   corpo contra o mesmo quadro sem estado; nenhuma faixa reta (fração alterada em janelas de 4 linhas acima e
-  abaixo nao salta mais que 0,55; o detector pega a faixa queimada antiga com salto 1,0); `drawBody` sem
+  abaixo nao salta mais que 0,65; o detector pega a faixa queimada antiga com salto 1,0; bordas que seguem o sprite chegam a ~0,55); `drawBody` sem
   alocacao.
 
 ## Ferramentas

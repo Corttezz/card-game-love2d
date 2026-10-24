@@ -84,18 +84,15 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
             }
         }
         if (veilK > 0.0) {
-            float nb = 0.0;
-            for (int i = 2; i <= 6; i += 2) {
-                float fi = float(i);
-                nb = max(nb, alphaAt(tex, tc + vec2(fi, 0.0)));
-                nb = max(nb, alphaAt(tex, tc + vec2(-fi, 0.0)));
-                nb = max(nb, alphaAt(tex, tc + vec2(0.0, fi)));
-            }
-            if (nb > 0.5) {
-                float nf = vnoise(tc * 0.22 + vec2(t * 0.6, -t * 0.25) + seed);
-                float ns = vnoise(vec2(tc.x * 0.09 + tc.y * 0.06 + t * 0.5, tc.y * 0.20 - tc.x * 0.03 - t * 0.1) + seed);
-                if (ns > 0.66 - 0.06 * veilK && nf > 0.35) {
-                    return vec4(vec3(0.80, 0.84, 0.94) * grade, 0.42 * veilK * color.a);
+            float n1 = max(max(alphaAt(tex, tc + vec2(1.0, 0.0)), alphaAt(tex, tc + vec2(-1.0, 0.0))),
+                           max(alphaAt(tex, tc + vec2(0.0, 1.0)), alphaAt(tex, tc + vec2(0.0, -1.0))));
+            float n2 = max(max(alphaAt(tex, tc + vec2(2.0, 0.0)), alphaAt(tex, tc + vec2(-2.0, 0.0))),
+                           alphaAt(tex, tc + vec2(0.0, 2.0)));
+            if (n1 > 0.5 || n2 > 0.5) {
+                float w = sin(tc.x * 0.35 + tc.y * 0.22 - t * 2.0 + vnoise(tc * 0.15 + seed) * 4.0);
+                float sel = h21(floor(tc / 6.0) + seed + 51.0);
+                if (sel < 0.30 && w > 0.82 && (n1 > 0.5 || w > 0.93)) {
+                    return vec4(vec3(0.88, 0.91, 0.98) * gk, 0.70 * veilK * color.a);
                 }
             }
         }
@@ -204,15 +201,18 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
         float wob = (vnoise(tc * 0.22 + seed) - 0.5) * 0.34 + (vnoise(tc * 0.6 + 4.0) - 0.5) * 0.10;
         float sb = max(0.0, 1.0 - abs(yn + wob - spos) / 0.11);
         sb = floor(sb * 3.0 + 0.5) / 3.0 * (0.45 + 0.9 * l);
-        c = mix(c, c * vec3(1.22, 1.04, 0.78) + vec3(0.05, 0.03, 0.0), kS * 0.40);
-        c += vec3(0.50, 0.38, 0.08) * kS * min(1.0, sb);
-        if (edge1 && sb > 0.0) c = mix(c, vec3(1.0, 0.92, 0.55), kS * min(1.0, sb * 1.4));
+        float pw = 0.5 + 0.5 * sin(t * 4.2);
+        vec3 warm = vec3(l * 1.45 + 0.10, l * 0.62 + 0.02, l * 0.30);
+        c = mix(c, warm, kS * (0.34 + 0.18 * pw));
+        c += vec3(0.14, 0.04, 0.0) * kS * (0.5 + 0.5 * pw);
+        c += vec3(0.40, 0.22, 0.04) * kS * min(1.0, sb);
+        if (edge1) c = mix(c, vec3(1.0, 0.62 + 0.18 * pw, 0.26), kS * (0.40 + 0.45 * pw));
     }
 
     if (kE > 0.0) {
         float hbt = pow(max(0.0, sin(t * 6.0)), 8.0) + 0.6 * pow(max(0.0, sin(t * 6.0 - 0.8)), 8.0);
-        c = mix(c, vec3(l * 1.70 + 0.14, l * 0.22, l * 0.16), kE * (0.36 + 0.40 * hbt));
-        c += vec3(0.16, 0.0, 0.0) * kE * hbt;
+        c = mix(c, vec3(l * 1.55 + 0.10, l * 0.30, l * 0.24), kE * (0.32 + 0.20 * hbt));
+        c += vec3(0.07, 0.0, 0.0) * kE * hbt;
     }
 
     if (kR > 0.0) {
@@ -225,25 +225,29 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
     }
 
     if (kK > 0.0) {
-        c = mix(c, vec3(l * 0.78, l * 0.88, l * 1.04) + vec3(0.04, 0.05, 0.08), 0.55 * kK);
-        float ph = fract(t / 1.7) * 1.7 - 0.35;
+        float ph = fract(t / 1.5) * 1.7 - 0.35;
         float dd = (tc.x + (texSize.y - tc.y) * 0.55) / (texSize.x + texSize.y * 0.55) - ph
             + (vnoise(tc * 0.3 + seed) - 0.5) * 0.03;
-        float shine = 0.35 + 0.9 * l;
-        if (abs(dd) < 0.018) c = mix(c, vec3(0.96, 0.99, 1.0), 0.60 * kK * shine);
-        else if (dd > 0.0 && dd < 0.05) c = mix(c, vec3(0.72, 0.84, 1.0), 0.35 * kK * shine);
-        else if (dd < 0.0 && dd > -0.06) c = mix(c, vec3(0.30, 0.37, 0.50) * (0.5 + l), 0.45 * kK);
-        if (edge1 && abs(dd) < 0.07) c = mix(c, vec3(1.0), 0.6 * kK);
+        if (abs(dd) < 0.020) c = max(c, mix(c, vec3(0.92, 0.97, 1.0), 0.75 * kK));
+        else if (abs(dd) < 0.07) c = max(c, mix(c, vec3(0.60, 0.78, 1.0), 0.45 * kK));
+        else if (abs(dd) < 0.13) c = max(c, mix(c, vec3(0.50, 0.66, 0.92), 0.20 * kK));
+        if (edge1) {
+            c = max(c, mix(c, vec3(0.62, 0.76, 0.96), 0.45 * kK));
+            float gl = h21(tc + seed + 31.0);
+            if (gl > 0.86 && fract(t * 0.9 + gl * 7.0) < 0.12) c = vec3(1.0, 1.0, 1.0);
+        }
     }
 
     if (veilK > 0.0) {
-        float nv = vnoise(tc * 0.12 + vec2(t * 0.35, -t * 0.2) + seed);
-        c = mix(c, vec3(l) * vec3(0.86, 0.90, 1.06) + 0.10, 0.40 * veilK);
-        float ns = vnoise(vec2(tc.x * 0.09 + tc.y * 0.06 + t * 0.5, tc.y * 0.20 - tc.x * 0.03 - t * 0.1) + seed);
-        float fs = floor(smoothstep(0.52, 0.80, ns) * 3.0 + 0.5) / 3.0;
-        c = mix(c, vec3(0.82, 0.86, 0.96) * grade, 0.55 * veilK * fs);
-        float va = 1.0 - veilK * (0.20 + 0.14 * sin(t * 2.3 + nv * 4.0));
-        return vec4(c, color.a * va);
+        float nv = vnoise(tc * 0.10 + vec2(t * 0.3, -t * 0.2) + seed);
+        float band = 0.5 + 0.5 * sin(tc.y * 0.42 + tc.x * 0.16 - t * 2.4 + nv * 2.5);
+        band = band * band;
+        vec2 bq = floor(tc);
+        float bay = fract(dot(bq, vec2(0.5, bq.y * 0.75)));
+        bay = fract(dot(floor(bq * 0.5), vec2(0.5, floor(bq.y * 0.5) * 0.75))) * 0.25 + bay;
+        if (bay < veilK * 0.50 * band) return vec4(0.0);
+        c = mix(c, vec3(l) * vec3(0.90, 0.94, 1.08) + 0.06, 0.25 * veilK);
+        c += vec3(0.05, 0.06, 0.09) * veilK * band;
     }
 
     return vec4(c, color.a);

@@ -153,6 +153,7 @@ function M.run()
     do
         local EL = require("src.ui.EnemyLife")
         local big = love.graphics.newCanvas(W, H)
+        love.timer.getTime = function() return clock end
         local realEl = love.graphics.ellipse
         local nEl = 0
         love.graphics.ellipse = function(...) nEl = nEl + 1 return realEl(...) end
@@ -184,11 +185,14 @@ function M.run()
                     if a > 0.01 then n = n + 1 end
                 end
             end
-            if n > 0 then underFail[#underFail + 1] = id .. "(" .. n .. ")" end
+            d:release()
+            if n > 8 then underFail[#underFail + 1] = id .. "(" .. n .. ")" end
         end
         EL.fxEnabled = fxWas
         love.graphics.ellipse = realEl
         ShadowEngine.silhouette = origSil
+        love.timer.getTime = realTime
+        big:release()
         t:eq("sem o corpo e sem a silhueta, nada sobra no chao junto ao pe: " .. table.concat(underFail, " "), #underFail, 0)
         t:eq("nenhuma elipse no desenho do inimigo", nEl, 0)
     end

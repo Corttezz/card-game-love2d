@@ -30,12 +30,12 @@ EnemyStates.GEN = {
     weak       = { { k = K_STAR, rate = 0, stars = 3, at = "head" },
                    { k = K_SWEAT, rate = 1.6, at = "head", sweat = true } },
     vulnerable = { { k = K_GLINT, rate = 2.4, at = "edge", c = { 0.92, 0.74, 1.0 } } },
-    strength   = { { k = K_SPARK, rate = 12.0, at = "top" } },
+    strength   = { { k = K_SPARK, rate = 20.0, at = "top" } },
     enraged    = { { k = K_STEAM, rate = 0, burst = 10, every = 1.0, at = "head" } },
     regen      = { { k = K_ABSORB, rate = 9.0, at = "edge" } },
     block      = { { k = K_GLINT, rate = 0, sweep = true, at = "edge", c = { 0.90, 0.95, 1.0 } },
                    { k = K_GLINT, rate = 0.9, at = "edge", c = { 0.86, 0.93, 1.0 } } },
-    veil       = { { k = K_MIST, rate = 3.2, at = "base", back = true } },
+    veil       = { { k = K_MIST, rate = 1.2, at = "base", back = true } },
 }
 
 local NB = 256
@@ -420,13 +420,13 @@ function EnemyStates.update(dt, data, L, dying)
             e.acc = e.acc + dt * src.rate * k
             while e.acc >= 1 do
                 e.acc = e.acc - 1
-                local x, y = pickPoint("edge", R)
-                local nx, ny = x - B.cx, y - B.cy
-                local nl = math.max(0.5, math.sqrt(nx * nx + ny * ny))
-                nx, ny = nx / nl, ny / nl
-                local dist = 6 + R() * 8
-                local sp = 9 + R() * 6
-                L.spawnRaw(e.kind, x + nx * dist, y + ny * dist, src.c, -nx * sp, -ny * sp, dist / sp)
+                local x, y = pickPoint("under", R)
+                local side = (x < B.cx) and -1 or 1
+                local sx = x + side * (2 + R() * 5)
+                local sy = y + 4 + R() * 6
+                local vy = -(14 + R() * 8)
+                local life = 0.9 + R() * 0.5
+                L.spawnRaw(e.kind, sx, sy, src.c, -side * (3 + R() * 3), vy, life)
             end
         elseif src.sweat then
             e.acc = e.acc + dt * src.rate * k
