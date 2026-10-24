@@ -186,6 +186,11 @@ function M.capture(act, plan, opts)
         local vis = h or 0
         if hideBelow then vis = math.max(0, math.min(h or 0, hideBelow - (y - (h or 0)))) end
         cur[key] = { x = x, y = y, w = w or 0, h = h or 0, a = a or 1, kind = kind, vis = vis, sub = sub }
+        local watch = os.getenv("SEQ_KEY")
+        if watch and key:find(watch, 1, true) then
+            print(string.format("WATCH f%d %s x=%.1f y=%.1f h=%.1f a=%.2f vis=%.1f rel=%.2f", log.curFrame or 0, key, x, y,
+                h or 0, a or 1, vis, type(ref) == "table" and (ref.z or 0) - WorldRoad._camZ or 0))
+        end
     end
 
     local SW, SH = Ctx.SW, Ctx.SH
