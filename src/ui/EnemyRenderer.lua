@@ -1038,13 +1038,15 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         if not idleH or idleH <= 0 then idleH = idleM.h - idleM.pad end
         local pBaseK, pRiseK, pLenK = EnemyRenderer.shadowProfile(
             pose, currentAnimName, frameH, idleH)
-        local drawn = ShadowEngine.silhouette(shX, shY,
+        local contactK = EnemyRenderer.contactK(floating, currentAnimName, poseSink)
+        local drawn = floating and contactK <= 0
+        if not drawn then drawn = ShadowEngine.silhouette(shX, shY,
             { smear = iw * scale * 0.035 * smearK,
               widthK = shK,
               lenK = shK * pLenK * EnemyRenderer.SHADOW_LEN,
               baseK = pBaseK, riseK = pRiseK,
               contentH = frameH * scale,
-              alphaK = shA * sceneShadowA },
+              alphaK = shA * sceneShadowA * (floating and contactK or 1) },
             function(tint)
                 if hasAnim then
                     currentAnim:draw(sx0, sy0, scale, tint)
@@ -1057,7 +1059,25 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                             scale, scale)
                     end
                 end
-            end)
+            end) end
+        if floating then
+            local fimg
+            if hasAnim then fimg = currentAnim.frames and currentAnim.frames[currentAnim.currentFrame]
+            else
+                local sprites = loadStatic(id)
+                fimg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
+            end
+            local lift = -hoverY - atkDY
+            require("src.ui.FloatShadow").draw(fimg, {
+                x = cx + jitter * 0.5 + gdx + shDX / 0.55 * require("src.ui.FloatShadow").LIGHT_SHIFT,
+                groundY = cy, scale = scale, footPad = footPad, contentH = frameH,
+                contentW = (curM.cw > 0) and curM.cw or nil, contentOff = curM.off,
+                liftK = lift / math.max(1, ih * scale), hover = pose.hover,
+                bob = reducedMotion() and 0 or pose.bob,
+                fade = 1 - contactK, alphaK = sceneShadowA,
+                groundR = opts and opts.groundR, maxY = opts and opts.shadowMaxY,
+            })
+        end
         local footW, footCx = nil, nil
         local fL, fR = curM.footL, curM.footR
         local ff = currentAnimName == "death" and curM.frameFeet and curM.frameFeet[frameIdx]
@@ -1067,7 +1087,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             footCx = cx + ((fL + fR + 1) / 2 - curM.w / 2) * scale
                 + jitter * 0.5 + gdx
         end
-        local contactK = EnemyRenderer.contactK(floating, currentAnimName, poseSink)
         if drawn and footW and contactK > 0 then
             EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA * contactK)
         end
@@ -1077,15 +1096,8 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             local rx = baseW * 0.46 * shK
             local ry = math.max(3, baseW * 0.060 * shK)
             local a = 0.30 * shA * sceneShadowA
-            if floating then
-                love.graphics.setColor(0, 0, 0, a * 0.5)
-                love.graphics.ellipse("fill", shX, shY, rx * 1.45, ry * 1.45)
-                love.graphics.setColor(0, 0, 0, a * 0.7)
-                love.graphics.ellipse("fill", shX, shY, rx, ry)
-            else
-                love.graphics.setColor(0, 0, 0, a)
-                love.graphics.ellipse("fill", shX, shY, rx, ry)
-            end
+            love.graphics.setColor(0, 0, 0, a)
+            love.graphics.ellipse("fill", shX, shY, rx, ry)
         end
     end
 
@@ -1443,6 +1455,8 @@ function EnemyRenderer.getEncounterBillboard(enemy)
         shadowBaseK = EnemyPoses.get(enemy.spriteId).shadowBaseK,
         shadowRiseK = EnemyPoses.get(enemy.spriteId).shadowRiseK,
         contentH = clipMetrics(enemy.spriteId, "idle").frameHeights[1],
+        contentW = clipMetrics(enemy.spriteId, "idle").cw,
+        contentOff = clipMetrics(enemy.spriteId, "idle").off,
         shadow = EnemyRenderer.idleShadow(enemy.spriteId),
     }
 end

@@ -61,6 +61,7 @@ local SUITES = {
     { group = "unit",  name = "test_hand_deal" },
     { group = "unit",  name = "test_enemy_fall" },
     { group = "unit",  name = "test_enemy_shadow_motion" },
+    { group = "unit",  name = "test_floating_shadow" },
     { group = "unit",  name = "test_enemy_clip_identity" },
     { group = "unit",  name = "test_enemy_axis" },
     { group = "unit",  name = "test_castle_gate" },
