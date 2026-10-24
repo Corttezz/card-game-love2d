@@ -3587,7 +3587,8 @@ function LMG.layoutMarks(f)
                 if pass == 2 then strained = true end
                 for j = 1, math.floor(0.84 / F.step) do
                     local k = k0 + (j % 2 == 0 and 1 or -1) * math.floor((j + 1) / 2) * F.step
-                    if math.abs(k) <= 0.42 and (pass == 2 or baseClear(k, f.n)) then
+                    if math.abs(k) <= 0.42 and (d == 0 or k * d >= F.sideMin * 0.5)
+                       and (pass == 2 or baseClear(k, f.n)) then
                         local b = boxAt(i, k, 0)
                         local free = b and not hits(b, 1) and not LMG.uiBlocked(b)
                         if free then

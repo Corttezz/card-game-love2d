@@ -256,6 +256,10 @@ function M.capture(act, plan, opts)
             if not geo or not b then
                 addFlag("opcao", "sem_caixa", "mark" .. i, phase)
             else
+                local d = f.dirs[i]
+                if d ~= 0 and (geo.px - g.cx) * d < 0 then
+                    addFlag("opcao", "lado_trocado", "mark" .. i, string.format("dir %d x=%.0f centro=%.0f", d, geo.px, g.cx))
+                end
                 if b.x1 < 0 or b.x2 > VW or b.y1 < 0 or b.y2 > VH then
                     addFlag("opcao", "fora_da_tela", "mark" .. i, string.format("%.0f,%.0f-%.0f,%.0f", b.x1, b.y1, b.x2, b.y2))
                 end
