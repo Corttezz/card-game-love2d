@@ -4081,6 +4081,7 @@ local function drawRoad(g, x, w, camZ)
                 local du1 = du0 + segW / hs
                 local vx = du0 + st.cu
                 if far and hash(segX * 0.173 + rowId * 7.31) > farK then vx = vx + st.far end
+                if st.glow then vx = vx + RoadSurface.glowK(st.glow, RREL[k]) * tw end
                 local aL, aR = aMul, aMul
                 if band > 0 and segX < bandR then
                     aL = aMul * (segX - sL) / band
@@ -4199,7 +4200,7 @@ local function drawRoad(g, x, w, camZ)
     if qm.n > 0 then
         qm:upload(0, qm.n)
         local prevShader = love.graphics.getShader()
-        love.graphics.setShader(QuadMesh.untexturedShader())
+        love.graphics.setShader(st.glow and tile and RoadSurface.glowShader() or QuadMesh.untexturedShader())
         local rc = Scene.Grade.color("road", 1, LMG.c)
         love.graphics.setColor(rc[1], rc[2], rc[3], 1)
         qm:draw(0, qm.n, tile)

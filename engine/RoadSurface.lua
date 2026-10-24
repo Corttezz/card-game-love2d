@@ -22,6 +22,9 @@ function RoadSurface.get(bid, pal, yieldEvery)
     return cache[bid]
 end
 
+RoadSurface.glowK = RoadTiles.glowK
+RoadSurface.glowShader = RoadTiles.glowShader
+
 function RoadSurface.has(bid) return cache[bid] ~= nil end
 
 function RoadSurface.clear() cache = {} end

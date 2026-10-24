@@ -357,3 +357,17 @@ Lead: o ato 3 da rodada 8 lia como faixa marrom lisa e borrada perto da câmera.
   de fendas acesas fica densa (a perspectiva comprime várias fileiras do tile).
 - Provas: `tools/preview_out/chao_v8/ato3/` (antes = b80f0cc7). `estrada_fluxo 3` e `estrada_seq 3`: 0 sinais;
   encruzilhada 500 dc, bake 1,7 a 2,9 s.
+
+## Rodada 8c (24/Out/2026): brilho do ato 3 some com a distância
+
+A rede de fendas acesas na junção da encruzilhada (meia distância) lia como teia de lava. O tile é o mesmo para
+todas as profundidades, então o corte é por LINHA no desenho:
+- O ato 3 assa 4 blocos (`V.BLOCKS.abyss = 4`): nítido, borrado, nítido CALMO e borrado calmo. O calmo
+  (`CUR.calm`) não tem brasa, halo `HEAT`, pedra/grão em brasa, e só guarda as fendas mais fechadas (`ce < 0,1`),
+  então também afina a rede. Só os texels marcados no 1º passe (`CUR.touch`, buffer `T`) são repintados no 2º:
+  o bake sobe pouco (~1,9 a 2,9 s).
+- `V.GLOW_FADE.abyss = { near 4, far 20, pow 1,6, levels 32 }`, `V.glowK(gf, rel)` dá o nível 0..32 da linha:
+  1 até rel 4, ~0,47 a 0,2 na junção (rel 10 a 14), 0 a partir de rel 20. O nível vai como INTEIRO somado ao u
+  (`vx + nível × tw`); `RoadTiles.glowShader` tira o inteiro, lê o bloco quente e o calmo (+0,5 em u) e mistura.
+  Retângulos sem textura (`uv.x < -2048`) passam direto. Só o bioma com `st.glow` usa esse shader.
+- `estrada_fluxo 3` e `estrada_seq 3`: 0 sinais; encruzilhada do ato 3 em 501 dc.

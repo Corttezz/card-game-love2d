@@ -473,7 +473,11 @@ PAINT.abyss = function(x, y, u, s)
     local hot = vnoise(x, y, 4, 22, s + 29)
     local wid = 0.014 + h2(floor(ce * 977), 1, s) * 0.016
     local crack = ce < 0.22 + open * 0.35 and open > 0.32
+    if crack and cd < wid * 8.2 then CUR.touch = true end
     local lava = crack and hot > 0.47 and ce < 0.38
+    if CUR.calm then
+        crack, lava = crack and ce < 0.1, false
+    end
     if lava then wid = wid * 1.35 end
     if crack and cd < wid then
         local depth = 1 - cd / wid
@@ -493,7 +497,10 @@ PAINT.abyss = function(x, y, u, s)
     local big, bv, bc, bd, bsi = stone(x, y, 15, 0.3 * (1 - rk) * (0.45 + sho + (1 - worn) * 0.5), 1.7, 3.0,
         s + 71, acceptF)
     if big then
-        if bv > 0.55 and bc.tone < 0.06 then return EMBER, big, 0.18 + (bv - 0.55) * 1.4 end
+        if bv > 0.55 and bc.tone < 0.06 then
+            CUR.touch = true
+            if not CUR.calm then return EMBER, big, 0.18 + (bv - 0.55) * 1.4 end
+        end
         return scoriaOr(bc, s + 72, SCORIA, SOOT), big, rim(bv * 0.9 + 0.04, bd, bsi)
     end
     local cdn = (1 - rk * 0.85) * (0.35 + sho * 0.8 + (1 - worn) * 0.45)
@@ -513,7 +520,10 @@ PAINT.abyss = function(x, y, u, s)
         return HEAT, h, 0.08 + heat * heat * 0.75 + (hot - 0.42) * 0.35 + gr * 0.5
     end
     if crack and cd < wid * 1.8 then val = val - 0.1 end
-    if worn < 0.5 and h2(floor(x / 2), floor(y / 2), s + 47) < 0.0008 then return EMBER, h + 0.05, 0.3 end
+    if worn < 0.5 and h2(floor(x / 2), floor(y / 2), s + 47) < 0.0008 then
+        CUR.touch = true
+        if not CUR.calm then return EMBER, h + 0.05, 0.3 end
+    end
     return ASH, h, val
 end
 
@@ -687,6 +697,30 @@ V.MEMO = {}
 V.GRAIN = { [DIRT] = 0.2, [MUD] = 0.14, [ASH] = 0.18, [SOOT] = 0.12, [SNOW] = 0.08, [STONE] = 0.12,
     [WOOD] = 0.08, [GRASS] = 0.14, [LEAF] = 0.1, [LEAF2] = 0.1, [LEAF3] = 0.1, [LEAF4] = 0.1, [LEAF5] = 0.1,
     [LEAF6] = 0.1, [STRAW] = 0.1, [PEAT] = 0.16, [SCORIA] = 0.14, [HEAT] = 0.06 }
+V.BLOCKS = { abyss = 4 }
+V.GLOW_FADE = { abyss = { near = 4, far = 20, pow = 1.6, levels = 32 } }
+
+function V.glowK(gf, rel)
+    local k = min(1, max(0, (gf.far - rel) / (gf.far - gf.near)))
+    return floor(k ^ gf.pow * gf.levels + 0.5)
+end
+
+local glowShader
+function V.glowShader()
+    if not glowShader then
+        glowShader = love.graphics.newShader([[
+            vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
+                if (uv.x < -2048.0) return color;
+                float L = floor(uv.x);
+                vec2 b = vec2(uv.x - L, uv.y);
+                vec4 hot = Texel(tex, b);
+                vec4 calm = Texel(tex, b + vec2(0.5, 0.0));
+                return mix(calm, hot, clamp(L / 32.0, 0.0, 1.0)) * color;
+            }
+        ]])
+    end
+    return glowShader
+end
 
 local ffi = require("ffi")
 
@@ -723,34 +757,42 @@ function V.bake(bid, pal, yieldEvery)
     local S = V.S
     local W, H = TW * S, TH * S
     local N = W * H
-    local d = love.image.newImageData(W * 2, H)
+    local blocks = V.BLOCKS[bid] or 2
+    local d = love.image.newImageData(W * blocks, H)
     local owner = V.BUF.owner
     local shared = not (owner and owner ~= true and coroutine.status(owner) ~= "dead")
     local F = shared and V.BUF or {}
     if F.n ~= N then
         F.n = N
         F.M = ffi.new("uint8_t[?]", N)
+        F.T = ffi.new("uint8_t[?]", N)
         F.Hh, F.Vv = ffi.new("float[?]", N), ffi.new("float[?]", N)
         F.R, F.G, F.B = ffi.new("float[?]", N), ffi.new("float[?]", N), ffi.new("float[?]", N)
         F.tmp = ffi.new("float[?]", N)
         F.bR, F.bG, F.bB = ffi.new("float[?]", N), ffi.new("float[?]", N), ffi.new("float[?]", N)
     end
     if shared then V.BUF.owner = coroutine.running() or true end
-    local M, Hh, Vv, R, G, B = F.M, F.Hh, F.Vv, F.R, F.G, F.B
+    local M, Hh, Vv, R, G, B, T = F.M, F.Hh, F.Vv, F.R, F.G, F.B, F.T
     V.MEMO[bid] = V.MEMO[bid] or { {}, {} }
-    local function pass(ox)
+    local function pass(ox, calm)
         memo, dmemo = V.MEMO[bid][1], V.MEMO[bid][2]
+        CUR.calm = calm
         for Y = 0, H - 1 do
             if yieldEvery and Y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
             local y = Y / S
             for X = 0, W - 1 do
-                local x = X / S
-                local u = (x + 0.5 / S - CU) / HALF
-                local m, h, v = paint(x, y, u, seed)
                 local i = Y * W + X
-                M[i], Hh[i], Vv[i] = m, h, v
+                if not calm or T[i] == 1 then
+                    local x = X / S
+                    local u = (x + 0.5 / S - CU) / HALF
+                    CUR.touch = false
+                    local m, h, v = paint(x, y, u, seed)
+                    M[i], Hh[i], Vv[i] = m, h, v
+                    if not calm then T[i] = CUR.touch and 1 or 0 end
+                end
             end
         end
+        CUR.calm = false
         for Y = 0, H - 1 do
             if yieldEvery and Y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
             local yu = ((Y + S) % H) * W
@@ -809,6 +851,10 @@ function V.bake(bid, pal, yieldEvery)
     end
     pass(0)
     blurTo(W, 0.22)
+    if blocks > 2 then
+        pass(2 * W, true)
+        blurTo(3 * W, 0.22)
+    end
     if shared then V.BUF.owner = nil end
     local img = love.graphics.newImage(d)
     img:setFilter("nearest", "nearest")
@@ -823,7 +869,7 @@ function V.style(bid)
     if st then return st end
     local S = V.S
     st = { half = HALF * S, cu = CU * S, far = TW * S, vk = V.VK * S, tm0 = 0.98, tmK = 0.03, farT0 = 0.1,
-        farT1 = 0.42, farDv = 1.0 * S, S = S }
+        farT1 = 0.42, farDv = 1.0 * S, S = S, glow = V.GLOW_FADE[bid] }
     V.STYLE[bid] = st
     return st
 end
