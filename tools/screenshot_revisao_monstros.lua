@@ -162,7 +162,6 @@ function M.run(arg)
     local FontManager = require("src.ui.FontManager")
     local CombatBeats = require("src.systems.CombatBeats")
     local ShadowEngine = require("engine.ShadowEngine")
-    local InteriorDepth = require("src.ui.InteriorDepth")
 
     local origBossAlpha = BossCinematic.bossAlpha
     if os.getenv("REVMON_ANTES") == "1" then BossCinematic.bossAlpha = function() return 1 end end
@@ -253,13 +252,11 @@ function M.run(arg)
                 end
                 local foot = EnemyRenderer.getLastFoot()
                 local data = vcanvas:newImageData()
-                local S, C, ID = ShadowEngine.silhouette, EnemyRenderer.drawFootContact, InteriorDepth.drawContact
+                local S = ShadowEngine.silhouette
                 ShadowEngine.silhouette = function() return true end
-                EnemyRenderer.drawFootContact = function() end
-                InteriorDepth.drawContact = function() end
                 if seed then love.math.setRandomSeed(seed[1], seed[2]) end
                 render()
-                ShadowEngine.silhouette, EnemyRenderer.drawFootContact, InteriorDepth.drawContact = S, C, ID
+                ShadowEngine.silhouette = S
                 love.timer.getTime = realTime
                 local bare = vcanvas:newImageData()
                 frames[#frames + 1] = { label = label, data = data, bare = bare,

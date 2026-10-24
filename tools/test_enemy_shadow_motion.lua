@@ -17,19 +17,14 @@ function M.run()
     TK.bootstrap()
     local EnemyRenderer = require("src.ui.EnemyRenderer")
     local ShadowEngine = require("engine.ShadowEngine")
-    local EnemyPoses = require("src.data.enemy_poses")
 
     local savedSettings = _G.gameSettings
     _G.gameSettings = { reducedMotion = false }
     local origSil = ShadowEngine.silhouette
-    local origContact = EnemyRenderer.drawFootContact
-    local sil, contact
+    local sil
     ShadowEngine.silhouette = function(x, y, o, fn)
         sil = { x = x, y = y }
         return true
-    end
-    EnemyRenderer.drawFootContact = function(cx, w, y, s, a)
-        contact = { cx = cx, w = w, y = y, a = a }
     end
     local realTime = love.timer.getTime
     local clock = 100
@@ -53,14 +48,14 @@ function M.run()
     local function frame(game)
         ShadowEngine.setFrame(cx - 600, W, 0.85, 0.8)
         EnemyRenderer._flap.n = 0
-        sil, contact = nil, nil
+        sil = nil
         love.graphics.setCanvas(canvas)
         EnemyRenderer.draw(game, cx, cy)
         love.graphics.setCanvas()
         return EnemyRenderer.getLastFoot()
     end
 
-    local lungeFail, knockFail, deathFail, floatFail, wideFail = {}, {}, {}, {}, {}
+    local lungeFail, knockFail, deathFail = {}, {}, {}
     local n = 0
     for _, id in ipairs(roster()) do
         n = n + 1
@@ -71,7 +66,6 @@ function M.run()
         EnemyRenderer.update(0)
         local f0 = frame(game)
         local s0 = sil and { x = sil.x, y = sil.y }
-        local c0 = contact and { cx = contact.cx }
 
         EnemyRenderer.triggerAttack("strong", function() end)
         local tt = 0
@@ -114,23 +108,9 @@ function M.run()
         game.enemy.health = 0
         EnemyRenderer.triggerDeath(id)
         for _ = 1, 240 do EnemyRenderer.update(1 / 60) end
-        local fd = frame(game)
-        local floating = EnemyPoses.isFloating(id)
+        frame(game)
         if not sil then
             deathFail[#deathFail + 1] = id .. "(sem sombra no cadaver)"
-        end
-        if not contact then
-            if floating then floatFail[#floatFail + 1] = id else deathFail[#deathFail + 1] = id .. "(sem contato)" end
-        else
-            local m = EnemyRenderer.debugClipMetrics(id, "death")
-            local ff = m.frameFeet and m.frameFeet[fd.frame]
-            if ff then
-                local expectW = (ff[2] - ff[1] + 1) * fd.scale
-                if math.abs(contact.w - expectW) > 1 then
-                    wideFail[#wideFail + 1] = string.format("%s(%.0f vs %.0f)", id, contact.w, expectW)
-                end
-            end
-            if c0 and contact.a <= 0 then deathFail[#deathFail + 1] = id .. "(contato apagado)" end
         end
     end
 
@@ -142,17 +122,14 @@ function M.run()
         ShadowEngine.silhouette = function(x, y, o) alphas[#alphas + 1] = o.alphaK return true end
         for _, a in ipairs({ 1, 0.5, 0 }) do
             ShadowEngine.setFrame(cx - 600, W, 0.85, 0.8)
-            contact = nil
             love.graphics.setCanvas(canvas)
             EnemyRenderer.draw(g, cx, cy, { alpha = a })
             love.graphics.setCanvas()
-            alphas[#alphas + 1] = contact and contact.a or -1
         end
-        t:truthy(string.format("corpo esmaecendo leva sombra e contato junto (%.2f/%.2f/%.2f)", alphas[1], alphas[3], alphas[5]),
-            math.abs(alphas[3] - alphas[1] * 0.5) < 1e-6 and alphas[5] == 0 and math.abs(alphas[4] - alphas[2] * 0.5) < 1e-6)
+        t:truthy(string.format("corpo esmaecendo leva a sombra junto (%.2f/%.2f/%.2f)", alphas[1], alphas[2], alphas[3]),
+            math.abs(alphas[2] - alphas[1] * 0.5) < 1e-6 and alphas[3] == 0)
     end
     ShadowEngine.silhouette = origSil
-    EnemyRenderer.drawFootContact = origContact
     IconLoader.get = origGet
     love.timer.getTime = realTime
     _G.gameSettings = savedSettings
@@ -162,15 +139,59 @@ function M.run()
     t:truthy("roster inteiro testado (" .. n .. " inimigos)", n >= 42)
     t:eq("no bote/golpe forte a sombra anda junto com o corpo: " .. table.concat(lungeFail, " "), #lungeFail, 0)
     t:eq("no recuo do golpe a sombra anda junto com o corpo: " .. table.concat(knockFail, " "), #knockFail, 0)
-    t:eq("cadaver com sombra e contato: " .. table.concat(deathFail, " "), #deathFail, 0)
-    t:eq("flutuante caido ganha contato no chao: " .. table.concat(floatFail, " "), #floatFail, 0)
-    t:eq("contato do cadaver mede o quadro deitado, nao o pe em pe: " .. table.concat(wideFail, " "), #wideFail, 0)
+    t:eq("cadaver com sombra projetada: " .. table.concat(deathFail, " "), #deathFail, 0)
     t:eq("icone de forca do buff nasce no corpo, nunca acima do canvas (zona do HUD): " .. table.concat(buffFail, " "), #buffFail, 0)
-    t:eq("flutuante no ar nao tem contato", EnemyRenderer.contactK(true, "idle", 0), 0)
-    t:eq("flutuante no ataque nao tem contato", EnemyRenderer.contactK(true, "attack", 0), 0)
-    t:eq("flutuante pousado tem contato cheio", EnemyRenderer.contactK(true, "death", 1), 1)
-    t:truthy("flutuante caindo: contato cresce com a queda",
-        EnemyRenderer.contactK(true, "death", 0.5) < EnemyRenderer.contactK(true, "death", 0.9))
+    t:falsy("sem sombrinha redonda sob o pe (dono, 24/Out): drawFootContact saiu", EnemyRenderer.drawFootContact ~= nil)
+    t:falsy("sem contactK (so a silhueta projetada)", EnemyRenderer.contactK ~= nil)
+    t:falsy("salao sem poca de contato (InteriorDepth saiu)", love.filesystem.getInfo("src/ui/InteriorDepth.lua") ~= nil)
+    do
+        local src = love.filesystem.read("src/ui/EnemyRenderer.lua") or ""
+        t:falsy("EnemyRenderer nao desenha elipse de sombra", src:find("graphics.ellipse", 1, true) ~= nil)
+        local wr = love.filesystem.read("src/ui/WorldRoad.lua") or ""
+        t:falsy("billboard da estrada sem contato de pe", wr:find("drawFootContact", 1, true) ~= nil)
+    end
+    do
+        local EL = require("src.ui.EnemyLife")
+        local big = love.graphics.newCanvas(W, H)
+        local realEl = love.graphics.ellipse
+        local nEl = 0
+        love.graphics.ellipse = function(...) nEl = nEl + 1 return realEl(...) end
+        local fxWas = EL.fxEnabled
+        EL.fxEnabled = false
+        ShadowEngine.silhouette = function() return true end
+        local underFail = {}
+        for _, id in ipairs({ "frost_troll", "pit_brute", "plague_rats", "winter_monarch", "dusk_bat", "rot_colossus" }) do
+            EnemyRenderer.clearCache()
+            EnemyRenderer.resetRun()
+            local g = { enemy = { spriteId = id, isBoss = false, health = 10 } }
+            love.graphics.setCanvas(big)
+            love.graphics.clear(0, 0, 0, 0)
+            ShadowEngine.setFrame(cx - 600, W, 0.85, 0.8)
+            EnemyRenderer.draw(g, cx, cy)
+            EnemyRenderer.update(1 / 60)
+            love.graphics.clear(0, 0, 0, 0)
+            local SA = require("src.ui.SpriteAnimation")
+            local realDraw = SA.draw
+            SA.draw = function() end
+            EnemyRenderer.draw(g, cx, cy)
+            SA.draw = realDraw
+            love.graphics.setCanvas()
+            local d = big:newImageData()
+            local n = 0
+            for y = cy - 24, cy + 16 do
+                for x = cx - 260, cx + 260 do
+                    local _, _, _, a = d:getPixel(x, y)
+                    if a > 0.01 then n = n + 1 end
+                end
+            end
+            if n > 0 then underFail[#underFail + 1] = id .. "(" .. n .. ")" end
+        end
+        EL.fxEnabled = fxWas
+        love.graphics.ellipse = realEl
+        ShadowEngine.silhouette = origSil
+        t:eq("sem o corpo e sem a silhueta, nada sobra no chao junto ao pe: " .. table.concat(underFail, " "), #underFail, 0)
+        t:eq("nenhuma elipse no desenho do inimigo", nEl, 0)
+    end
     do
         local LE = require("engine.LightEngine")
         local SG = require("engine.SceneGrade")
@@ -196,13 +217,12 @@ function M.run()
     do
         local GS = require("src.scenes.GameplayScene")
         love.timer.getTime = function() return clock + 50 end
-        t:falsy("salao sem frame de sombra cai na elipse", ShadowEngine.isActive())
+        t:falsy("salao sem frame de sombra fica sem sombra", ShadowEngine.isActive())
         GS.hallShadowFrame({ lightXr = 0.5 }, 1920)
         t:truthy("salao do chefe liga a sombra de silhueta (luz atras do chefe)", ShadowEngine.isActive())
         t:eq("luz do salao no centro: sombra cai reto pra frente", ShadowEngine.tipShiftAt(960), 0)
         love.timer.getTime = realTime
     end
-    t:eq("apoiado sempre tem contato", EnemyRenderer.contactK(false, "idle", 0), 1)
     return t:done()
 end
 
