@@ -101,7 +101,9 @@ function M.run()
         end
         local okF, errF = pcall(function()
             local f = WorldRoad._fork
-            f.chosen, f.hover = 2, 2
+            local mid = 2
+            for i = 1, f.n do if f.dirs[i] == 0 then mid = i end end
+            f.chosen, f.hover = mid, mid
             f.converge = { t = 0, k = 0, duration = 2.4,
                 z0 = WorldRoad._camZ, dist = 10 }
             local closed = false
@@ -121,7 +123,8 @@ function M.run()
                     if cs then
                         sawFaded = true
                         fadedArmOk = fadedArmOk and ws ~= nil
-                            and ws[1] == 0 and ws[3] == 0 and ws[2] == 1
+                            and ws[mid] == 1
+                            and ws[mid == 1 and 2 or 1] == 0 and ws[mid == 3 and 2 or 3] == 0
                     end
                 end
             end

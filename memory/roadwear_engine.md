@@ -256,8 +256,8 @@ rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_w
   do marco no MUNDO (`f.markZ - camZ`), não por `MARK_REL` fixo; o escolhido não volta mais a inteiro na
   convergência. No fim da convergência nasce `WorldRoad._stop = { z, reveal }`: as linhas da estrada e a
   clareira da grama além do marco ficam com o mesmo corte (`WorldRoad.stopFarK`, mesma curva de `FORK_END`).
-  Ramo do meio já continua (reveal 1). **Ao sair** o corte corre do marco até a crista em 0,42 s
-  (`DEPART.reveal`, ease-out cúbico) enquanto a partida começa: a continuação "pisca" para frente em vez de
+  Ramo do meio já continua (reveal 1). **Ao sair** o corte corre do marco até a crista em 0,8 s
+  (`DEPART.reveal`, smoothstep; com 0,42 s e ease-out o `estrada_fluxo` acusava `chao_muda`) enquanto a partida começa: a continuação "pisca" para frente em vez de
   estalar. Nó de luta num ramo lateral (elite, 2ª batalha) revela já no fim da convergência, junto da viagem.
   O `forkSig` da grama inclui o reveal (sem isso o quadro de grama em cache não abria a clareira).
 - **Castelo vende a curva.** `CastleDrift.pick` leva o castelo a `SIGN × dir × MAX` (0,05 da largura, oposto ao
@@ -278,6 +278,12 @@ rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_w
   então a ponta é reta por tábua) encurta de um lado mais que do outro, escurece (afundada) e some
   (`fade 0,22`). Tudo vezes `WorldRoad.forkE` (`animIn × (1 - convergência)`): sem encruzilhada o tronco é tábua
   até a crista e a abertura/fechamento dissolve tábua por tábua, sem estalo.
+- **Rótulos dos marcos** somem em 0,25 s depois do clique (antes sumiam no quadro do clique), a dica do
+  escolhido junto.
+- **Prop que não é vegetação atrás da crista** (ruína, santuário) some/volta com `forkE` em vez de zerar no
+  quadro em que a encruzilhada abre/fecha; o do corredor do ramo escolhido usa `(1 - k) × animIn`.
+- **Abertura da encruzilhada continua em 2,2/s.** Com 1,7/s um clique antes de abrir tudo (0,42 s) fazia o
+  `test_scene_continuity` acusar pop de luminária: clicar durante a abertura ainda é ponto fraco.
 - **Terra sob a mão.** `GroundClutter` não corta mais de uma vez o que fica sob a mão quando ela entra: some em
   0,35 s (`LMG.handK`, `env.handK`). Era o `clutter some` na chegada.
 - **Trava e ferramenta do fluxo real.** `lovec . test_one estrada_fluxo "<atos>:<planos>"` dá boot no
@@ -290,3 +296,8 @@ rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_w
   `CARDGAME_IDENTITY=<id> python tools/estrada_fluxo_folha.py [prefixo]` → `tools/preview_out/estrada_fluxo/`
   (`folha_<tag>.jpg` quadro a quadro, `momentos_<tag>.jpg` encruzilhada/chegou/tela/saiu/saiu+10/próxima).
   Trava: `love . test_one test_fork_flow` (no test_all): ordem dos ramos + 6 fluxos reais com 0 sinais.
+  Custo: o `love.graphics.present()` por quadro capturado é obrigatório; sem ele o driver acumula ~2 MB por
+  quadro desenhado (12 GB numa varredura e a máquina do dono travou). Leitura das diferenças num canvas
+  480x270, ImageData liberada à mão, `log.frames` com janela de 3 quadros, miniaturas só com `SEQ_THUMBS=1`,
+  teto `SEQ_MEM_CAP` (4000 MB, aborta a captura). Medido: ato 5 inteiro com pico de 733 MB (antes 1 GB por
+  plano). Rode um processo por ato (`estrada_fluxo "5"`), sempre com `CARDGAME_HEADLESS=1`.

@@ -94,7 +94,9 @@ function GroundClutter.collect(out, env)
                             p.fk = (1 - fz) * (1 - hk)
                             p.ph = hs * 1.7
                             out[#out + 1] = p
-                            if side < 0 then st.left = st.left + 1 else st.right = st.right + 1 end
+                            if hk == 0 and py + (e.sink or 0) * s - ih * s <= g.bottomY + 2 then
+                                if side < 0 then st.left = st.left + 1 else st.right = st.right + 1 end
+                            end
                             st.worst = math.max(st.worst, s / (env.pixRef * env.screenK))
                             st.roadGap = math.min(st.roadGap, math.abs(px - g.cx - env.wobble(z, t, w)) - hw - half)
                         end

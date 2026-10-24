@@ -1775,7 +1775,7 @@ function WorldRoad.update(dt)
 
     local f = WorldRoad._fork
     if f then
-        f.animIn = math.min(1, (f.animIn or 0) + dt * 1.7)
+        f.animIn = math.min(1, (f.animIn or 0) + dt * 2.2)
         if f.chosenPulse and f.chosenPulse > 0 then
             f.chosenPulse = math.max(0, f.chosenPulse - dt)
         end
@@ -4704,7 +4704,7 @@ local function drawProps(g, x, w, camZ)
                         local inK = 1 - math.min(1, math.max(0,
                             (math.abs(pxX - bc) - halfCorr) / math.max(halfRF * 0.15, w * 0.05)))
                         local bk = forkAlpha(f2, bi) * (f2.animIn or 1)
-                        if f2.converge and bi == f2.chosen then bk = 1 - (f2.converge.k or 0) end
+                        if f2.converge and bi == f2.chosen then bk = (1 - (f2.converge.k or 0)) * (f2.animIn or 1) end
                         fadeA = fadeA * (1 - inK * bk)
                     end
                 end
