@@ -3,6 +3,11 @@ local PackThemes = {}
 PackThemes.KINDS = {
 
     Standard = {
+        mood = {
+            top = {0.075, 0.052, 0.036}, bottom = {0.255, 0.170, 0.098},
+            motes = "dust", count = 44,
+            colours = { {0.894, 0.780, 0.627}, {0.867, 0.663, 0.435}, {0.686, 0.376, 0.310} },
+        },
         labelKey  = "pack.kind_standard",
         base       = {0.894, 0.780, 0.627},
         accent     = {0.686, 0.376, 0.310},
@@ -39,6 +44,11 @@ PackThemes.KINDS = {
     },
 
     Buffoon = {
+        mood = {
+            top = {0.090, 0.022, 0.036}, bottom = {0.330, 0.075, 0.105},
+            motes = "confetti", count = 40,
+            colours = { {0.914, 0.655, 0.165}, {0.800, 0.230, 0.240}, {0.960, 0.860, 0.560} },
+        },
         labelKey  = "pack.kind_buffoon",
         base       = {0.537, 0.133, 0.220},
         accent     = {0.914, 0.655, 0.165},
@@ -75,6 +85,11 @@ PackThemes.KINDS = {
     },
 
     Arcana = {
+        mood = {
+            top = {0.030, 0.030, 0.090}, bottom = {0.160, 0.090, 0.280},
+            motes = "sparks", count = 34,
+            colours = { {0.660, 0.340, 0.760}, {0.969, 0.835, 0.357}, {0.482, 0.216, 0.498} },
+        },
         labelKey  = "pack.kind_arcana",
         base       = {0.133, 0.184, 0.471},
         accent     = {0.482, 0.216, 0.498},
@@ -111,6 +126,11 @@ PackThemes.KINDS = {
     },
 
     Celestial = {
+        mood = {
+            top = {0.012, 0.018, 0.060}, bottom = {0.085, 0.100, 0.230},
+            motes = "stars", count = 70,
+            colours = { {0.973, 0.922, 0.647}, {0.800, 0.880, 1.000}, {0.541, 0.584, 0.749} },
+        },
         labelKey  = "pack.kind_celestial",
         base       = {0.149, 0.149, 0.333},
         accent     = {0.541, 0.584, 0.749},
@@ -147,6 +167,11 @@ PackThemes.KINDS = {
     },
 
     Spectral = {
+        mood = {
+            top = {0.020, 0.055, 0.040}, bottom = {0.095, 0.220, 0.140},
+            motes = "wisps", count = 32,
+            colours = { {0.550, 0.950, 0.620}, {0.850, 1.000, 0.820}, {0.349, 0.580, 0.353} },
+        },
         labelKey  = "pack.kind_spectral",
         base       = {0.706, 0.859, 0.651},
         accent     = {0.349, 0.580, 0.353},
