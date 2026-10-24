@@ -77,9 +77,11 @@ local function ramp(dark, base, light, n)
 end
 
 local DIRT, STONE, GAP, GRASS, MOSS, WOOD, WATER, SNOW, EMBER, ASH, LEAF, ICE, MUD, STRAW, LEAF2, LEAF3, LEAF4,
-    RUST, SOOT, LEAF5, LEAF6 = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+    RUST, SOOT, LEAF5, LEAF6, PEAT, HEAT, SCORIA = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    20, 21, 22, 23, 24
 V.MAT = { DIRT = DIRT, STONE = STONE, LEAF = LEAF, LEAF2 = LEAF2, LEAF3 = LEAF3, LEAF4 = LEAF4, EMBER = EMBER,
-    WOOD = WOOD, WATER = WATER, SNOW = SNOW }
+    WOOD = WOOD, WATER = WATER, SNOW = SNOW, MUD = MUD, PEAT = PEAT, ASH = ASH, SOOT = SOOT, HEAT = HEAT,
+    SCORIA = SCORIA }
 
 local function palettes(bid, p)
     local roadA = p.roadA or { 0.45, 0.33, 0.2 }
@@ -94,7 +96,8 @@ local function palettes(bid, p)
     local skyT = p.skyTop or mul(sky, 0.4)
     local P = {}
     P[DIRT] = ramp(mul(edge, 0.9), roadB, mul(roadA, 1.22), 7)
-    P[MUD] = ramp(mul(edge, 0.8), mix(edge, roadB, 0.7), mul(roadA, 1.05), 5)
+    P[MUD] = ramp(mul(edge, 0.85), mix(edge, roadB, 0.78), mix(mul(roadA, 1.5), { 0.56, 0.52, 0.38 }, 0.25), 7)
+    P[PEAT] = ramp(mul(edge, 0.6), mix(edge, trunk, 0.55), mix(mix(roadB, trunk, 0.5), gB, 0.25), 5)
     P[STONE] = ramp(mix(mul(rockD, 0.55), edge, 0.4), mix(rock, roadA, 0.25), mix(mul(rock, 1.55), mul(roadA, 1.45), 0.2), 7)
     P[GAP] = { mul(edge, 0.5), mul(edge, 0.75), edge }
     P[GRASS] = ramp(mul(gB, 0.65), gA, mix(mul(gA, 1.45), { 0.7, 0.66, 0.36 }, 0.15), 5)
@@ -106,8 +109,10 @@ local function palettes(bid, p)
     P[ICE] = ramp(mix(sky, { 0.3, 0.38, 0.5 }, 0.5), mix(sky, { 0.75, 0.85, 0.95 }, 0.5), { 0.9, 0.96, 1.0 }, 4)
     P[EMBER] = { { 0.22, 0.05, 0.03 }, { 0.46, 0.1, 0.04 }, { 0.78, 0.26, 0.06 }, { 1.0, 0.5, 0.14 },
         { 1.0, 0.76, 0.34 } }
-    P[ASH] = ramp(mul(edge, 0.85), mix(roadB, { 0.3, 0.28, 0.28 }, 0.5), mix(roadA, { 0.6, 0.58, 0.56 }, 0.5), 7)
-    P[SOOT] = ramp(mul(edge, 0.5), mul(edge, 0.9), mix(edge, roadB, 0.5), 3)
+    P[ASH] = ramp(mul(edge, 0.9), mix(roadB, rock, 0.45), mix(mul(roadA, 1.55), { 0.6, 0.5, 0.45 }, 0.3), 7)
+    P[SOOT] = ramp(mul(edge, 0.6), mix(rockD, roadB, 0.5), mix(mul(rock, 1.6), { 0.5, 0.42, 0.4 }, 0.3), 6)
+    P[SCORIA] = ramp({ 0.14, 0.06, 0.05 }, { 0.34, 0.15, 0.09 }, { 0.56, 0.3, 0.19 }, 5)
+    P[HEAT] = ramp(mix(roadB, { 0.3, 0.1, 0.05 }, 0.5), { 0.5, 0.19, 0.07 }, { 0.78, 0.36, 0.12 }, 4)
     P[RUST] = { { 0.24, 0.12, 0.07 }, { 0.42, 0.22, 0.1 }, { 0.55, 0.32, 0.14 } }
     P[STRAW] = { { 0.42, 0.33, 0.14 }, { 0.62, 0.52, 0.26 }, { 0.8, 0.7, 0.4 } }
     P[LEAF] = { { 0.36, 0.13, 0.06 }, { 0.6, 0.24, 0.08 }, { 0.82, 0.4, 0.12 }, { 0.95, 0.58, 0.2 } }
@@ -328,7 +333,7 @@ local function trail(x, y, u, s, o)
     if rutGap < 0.28 then rk = rk * rutGap / 0.28 end
     local val = 0.56 + (n - 0.5) * (0.30 - worn * 0.16) + worn * 0.12 - sho * 0.16 + (fine - 0.5) * 0.06
     local h = 0.3 + n * 0.1 - rk * 0.5 * (o.rutDepth or 1)
-    val = val - rk * 0.3
+    val = val - rk * 0.3 * (o.rutDepth or 1)
     local lip = 0
     if side ~= 0 then
         local outer = du * side
@@ -352,7 +357,7 @@ local function strawPick() return STRAW end
 
 local PAINT = {}
 
-local OPT = { f = { rutW = 0.09 }, h = { rutW = 0.08 }, a = { rutW = 0.1, base = ASH }, d = { rutW = 0.09 } }
+local OPT = { f = { rutW = 0.09 }, h = { rutW = 0.08 }, a = { rutW = 0.1, rutDepth = 0.35, base = ASH }, d = { rutW = 0.09 } }
 local CUR = { sho = 0, s = 0 }
 local function acceptF(uu) return abs(uu) < 1.05 end
 local function acceptH(uu) return abs(uu) < 0.95 end
@@ -424,33 +429,76 @@ PAINT.highlands = function(x, y, u, s)
     return mat, h, val - 0.03
 end
 
-PAINT.abyss = function(x, y, u, s)
-    local mat, h, val, sho, rk = trail(x, y, u, s, OPT.a)
-    local drift = fbm(x, y, s + 3, 4, 40)
-    val = val + (drift - 0.5) * 0.32
-    local streak = vnoise(x, y, 3, 60, s + 5)
-    if streak > 0.66 then val = val + (streak - 0.66) * 0.5 end
-    local dj, id = voronoi(x, y, 22, 66, s + 23, 1.0)
-    local open = vnoise(x, y, 9, 32, s + 25)
-    local wid = 0.085 + vnoise(x, y, 14, 60, s + 27) * 0.08
-    if dj < wid and open > 0.46 then
-        local depth = 1 - dj / wid
-        local hot = vnoise(x, y, 5, 22, s + 29)
-        if hot > 0.6 and wid > 0.125 then
-            return EMBER, 0.0, 0.1 + depth * 0.6 + (hot - 0.62) * 0.9
+local function crackNet(x, y, nx, ny, s)
+    local gx, gy = x / TW * nx, y / TH * ny
+    local ci, cj = floor(gx), floor(gy)
+    local d1, d2, a1, a2 = 1e9, 1e9, 0, 0
+    for dj = -1, 1 do
+        for di = -1, 1 do
+            local i, j = ci + di, cj + dj
+            local wi, wj = i % nx, j % ny
+            local px = i + 0.5 + (h2(wi, wj, s) - 0.5) * 0.95
+            local py = j + 0.5 + (h2(wi, wj, s + 3) - 0.5) * 0.95
+            local dx, dy = px - gx, py - gy
+            local d = sqrt(dx * dx + dy * dy)
+            local id = wi * 131 + wj
+            if d < d1 then
+                d2, a2 = d1, a1; d1, a1 = d, id
+            elseif d < d2 then d2, a2 = d, id end
         end
-        return SOOT, 0.05, 0.45 + (1 - depth) * 0.45
     end
-    if dj < wid + 0.06 and open > 0.46 then val = val - 0.09 * (1 - (dj - wid) / 0.06) end
-    local sh, sv = stone(x, y, 14, 0.2 * (1 - rk * 0.7), 1.3, 2.6, s + 71)
-    if sh then
-        if sv > 0.7 and h2(x, y, s + 73) < 0.08 then return EMBER, sh, 0.3 end
-        return SOOT, sh, sv * 0.8 + 0.15
+    local lo, hi = min(a1, a2), max(a1, a2)
+    return d2 - d1, h2(lo, hi, s + 5)
+end
+
+local function scoriaOr(c, s, a, b)
+    return h2(floor(c.px * 7.3), floor(c.py * 3.1), s) < 0.42 and a or b
+end
+
+PAINT.abyss = function(x, y, u, s)
+    local mat, h, val, sho, rk, worn = trail(x, y, u, s, OPT.a)
+    local jx = x + (vnoise(x, y, 24, 80, s + 21) - 0.5) * 2.2
+    local jy = y + (vnoise(x, y, 24, 80, s + 22) - 0.5) * 2.2
+    local cd, ce = crackNet(jx, jy, 9, 26, s + 23)
+    local open = vnoise(x, y, 3, 10, s + 25)
+    local hot = vnoise(x, y, 3, 9, s + 29)
+    local wid = 0.013 + h2(floor(ce * 977), 1, s) * 0.014
+    local crack = ce < 0.22 + open * 0.35 and open > 0.35
+    if crack and cd < wid then
+        local depth = 1 - cd / wid
+        if hot > 0.54 and ce < 0.36 then return EMBER, 0.0, 0.25 + depth * 0.5 + (hot - 0.54) * 1.1 end
+        return GAP, 0.05, 0.3 + (1 - depth) * 0.5
     end
-    local tone = h2(id % 89, floor(id / 89), s + 7)
-    val = val + (tone - 0.5) * 0.06
-    local gr = gravel(x, y, s, 1.2)
-    if gr then return SOOT, h + 0.05, gr + 0.2 end
+    local plate, pv = stone(x, y, 27, 0.5 * (sho + 0.15) * (1 - worn * 0.8), 4.2, 7.2, s + 61, acceptF)
+    if plate then
+        local pcr = abs(vnoise(jx, jy, 11, 36, s + 63) - 0.5)
+        if pcr < 0.018 then return GAP, 0.4, 0.3 end
+        local rope = sin(jx * 0.7 + jy * 1.3 + vnoise(x, y, 5, 16, s + 31) * 6)
+        local pt = (h2(floor(x), floor(y), s + 65) - 0.5) * 0.1 + (rope > 0.7 and 0.07 or 0)
+        return SOOT, 0.56, pv * 0.8 + 0.12 + pt
+    end
+    local big, bv, bc = stone(x, y, 17, 0.22 * (1 - rk) * (0.45 + sho + (1 - worn) * 0.5), 1.7, 3.0, s + 71,
+        acceptF)
+    if big then
+        if bv > 0.55 and bc.tone < 0.06 then return EMBER, big, 0.18 + (bv - 0.55) * 1.4 end
+        return scoriaOr(bc, s + 72, SCORIA, SOOT), big, bv * 0.9 + 0.08
+    end
+    local cdn = (1 - rk * 0.8) * (0.35 + sho * 0.8 + (1 - worn) * 0.45)
+    local md, mv, mc = stone(x, y, 9, 0.32 * cdn, 1.2, 2.0, s + 75)
+    if md then return scoriaOr(mc, s + 76, SCORIA, SOOT), md - 0.1, mv + 0.04 end
+    local sm, sv, sc = stone(x, y, 4.5, 0.55 * cdn, 0.6, 1.1, s + 79)
+    if sm then return scoriaOr(sc, s + 80, SCORIA, SOOT), sm - 0.25, sv * 0.85 + 0.05 end
+    local tp, tv = stone(x, y, 3, 0.5 * (1 - rk * 0.6), 0.45, 0.75, s + 83)
+    if tp then return ASH, tp - 0.45, tv * 0.6 + 0.2 + (fbm(x, y, s + 13, 8, 34) - 0.5) * 0.2 end
+    local ash = fbm(x, y, s + 15, 3, 9)
+    val = val + (fbm(x, y, s + 13, 8, 34) - 0.5) * 0.2 - worn * 0.06 + sstep(0.5, 0.72, ash) * 0.2 + (fbm(x, y, s + 17, 24, 90) - 0.5) * 0.16 * worn
+    if crack and cd < wid * 3.2 then
+        if hot > 0.54 and ce < 0.36 then
+            return HEAT, h, 0.1 + (1 - cd / (wid * 3.2)) * 0.5 + (hot - 0.54) * 0.5
+        end
+        if cd < wid * 1.6 then val = val - 0.06 end
+    end
+    if worn < 0.5 and h2(floor(x / 2), floor(y / 2), s + 47) < 0.0008 then return EMBER, h + 0.05, 0.3 end
     return ASH, h, val
 end
 
@@ -494,13 +542,13 @@ PAINT.frost = function(x, y, u, s)
     return SNOW, h, val
 end
 
-OPT.m = { rutW = 0.1, rutDepth = 0.7, base = MUD }
+OPT.m = { rutW = 0.11, rutDepth = 0.6, base = MUD }
 local function marshRoot(x, y, u, s)
     local cell = 15
     local rc = floor(y / cell)
     for dc = -1, 0 do
         local c = rc + dc
-        if h2(c, 71, s) < 0.7 then
+        if h2(c, 71, s) < 0.55 then
             local sd = h2(c, 72, s) < 0.5 and -1 or 1
             local y0 = c * cell + h2(c, 73, s) * 6
             local len = 9 + h2(c, 74, s) * 12
@@ -512,9 +560,9 @@ local function marshRoot(x, y, u, s)
                 local d = (u - ur) * sd
                 if abs(d) < th then
                     local lit = (d * LX * sd > 0) and 0.22 or 0
-                    return WOOD, 0.75 - k * 0.2, 0.3 + lit + (k < 0.2 and 0.08 or 0)
+                    return WOOD, 0.75 - k * 0.2, 0.26 + lit + (k < 0.2 and 0.08 or 0)
                 end
-                if abs(d) < th + 1.3 / HALF then return MUD, 0.12, 0.2 end
+                if abs(d) < th + 1.3 / HALF then return PEAT, 0.12, 0.18 end
             end
         end
     end
@@ -522,12 +570,12 @@ local function marshRoot(x, y, u, s)
 end
 
 local function marshReed(x, y, e, s)
-    if e < 0.74 then return nil end
+    if e < 0.8 then return nil end
     if vnoise(x, y, 9, 46, s + 66) < 0.5 then return nil end
     local rcx = floor(x)
     local ph = h2(rcx, 5, s + 56) * 6
     local band = floor((y + ph) / 6)
-    if h2(rcx, band, s + 57) > sstep(0.74, 1.05, e) * 0.55 then return nil end
+    if h2(rcx, band, s + 57) > sstep(0.8, 1.08, e) * 0.55 then return nil end
     local hgt = 3 + floor(h2(rcx, band, s + 59) * 4)
     local ly = y + ph - band * 6
     if ly >= hgt then return nil end
@@ -535,7 +583,15 @@ local function marshReed(x, y, e, s)
     return GRASS, 0.8 + top * 0.3, 0.22 + top * 0.66 + (h2(rcx, 3, s + 58) - 0.5) * 0.14
 end
 
-local function marshTrail(x, y, u, s)
+local function puddle(x, y, rk, e, s)
+    return fbm(x, y, s + 80, 8, 30) * 0.72 + vnoise(x, y, 18, 64, s + 82) * 0.28 + rk * 0.2
+        - sstep(0.55, 0.95, e) * 0.22
+end
+
+local PW = 0.63
+local function woodPick() return WOOD end
+local function twigDens(uu) return abs(uu) > 0.2 and 0.1 or 0.03 end
+PAINT.marsh = function(x, y, u, s)
     local mat, h, val, sho, rk, worn = trail(x, y, u, s, OPT.m)
     local au = abs(u)
     local e = au + (vnoise(x, y, 3, 24, s + 70) - 0.5) * 0.24
@@ -543,124 +599,46 @@ local function marshTrail(x, y, u, s)
     if rm then return rm, rh, rv end
     local gm, gh, gv = marshReed(x, y, e, s)
     if gm then return gm, gh, gv end
-    local pw = fbm(x, y, s + 80, 7, 26) + rk * 0.1 - sstep(0.55, 0.9, e) * 0.1
-    if pw > 0.64 then
-        if pw < 0.662 then return MUD, 0.12, 0.2 end
-        local rip = (sin(y * 0.8 + vnoise(x, y, 8, 40, s + 24) * 6) > 0.93 and h2(x, y, s + 23) > 0.5) and 0.2 or 0
-        local gl = (h2(floor(x / 3), floor(y), s + 61) > 0.955) and 0.35 or 0
-        return WATER, 0.0, 0.26 + (pw - 0.64) * 1.6 + rip + gl
+    local pw = puddle(x, y, rk, e, s)
+    if pw > PW then
+        local d = pw - PW
+        if d < 0.012 then return PEAT, 0.14, 0.16 end
+        local far = puddle(x, y + 3, rk, e, s)
+        local near = puddle(x, y - 1.5, rk, e, s)
+        local v = 0.26 + min(0.26, d * 3)
+        if far < PW + 0.015 then v = 0.08 end
+        if near < PW + 0.008 then v = v + 0.34 end
+        local band = sin(y * 0.55 + vnoise(x, y, 4, 30, s + 24) * 4)
+        if band > 0.82 then v = v + 0.12 end
+        if band > 0.97 and vnoise(x, y, 20, 60, s + 25) > 0.55 then v = v + 0.22 end
+        return WATER, 0.0, v
     end
-    local peat = sstep(0.55, 1.0, e)
-    val = val + 0.14 - peat * 0.22 + (fbm(x, y, s + 90, 10, 40) - 0.5) * 0.16
-    local bp = au < 0.6 and bootPrint(x, y, s + 5)
-    if bp then val = val + bp * 1.3; h = h - 0.08 end
-    local sm, sv = stone(x, y, 11, 0.06 * (0.3 + sho), 0.9, 1.6, s + 97)
-    if sm then return MUD, sm - 0.1, sv * 0.6 + 0.25 end
-    if peat > 0.3 and h2(x, y, s + 95) < 0.05 * peat then return MOSS, h + 0.05, 0.4 end
+    local wet = sstep(PW - 0.09, PW, pw)
+    local peat = sstep(0.6, 1.0, e)
+    local dry = fbm(x, y, s + 90, 9, 34)
+    local macro = fbm(x, y, s + 88, 3, 9)
+    val = val + 0.08 + (dry - 0.5) * 0.3 + (macro - 0.5) * 0.36 - wet * 0.24 - peat * 0.12
+    if wet > 0.35 and h2(floor(x / 2), floor(y), s + 63) > 0.9 then return WATER, h, 0.62 end
+    local bp = au < 0.62 and bootPrint(x, y, s + 5)
+    if bp then
+        if pw > PW - 0.16 and bp < -0.05 then return WATER, 0.05, 0.3 end
+        val = val + bp * 1.4; h = h - 0.08
+    end
+    if peat > 0.25 then
+        local fib = vnoise(x, y, 48, 70, s + 92)
+        local pv = 0.42 + (fib - 0.5) * 0.4 + (dry - 0.5) * 0.2 - wet * 0.15
+        if h2(x, y, s + 95) < 0.06 * peat then return MOSS, h + 0.06, 0.32 + h2(x, y, s + 96) * 0.36 end
+        if peat > 0.55 or h2(floor(x), floor(y / 2), s + 94) < peat then return PEAT, h - 0.02, pv end
+    end
+    local tw = leafAt(x, y, 11, twigDens, s + 99, 1.8, 3.2, 0.1, 0.16, woodPick)
+    if tw then return WOOD, h + 0.12, 0.2 + val * 0.35 end
+    if au > 0.35 and au < 0.85 and vnoise(x, y, 10, 40, s + 101) > 0.72 and h2(floor(x), floor(y / 2), s + 102) < 0.3 then
+        return GRASS, h + 0.2, 0.25 + h2(floor(x), floor(y), s + 103) * 0.4
+    end
+    local sm, sv = stone(x, y, 12, 0.05 * (0.3 + sho), 0.9, 1.5, s + 97)
+    if sm then return MUD, sm - 0.1, sv * 0.5 + 0.3 end
+    if worn > 0.5 and h2(floor(x), floor(y), s + 98) < 0.025 then val = val + 0.12 end
     return mat, h, val
-end
-
-local PLANKS
-local function plankTable(s)
-    if PLANKS and PLANKS.s == s then return PLANKS end
-    local list, y = {}, 0
-    local i = 0
-    while y < TH do
-        local w = 6 + floor(h2(i, 9, s) * 3)
-        if TH - y < 11 then w = TH - y end
-        list[#list + 1] = { y0 = y, w = w, i = i }
-        y = y + w
-        i = i + 1
-    end
-    local at = {}
-    for k, p in ipairs(list) do for yy = p.y0, p.y0 + p.w - 1 do at[yy] = k end end
-    PLANKS = { s = s, list = list, at = at }
-    return PLANKS
-end
-
-PAINT.marsh = function(x, y, u, s, np)
-    if np then return marshTrail(x, y, u, s) end
-    local PT = plankTable(s)
-    local yi = floor(y)
-    local p = PT.list[PT.at[yi]]
-    local pk = p.i
-    local yy = yi - p.y0
-    local PLW = p.w
-    local au = abs(u)
-    local endL = -(0.57 + (h2(pk, 1, s) - 0.5) * 0.1)
-    local endR = 0.57 + (h2(pk, 12, s) - 0.5) * 0.1
-    local shift = (h2(pk, 11, s) - 0.5) * 0.05
-    endL, endR = endL + shift, endR + shift
-    local missing = h2(pk, 3, s) < 0.06
-    local broken = (not missing) and h2(pk, 4, s) < 0.12
-    if broken then
-        local bu = (h2(pk, 5, s) - 0.5) * 0.6
-        local jag = (h2(pk, yy, s + 5) - 0.5) * 0.1
-        if h2(pk, 6, s) > 0.5 then endR = min(endR, bu + 0.25 + jag) else endL = max(endL, bu - 0.25 + jag) end
-    end
-    local sag = (h2(pk, 7, s) < 0.15) and 1 or 0
-    local rag = (h2(pk, yy, s + 31) - 0.5) * 2.2 / HALF
-    endL, endR = endL + rag * (h2(pk, 32, s) > 0.4 and 1 or 0.3), endR - rag * (h2(pk, 33, s) > 0.4 and 1 or 0.3)
-    local inPlank = yy < PLW - 1 and not missing and u > endL and u < endR
-    if inPlank then
-        local grain = vnoise(x, y, 5, TH * 0.9, s + 7 + pk) * 0.55 + vnoise(x, y, 24, TH * 0.5, s + 8) * 0.45
-        local tone = h2(pk, 6, s + 1)
-        tone = tone * tone * (3 - 2 * tone)
-        local val = 0.38 + tone * 0.32 + (grain - 0.5) * 0.3 - sag * 0.1
-        if yy == 0 then val = val + 0.14 end
-        if yy == PLW - 2 then val = val - 0.2 end
-        if yy > 0 and yy < PLW - 2 and vnoise(x, y, 3, TH * 0.9, s + 35 + yy) > 0.7
-            and h2(pk, yy, s + 36) < 0.45 then val = val - 0.14 end
-        local dE = min(u - endL, endR - u) * HALF
-        if dE < 1.1 then val = val - 0.2 end
-        local wet = vnoise(x, y, 4, 50, s + 15)
-        if wet > 0.64 and yy <= 1 then val = val + 0.18 end
-        if wet < 0.3 then val = val - 0.1 end
-        if h2(pk, 15, s) < 0.2 and yy == floor(PLW * 0.5) and abs(u - (h2(pk, 16, s) - 0.5) * 0.6) < 0.12 then
-            val = val - 0.24
-        end
-        local kn = h2(pk, 13, s)
-        if kn < 0.3 then
-            local ku = (h2(pk, 14, s) - 0.5) * 0.8
-            local kx, ky = (u - ku) * HALF / 1.8, (yy - PLW * 0.45) / 1.1
-            local r = kx * kx + ky * ky
-            if r < 0.5 then return WOOD, 0.88, 0.1 end
-            if r < 1.6 then val = val - 0.1 end
-        end
-        for sd = -1, 1, 2 do
-            local nu = sd * 0.42 + shift
-            if abs(u - nu) * HALF < 0.6 and (yy == 1 or yy == PLW - 3) then return GAP, 0.95, 0.0 end
-            if abs(u - nu) * HALF < 0.6 and (yy == 2 or yy == PLW - 2) and h2(pk, 17 + sd, s) < 0.45 then
-                return RUST, 0.9, 0.45
-            end
-        end
-        local mo = vnoise(x, y, 14, 110, s + 19) * 0.75 + h2(x, y, s + 20) * 0.25
-        if dE < 4 and mo > 0.72 - (4 - dE) * 0.015 then return MOSS, 0.92, 0.3 + (mo - 0.6) * 1.4 end
-        return WOOD, 0.9 - sag * 0.1, val
-    end
-    local str = abs(au - 0.42) * HALF < 2.2
-    if str and au < 0.62 then
-        local val = 0.2 + vnoise(x, y, 30, 80, s + 21) * 0.14
-        if yy == 0 then val = val - 0.08 end
-        return WOOD, 0.55, val
-    end
-    local post = (pk % 6 == 2) and yy < PLW - 2 and abs(au - 0.68) * HALF < 2.4
-    if post then
-        local lu = (au - 0.68) * HALF * (u > 0 and 1 or -1) * LX
-        local val = 0.42 + (lu > 0.6 and 0.16 or lu < -0.6 and -0.12 or 0) + (yy == 0 and 0.1 or 0)
-        if (floor(x) + yy * 2) % 4 == 0 then val = val - 0.08 end
-        return WOOD, 1.0, val
-    end
-    if au < 0.64 and not missing and yy == PLW - 1 then
-        return WATER, 0.1, 0.1 + (h2(x, y, s) > 0.9 and 0.55 or 0)
-    end
-    local wet = vnoise(x, y, 5, 20, s + 17) + (missing and 0.25 or 0)
-    if wet > 0.5 then
-        local rip = (sin(y * 0.9 + vnoise(x, y, 8, 40, s + 24) * 6) > 0.92 and h2(x, y, s + 23) > 0.4) and 0.3 or 0
-        local edgeW = (wet < 0.54) and -0.15 or 0
-        return WATER, 0.0, 0.34 + (wet - 0.5) * 0.7 + rip + edgeW
-    end
-    return MUD, 0.2, 0.36 + (fbm(x, y, s + 23, 6, 26) - 0.5) * 0.3
 end
 
 PAINT.dusk = function(x, y, u, s)
@@ -682,18 +660,6 @@ PAINT.dusk = function(x, y, u, s)
     return mat, h, val
 end
 
-local function marshSeed()
-    local seed = 0
-    for i = 1, #"marsh" do seed = seed + ("marsh"):byte(i) end
-    return seed
-end
-
-function V.plankAt(v)
-    local PT = plankTable(marshSeed())
-    local yi = floor(v / V.S) % TH
-    return PT.list[PT.at[yi]]
-end
-
 V.LIGHT_X = { fields = 1, highlands = 1, abyss = 1, frost = 1, marsh = 1, dusk = -1 }
 
 function V.paint(bid, x, y, seed)
@@ -705,8 +671,7 @@ V.BUF = {}
 V.MEMO = {}
 V.GRAIN = { [DIRT] = 0.2, [MUD] = 0.14, [ASH] = 0.18, [SOOT] = 0.12, [SNOW] = 0.08, [STONE] = 0.12,
     [WOOD] = 0.08, [GRASS] = 0.14, [LEAF] = 0.1, [LEAF2] = 0.1, [LEAF3] = 0.1, [LEAF4] = 0.1, [LEAF5] = 0.1,
-    [LEAF6] = 0.1, [STRAW] = 0.1 }
-V.BLOCKS = { marsh = 4 }
+    [LEAF6] = 0.1, [STRAW] = 0.1, [PEAT] = 0.16, [SCORIA] = 0.14, [HEAT] = 0.06 }
 
 local ffi = require("ffi")
 
@@ -743,8 +708,7 @@ function V.bake(bid, pal, yieldEvery)
     local S = V.S
     local W, H = TW * S, TH * S
     local N = W * H
-    local blocks = V.BLOCKS[bid] or 2
-    local d = love.image.newImageData(W * blocks, H)
+    local d = love.image.newImageData(W * 2, H)
     local owner = V.BUF.owner
     local shared = not (owner and owner ~= true and coroutine.status(owner) ~= "dead")
     local F = shared and V.BUF or {}
@@ -759,7 +723,7 @@ function V.bake(bid, pal, yieldEvery)
     if shared then V.BUF.owner = coroutine.running() or true end
     local M, Hh, Vv, R, G, B = F.M, F.Hh, F.Vv, F.R, F.G, F.B
     V.MEMO[bid] = V.MEMO[bid] or { {}, {} }
-    local function pass(np, ox)
+    local function pass(ox)
         memo, dmemo = V.MEMO[bid][1], V.MEMO[bid][2]
         for Y = 0, H - 1 do
             if yieldEvery and Y % yieldEvery == yieldEvery - 1 then coroutine.yield() end
@@ -767,7 +731,7 @@ function V.bake(bid, pal, yieldEvery)
             for X = 0, W - 1 do
                 local x = X / S
                 local u = (x + 0.5 / S - CU) / HALF
-                local m, h, v = paint(x, y, u, seed, np)
+                local m, h, v = paint(x, y, u, seed)
                 local i = Y * W + X
                 M[i], Hh[i], Vv[i] = m, h, v
             end
@@ -810,7 +774,7 @@ function V.bake(bid, pal, yieldEvery)
             end
         end
     end
-    local by = ((bid == "marsh") and 13 or 7) * S
+    local by = 7 * S
     local tmp = F.tmp
     local bR, bG, bB = F.bR, F.bG, F.bB
     local function blurTo(ox, k)
@@ -828,12 +792,8 @@ function V.bake(bid, pal, yieldEvery)
             end
         end
     end
-    pass(false, 0)
-    blurTo(W, (bid == "marsh") and 0.08 or 0.22)
-    if blocks > 2 then
-        pass(true, 2 * W)
-        blurTo(3 * W, 0.22)
-    end
+    pass(0)
+    blurTo(W, 0.22)
     if shared then V.BUF.owner = nil end
     local img = love.graphics.newImage(d)
     img:setFilter("nearest", "nearest")
@@ -849,10 +809,6 @@ function V.style(bid)
     local S = V.S
     st = { half = HALF * S, cu = CU * S, far = TW * S, vk = V.VK * S, tm0 = 0.98, tmK = 0.03, farT0 = 0.1,
         farT1 = 0.42, farDv = 1.0 * S, S = S }
-    if bid == "marsh" then
-        st.farT0, st.farT1, st.farDv = 0.2, 0.4, 0.45 * S
-        st.bare = 2 * TW * S
-    end
     V.STYLE[bid] = st
     return st
 end

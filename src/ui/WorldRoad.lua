@@ -2617,6 +2617,7 @@ local function drawEncounterBehind(g, x, w, camZ)
     cx = cx - math.floor((e.offX or 0) * s) + math.floor(lat)
     local crest = g.crestYAt(cx)
     local feetY = crest + e.ih * s * (1 - em) * 0.95 - pz.liftK * e.ih * s
+    if EE._traceGround then EE._traceGround(cx, feetY + pz.liftK * e.ih * s, s, rel, "behind", lat) end
     love.graphics.setColor(1, 1, 1, 1)
     local bx0 = math.floor(cx - e.iw * s / 2)
     local by0 = math.floor(feetY - e.ih * s)
@@ -4045,7 +4046,7 @@ local function drawRoad(g, x, w, camZ)
     end
 
     local SEG = 16
-    local function span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, hsK, ub)
+    local function span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, hsK)
         if sR <= sL then return end
         local hs = RHS[k] * (hsK or 1)
         if band > 0 then
@@ -4058,7 +4059,7 @@ local function drawRoad(g, x, w, camZ)
                 local cell = math.floor((bx - cxRow) / q)
                 local r = (bx + bw * 0.5 - sL) / band
                 if r + (hash(cell * 1.37 + vr * 7.91) - 0.5) * 0.7 > 0.5 then
-                    span(cxRow, bx, bx + bw, 0, aMul, bright, vrow, sh, lrow, hsK, ub)
+                    span(cxRow, bx, bx + bw, 0, aMul, bright, vrow, sh, lrow, hsK)
                 end
                 bx = bx + bw
             end
@@ -4078,7 +4079,7 @@ local function drawRoad(g, x, w, camZ)
             if tile then
                 local du0 = (segX - cxRow) / hs
                 local du1 = du0 + segW / hs
-                local vx = du0 + st.cu + (ub or 0)
+                local vx = du0 + st.cu
                 if far and hash(segX * 0.173 + rowId * 7.31) > farK then vx = vx + st.far end
                 local aL, aR = aMul, aMul
                 if band > 0 and segX < bandR then
@@ -4151,8 +4152,6 @@ local function drawRoad(g, x, w, camZ)
     local A = R.A
     local probe = WorldRoad._armProbe
     local chosen = fork and fork.converge and fork.chosen or nil
-    local marsh = st.bare and tile and WorldRoad.forkE(fork) or 0
-    local MR = WorldRoad._marshRow
     R.vd, R.vbase, R.camZ, R.w, R.vis = vd, vbase, camZ, w, vis
     for kk = 1, nRows do
         k = kk
@@ -4181,12 +4180,7 @@ local function drawRoad(g, x, w, camZ)
                 local i = ord[q]
                 local a, arm = A[i], arms[i]
                 local bright = (fork.hover == i and not fork.converge) and 1.14 or 1
-                if marsh > 0 then
-                    MR(span, a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k], marsh, rel, st,
-                        arm.va[k] + vbase, half0, vd)
-                else
-                    span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k])
-                end
+                span(a.c, a.sL, a.sR, a.band, a.a, bright, arm.va[k], arm.sh[k], arm.L[k])
             end
             for q = 1, m do
                 local a = A[ord[q]]
@@ -4197,11 +4191,7 @@ local function drawRoad(g, x, w, camZ)
             if sk > 0.01 then
                 local c = cx + RWOB[k]
                 local xL, xR = edges(c)
-                if marsh > 0 then
-                    MR(span, c, xL, xR, 0, sk, 1, RV[k], 0, RDV[k], marsh, rel, st, RV[k] + vbase, half0, vd)
-                else
-                    span(c, xL, xR, 0, sk, 1, RV[k], 0, RDV[k])
-                end
+                span(c, xL, xR, 0, sk, 1, RV[k], 0, RDV[k])
                 decorate(xL, xR, true, true, sk)
             end
         end
@@ -4217,49 +4207,11 @@ local function drawRoad(g, x, w, camZ)
     end
 end
 
-WorldRoad.PLANK_END = { back = 4.6, fwd = 0.7, fade = 0.22 }
-function WorldRoad.plankNeed(rel)
-    local P = WorldRoad.PLANK_END
-    local k = (rel - (FORK_REL - P.back)) / (P.back + P.fwd)
-    k = math.min(1, math.max(0, k))
-    return k * k * (3 - 2 * k)
-end
-
 function WorldRoad.forkE(fork)
     if not fork then return 0 end
     local ai = fork.animIn or 1
     ai = ai * ai * (3 - 2 * ai)
     return ai * (1 - (fork.converge and fork.converge.k or 0))
-end
-
-function WorldRoad._marshRow(span, cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, e, rel, st, vglob, half0, vd)
-    if e <= 0.002 or WorldRoad.plankNeed(rel + 1.5) <= 0.002 then
-        span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow)
-        return
-    end
-    span(cxRow, sL, sR, band, aMul, bright, vrow, sh, lrow, nil, st.bare)
-    local RTl = require("engine.RoadTiles")
-    local pl = RTl.plankAt(vrow)
-    if not pl then return end
-    local off = (vrow / RTl.S) % RTl.TH - pl.y0 - pl.w * 0.5
-    local ne = e * WorldRoad.plankNeed(rel - off * RTl.S / vd)
-    local th = RTl.TH * RTl.S
-    local id = math.floor(vglob / th) * 997 + pl.i
-    local hash = WorldRoad._roadHash
-    local P = WorldRoad.PLANK_END
-    local nk = ne * ne
-    local ka = math.max(0, math.min(1, (hash(id * 1.37 + 11) + P.fade - nk * (1 + P.fade)) / P.fade))
-    if ka <= 0.01 then return end
-    local w0 = 1.25 - 0.66 * math.min(1, ne * 8)
-    local cut = math.min(1, ne * 2.2)
-    local hl, hr = hash(id * 2.11 + 3), hash(id * 3.07 + 5)
-    if hl > hr then hr = hr * 0.35 else hl = hl * 0.35 end
-    local uL = -w0 + cut * (0.04 + hl * 0.6)
-    local uR = w0 - cut * (0.04 + hr * 0.6)
-    local xa = math.max(sL, math.floor(cxRow + uL * half0))
-    local xb = math.min(sR, math.floor(cxRow + uR * half0))
-    if xb <= xa then return end
-    span(cxRow, xa, xb, 0, aMul * ka * (1 - 0.18 * cut), bright * (1 - 0.42 * ne), vrow, sh, lrow)
 end
 
 WorldRoad._forkLabelCache = { locale = nil, byType = {} }
@@ -5107,8 +5059,9 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     local k = math.min(1.02, g.persp(t) / math.max(0.01, g.persp(tBattle)))
     local s = e.targetScale * WorldRoad.battleSizeK() * WorldRoad.enemyScreenK(g.h) * k
     local lat = EE.dxPx(e, g, w, t, s)
-    local sy = g.latY(lat, t)
+    local sy = EE.groundY(g, cx - g.cx - math.floor((e.offX or 0) * s), lat, t)
     cx = cx - math.floor((e.offX or 0) * s) + math.floor(lat)
+    if EE._traceGround then EE._traceGround(cx, sy, s, rel, "front", lat) end
     local entLift = pz.liftK * e.ih * s
     EE.notePos(cx, sy, s, rel)
     EE.drawFlatUnder(g, x, w, camZ, rel)
