@@ -1,0 +1,516 @@
+local Debug = require("src.core.Debug")
+local Data = require("src.data.menu_brand")
+
+local MenuBrand = {}
+MenuBrand.__index = MenuBrand
+
+MenuBrand.T = {
+    RAY0 = 1.24, RAYSTEP = 0.125, CHARGE = 2.26, FLASH = 2.62,
+    MOVE = 2.86, MOVE_END = 3.46, WORD0 = 3.02, WORDSTEP = 0.075,
+    SWEEP0 = 4.15, BUTTONS = 3.95, BUTTON_STEP = 0.08, BUTTON_DUR = 0.30,
+    BG_FADE = 0.8, ELECTRIC = 2.55, END = 6.5,
+}
+MenuBrand.TOTAL_H = Data.seal.h + Data.gap + Data.word.h
+MenuBrand.SWEEP_SPEED = 600 / 0.9
+MenuBrand.IDLE_SWEEP = { 8, 12 }
+MenuBrand.IDLE_TWINKLE = { 1.4, 3.2 }
+
+local T = MenuBrand.T
+local BOUNCE = { -14, -10, -6, -2, 1, 3, 2, 1, 0, -1, 0 }
+local HOLD_TWINKLES = { { 4.7, 1 }, { 5.25, 4 }, { 5.7, 7 }, { 6.1, 3 } }
+local SPARK = { { 255, 250, 232 }, { 255, 222, 140 }, { 232, 160, 64 } }
+local EMBER = { { 255, 246, 214 }, { 252, 208, 110 }, { 230, 134, 48 }, { 150, 52, 26 }, { 84, 26, 22 } }
+local DUST = { 96, 70, 92 }
+local BAYER = { { 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 } }
+local SPARK_SIZES = { 1, 2, 3, 3, 2, 1, 1 }
+local N_EMBERS, N_BURST, N_CONVERGE = 16, 46, 28
+
+local res = nil
+
+local function newNearest(path)
+    local img = love.graphics.newImage(path)
+    img:setFilter("nearest", "nearest")
+    return img
+end
+
+local function paletteImage()
+    local rows = { Data.palUnlit, Data.palLit, Data.palWarm, Data.palHot }
+    local d = love.image.newImageData(7, 4)
+    for r = 1, 4 do
+        for i = 1, 7 do
+            local c = rows[r][i]
+            d:setPixel(i - 1, r - 1, c[1] / 255, c[2] / 255, c[3] / 255, 1)
+        end
+    end
+    local img = love.graphics.newImage(d)
+    d:release()
+    img:setFilter("nearest", "nearest")
+    return img
+end
+
+local function bayerImage()
+    local d = love.image.newImageData(4, 4)
+    for y = 1, 4 do
+        for x = 1, 4 do
+            local v = (BAYER[y][x] + 0.5) / 16
+            d:setPixel(x - 1, y - 1, v, v, v, 1)
+        end
+    end
+    local img = love.graphics.newImage(d)
+    d:release()
+    img:setFilter("nearest", "nearest")
+    img:setWrap("repeat", "repeat")
+    return img
+end
+
+local function loadShader(path)
+    local ok, s = pcall(love.graphics.newShader, path)
+    if ok then return s end
+    Debug.warn("[MenuBrand] shader nao compilou, efeito desligado: " .. path .. " (" .. tostring(s) .. ")")
+    return nil
+end
+
+function MenuBrand.load()
+    if res ~= nil then return res or nil end
+    if not (love.graphics and love.graphics.newImage) then res = false; return nil end
+    local ok, r = pcall(function()
+        return {
+            word = newNearest("assets/branding/wordmark.png"),
+            wordGold = newNearest("assets/branding/wordmark_gold.png"),
+            seal = newNearest("assets/branding/seal.png"),
+            sealData = newNearest("assets/branding/seal_data.png"),
+        }
+    end)
+    if not ok then
+        Debug.warn("[MenuBrand] arte do logotipo nao carregou, menu usa o titulo de texto: " .. tostring(r))
+        res = false
+        return nil
+    end
+    r.pal = paletteImage()
+    r.bayer = bayerImage()
+    r.sealShader = loadShader("shaders/brand_seal.glsl")
+    r.wordShader = loadShader("shaders/brand_word.glsl")
+    r.fxShader = loadShader("shaders/brand_fx.glsl")
+    if r.sealShader then
+        r.sealShader:send("pal", r.pal)
+        r.sealShader:send("trevScale", Data.seal.trevScale)
+        r.sealShader:send("texSize", { Data.seal.w, Data.seal.h })
+        r.sealShader:send("tRay0", T.RAY0)
+        r.sealShader:send("tRayStep", T.RAYSTEP)
+        r.sealShader:send("tCharge", T.CHARGE)
+        r.sealShader:send("tFlash", T.FLASH)
+    end
+    if r.wordShader then
+        r.wordShader:send("goldMask", r.wordGold)
+        r.wordShader:send("texSize", { Data.word.w, Data.word.h })
+    end
+    if r.fxShader then r.fxShader:send("bayer", r.bayer) end
+    r.quads = {}
+    for i = 1, #Data.cuts - 1 do
+        local a, b = Data.cuts[i], Data.cuts[i + 1]
+        r.quads[i] = love.graphics.newQuad(a, 0, b - a, Data.word.h, Data.word.w, Data.word.h)
+    end
+    res = r
+    return r
+end
+
+function MenuBrand._resetForTests() res = nil end
+
+function MenuBrand.available() return MenuBrand.load() ~= nil end
+
+function MenuBrand.canSting()
+    local r = MenuBrand.load()
+    return r ~= nil and r.sealShader ~= nil and r.wordShader ~= nil and r.fxShader ~= nil
+end
+
+function MenuBrand.layout(vw, vh, k)
+    k = k or 1
+    local W, H = vw * k, vh * k
+    local spacing = math.min(80, vh * 0.1)
+    local topV = vh * 0.04
+    local limitV = vh * 0.5 - spacing - vh * 0.03
+    local region = (limitV - topV) * k
+    local P = math.max(1, math.floor(region / MenuBrand.TOTAL_H))
+    while P > 1 and Data.word.w * P > W * 0.5 do P = P - 1 end
+    local ox = math.floor((W - Data.word.w * P) / 2 + 0.5)
+    local oy = math.floor(topV * k + math.max(0, region - MenuBrand.TOTAL_H * P) / 2 + 0.5)
+    return {
+        P = P, ox = ox, oy = oy, W = W, H = H, k = k,
+        sealX = math.floor((Data.word.w - Data.seal.w) / 2), sealY = 0,
+        wordX = 0, wordY = Data.seal.h + Data.gap,
+        nW = W / P, nH = H / P,
+        cNX = (W / 2 - ox) / P, cNY = (H / 2 - oy) / P,
+    }
+end
+
+local function easeOut(u)
+    u = math.min(1, math.max(0, u))
+    return 1 - (1 - u) ^ 3
+end
+
+function MenuBrand.new()
+    local self = setmetatable({}, MenuBrand)
+    self.mode = "static"
+    self.clock = 0
+    self.sweeps = {}
+    self.twinkles = {}
+    local rng = love.math.newRandomGenerator(7)
+    self.rng = rng
+    self.burst = {}
+    for i = 1, N_BURST do
+        local a = rng:random() * 2 * math.pi
+        local s = 70 + rng:random() * 160
+        self.burst[i] = { vx = math.cos(a) * s, vy = math.sin(a) * s * 0.9,
+            life = 0.6 + rng:random() * 1.1, big = rng:random() < 0.3 }
+    end
+    self.converge = {}
+    for i = 1, N_CONVERGE do
+        self.converge[i] = { a = rng:random() * 2 * math.pi, r0 = 110 + rng:random() * 80,
+            t0 = T.CHARGE - 0.1 + rng:random() * 0.2 }
+    end
+    self.embers = {}
+    for i = 1, N_EMBERS do
+        self.embers[i] = {
+            x0 = -50 + rng:random() * (Data.word.w + 100),
+            y0 = Data.seal.h * 0.6 + rng:random() * (Data.seal.h * 0.4 + Data.gap + Data.word.h + 40),
+            vy = -22 + rng:random() * 13, ph = rng:random() * 6.28, amp = 2 + rng:random() * 5,
+            t0 = rng:random() * 2.6, life = 1.8 + rng:random() * 1.6, fl = 4 + rng:random() * 5,
+        }
+    end
+    self.emberT0 = math.huge
+    return self
+end
+
+function MenuBrand:isPlaying() return self.mode == "sting" end
+
+function MenuBrand:stingTime()
+    if self.mode == "sting" then return self.clock end
+    return math.huge
+end
+
+local function rand(rng, lo, hi) return lo + rng:random() * (hi - lo) end
+
+function MenuBrand:_toIdle()
+    self.mode = "idle"
+    self.sweeps = {}
+    self.twinkles = {}
+    self.nextSweep = self.clock + rand(self.rng, MenuBrand.IDLE_SWEEP[1], MenuBrand.IDLE_SWEEP[2])
+    self.nextTwinkle = self.clock + rand(self.rng, MenuBrand.IDLE_TWINKLE[1], MenuBrand.IDLE_TWINKLE[2])
+    if self.emberT0 == math.huge then self.emberT0 = self.clock end
+end
+
+function MenuBrand:startSting()
+    self.mode = "sting"
+    self.clock = 0
+    self.emberT0 = T.MOVE
+    self.sweeps = { T.SWEEP0 }
+    self.twinkles = {}
+    for k = 0, 7 do self.twinkles[#self.twinkles + 1] = { T.RAY0 + k * T.RAYSTEP + 0.1, k + 1 } end
+    for _, h in ipairs(HOLD_TWINKLES) do self.twinkles[#self.twinkles + 1] = { h[1], h[2] } end
+end
+
+function MenuBrand:startShort()
+    self.clock = 0
+    self.emberT0 = math.huge
+    self:_toIdle()
+    self.sweeps = { 0.35 }
+end
+
+function MenuBrand:finish()
+    if self.mode ~= "sting" then return end
+    self.clock = T.END
+    self:_toIdle()
+end
+
+function MenuBrand:update(dt, reduced)
+    if reduced then
+        if self.mode == "sting" then self:finish() end
+        return
+    end
+    self.clock = self.clock + dt
+    if self.mode == "sting" then
+        if self.clock >= T.END then self:_toIdle() end
+        return
+    end
+    if self.mode == "static" then self:_toIdle() end
+    if self.clock >= self.nextSweep then
+        self.sweeps[#self.sweeps + 1] = self.clock
+        self.nextSweep = self.clock + rand(self.rng, MenuBrand.IDLE_SWEEP[1], MenuBrand.IDLE_SWEEP[2])
+    end
+    if self.clock >= self.nextTwinkle then
+        self.twinkles[#self.twinkles + 1] = { self.clock, self.rng:random(1, 8) }
+        self.nextTwinkle = self.clock + rand(self.rng, MenuBrand.IDLE_TWINKLE[1], MenuBrand.IDLE_TWINKLE[2])
+    end
+    for i = #self.sweeps, 1, -1 do
+        if self.clock - self.sweeps[i] > 2 then table.remove(self.sweeps, i) end
+    end
+    for i = #self.twinkles, 1, -1 do
+        if self.clock - self.twinkles[i][1] > 1 then table.remove(self.twinkles, i) end
+    end
+end
+
+local SWEEP_FROM = -20
+local SWEEP_TO = Data.word.w + MenuBrand.TOTAL_H * 0.55 + 20
+
+function MenuBrand:sweepP()
+    for _, s0 in ipairs(self.sweeps) do
+        local p = SWEEP_FROM + (self.clock - s0) * MenuBrand.SWEEP_SPEED
+        if self.clock >= s0 and p <= SWEEP_TO then return p end
+    end
+    return nil
+end
+
+local alphaMul = 1
+
+local function px(x, y, c)
+    love.graphics.setColor(c[1] / 255, c[2] / 255, c[3] / 255, alphaMul)
+    love.graphics.rectangle("fill", math.floor(x + 0.5), math.floor(y + 0.5), 1, 1)
+end
+
+local function sparkle(x, y, age)
+    local f = math.floor(age * 60 / 3)
+    if f < 0 or f >= #SPARK_SIZES then return end
+    local s = SPARK_SIZES[f + 1]
+    x, y = math.floor(x + 0.5), math.floor(y + 0.5)
+    px(x, y, SPARK[1])
+    for i = 1, s do
+        local c = s > 1 and SPARK[math.min(3, i)] or SPARK[2]
+        px(x + i, y, c); px(x - i, y, c); px(x, y + i, c); px(x, y - i, c)
+    end
+    if s == 3 then
+        px(x + 1, y + 1, SPARK[3]); px(x - 1, y + 1, SPARK[3])
+        px(x + 1, y - 1, SPARK[3]); px(x - 1, y - 1, SPARK[3])
+    end
+end
+
+local function emberColor(u)
+    return EMBER[math.min(#EMBER, math.floor(u * #EMBER) + 1)]
+end
+
+function MenuBrand:_sealPos(L)
+    local t = self.clock
+    local sy0 = math.floor(L.cNY - Data.seal.h / 2 + 0.5) - 4
+    local u = self.mode == "sting" and easeOut((t - T.MOVE) / (T.MOVE_END - T.MOVE)) or 1
+    local sy = math.floor(sy0 + (L.sealY - sy0) * u + 0.5)
+    local jx, jy = 0, 0
+    if self.mode == "sting" and t >= T.CHARGE + 0.14 and t < T.FLASH then
+        local k = math.floor(t * 60) % 4
+        local J = { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 } }
+        jx, jy = J[k + 1][1], J[k + 1][2]
+    end
+    return L.sealX, sy, jx, jy, sy0
+end
+
+local function sendRing(sh, name, col, on, R, thick, dens, c)
+    if on then
+        sh:send(name, { R, thick, dens, 1 })
+        sh:send(col, { c[1] / 255, c[2] / 255, c[3] / 255 })
+    else
+        sh:send(name, { 0, 0, 0, 0 })
+    end
+end
+
+function MenuBrand:_fxPass(L, under, bgAmt, cx, cy, alpha)
+    local r = res
+    if not (r and r.fxShader) then return end
+    local t = self.clock
+    local sh = r.fxShader
+    local g = love.graphics
+    local x0, y0 = g.transformPoint(0, 0)
+    local x1 = g.transformPoint(1, 0)
+    sh:send("cell", math.max(1, x1 - x0))
+    sh:send("gridOrigin", { x0, y0 })
+    sh:send("center", { cx, cy })
+    sh:send("bgCenter", { L.cNX, (L.H * 0.44 - L.oy) / L.P })
+    sh:send("screenN", { L.nW, L.nH })
+    local tf = t - T.FLASH
+    if under then
+        sh:send("bgAmt", bgAmt)
+        local on = t >= 0.06 and t < 0.72
+        local uu = easeOut((t - 0.06) / 0.66)
+        sendRing(sh, "ringA", "colA", on, 150 - 100 * uu, 1.0, 0.15 + 0.6 * uu, { 150, 104, 52 })
+        sendRing(sh, "ringB", "colB", false)
+        sendRing(sh, "ringC", "colC", false)
+        sh:send("flashT", -1)
+        if bgAmt <= 0 and not on then return end
+    else
+        sh:send("bgAmt", 0)
+        local on1 = tf >= 0 and tf < 0.62
+        local uu = tf / 0.62
+        local cols = { { 255, 248, 226 }, SPARK[2], SPARK[3], EMBER[4] }
+        sendRing(sh, "ringA", "colA", on1, 10 + 320 * easeOut(uu), 4 - 2.5 * uu, 1.05 - uu,
+            cols[math.min(4, math.floor(uu * 4) + 1)])
+        local on2 = on1 and tf > 0.06
+        local u2 = (tf - 0.06) / 0.56
+        sendRing(sh, "ringB", "colB", on2, 6 + 220 * easeOut(u2), 1.0, 0.7 - 0.7 * u2, EMBER[3])
+        sendRing(sh, "ringC", "colC", false)
+        local fl = tf >= 0 and tf < 0.3
+        sh:send("flashT", fl and tf or -1)
+        if not on1 and not fl then return end
+    end
+    g.setShader(sh)
+    g.setColor(1, 1, 1, alpha)
+    g.rectangle("fill", -L.ox / L.P - 2, -L.oy / L.P - 2, L.nW + 4, L.nH + 4)
+    g.setShader()
+end
+
+function MenuBrand:_drawWord(L, t, sweepP, reduced)
+    local r = res
+    local g = love.graphics
+    local sh = r.wordShader
+    local last = T.WORD0 + (#r.quads - 1) * T.WORDSTEP + #BOUNCE * 2 / 60
+    if self.mode ~= "sting" or t >= last then
+        if sweepP and sh and not reduced then
+            g.setShader(sh)
+            sh:send("origin", { L.wordX, L.wordY })
+            sh:send("sweepP", sweepP)
+            sh:send("whiteMix", 0)
+            sh:send("boost", 0)
+        end
+        g.setColor(1, 1, 1, alphaMul)
+        g.draw(r.word, L.wordX, L.wordY)
+        g.setShader()
+        return
+    end
+    for i, q in ipairs(r.quads) do
+        local t0 = T.WORD0 + (i - 1) * T.WORDSTEP
+        local f = math.floor((t - t0) * 60 / 2)
+        if f >= 0 then
+            local dy = BOUNCE[f + 1] or 0
+            local a, b = Data.cuts[i], Data.cuts[i + 1]
+            if sh then
+                g.setShader(sh)
+                sh:send("origin", { L.wordX, L.wordY + dy })
+                sh:send("sweepP", sweepP or -10000)
+                sh:send("whiteMix", f < 2 and 0.65 or 0)
+                sh:send("boost", (f >= 2 and f < 4) and 1 or 0)
+            end
+            g.setColor(1, 1, 1, alphaMul)
+            g.draw(r.word, q, L.wordX + a, L.wordY + dy)
+            g.setShader()
+            if f >= 4 and f < 9 then
+                local base = L.wordY + Data.word.h - 2
+                local k = f - 4
+                local w = b - a
+                for s = -1, 1, 2 do
+                    for j = 0, 1 do
+                        local x = L.wordX + a + math.floor(w / 2) + s * (math.floor(w / 2) + 1 + k * 2 + j * 2)
+                        px(x, base - math.floor(k / 2) - j, k > 2 and EMBER[5] or DUST)
+                    end
+                end
+            end
+        end
+    end
+end
+
+function MenuBrand:draw(alpha, bgAmt, reduced)
+    local r = MenuBrand.load()
+    if not r then return false end
+    alpha = alpha or 1
+    bgAmt = bgAmt or 0
+    local g = love.graphics
+    local k = require("src.ui.UiScale").activeK()
+    local L = MenuBrand.layout(g.getWidth(), g.getHeight(), k)
+    self._layout = L
+    local t = self.clock
+    local sting = self.mode == "sting" and not reduced
+    alphaMul = alpha
+
+    g.push()
+    g.scale(1 / k, 1 / k)
+    g.translate(L.ox, L.oy)
+    g.scale(L.P, L.P)
+
+    local lastLetter = T.WORD0 + (#r.quads - 1) * T.WORDSTEP + 4 / 60
+    if sting and t - lastLetter >= 0 and t - lastLetter < 3 / 60 then g.translate(0, 1) end
+
+    local sx, sy, jx, jy, sy0 = self:_sealPos(L)
+    if reduced or self.mode ~= "sting" then sy = L.sealY; jx, jy = 0, 0 end
+    local scx, scy = sx + Data.seal.cx, sy0 + Data.seal.cy
+
+    if sting then self:_fxPass(L, true, bgAmt, scx, scy, 1) end
+
+    if sting and t >= T.CHARGE and t < T.FLASH then
+        for _, c in ipairs(self.converge) do
+            local u = (t - c.t0) / (T.FLASH - c.t0)
+            if u >= 0 and u < 1 then
+                local rr = c.r0 * (1 - u * u)
+                local ca, sa = math.cos(c.a), math.sin(c.a)
+                px(scx + ca * rr, scy + sa * rr, u > 0.6 and SPARK[2] or SPARK[3])
+                px(scx + ca * (rr + 3), scy + sa * (rr + 3), EMBER[4])
+            end
+        end
+    end
+
+    local sweepP = (not reduced) and self:sweepP() or nil
+    local animSeal = sting and t < T.FLASH + 0.4
+    if (animSeal or sweepP) and r.sealShader then
+        local sh = r.sealShader
+        g.setShader(sh)
+        sh:send("T", animSeal and t or 99)
+        sh:send("origin", { sx, sy })
+        sh:send("sweepP", sweepP or -10000)
+        g.setColor(1, 1, 1, alpha)
+        g.draw(r.sealData, sx + jx, sy + jy)
+        g.setShader()
+    elseif not sting or t >= T.FLASH then
+        g.setColor(1, 1, 1, alpha)
+        g.draw(r.seal, sx, sy)
+    end
+
+    if not reduced then
+        for _, tw in ipairs(self.twinkles) do
+            local tip = Data.tips[tw[2]]
+            sparkle(sx + tip[1], sy + tip[2], t - tw[1])
+        end
+    end
+
+    if not sting or t >= T.WORD0 - 0.01 then self:_drawWord(L, t, sweepP, reduced) end
+
+    if sting then
+        self:_fxPass(L, false, 0, scx, sy + Data.seal.cy, 1)
+        local tf = t - T.FLASH
+        if tf >= 0 then
+            for _, b in ipairs(self.burst) do
+                if tf <= b.life then
+                    local drag = 2.2
+                    local f = (1 - math.exp(-drag * tf)) / drag
+                    local x = scx + b.vx * f
+                    local y = scy + b.vy * f + 26 * tf * tf
+                    local c = emberColor(tf / b.life)
+                    px(x, y, c)
+                    if b.big and tf < b.life * 0.5 then
+                        px(x + 1, y, c); px(x, y + 1, c); px(x + 1, y + 1, c)
+                    end
+                end
+            end
+        end
+    end
+
+    if not reduced and t >= self.emberT0 then
+        for _, e in ipairs(self.embers) do
+            local te = t - self.emberT0 - e.t0
+            if te >= 0 then
+                te = te % (e.life + 0.4)
+                if te <= e.life and math.sin(e.ph + te * e.fl) >= -0.6 then
+                    local u = te / e.life
+                    px(e.x0 + math.sin(e.ph + te * 1.7) * e.amp, e.y0 + e.vy * te, emberColor(0.25 + u * 0.75))
+                end
+            end
+        end
+    end
+
+    g.pop()
+    g.setColor(1, 1, 1, 1)
+    alphaMul = 1
+    return true
+end
+
+function MenuBrand:wordRect()
+    local L = self._layout
+    if not L then return nil end
+    return (L.ox + L.wordX * L.P) / L.k, (L.oy + L.wordY * L.P) / L.k,
+        Data.word.w * L.P / L.k, Data.word.h * L.P / L.k, L.P
+end
+
+return MenuBrand
