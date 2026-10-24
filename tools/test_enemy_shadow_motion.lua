@@ -52,6 +52,7 @@ function M.run()
 
     local function frame(game)
         ShadowEngine.setFrame(cx - 600, W, 0.85, 0.8)
+        EnemyRenderer._flap.n = 0
         sil, contact = nil, nil
         love.graphics.setCanvas(canvas)
         EnemyRenderer.draw(game, cx, cy)

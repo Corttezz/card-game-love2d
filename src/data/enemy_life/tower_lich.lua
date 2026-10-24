@@ -11,4 +11,7 @@ return {
             { kind = "frost", xr = 0.17, yr = 0.22, rate = 1.20, spread = 0.06 },
         } },
     },
+    fx = {
+        { kind = "downdraft", xr = 0.55, yr = 1, spread = 0.50, rate = 0.75, strokes = { 6 } },
+    },
 }

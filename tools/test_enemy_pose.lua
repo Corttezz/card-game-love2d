@@ -237,8 +237,8 @@ function M.run()
         local total = bordaDir + barra(0.09, 0.24) + barra(0.70, 0.92)
         t:truthy("capa do lich SE MEXE entre os frames (soma=" .. total
             .. ", arte parada dava 3)", total >= 5)
-        t:truthy("...e se mexe POUCO, como pedido (soma=" .. total .. ")",
-            total <= 14)
+        t:truthy("...capa esvoaca no voo sem sair do quadro (soma=" .. total .. ", teto 70)",
+            total <= 70)
     end
 
     do

@@ -62,32 +62,38 @@ EnemyPoses.BY_ID = {
                      shadowK = 0.55, shadowA = 0.45 },
 
     dusk_shade   = { pose = "floating",
+                     flapPeak = 0.42,
                      hover = 0.09, bob = 0.020, bobSpeed = 0.95,
                      shadowK = 0.58, shadowA = 0.48,
                      idle = { fps = 7, cycle = true } },
 
     carrion_king = { pose = "floating",
+                     flapPeak = 0.58,
                      hover = 0.07, bob = 0.012, bobSpeed = 4.19,
                      drift = 0.010,
                      shadowK = 0.68, shadowA = 0.58,
                      idle = { fps = 8, cycle = true } },
 
     tower_lich   = { pose = "floating",
+                     flapPeak = 0.50,
                      hover = 0.075, bob = 0.028, bobSpeed = 1.10,
                      drift = 0.016,
                      shadowK = 0.62, shadowA = 0.50,
                      idle = { fps = 6, cycle = true } },
 
     abyss_watcher = { pose = "floating",
+                      flapPeak = 0.75,
                       hover = 0.08, bob = 0.020, bobSpeed = 0.80,
                       shadowK = 0.60, shadowA = 0.50,
                       idle = { fps = 9, cycle = true } },
     dusk_bat     = { pose = "floating",
+                      flapPeak = 0.50,
                       hover = 0.10, bob = 0.014, bobSpeed = 4.19,
                       shadowK = 0.55, shadowA = 0.45,
                       idle = { fps = 8, cycle = true } },
 
     eclipse_queen = { pose = "floating",
+                      flapPeak = 0.50,
                       hover = 0.06, bob = 0.020, bobSpeed = 0.90,
                       drift = 0.010,
                       shadowK = 0.66, shadowA = 0.55,
@@ -120,6 +126,7 @@ function EnemyPoses.get(spriteId)
         axisX    = p.axisX,
         shadowBaseK = p.shadowBaseK,
         shadowRiseK = p.shadowRiseK,
+        flapPeak = p.flapPeak,
     }
 end
 

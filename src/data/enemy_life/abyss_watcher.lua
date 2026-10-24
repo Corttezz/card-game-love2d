@@ -8,6 +8,7 @@ return {
     fx = {
         { kind = "drips", xr = 0.48, yr = 0.95, rate = 0.6, spread = 0.5, dir = "down" },
         { kind = "embers", xr = 0.5, yr = 0.08, rate = 0.4, spread = 0.5, dir = "up" },
+        { kind = "downdraft", xr = 0.5, yr = 1, spread = 0.55, strokes = { 11 } },
     },
     states = {
         poison = { clip = "state_poison", fps = 8 },

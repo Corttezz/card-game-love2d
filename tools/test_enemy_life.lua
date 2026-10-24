@@ -521,6 +521,97 @@ local function checkStateClip(t, EnemyLife)
     t:truthy("clip de estado integrado sem erro" .. (okRun and "" or (": " .. tostring(err))), okRun)
 end
 
+local function checkDowndraft(t, EnemyLife)
+    local V = EnemyLife.validate
+    t:falsy("downdraft sem strokes rejeitado", V({ fx = { { kind = "downdraft", xr = 0.5, yr = 1 } } }))
+    t:falsy("stroke nao inteiro rejeitado", V({ fx = { { kind = "downdraft", xr = 0.5, yr = 1, strokes = { 2.5 } } } }))
+    t:falsy("strokes fora do downdraft rejeitado", V({ fx = { { kind = "smoke", xr = 0.5, yr = 1, strokes = { 2 } } } }))
+    t:truthy("downdraft com strokes aceito", V({ fx = { { kind = "downdraft", xr = 0.5, yr = 1, strokes = { 2, 8 } } } }))
+
+    local Poses = require("src.data.enemy_poses")
+    local Enemies = require("src.data.enemies")
+    for id, p in pairs(Poses.BY_ID) do
+        local d = EnemyLife.load(id)
+        local drafts = {}
+        for _, e in ipairs((d and d.fx) or {}) do
+            if e.kind == "downdraft" then drafts[#drafts + 1] = e end
+        end
+        if p.pose == "floating" and Enemies.HOME_BIOME[id] then
+            t:truthy(id .. ": quem voa sopra o chao (downdraft declarado)", #drafts > 0)
+            local nIdle = #(clipFiles(id, "idle") or {})
+            for _, e in ipairs(drafts) do
+                for _, f in ipairs(e.strokes) do
+                    t:truthy(string.format("%s: stroke %d dentro do idle (%d quadros)", id, f, nIdle), f <= nIdle)
+                end
+            end
+        elseif p.pose ~= "floating" then
+            t:eq(id .. ": apoiado nao sopra o chao", #drafts, 0)
+        end
+    end
+
+    local ER = require("src.ui.EnemyRenderer")
+    for fid, p in pairs(Poses.BY_ID) do
+        if p.flapPeak then
+            local hi = ER.poseOffsetY(fid, 100, 0, 0, p.flapPeak)
+            local lo = ER.poseOffsetY(fid, 100, 0, 0, (p.flapPeak + 0.5) % 1)
+            t:truthy(string.format("%s: corpo mais alto no pico da batida (%.2f < %.2f)", fid, hi, lo), hi < lo)
+        end
+    end
+
+    local id = "__life_draft__"
+    local strokes = { 3, 9 }
+    EnemyLife._setData(id, { fx = { { kind = "downdraft", xr = 0.5, yr = 1, spread = 0.4, strokes = strokes } } })
+    EnemyLife.update(0, id, "idle", 1, false)
+    local frameN, f = 12, 1
+    local function tick(anim, dt)
+        EnemyLife.frame(100, 50, 2, 0, 0, 100, 100, anim ~= "death", 1, nil, 90)
+        local s0 = EnemyLife.strokeCount()
+        EnemyLife.update(dt or (1 / 12), id, anim, f, false)
+        local fired = EnemyLife.strokeCount() - s0
+        local was = f
+        f = (f % frameN) + 1
+        return fired, was
+    end
+    local wrong, fires = 0, 0
+    for _ = 1, frameN * 4 do
+        local fired, was = tick("idle")
+        local isStroke = was == strokes[1] or was == strokes[2]
+        if fired > 0 then fires = fires + 1 end
+        if (fired > 0) ~= isStroke then wrong = wrong + 1 end
+    end
+    t:eq("motas so nos quadros de batida", wrong, 0)
+    t:eq("uma rajada por batida (4 voltas x 2 batidas)", fires, 8)
+    t:truthy("rajada gera motas (" .. EnemyLife.draftCount() .. ")", EnemyLife.draftCount() > 0)
+
+    local fidFires = 0
+    for _ = 1, frameN * 2 do fidFires = fidFires + tick("fidget_x") end
+    t:eq("fidget nao sopra", fidFires, 0)
+
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local k0 = collectgarbage("count")
+    for _ = 1, frameN * 10 do tick("idle") end
+    local kb = (collectgarbage("count") - k0) / (frameN * 10)
+    collectgarbage("restart")
+    t:truthy(string.format("downdraft sem alocacao (%.4f KB/quadro)", kb), kb < 0.05)
+
+    local deathFires = 0
+    for _ = 1, 12 do deathFires = deathFires + tick("death") end
+    t:eq("morte: nenhuma batida sopra", deathFires, 0)
+    for _ = 1, 12 do tick("death") end
+    t:eq("morte: motas somem", EnemyLife.draftCount(), 0)
+
+    local gs = _G.gameSettings
+    _G.gameSettings = { reducedMotion = true }
+    EnemyLife._setData(id, { fx = { { kind = "downdraft", xr = 0.5, yr = 1, strokes = strokes } } })
+    EnemyLife.update(0, id, "idle", 1, false)
+    local redFires = 0
+    for _ = 1, frameN * 2 do redFires = redFires + tick("idle") end
+    t:eq("reducedMotion: sem sopro", redFires + EnemyLife.draftCount(), 0)
+    _G.gameSettings = gs
+    EnemyLife._setData(id, nil)
+end
+
 function M.run()
     local t = TK.new("monstros vivos parados (EnemyLife)")
     TK.bootstrap()
@@ -535,6 +626,7 @@ function M.run()
     checkRenderer(t, EnemyLife)
     checkStates(t, EnemyLife)
     checkStateClip(t, EnemyLife)
+    checkDowndraft(t, EnemyLife)
     _G.gameSettings = gs
     EnemyLife.clearCache()
     return t:done()

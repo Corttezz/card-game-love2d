@@ -171,12 +171,16 @@ local function ensureAnim(enemyId, animName)
     return anim
 end
 
-function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK)
+function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK, flapPh)
     local pose = EnemyPoses.get(spriteId)
     if pose.pose ~= "floating" then return 0, pose end
     local k = pose.hover
     if not reducedMotion() then
-        k = k + math.sin((now or 0) * pose.bobSpeed) * pose.bob
+        if flapPh and pose.flapPeak then
+            k = k + math.cos((flapPh - pose.flapPeak) * 6.2832) * pose.bob
+        else
+            k = k + math.sin((now or 0) * pose.bobSpeed) * pose.bob
+        end
     end
     k = k * (1 - math.max(0, math.min(1, sinkK or 0)))
     return -k * (spriteH or 0), pose
@@ -192,7 +196,31 @@ function EnemyRenderer.poseOffsetX(spriteId, spriteH, now, sinkK)
     return k * (spriteH or 0)
 end
 
+EnemyRenderer._flap = { ph = 0, n = 0, fps = 0, id = nil }
+EnemyRenderer.FLAP_SYNC = 0.5
+
+function EnemyRenderer._tickFlap(dt)
+    local F = EnemyRenderer._flap
+    local a = currentAnim
+    if a and currentAnimName == "idle" and a.frames and #a.frames > 1 and currentEnemyId then
+        local n = #a.frames
+        local target = ((a.currentFrame - 1) + math.min(1, a.elapsed * a.fps)) / n
+        if F.n == 0 or F.id ~= currentEnemyId then
+            F.ph = target
+        else
+            local d = ((target - F.ph + 0.5) % 1) - 0.5
+            local lim = EnemyRenderer.FLAP_SYNC * dt
+            if d > lim then d = lim elseif d < -lim then d = -lim end
+            F.ph = (F.ph + dt * a.fps / n + d) % 1
+        end
+        F.n, F.fps, F.id = n, a.fps, currentEnemyId
+    elseif F.n > 0 then
+        F.ph = (F.ph + dt * F.fps / F.n) % 1
+    end
+end
+
 function EnemyRenderer.clearCache()
+    EnemyRenderer._flap.n, EnemyRenderer._flap.id = 0, nil
     axisCache = {}
     staticCache = {}
     staticMiss = {}
@@ -276,6 +304,7 @@ function EnemyRenderer.strongPose(p)
 end
 
 function EnemyRenderer.resetRun()
+    EnemyRenderer._flap.n, EnemyRenderer._flap.id = 0, nil
     EnemyRenderer.setTimeScale(1)
     attackFx = nil
     poisonTime, defendTime, buffTime, knockTime, slashTime = 0, 0, 0, 0, 0
@@ -458,6 +487,7 @@ end
 function EnemyRenderer.update(dt)
     dt = dt * timeScale
     if currentAnim then currentAnim:update(dt * EnemyLife.animRate(currentAnimName)) end
+    EnemyRenderer._tickFlap(dt * EnemyLife.animRate(currentAnimName))
     do
         local lc, lf, loop = EnemyLife.update(dt, currentEnemyId, currentAnimName,
             currentAnim and currentAnim.currentFrame, EnemyRenderer.lifeBusy())
@@ -908,8 +938,9 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     local bodyCx = cx
     cx = cx - math.floor(offX * scale)
 
+    local flapPh = (EnemyRenderer._flap.n > 0 and EnemyRenderer._flap.id == id) and EnemyRenderer._flap.ph or nil
     local hoverY, pose = EnemyRenderer.poseOffsetY(id, ih * scale,
-        love.timer.getTime(), poseSink)
+        love.timer.getTime(), poseSink, flapPh)
     local floating = pose.pose == "floating"
     local driftX = EnemyRenderer.poseOffsetX(id, ih * scale,
         love.timer.getTime(), poseSink)
@@ -1038,15 +1069,13 @@ function EnemyRenderer.draw(game, cx, cy, opts)
         if not idleH or idleH <= 0 then idleH = idleM.h - idleM.pad end
         local pBaseK, pRiseK, pLenK = EnemyRenderer.shadowProfile(
             pose, currentAnimName, frameH, idleH)
-        local contactK = EnemyRenderer.contactK(floating, currentAnimName, poseSink)
-        local drawn = floating and contactK <= 0
-        if not drawn then drawn = ShadowEngine.silhouette(shX, shY,
+        local drawn = ShadowEngine.silhouette(shX, shY,
             { smear = iw * scale * 0.035 * smearK,
               widthK = shK,
               lenK = shK * pLenK * EnemyRenderer.SHADOW_LEN,
               baseK = pBaseK, riseK = pRiseK,
               contentH = frameH * scale,
-              alphaK = shA * sceneShadowA * (floating and contactK or 1) },
+              alphaK = shA * sceneShadowA },
             function(tint)
                 if hasAnim then
                     currentAnim:draw(sx0, sy0, scale, tint)
@@ -1059,25 +1088,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
                             scale, scale)
                     end
                 end
-            end) end
-        if floating then
-            local fimg
-            if hasAnim then fimg = currentAnim.frames and currentAnim.frames[currentAnim.currentFrame]
-            else
-                local sprites = loadStatic(id)
-                fimg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
-            end
-            local lift = -hoverY - atkDY
-            require("src.ui.FloatShadow").draw(fimg, {
-                x = cx + jitter * 0.5 + gdx + shDX / 0.55 * require("src.ui.FloatShadow").LIGHT_SHIFT,
-                groundY = cy, scale = scale, footPad = footPad, contentH = frameH,
-                contentW = (curM.cw > 0) and curM.cw or nil, contentOff = curM.off,
-                liftK = lift / math.max(1, ih * scale), hover = pose.hover,
-                bob = reducedMotion() and 0 or pose.bob,
-                fade = 1 - contactK, alphaK = sceneShadowA,
-                groundR = opts and opts.groundR, maxY = opts and opts.shadowMaxY,
-            })
-        end
+            end)
         local footW, footCx = nil, nil
         local fL, fR = curM.footL, curM.footR
         local ff = currentAnimName == "death" and curM.frameFeet and curM.frameFeet[frameIdx]
@@ -1087,6 +1098,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             footCx = cx + ((fL + fR + 1) / 2 - curM.w / 2) * scale
                 + jitter * 0.5 + gdx
         end
+        local contactK = EnemyRenderer.contactK(floating, currentAnimName, poseSink)
         if drawn and footW and contactK > 0 then
             EnemyRenderer.drawFootContact(footCx, footW, shY, scale, sceneShadowA * contactK)
         end
@@ -1096,8 +1108,15 @@ function EnemyRenderer.draw(game, cx, cy, opts)
             local rx = baseW * 0.46 * shK
             local ry = math.max(3, baseW * 0.060 * shK)
             local a = 0.30 * shA * sceneShadowA
-            love.graphics.setColor(0, 0, 0, a)
-            love.graphics.ellipse("fill", shX, shY, rx, ry)
+            if floating then
+                love.graphics.setColor(0, 0, 0, a * 0.5)
+                love.graphics.ellipse("fill", shX, shY, rx * 1.45, ry * 1.45)
+                love.graphics.setColor(0, 0, 0, a * 0.7)
+                love.graphics.ellipse("fill", shX, shY, rx, ry)
+            else
+                love.graphics.setColor(0, 0, 0, a)
+                love.graphics.ellipse("fill", shX, shY, rx, ry)
+            end
         end
     end
 
@@ -1117,7 +1136,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     EnemyLife.frame(cx - (iw * scale) / 2, cy - ih * scale + footY, scale,
         (drawX - (cx - (iw * scale) / 2)) / scale, (drawY - (cy - ih * scale + footY)) / scale,
-        iw, ih, enemyAlive, (opts and opts.alpha) or 1, game.enemy)
+        iw, ih, enemyAlive, (opts and opts.alpha) or 1, game.enemy, ih - footY / scale)
     EnemyLife.drawBack()
     love.graphics.setColor(1, 1, 1, 1)
 
@@ -1455,8 +1474,6 @@ function EnemyRenderer.getEncounterBillboard(enemy)
         shadowBaseK = EnemyPoses.get(enemy.spriteId).shadowBaseK,
         shadowRiseK = EnemyPoses.get(enemy.spriteId).shadowRiseK,
         contentH = clipMetrics(enemy.spriteId, "idle").frameHeights[1],
-        contentW = clipMetrics(enemy.spriteId, "idle").cw,
-        contentOff = clipMetrics(enemy.spriteId, "idle").off,
         shadow = EnemyRenderer.idleShadow(enemy.spriteId),
     }
 end

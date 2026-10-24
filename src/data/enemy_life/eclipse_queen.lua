@@ -10,6 +10,7 @@ return {
         enraged = { clip = "state_enraged", fps = 9 },
     },
     fx = {
+        { kind = "downdraft", xr = 0.50, yr = 1, spread = 0.60, strokes = { 5 } },
         { kind = "mist", xr = 0.50, yr = 0.94, rate = 0.5, spread = 0.40, tint = { 0.30, 0.16, 0.42 }, dir = "side" },
     },
 }

@@ -98,12 +98,7 @@ que impede sombras cruzadas de escurecerem em dobro). `tipShiftAt(px)`
 expõe a direção "pra longe do sol" pra quem precisa deslocar a própria
 sombra.
 
-Quem usava: criatura FLUTUANTE. **Desde 23/Out/2026 o flutuante no ar usa
-`src/ui/FloatShadow.lua`** (silhueta achatada no chão, respira com o bob; ver
-[`memory/enemy_pose_and_scene_anchor.md`](enemy_pose_and_scene_anchor.md),
-"Sombra de voo"); a silhueta projetada dele só volta quando pousa na morte
-(`alphaK × contactK`). `ShadowEngine.getTint()` expõe a tinta do frame. Texto
-antigo: a sombra dela
+Quem usa: criatura FLUTUANTE (`src/data/enemy_poses.lua`). A sombra dela
 **não sobe com o corpo** — fica no chão, menor, mais fraca, mais borrada e
 escorregada pro lado oposto à luz. É o vão entre corpo e sombra que diz
 "isto está no ar"; elipse de contato colada embaixo de quem paira foi o

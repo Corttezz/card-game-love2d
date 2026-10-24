@@ -250,7 +250,7 @@ float windAt(float nx, float wz, float t, float pers) {
 
 // pokeLean da CPU (rajada local amortecida)
 float pokeLean(float nx, float wz) {
-    if (uPoke.w < 0.5) return 0.0;
+    if (uPoke.w <= 0.0) return 0.0;
     float e = uT - uPoke.z;
     if (e < 0.0 || e >= 0.9) return 0.0;
     float dxr = nx - uPoke.x;
@@ -260,7 +260,7 @@ float pokeLean(float nx, float wz) {
     if (d2 >= 4.0) return 0.0;
     float swell = min(1.0, e * 10.0) * exp(-e * 4.0);
     float side = dxr >= 0.0 ? 1.0 : -1.0;
-    return exp(-d2 * 1.3) * swell * side * 1.9;
+    return exp(-d2 * 1.3) * swell * side * 1.9 * uPoke.w;
 }
 
 vec4 position(mat4 transform_projection, vec4 vertex_position) {
@@ -355,8 +355,10 @@ end
 GrassField.windAt = windAt
 
 GrassField._poke = nil
-function GrassField.pokeAt(nx, wz, t)
-    GrassField._poke = { nx = nx, wz = wz, t0 = t }
+local pokeBuf = { nx = 0, wz = 0, t0 = 0, amp = 1 }
+function GrassField.pokeAt(nx, wz, t, amp)
+    pokeBuf.nx, pokeBuf.wz, pokeBuf.t0, pokeBuf.amp = nx, wz, t, amp or 1
+    GrassField._poke = pokeBuf
 end
 
 local sortRow
@@ -513,7 +515,7 @@ function GrassField.draw(ctx)
         shader:send("uP", { P.gustSpeed, P.gustAmp, P.windAmp, P.dir })
         local pk = GrassField._poke
         if pk then
-            shader:send("uPoke", { pk.nx, pk.wz, pk.t0, 1 })
+            shader:send("uPoke", { pk.nx, pk.wz, pk.t0, pk.amp or 1 })
         else
             shader:send("uPoke", { 0, 0, 0, 0 })
         end
