@@ -12,6 +12,7 @@ local CardBack = require("src.ui.CardBack")
 local CardBackHover = require("src.ui.CardBackHover")
 local DynaText = require("src.ui.DynaText")
 local TvOsd = require("src.ui.TvOsd")
+local MenuBrand = require("src.ui.MenuBrand")
 
 local Menu = {}
 Menu.__index = Menu
@@ -56,6 +57,7 @@ function Menu:new()
         }
     end
     instance._candleFlare = 0
+    instance.brand = MenuBrand.new()
 
     instance:createButtons()
 
@@ -203,10 +205,15 @@ end
 function Menu:update(dt)
     if not self.visible then return end
 
-    self:_ensureTitleDyna()
-    if self._titleDyna then
-        self._titleDyna.rotate = not reducedMotion()
-        self._titleDyna:update(dt)
+    if MenuBrand.available() then
+        self.brand:update(dt, reducedMotion())
+        self:_applyStingTimeline()
+    else
+        self:_ensureTitleDyna()
+        if self._titleDyna then
+            self._titleDyna.rotate = not reducedMotion()
+            self._titleDyna:update(dt)
+        end
     end
 
     for _, button in pairs(self.buttons) do
@@ -273,6 +280,71 @@ function Menu:update(dt)
         if e.t >= e.life then table.remove(self.embers, i) end
     end
 end
+
+Menu.BUTTON_ORDER = { "continueRun", "play", "collection", "achievements", "settings", "quit" }
+
+local function smooth01(u)
+    u = math.max(0, math.min(1, u))
+    return u * u * (3 - 2 * u)
+end
+
+local function backOut01(u)
+    u = math.max(0, math.min(1, u))
+    local c1, c3 = 1.70158, 2.70158
+    return 1 + c3 * (u - 1) ^ 3 + c1 * (u - 1) ^ 2
+end
+
+function Menu:_settleIntro()
+    self.intro.active = false
+    self.intro.alphaBg = 1
+    self.intro.alphaTitle = 1
+    self.intro.titleScale = 1
+    for k in pairs(self.intro.alphaButtons) do
+        self.intro.alphaButtons[k] = 1
+        self.intro.buttonOffsetY[k] = 0
+    end
+end
+
+function Menu:_applyStingTimeline()
+    if not self._sting then return end
+    local BT = MenuBrand.T
+    local t = self.brand:stingTime()
+    if t == math.huge then
+        self._sting = nil
+        self:_settleIntro()
+        return
+    end
+    self.intro.alphaBg = smooth01((t - BT.FLASH) / BT.BG_FADE)
+    self.intro.alphaTitle = 1
+    for i, name in ipairs(Menu.BUTTON_ORDER) do
+        local u = (t - BT.BUTTONS - (i - 1) * BT.BUTTON_STEP) / BT.BUTTON_DUR
+        self.intro.alphaButtons[name] = smooth01(u)
+        self.intro.buttonOffsetY[name] = 12 * (1 - backOut01(u))
+    end
+    local st = self._sting
+    if not st.electric and t >= BT.ELECTRIC then
+        st.electric = true
+        Sfx.play("bootElectric", { volume = 0.45 })
+    end
+    if not st.impact and t >= BT.FLASH then
+        st.impact = true
+        Sfx.play("bootImpact", { volume = 0.6 })
+    end
+end
+
+function Menu:isIntroPlaying()
+    return self._sting ~= nil and self.brand:isPlaying()
+end
+
+function Menu:skipIntro()
+    if not self:isIntroPlaying() then return false end
+    self.brand:finish()
+    self._sting = nil
+    self:_settleIntro()
+    return true
+end
+
+function Menu._resetSting() MenuBrand.resetSting() end
 
 function Menu:_ensureTitleDyna()
     local height = love.graphics.getHeight()
@@ -702,6 +774,13 @@ function Menu:_drawSmokeLayer(t, bgAlpha)
 end
 
 function Menu:drawTitle()
+    if MenuBrand.available() then
+        local alpha = self.intro.alphaTitle or 1
+        if alpha <= 0.02 then return end
+        local bgAmt = self._sting and (1 - (self.intro.alphaBg or 1)) or 0
+        self.brand:draw(alpha, bgAmt, reducedMotion())
+        return
+    end
     local titleFont = FontManager.getResponsiveFont(Config.UI.TITLE_FONT_RATIO, 40)
     love.graphics.setFont(titleFont)
 
@@ -873,6 +952,20 @@ function Menu:enterWithIntro()
     self.osdTimer = 0
     self._candleFlare = 1
 
+    local full = MenuBrand.stingPending()
+    MenuBrand.markStingPlayed()
+    if full then
+        if _G.EventManager then _G.EventManager.clear("menu_intro") end
+        self.intro.active = true
+        self._sting = {}
+        self.brand:startSting()
+        self:_applyStingTimeline()
+        self:_startMenuMusic()
+        return
+    end
+    self._sting = nil
+    self.brand:startShort()
+
     self.intro.active        = true
     self.intro.alphaBg       = 0
     self.intro.alphaTitle    = 0
@@ -908,6 +1001,10 @@ function Menu:enterWithIntro()
         end
     end
 
+    self:_startMenuMusic()
+end
+
+function Menu:_startMenuMusic()
     if Sfx.playMusic then
         Sfx.playMusic("menuMusic", { fadeDuration = 1.5 })
         local okDir, MD = pcall(require, "src.systems.MusicDirector")
@@ -921,6 +1018,7 @@ end
 
 function Menu:mousepressed(x, y, button)
     if not self.visible then return end
+    if self:skipIntro() then return end
 
     local consumed = false
     for name, btn in pairs(self.buttons) do

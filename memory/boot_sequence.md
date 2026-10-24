@@ -181,3 +181,5 @@ Dono: "as cartas entram coordenadas demais, pouco aleatórias"; "muito mais deta
 
 ## Entrada v10 — status
 - **Status: ENTREGUE e VALIDADO** ✅. O outage do PixelLab foi contornado pelo gerador em background (`scratchpad/pixellab_boot_bg.py`, cliente MCP HTTP que retenta — padrão reutilizável pra outages futuros). Artes instaladas: `frame_00.png` (paisagem) + `clouds.png` (nuvens transparentes). **Âncora da LUA medida por centroide dos pixels claros: (173, 46), raio 34** (`SIGIL_IX/IY`/`SEAL_RADIUS_IMG`). Offsets das nuvens medidos do alpha-bbox (conteúdo y 23..103 do canvas 256×128 → camadas em iy -16/-2). Validado por screenshot pelo tubo: lua flareia entre early/peak, nuvens cruzam a lua, castelo na crista esquerda, título cai sobre as colinas escuras (contraste ótimo).
+
+**Titulo do splash x vinheta do menu (24/Out/2026)**: quando o menu vai tocar a vinheta do logotipo (`MenuBrand.stingPending()`), o splash nao monta as letras de `menu.title` nem dispara flash/`bootImpact`/tremor; termina 0,35 s depois das cartas. A vinheta do menu e o unico momento de marca. Ver `memory/menu_branding.md`.
