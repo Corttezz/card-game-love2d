@@ -655,6 +655,12 @@ function V.planks()
     return plankTable(marshSeed()).list
 end
 
+function V.plankAt(v)
+    local PT = plankTable(marshSeed())
+    local yi = floor(v / V.S) % TH
+    return PT.list[PT.at[yi]]
+end
+
 function V.plankMissing(pk)
     return h2(pk, 3, marshSeed()) < 0.06
 end

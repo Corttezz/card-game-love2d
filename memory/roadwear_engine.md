@@ -215,3 +215,22 @@ e 4 (removidos; as notas acima ficam como histórico). Dono: "pilha de entulho",
   está reto.
 - **Lama.** Pedaços de tábua quebrada só na lama de fora (|u| de 0,56 a 0,95), 20% das fileiras e
   mais afundados: perto da passarela liam como tábua solta.
+
+## Rodada 6 (24/Out/2026): deck discreto, postes legíveis
+
+O lead viu a rodada 5 como "faixa escura chapada" no lugar onde o dono já recusou um retângulo escuro.
+
+- **Deck no máximo 1,4 × o tronco** (`WALK.deckW`), desenhado por `WorldRoad._deckRow`: bordas com a
+  mesma mordida irregular do tronco (offset de `edges`), tábuas do tile esticadas até ~88% da meia
+  largura com comprimento variando por tábua (`RoadTiles.plankAt` + `plankJitter`, ±11%); as faltas e
+  pontas tortas do próprio tile aparecem. Sem aro escuro lateral.
+- **Beirais claros e quebrados** na frente e atrás: trechos de 10 a 28 px em madeira clara com
+  frestas (30% com 4 px), sombra de 1 px por baixo, e um poste em cada canto.
+- **Postes** (`WorldRoad._post`, largura `WorldRoad.postW` = 2 × arredondado de 1,35·S·hs, mínimo
+  4 px = 2 px de arte): contorno escuro, lado claro, lado escuro e topo aceso. Nos cantos do deck,
+  nas juntas e a cada 4 tábuas.
+- **Passarela do meio presa ao deck**: começa `attach` (0,15 rel) antes da borda de trás do deck, com
+  viga de junta, e vai contínua até o acampamento. Largura de tábua igual à das laterais
+  (fator 0,62 + 0,24·|ey|).
+- **Convergência**: o deck volta à largura do tronco nos primeiros 40% (`WALK.convK`); nenhuma faixa
+  mais larga que a passarela que entra na loja.

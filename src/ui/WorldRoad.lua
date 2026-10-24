@@ -4055,7 +4055,7 @@ local function drawRoad(g, x, w, camZ)
         local tF = (1 - FORK_REL / REL_CREST) ^ T_POW
         local hsF = ROAD_HALF * w * (0.30 + 0.70 * tF ^ 1.15) * vis / st.half
         DK.uc = roadWobble(camZ + FORK_REL, tF, w) / hsF
-        DK.front, DK.alive = false, false
+        DK.front, DK.alive, DK.pc = false, false, rawBiome().trunk or DK.pc or { 0.2, 0.14, 0.09 }
     end
     R.vd, R.vbase, R.camZ, R.w, R.vis = vd, vbase, camZ, w, vis
     for kk = 1, nRows do
@@ -4067,27 +4067,9 @@ local function drawRoad(g, x, w, camZ)
             dL, dR = edges(cx + RWOB[k])
         end
         if dL and dR > dL then
-            local e = DK.e
-            local c0 = cx + RWOB[k]
-            local tL, tR = dL, dR
             DK.alive = true
-            local dc = cx + DK.uc * RHS[k]
-            local hw = DK.wk * half0
-            local xL = math.floor(tL + (dc - hw - tL) * e)
-            local xR = math.floor(tR + (dc + hw - tR) * e)
-            span(c0 + (dc - c0) * e, xL, xR, 0, 1, 1, RV[k], 0, RDV[k], (xR - xL) / math.max(1, tR - tL) * (1 + 0.68 * e))
-            if e > 0.01 then
-                rect(xL, math.floor(g.latY(xL - cx, t)), 2, step, 0.06, 0.05, 0.03, 0.7 * e)
-                rect(xR - 2, math.floor(g.latY(xR - cx, t)), 2, step, 0.06, 0.05, 0.03, 0.7 * e)
-                local back = k < nRows and RREL[k + 1] <= DK.r0
-                if not DK.front or back then
-                    for bx = xL, xR - 1, 16 do
-                        rect(bx, math.floor(g.latY(bx + 8 - cx, t)) - 1, math.min(16, xR - bx), 2,
-                            roadEdge[1] * 0.6, roadEdge[2] * 0.6, roadEdge[3] * 0.6, 0.9 * e)
-                    end
-                end
-                DK.front = true
-            end
+            local xL, xR = WorldRoad._deckRow(DK, k, t, half0, cx + RWOB[k], dL, dR, cx, R, span, rect, g, step,
+                nRows, rowId, qm, st)
             decorate(xL, xR, true, true, 1)
         elseif fork and rel > FORK_REL then
             for i = 1, nArm do
@@ -4199,14 +4181,14 @@ function WorldRoad._corner(B, g, cx, a, b)
     return x, y + g.latY(x - cx, B.ctt) - g.latY(B.ccx - cx + B.sx * b * B.wpx, B.ctt)
 end
 
-WorldRoad.WALK = { deckW = 1.7, deckBack = 0.6, deckLen = 2.6, hl = 0.36, pitch = 7.5, fill = 0.84, ku = 1.0,
+WorldRoad.WALK = { deckW = 1.4, deckBack = 0.6, deckLen = 2.6, hl = 0.33, attach = 0.15, convK = 0.4, pitch = 7.5, fill = 0.84, ku = 1.0,
     exit = 0.3, tk0 = 0.72, tk1 = 0.97, post = 4 }
 
 function WorldRoad.deckSpan(fork)
     local W = WorldRoad.WALK
     local ai = fork.animIn or 1
     ai = ai * ai * (3 - 2 * ai)
-    local c = fork.converge and fork.converge.k or 0
+    local c = fork.converge and math.min(1, (fork.converge.k or 0) / W.convK) or 0
     local e = ai * (1 - c * c * (3 - 2 * c))
     return FORK_REL - W.deckBack, FORK_REL + W.deckLen, 1 + (W.deckW - 1) * e, e
 end
@@ -4218,14 +4200,62 @@ function WorldRoad.walkTk(fork, i)
     return k * k * (3 - 2 * k)
 end
 
+function WorldRoad.postW(S, hs)
+    return math.max(4, 2 * math.floor(1.35 * S * hs + 0.5))
+end
+
+function WorldRoad._deckRow(DK, k, t, half0, c0, tL, tR, cx, R, span, rect, g, step, nRows, rowId, qm, st)
+    local RHS, RV, RDV, RREL = R.hs, R.v, R.dv, R.rel
+    local hash = WorldRoad._roadHash
+    local e = DK.e
+    local dc = cx + DK.uc * RHS[k]
+    local cc = c0 + (dc - c0) * e
+    local hw = DK.wk * half0
+    local xL = math.floor(cc - hw + (tL - (c0 - half0)))
+    local xR = math.floor(cc + hw + (tR - (c0 + half0)))
+    local PL = require("engine.RoadTiles")
+    local p = PL.plankAt(RV[k])
+    local jit = p and (PL.plankJitter(p.i + 23) - 0.5) * 0.22 or 0
+    span(cc, xL, xR, 0, 1, 1, RV[k], 0, RDV[k], 1 + (1.54 * DK.wk * (1 + jit) - 1) * e)
+    if e > 0.01 then
+        local front = not DK.front
+        local back = k < nRows and RREL[k + 1] <= DK.r0
+        if front or back then
+            local bc = DK.pc
+            local m0, m1 = math.floor(cc - hw * 0.9), math.floor(cc + hw * 0.9)
+            local bx, n = m0, 0
+            while bx < m1 do
+                n = n + 1
+                local len = math.floor(10 + hash(rowId * 13 + n * 7.1) * 18)
+                local gap = hash(rowId * 17 + n * 3.3) < 0.3 and 4 or 1
+                local x2 = math.min(m1, bx + len)
+                local yy = math.floor(g.latY((bx + x2) * 0.5 - cx, t)) - 1
+                rect(bx, yy, x2 - bx, 2, bc[1] * 1.45, bc[2] * 1.4, bc[3] * 1.3, 0.8 * e)
+                rect(bx, yy + 2, x2 - bx, 1, bc[1] * 0.7, bc[2] * 0.7, bc[3] * 0.7, 0.55 * e)
+                bx = x2 + gap
+            end
+            local pw = WorldRoad.postW(st.S or 1, RHS[k])
+            for sd = -1, 1, 2 do
+                local px = sd < 0 and (m0 - pw * 0.5) or (m1 + pw * 0.5)
+                WorldRoad._post(qm, px, math.floor(g.latY(px - cx, t)) + step, pw, bc, e)
+            end
+        end
+        DK.front = true
+    end
+    return xL, xR
+end
+
 function WorldRoad._post(qm, px, py, pw, pc, aMul)
     local U = QuadMesh.UNTEXTURED
-    local ph = math.max(3, math.floor(pw * 1.7 + 0.5))
+    local ph = math.max(6, math.floor(pw * 2.4 + 0.5))
     local x0, y0 = math.floor(px - pw / 2), math.floor(py - ph + pw * 0.4)
-    qm:rect(x0 + 1, y0 + ph, pw, math.max(1, math.floor(pw * 0.4)), U, 0, U, 0, 0.04, 0.05, 0.03, 0.5 * aMul)
-    qm:rect(x0, y0, pw, ph, U, 0, U, 0, pc[1] * 1.1, pc[2] * 1.1, pc[3] * 1.05, aMul)
-    qm:rect(x0, y0, math.max(1, math.floor(pw * 0.4)), ph, U, 0, U, 0, pc[1] * 1.7, pc[2] * 1.6, pc[3] * 1.45, aMul)
-    qm:rect(x0, y0, pw, math.max(1, math.floor(pw * 0.35)), U, 0, U, 0, pc[1] * 2.0, pc[2] * 1.9, pc[3] * 1.7, aMul)
+    local sw = math.max(2, math.floor(pw / 3))
+    qm:rect(x0 + 2, y0 + ph, pw, math.max(2, math.floor(pw * 0.4)), U, 0, U, 0, 0.04, 0.05, 0.03, 0.5 * aMul)
+    qm:rect(x0 - 1, y0 - 1, pw + 2, ph + 2, U, 0, U, 0, 0.05, 0.04, 0.03, 0.85 * aMul)
+    qm:rect(x0, y0, pw, ph, U, 0, U, 0, pc[1] * 1.2, pc[2] * 1.2, pc[3] * 1.1, aMul)
+    qm:rect(x0, y0, sw, ph, U, 0, U, 0, pc[1] * 1.9, pc[2] * 1.8, pc[3] * 1.6, aMul)
+    qm:rect(x0 + pw - sw, y0, sw, ph, U, 0, U, 0, pc[1] * 0.6, pc[2] * 0.6, pc[3] * 0.6, aMul)
+    qm:rect(x0, y0, pw, math.max(2, math.floor(pw * 0.35)), U, 0, U, 0, pc[1] * 2.2, pc[2] * 2.1, pc[3] * 1.9, aMul)
 end
 
 function WorldRoad._walkPoints(fork, i, R, st, plan, out)
@@ -4261,6 +4291,9 @@ function WorldRoad._walkPoints(fork, i, R, st, plan, out)
         add(at(MARK_REL))
         add(at(MARK_REL + E.from + E.len))
     else
+        local rS = DK.r1 - W.attach
+        uS, vS = at(rS)
+        vS = (camZ + rS) * vd - vbase
         add(uS, vS)
         add(at(MARK_REL))
     end
@@ -4335,9 +4368,9 @@ function WorldRoad._marshWalks(qm, g, cx, groundH, step, nRows, R, st, fork)
         return ax, ay, dx, dy
     end
     local function posts(L, hs, aMul)
-        local pw = math.max(2, math.floor(1.7 * S * hs + 0.5))
+        local pw = WorldRoad.postW(S, hs)
         for sd = -1, 1, 2 do
-            local px, py = corner(B, g, cx, sd * (L + 1.2 * S * hs), 0)
+            local px, py = corner(B, g, cx, sd * (L + pw * 0.6), 0)
             WorldRoad._post(qm, px, py, pw, pc, aMul)
         end
     end
@@ -4370,8 +4403,8 @@ function WorldRoad._marshWalks(qm, g, cx, groundH, step, nRows, R, st, fork)
                             local xc, yc, hs, tt = toScreen(A.u, A.v)
                             local wl, ey = frame(x0, y0, x1, y1, xc, yc, tt)
                             if wl then
-                                local L = W.hl * st.half * hs * (0.45 + 0.55 * math.abs(ey)) * 1.08
-                                if j > 1 then plank(L, wl * 0.35, 0, 0.2, aJ, 0, pd) end
+                                local L = W.hl * st.half * hs * (0.62 + 0.24 * math.abs(ey)) * 1.08
+                                if j > 1 or fork.dirs[i] == 0 then plank(L, wl * 0.35, 0, 0.2, aJ, 0, pd) end
                                 posts(L, hs, aJ)
                             end
                         end
@@ -4399,7 +4432,7 @@ function WorldRoad._marshWalks(qm, g, cx, groundH, step, nRows, R, st, fork)
                                 local wl, ey = frame(x0, y0, x1, y1, xc, yc, tt)
                                 if wl then
                                     local id = i * 131 + j * 17 + kb * 7
-                                    local L = W.hl * st.half * hs * (0.45 + 0.55 * math.abs(ey))
+                                    local L = W.hl * st.half * hs * (0.62 + 0.24 * math.abs(ey))
                                         * (0.94 + RT.plankJitter(id) * 0.12)
                                     local sh = (RT.plankJitter(id + 7) - 0.5) * 2 * S * hs * 0.5
                                     local ax, ay, dx, dy = plank(L, wl * 0.5, sh, RT.plankJitter(id + 3), aMul,
