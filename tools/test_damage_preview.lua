@@ -28,11 +28,14 @@ function M.run()
     local EDITIONS = { "foil", "holo", "polychrome" }
     local SEALS = { "Red", "Purple", "Gold", "Blue" }
     local ORBS = { "lightning", "ice", "dark", "fire", "holy" }
-    local RESIST_IDS = {}
+    local RESIST_IDS, IMMUNE_IDS = {}, {}
     for id, tb in pairs(require("src.data.enemies").RESIST) do
         if next(tb) then RESIST_IDS[#RESIST_IDS + 1] = id end
+        for _, lvl in pairs(tb) do
+            if lvl == "immune" then IMMUNE_IDS[#IMMUNE_IDS + 1] = id break end
+        end
     end
-    table.sort(RESIST_IDS)
+    table.sort(RESIST_IDS); table.sort(IMMUNE_IDS)
     local resistTrials, immuneHits = 0, 0
 
     local mismatches, checked, lethal, withCombo = 0, 0, 0, 0
@@ -62,7 +65,7 @@ function M.run()
             e:addStatusEffect({ name = "vulnerable", stacks = 1, duration = 2 })
         end
         if rng:random() < 0.6 then
-            e.kitId = pick(RESIST_IDS)
+            e.kitId = pick(rng:random() < 0.5 and IMMUNE_IDS or RESIST_IDS)
             e.spriteId = e.kitId
         end
         g.jokerSlots = {}

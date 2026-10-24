@@ -5,7 +5,7 @@ require("src.ui.ResistFx")
 
 local ResistBadges = {}
 
-ResistBadges.SIZE = 24
+ResistBadges.SIZE = 26
 ResistBadges.GAP = 4
 
 ResistBadges.BORDER = {
@@ -59,7 +59,8 @@ local function drawMark(level, x, y, s)
         end
     else
         local col = level == "weak" and Palette.ORANGE or Palette.STEEL_LIGHT
-        local bx, by = x + s - u * 6, y + s - u * 5
+        u = math.max(1, math.floor(s / 13))
+        local bx, by = x + s - u * 4, y + s - u * 2
         setColor(Palette.INK, 1)
         px(bx - u, by - u, u * 7, u * 5)
         setColor(col, 1)
@@ -87,7 +88,7 @@ function ResistBadges.drawChip(entry, x, y, s)
     local icon = Resistances.ICON[entry.type]
     if icon then
         love.graphics.setColor(1, 1, 1, entry.level == "immune" and 0.8 or 1)
-        IconLoader.drawFit(icon, x + s / 2, y + s / 2, s - 6)
+        IconLoader.drawFit(icon, x + s / 2, y + s / 2, s - 4)
     end
     drawMark(entry.level, x, y, s)
     love.graphics.setColor(1, 1, 1, 1)

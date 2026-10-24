@@ -51,10 +51,10 @@ balanceamento do jogo."*
 | 1 | carrion_king | chefe | | sombra | fogo | rei dos mortos; penas queimam |
 | 2 | moon_gargoyle | comum | | veneno | | pedra de dia |
 | 2 | ram_cultist | comum | | sombra | | protegido pelos hinos da torre |
-| 2 | storm_harpy | comum | | raio | | nasce dos raios |
+| 2 | storm_harpy | comum | | raio | gelo | nasce dos raios; o frio derruba a asa |
 | 2 | rune_golem | elite | veneno | arcano | raio | constructo; as runas bebem magia e sobrecarregam com raio |
 | 2 | spectral_knight | elite | veneno | físico | arcano | fantasma: a lâmina passa através, a magia não |
-| 2 | storm_griffin | mini | raio | | gelo | ninho onde os raios caem primeiro |
+| 2 | storm_griffin | mini | | raio | gelo | ninho onde os raios caem primeiro (era imune: derrubou o mago, ver Medição) |
 | 2 | tower_lich | chefe | veneno, gelo | | fogo | morto-vivo do Escudo de Gelo |
 | 3 | ember_imp | comum | fogo | | gelo | feito de brasa |
 | 3 | hellhound | comum | | fogo | gelo | bafo de fogo |
@@ -104,6 +104,26 @@ balanceamento do jogo."*
 - O mago tem cinco elementos e sempre acha um que funciona; os fracos a fogo do
   ato 4 compensam o gelo imune do mesmo ato.
 - Bateria e números: ver seção "Medição" abaixo.
+
+## Medição (24/Out/2026)
+
+`python tools/balance.py --runs 30 --classes all --pilots expert_full,average --procs 3`
+(seeds padrão), mesma árvore, `BALANCE_IMMUNITIES=0` x ligado:
+
+| classe | expert_full desligado | ligado (v1) | ligado (final) | average desl. | average lig. (v1) |
+|---|---|---|---|---|---|
+| guerreiro | 50% | 50% | 50% | 13% | 20% |
+| mago | 53% | 37% | **53%** | 0% | 0% |
+| ladino | 63% | 57% | 57% | 3% | 0% |
+
+- v1 tinha o grifo da tempestade IMUNE a raio: o mago (raio é o dano do começo)
+  morreu 12× no ato 2 (grifo 21 mortes no total, contra 4 sem imunidade). Grifo
+  e harpia passaram a só resistir a raio e ficaram fracos a gelo: mago voltou a
+  53% (rodada só do mago, 30 runs, mesmas seeds).
+- Ladino -6 pp (dentro do teto de 8): o veneno é cortado no esqueleto, no
+  dullahan e em metade dos atos 4-6, mas o golpe físico segue inteiro.
+- Guerreiro inalterado (só o cavaleiro espectral resiste a físico; sentinela é fraco).
+- O piloto lê a tabela por `Resistances.apply/factor` (mesma API da prévia e do HUD).
 
 ## Onde mora
 
