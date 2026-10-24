@@ -205,6 +205,31 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   PNG o motor pinta um reserva em canvas (`EE.ANCHOR_SIZE`). `getSprite` devolve `false` para `anchor`.
 - Veus (`anchor.veil`: nevoa do ceifador, borrao do vigia) nao sao props: o motor desenha no caminho do encontro com
   alpha cruzado (veu some enquanto o corpo aparece).
+- **Ancora presa ao chao do bicho (24/Out/2026, dono: pedra da gargula desalinhada no fundo, circulo do cultista fora do
+  centro e "saindo do mapa", pedra/estaca/circulos parados na tela depois da luta)**. Causas medidas por
+  `tools/props_inimigo.lua` no codigo antigo: atras da crista a ancora afundava pela PROPRIA altura e o corpo pela dele
+  (gargula 27 arte-px fora); a ancora de beira ficava em `z + 0,25` (outro `t`, outra escala perto da crista); o cultista
+  ANDAVA 10 unidades ate o circulo (68 arte-px); o circulo era um billboard em pe (passava da crista); depois da luta
+  `tOf` prendia `t = 1` sem o deslocamento `over` das arvores e a escala travava em 1,02 (ancora parada no pe da tela) e o
+  alpha da encruzilhada a escondia e devolvia de uma vez na viagem seguinte (a "pedra que cai na tela").
+  Regras agora (`EE.drawProp`):
+  - Posicao = mesma formula do corpo: `EE.anchorZ` (`stopZ + BATTLE_REL + back`, sem o +0,25 de ordenacao), wobble do
+    `z` do corpo, `C - floor(offX*s)`, lateral `sideX`, chao `EE.groundY(g, C, L, t)` (o corpo da frente usa a mesma
+    funcao), atras da crista afunda pela altura do CORPO (`bodyIh`). Escala `persp(t)/persp(tB)` sem teto.
+  - Chata (`EE.isFlat`: circulo, sigilo, rachadura, fosso, lama, poca, cova, lombada, poca da sombra, nevoa) e decalque
+    no chao: nao desenha atras da crista e cada metade achata pela inclinacao do chao naquela profundidade (`EE.flatK`,
+    profundidade da arte resolvida na batalha; na batalha o fator e 1, pixel igual ao de antes).
+  - Ancora de palco = o bicho fica DENTRO dela desde a crista: `andar` com ancora de palco nao anda (`EE.plantedIn`),
+    chega com o mundo no idle (cultista, acolito).
+  - Saida: quando a camera passa do `stopZ` o `z` congela (`fixZ`), a ancora vira prop comum (escala cresce, `over`
+    empurra para baixo e para fora como arvore) e sai em `rel < -3,5`. Na encruzilhada some como a vegetacao, so se
+    cobrir uma opcao (`forkHide`, 0,22 s, `EE.FORK_HIDE`); nada de alpha ligado ao `animIn`.
+  - Prova: `CARDGAME_HEADLESS=1 lovec . test_one props_inimigo <ato>[:id[:shop]]` -> folhas `props_inimigo/<id>_entrada`,
+    `_fundo_x3` (recortes 3x do fundo, marcas magenta = ponto de chao do corpo e da ancora) e `_partida`
+    (`tools/preview_out/props_inimigo/`, `antes/` = codigo antigo). Trava `test_enemy_props` (960x540, todos os
+    portadores: desvio <= 1 arte-px, nunca acima da crista nem fora da estrada, ancora antiga nunca parada com a camera
+    andando, nenhuma sobra depois da viagem).
+  - Pendente: Continuar numa luta nao recria a ancora (o bicho volta sem estaca/pedra/circulo).
 
 ## Travas
 - `test_enemy_entrances`: 36 entradas declaradas, tipos/clipes/fx validos, extra <= 3, clipes instalados com ultimo
