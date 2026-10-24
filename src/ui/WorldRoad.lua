@@ -4709,6 +4709,10 @@ local function drawProps(g, x, w, camZ)
                         fadeA = fadeA * (1 - inK * bk)
                     end
                 end
+                if rel > REL_CREST - 3 then
+                    local ck = math.min(1, (rel - (REL_CREST - 3)) / 3)
+                    fadeA = fadeA * (1 - WorldRoad.forkE(f2) * ck)
+                end
                 if fadeA <= 0.01 then img = nil end
             end
             if WorldRoad._trace and rdef and not img then

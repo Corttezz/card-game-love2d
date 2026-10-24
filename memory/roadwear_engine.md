@@ -282,6 +282,8 @@ rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_w
   escolhido junto.
 - **Prop que não é vegetação atrás da crista** (ruína, santuário) some/volta com `forkE` em vez de zerar no
   quadro em que a encruzilhada abre/fecha; o do corredor do ramo escolhido usa `(1 - k) × animIn`.
+  Na frente da crista (rel de `REL_CREST - 3` à crista) o mesmo `forkE` entra em rampa, senão o prop que cruza
+  a crista na convergência saltava de 0,46 para 1 (`test_scene_continuity`, santuário do ato 6).
 - **Abertura da encruzilhada continua em 2,2/s.** Com 1,7/s um clique antes de abrir tudo (0,42 s) fazia o
   `test_scene_continuity` acusar pop de luminária: clicar durante a abertura ainda é ponto fraco.
 - **Terra sob a mão.** `GroundClutter` não corta mais de uma vez o que fica sob a mão quando ela entra: some em

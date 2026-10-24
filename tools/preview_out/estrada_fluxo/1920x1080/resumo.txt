@@ -1,0 +1,234 @@
+ato1_3_loja quadros=441 dirsA=0,-1,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato1_3_descanso quadros=442 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200
+ato1_3_batalha quadros=897 dirsA=0,-1,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f830
+  # retoma saiu_da_luta f831
+ato1_3_evento quadros=441 dirsA=-1,0,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato1_3_semluta_meio quadros=441 dirsA=-1,0,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato1_3_semluta_lado quadros=441 dirsA=-1,0,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato1_3_elite_lado quadros=808 dirsA=0,-1,1 lado=-1 dirsB=-1,0,1 castelo=[0.000,0.050] flags=0  
+  # pausa luta f741
+  # retoma saiu_da_luta f742
+ato1_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=-1,0,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato1_2_batalha quadros=808 dirsA=-1,0 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f741
+  # retoma saiu_da_luta f742
+ato1_2_semluta quadros=442 dirsA=-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200ato2_3_loja quadros=441 dirsA=0,-1,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato2_3_descanso quadros=442 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200
+ato2_3_batalha quadros=748 dirsA=0,-1,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f681
+  # retoma saiu_da_luta f682
+ato2_3_evento quadros=441 dirsA=-1,0,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato2_3_semluta_meio quadros=441 dirsA=-1,0,1 lado=0 dirsB=-1,0,1 castelo=[0.000,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato2_3_semluta_lado quadros=441 dirsA=-1,0,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato2_3_elite_lado quadros=778 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato2_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=-1,0,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato2_2_batalha quadros=778 dirsA=-1,0 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato2_2_semluta quadros=442 dirsA=-1,1 lado=-1 dirsB=-1,1,0 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200ato3_3_loja quadros=441 dirsA=0,-1,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato3_3_descanso quadros=442 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200
+ato3_3_batalha quadros=778 dirsA=0,-1,1 lado=0 dirsB=-1,0,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato3_3_evento quadros=441 dirsA=-1,0,1 lado=-1 dirsB=-1,0,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato3_3_semluta_meio quadros=441 dirsA=-1,0,1 lado=0 dirsB=-1,0,1 castelo=[0.000,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato3_3_semluta_lado quadros=441 dirsA=-1,0,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato3_3_elite_lado quadros=837 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa luta f770
+  # retoma saiu_da_luta f771
+ato3_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato3_2_batalha quadros=748 dirsA=-1,0 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f681
+  # retoma saiu_da_luta f682
+ato3_2_semluta quadros=442 dirsA=-1,1 lado=-1 dirsB=-1,0,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200ato4_3_loja quadros=441 dirsA=0,-1,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato4_3_descanso quadros=442 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200
+ato4_3_batalha quadros=778 dirsA=0,-1,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato4_3_evento quadros=441 dirsA=-1,0,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato4_3_semluta_meio quadros=441 dirsA=-1,0,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato4_3_semluta_lado quadros=441 dirsA=-1,0,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato4_3_elite_lado quadros=897 dirsA=0,-1,1 lado=-1 dirsB=-1,0,1 castelo=[0.000,0.050] flags=0  
+  # pausa luta f830
+  # retoma saiu_da_luta f831
+ato4_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato4_2_batalha quadros=748 dirsA=-1,0 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f681
+  # retoma saiu_da_luta f682
+ato4_2_semluta quadros=442 dirsA=-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200ato5_3_loja quadros=441 dirsA=0,-1,1 lado=1 dirsB=-1,1,0 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato5_3_descanso quadros=442 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200
+ato5_3_batalha quadros=778 dirsA=0,-1,1 lado=0 dirsB=-1,0,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato5_3_evento quadros=441 dirsA=-1,0,1 lado=-1 dirsB=-1,0,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato5_3_semluta_meio quadros=441 dirsA=-1,0,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato5_3_semluta_lado quadros=441 dirsA=-1,0,1 lado=1 dirsB=-1,0,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato5_3_elite_lado quadros=867 dirsA=0,-1,1 lado=-1 dirsB=-1,1,0 castelo=[0.000,0.050] flags=0  
+  # pausa luta f800
+  # retoma saiu_da_luta f801
+ato5_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=-1,0,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato5_2_batalha quadros=808 dirsA=-1,0 lado=0 dirsB=-1,1,0 castelo=[0.000,0.000] flags=0  
+  # pausa luta f741
+  # retoma saiu_da_luta f742
+ato5_2_semluta quadros=442 dirsA=-1,1 lado=-1 dirsB=-1,0,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200ato6_3_loja quadros=441 dirsA=0,-1,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato6_3_descanso quadros=442 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200
+ato6_3_batalha quadros=748 dirsA=0,-1,1 lado=0 dirsB=-1,0,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f681
+  # retoma saiu_da_luta f682
+ato6_3_evento quadros=441 dirsA=-1,0,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato6_3_semluta_meio quadros=441 dirsA=-1,0,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato6_3_semluta_lado quadros=441 dirsA=-1,0,1 lado=1 dirsB=0,-1,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_event f199
+  # retoma saiu_event f200
+ato6_3_elite_lado quadros=867 dirsA=0,-1,1 lado=-1 dirsB=0,-1,1 castelo=[0.000,0.050] flags=0  
+  # pausa luta f800
+  # retoma saiu_da_luta f801
+ato6_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=-1,0,1 castelo=[-0.050,0.000] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato6_2_batalha quadros=778 dirsA=-1,0 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato6_2_semluta quadros=442 dirsA=-1,1 lado=-1 dirsB=-1,0,1 castelo=[0.000,0.050] flags=0  
+  # pausa tela_rest f199
+  # retoma saiu_rest f200MEM ato1_3_loja lua=42MB privado=639MB pico=660MB t=33s
+MEM ato1_3_descanso lua=45MB privado=670MB pico=691MB t=60s
+MEM ato1_3_batalha lua=50MB privado=682MB pico=704MB t=112s
+MEM ato1_3_evento lua=43MB privado=654MB pico=704MB t=138s
+MEM ato1_3_semluta_meio lua=44MB privado=652MB pico=704MB t=169s
+MEM ato1_3_semluta_lado lua=45MB privado=653MB pico=704MB t=197s
+MEM ato1_3_elite_lado lua=48MB privado=673MB pico=704MB t=246s
+MEM ato1_2_loja lua=41MB privado=681MB pico=704MB t=278s
+MEM ato1_2_batalha lua=45MB privado=692MB pico=713MB t=324s
+MEM ato1_2_semluta lua=45MB privado=693MB pico=714MB t=350s
+MEM ato2_3_loja lua=44MB privado=604MB pico=625MB t=30s
+MEM ato2_3_descanso lua=48MB privado=625MB pico=646MB t=55s
+MEM ato2_3_batalha lua=44MB privado=638MB pico=660MB t=96s
+MEM ato2_3_evento lua=45MB privado=622MB pico=660MB t=121s
+MEM ato2_3_semluta_meio lua=47MB privado=636MB pico=660MB t=148s
+MEM ato2_3_semluta_lado lua=47MB privado=638MB pico=660MB t=172s
+MEM ato2_3_elite_lado lua=42MB privado=649MB pico=671MB t=210s
+MEM ato2_2_loja lua=45MB privado=652MB pico=674MB t=233s
+MEM ato2_2_batalha lua=49MB privado=670MB pico=692MB t=268s
+MEM ato2_2_semluta lua=49MB privado=670MB pico=692MB t=290s
+MEM ato3_3_loja lua=43MB privado=633MB pico=661MB t=25s
+MEM ato3_3_descanso lua=48MB privado=639MB pico=661MB t=47s
+MEM ato3_3_batalha lua=42MB privado=655MB pico=678MB t=83s
+MEM ato3_3_evento lua=46MB privado=657MB pico=680MB t=106s
+MEM ato3_3_semluta_meio lua=47MB privado=640MB pico=680MB t=130s
+MEM ato3_3_semluta_lado lua=47MB privado=641MB pico=680MB t=152s
+MEM ato3_3_elite_lado lua=41MB privado=652MB pico=680MB t=193s
+MEM ato3_2_loja lua=44MB privado=659MB pico=680MB t=217s
+MEM ato3_2_batalha lua=47MB privado=671MB pico=693MB t=258s
+MEM ato3_2_semluta lua=47MB privado=671MB pico=693MB t=282s
+MEM ato4_3_loja lua=62MB privado=592MB pico=614MB t=27s
+MEM ato4_3_descanso lua=49MB privado=611MB pico=631MB t=47s
+MEM ato4_3_batalha lua=45MB privado=628MB pico=649MB t=83s
+MEM ato4_3_evento lua=46MB privado=623MB pico=649MB t=105s
+MEM ato4_3_semluta_meio lua=48MB privado=623MB pico=649MB t=126s
+MEM ato4_3_semluta_lado lua=48MB privado=623MB pico=649MB t=148s
+MEM ato4_3_elite_lado lua=42MB privado=646MB pico=667MB t=187s
+MEM ato4_2_loja lua=43MB privado=651MB pico=671MB t=213s
+MEM ato4_2_batalha lua=45MB privado=660MB pico=682MB t=249s
+MEM ato4_2_semluta lua=45MB privado=662MB pico=682MB t=272s
+MEM ato5_3_loja lua=57MB privado=642MB pico=670MB t=31s
+MEM ato5_3_descanso lua=61MB privado=645MB pico=679MB t=58s
+MEM ato5_3_batalha lua=38MB privado=643MB pico=679MB t=105s
+MEM ato5_3_evento lua=41MB privado=646MB pico=679MB t=134s
+MEM ato5_3_semluta_meio lua=43MB privado=654MB pico=679MB t=162s
+MEM ato5_3_semluta_lado lua=43MB privado=657MB pico=679MB t=189s
+MEM ato5_3_elite_lado lua=46MB privado=678MB pico=700MB t=241s
+MEM ato5_2_loja lua=40MB privado=673MB pico=700MB t=269s
+MEM ato5_2_batalha lua=45MB privado=687MB pico=709MB t=311s
+MEM ato5_2_semluta lua=45MB privado=687MB pico=709MB t=336s
+MEM ato6_3_loja lua=58MB privado=632MB pico=654MB t=29s
+MEM ato6_3_descanso lua=45MB privado=613MB pico=667MB t=53s
+MEM ato6_3_batalha lua=50MB privado=632MB pico=667MB t=90s
+MEM ato6_3_evento lua=39MB privado=607MB pico=667MB t=113s
+MEM ato6_3_semluta_meio lua=42MB privado=616MB pico=667MB t=137s
+MEM ato6_3_semluta_lado lua=42MB privado=616MB pico=667MB t=160s
+MEM ato6_3_elite_lado lua=45MB privado=635MB pico=667MB t=203s
+MEM ato6_2_loja lua=45MB privado=638MB pico=667MB t=226s
+MEM ato6_2_batalha lua=47MB privado=646MB pico=668MB t=264s
+MEM ato6_2_semluta lua=47MB privado=646MB pico=668MB t=289s
