@@ -72,8 +72,8 @@ local function statusName(name)
 end
 
 function CounterJokers.blocksDebuff(game, name)
-    local joker = CounterJokers.find(game, "counter_debuff", name)
-    if not joker then return false end
+    local joker, e = CounterJokers.find(game, "counter_debuff", name)
+    if not (e and e.type == "counter_debuff") then return false end
     proc(game, joker, I18n.t("counter_jokers.proc.immune", { status = statusName(name) },
         "Imune: " .. statusName(name)), "buff")
     return true
@@ -81,16 +81,16 @@ end
 
 function CounterJokers.frostGain(game, n)
     if (n or 0) <= 0 then return n end
-    local joker = CounterJokers.find(game, "counter_frost")
-    if not joker then return n end
+    local joker, e = CounterJokers.find(game, "counter_frost")
+    if not (e and e.type == "counter_frost") then return n end
     proc(game, joker, I18n.t("counter_jokers.proc.frost", { value = n }, "-" .. n), "armor")
     return 0
 end
 
 function CounterJokers.freezeCount(game, n)
     if (n or 0) <= 0 then return n end
-    local joker = CounterJokers.find(game, "counter_frost")
-    if not joker then return n end
+    local joker, e = CounterJokers.find(game, "counter_frost")
+    if not (e and e.type == "counter_frost") then return n end
     proc(game, joker, I18n.t("counter_jokers.proc.thaw", nil, "Degelo"), "armor")
     return 0
 end
@@ -99,8 +99,8 @@ function CounterJokers.filterVisibility(enemy, level, cause)
     if level == "full" or level == nil then return level, cause end
     local game = CounterJokers.gameOf(enemy)
     if not game then return level, cause end
-    local joker = CounterJokers.find(game, "counter_sight")
-    if not joker then return level, cause end
+    local joker, e = CounterJokers.find(game, "counter_sight")
+    if not (e and e.type == "counter_sight") then return level, cause end
     proc(game, joker, I18n.t("counter_jokers.proc.sight", nil, "Revelado"), "info")
     return "full", "lantern"
 end

@@ -63,7 +63,7 @@ return {
                 fr = { "brume" }, de = { "nebel" } } },
     { id = "frost",
       match = { pt_BR = { "geada" }, en = { "frost" }, es = { "escarcha" },
-                fr = { "givre" }, de = { "raureif" } } },
+                fr = { "givre", "gel" }, de = { "raureif" } } },
     { id = "frail",
       match = { pt_BR = { "frágil" }, en = { "frail" }, es = { "frágil" },
                 fr = { "fragile" }, de = { "zerbrechlich" } } },

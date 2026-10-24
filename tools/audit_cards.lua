@@ -634,6 +634,7 @@ local function requiredConcepts(cd)
         elseif t == "discard_cards" then need("discard", t)
         elseif t == "apply_debuff" then need(e.value, t)
         elseif t == "on_attack_debuff" then need(e.debuffName or "poison", t)
+        elseif t == "counter_debuff" then need(e.debuffName, t)
         elseif t == "apply_buff" then need(e.value, t)
         elseif t == "gain_strength" or t == "strength_per_turn" or t == "strength_scaling" then
             need("strength", t)
