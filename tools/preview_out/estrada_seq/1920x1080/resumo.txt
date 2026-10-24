@@ -13,18 +13,10 @@ ato3_3meio quadros=280 clique=41 flags=0
 ato3_3dir quadros=280 clique=41 flags=0  
 ato3_2esq quadros=731 clique=41 flags=0  
 ato3_2dir quadros=731 clique=41 flags=0  
-ato4_3esq quadros=731 clique=41 flags=0  
+ato4_3esq quadros=731 clique=41 flags=2 road:chao_muda=2 
+  f0017 fork road chao_muda diff 5.53 med 1.41
+  f0018 fork road chao_muda diff 5.71 med 1.39
 ato4_3meio quadros=280 clique=41 flags=0  
 ato4_3dir quadros=280 clique=41 flags=0  
 ato4_2esq quadros=731 clique=41 flags=0  
 ato4_2dir quadros=731 clique=41 flags=0  
-ato5_3esq quadros=761 clique=41 flags=0  
-ato5_3meio quadros=280 clique=41 flags=0  
-ato5_3dir quadros=280 clique=41 flags=0  
-ato5_2esq quadros=761 clique=41 flags=0  
-ato5_2dir quadros=761 clique=41 flags=0  
-ato6_3esq quadros=731 clique=41 flags=0  
-ato6_3meio quadros=280 clique=41 flags=0  
-ato6_3dir quadros=280 clique=41 flags=0  
-ato6_2esq quadros=731 clique=41 flags=0  
-ato6_2dir quadros=731 clique=41 flags=0  

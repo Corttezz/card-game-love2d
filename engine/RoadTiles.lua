@@ -589,13 +589,14 @@ PAINT.marsh = function(x, y, u, s, np)
     end
     if np then
         local fr = h2(pk, 51, s)
-        if fr < 0.3 and yy < PLW - 2 then
-            local a0 = (h2(pk, 52, s) - 0.5) * 1.2
-            local len = 0.12 + h2(pk, 53, s) * 0.22
+        if fr < 0.2 and yy < PLW - 2 then
+            local sd = h2(pk, 52, s) < 0.5 and -1 or 1
+            local len = 0.08 + h2(pk, 53, s) * 0.12
+            local a0 = sd * (0.56 + h2(pk, 57, s) * 0.2) - (sd < 0 and len or 0)
             local sk = (h2(pk, 54, s) - 0.5) * 0.08 * (yy - PLW * 0.5)
             local uu = u - a0 - sk
             if uu > 0 and uu < len then
-                local val = 0.24 + h2(pk, 55, s) * 0.18 + (vnoise(x, y, 6, TH * 0.9, s + 56) - 0.5) * 0.2
+                local val = 0.2 + h2(pk, 55, s) * 0.14 + (vnoise(x, y, 6, TH * 0.9, s + 56) - 0.5) * 0.2
                 if yy == 0 then val = val + 0.12 end
                 if uu * HALF < 1 or (len - uu) * HALF < 1 then val = val - 0.12 end
                 return WOOD, 0.75, val

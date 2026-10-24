@@ -188,3 +188,30 @@ com sombra. Sem poça, anel, pegada, brasa ou junco (todos eram elipses).
   `WeatherEngine.isStriking()` (e o seguinte): rodando os 6 atos num processo, o relógio do clima
   carrega a tempestade de um ato para o outro e o clarão do ato 4 aparecia como `chao_muda`.
   Sozinho o ato 4 dava 0.
+
+## Rodada 5 (24/Out/2026): ato 5 como obra de carpinteiro
+
+Substitui o deck por `deckK`/`union`, o `_forkPlanks` e o tile de tábuas no ramo central das rodadas 3
+e 4 (removidos; as notas acima ficam como histórico). Dono: "pilha de entulho", tábuas em X no meio.
+
+- **Deck quadrado** (`WorldRoad.WALK`, `WorldRoad.deckSpan`): linhas de rel `FORK_REL - deckBack` a
+  `FORK_REL + deckLen`, largura `deckW` × a estrada, centro fixo em u (bambeio do tronco em
+  `FORK_REL`), tábuas do tile esticadas até a borda (todas paralelas, do mesmo eixo do tronco), beiral
+  escuro na frente e atrás e aro lateral. `e = animIn × (1 - convergência)` leva o deck de volta à
+  largura e às bordas do tronco: em `e = 0` a linha é idêntica ao tronco (abrir e fechar sem estalo).
+- **Passarelas em trechos retos** (`WorldRoad._walkPoints` + `WorldRoad._marshWalks`): por ramo, uma
+  polilinha no chão (u, V) calculada analiticamente por rel (mesma conta das linhas). Central: frente
+  do deck → acampamento (termina no marco). Laterais: saem da LATERAL do deck (`exit` = 30% do fundo
+  para a frente) → marco → além do marco, sumindo por `forkFarK`. Tábua perpendicular ao trecho na
+  tela, desenhada por `_board`; nunca curva. Junta entre trechos = viga escura + poste dos dois lados;
+  poste a cada `post` tábuas. Todos os ramos (inclusive o central) têm lama por baixo.
+- **Sem estalo quadro a quadro.** Passo fixo (`pitch × S`, o mesmo das tábuas do tronco); na
+  convergência as tábuas deslizam pelo deslocamento da câmera ACUMULADO quadro a quadro
+  (`fork._ws`, componente ao longo do trecho), nunca recalculado do total (o ângulo muda e a tábua
+  pulava). Alfa some nas pontas do trecho em 0,45 de passo, limitado a 0,12 por quadro por tábua
+  (`R.walk.prev/cur`), e tábuas até 3 passos fora do trecho continuam desenhadas enquanto somem.
+- **Convergência.** O ramo escolhido sai do lado do deck em direção ao próprio ramo, endireita junto
+  com ele e troca as tábuas pelo tile do tronco só no fim (`walkTk`, k de 0,72 a 0,97), quando já
+  está reto.
+- **Lama.** Pedaços de tábua quebrada só na lama de fora (|u| de 0,56 a 0,95), 20% das fileiras e
+  mais afundados: perto da passarela liam como tábua solta.

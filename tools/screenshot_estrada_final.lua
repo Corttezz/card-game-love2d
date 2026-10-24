@@ -56,7 +56,7 @@ local function setup(WorldRoad, bio, scene, width, height, topBarH, canvas, tod)
                 WorldRoad.forkMousePressed((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2)
             end
             if scene == "converge" then
-                tick(32, true)
+                tick(tonumber(os.getenv("ESTRADA_CONV") or "32"), true)
             else
                 tick(64, true)
             end
