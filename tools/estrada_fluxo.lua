@@ -369,6 +369,13 @@ function M.capture(act, plan, opts)
             td:encode("png", string.format("%s/thumbs/%s_%04d.png", opts.dir, opts.tag, frame))
             td:release()
         end
+        if opts.full and opts.dir and frame % opts.full == 0
+           and (phase == "converge" or phase == "partida" or phase == "viagem" or phase == "forkB") then
+            love.filesystem.createDirectory(opts.dir .. "/full")
+            local fd = cv:newImageData()
+            fd:encode("png", string.format("%s/full/%s_%04d_%s.png", opts.dir, opts.tag, frame, phase))
+            fd:release()
+        end
         love.graphics.present()
         if frame % 30 == 0 then collectgarbage() end
         if frame % 60 == 0 then
@@ -543,7 +550,8 @@ function M.run(arg)
         for _, pl in ipairs(M.PLANS) do
             if not next(want) or want[pl.tag] then
                 local tag = string.format("ato%d_%s", act, pl.tag)
-                local log = M.capture(act, pl, { dir = dir, thumbs = thumbs, tag = tag })
+                local log = M.capture(act, pl, { dir = dir, thumbs = thumbs, tag = tag,
+                    full = tonumber(os.getenv("SEQ_FULL") or "") })
                 local flags = M.analyze(log)
                 total = total + #flags + (log.ok and 0 or 1)
                 local function ds(t)

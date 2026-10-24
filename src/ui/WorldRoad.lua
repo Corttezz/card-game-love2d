@@ -1803,8 +1803,9 @@ function WorldRoad.update(dt)
                     }
                 end
                 local dch = f.dirs[f.chosen] or 0
-                WorldRoad._stop = { z = f.markZ, reveal = (dch == 0) and 1 or 0,
-                    revealing = dch ~= 0 and WorldRoad.isWalkType(node and node.type) }
+                WorldRoad._stop = { z = f.markZ,
+                    reveal = (dch == 0 or WorldRoad.isWalkType(node and node.type)) and 1 or 0,
+                    revealing = false }
                 local cb, idx = f.onChosen, f.chosen
                 WorldRoad._fork = nil
                 if cb then cb(node, idx) end
@@ -2470,7 +2471,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
     local s = WorldRoad.castleScale(g, w, bid, progress)
     local cx = g.cx
     if segBase == WorldRoad._segBase then
-        cx = cx + require("src.ui.CastleDrift").offset(camZ, progress, w)
+        cx = cx + require("src.ui.CastleDrift").offset(camZ, progress, w, iw * s)
     end
     local baseY = WorldRoad.castleBaseY(g, bid, cx, s, iw, ih, progress)
     local lmc = Scene.Grade.cfg("landmarks").castle
@@ -2996,7 +2997,7 @@ function PropCut.castleNeed(p, kind, variant, big)
         local ts = g.scaleAt(size * PropCut.crestK(kind, t), t, img:getHeight()) * K.varMax
         local top = (rel >= REL_CREST and g.crestYAt(g.cx) or g.latY(0, t)) - ihv * ts
         if top < cBase - ch * K.castleFoot then
-            local hb = (K.castleCore * cast:getWidth() * cs + 0.15 * img:getWidth() * ts) / w + CD.MAX * CD.envelope(prog) + K.margin
+            local hb = (K.castleCore * cast:getWidth() * cs + 0.15 * img:getWidth() * ts) / w + CD.KEEP_MAX * CD.envelope(prog) + K.margin
             need = math.max(need, (hb - 0.11 - 0.38 * t) / 0.38)
         end
         rel = rel - K.step
@@ -3858,7 +3859,8 @@ function WorldRoad.forkMousePressed(mx, my)
         local fights = nt == "battle" or nt == "elite" or nt == "mini_boss"
         WorldRoad.planStop(WorldRoad._camZ + MARK_REL - ARRIVE_REL
             + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), fights)
-        require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL, nt == "boss")
+        require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL, nt == "boss",
+            WorldRoad.isWalkType(nt))
         if node then
             local key = landmarkKeyFor(node.type)
             local img = key and getLandmark(key)
@@ -3944,7 +3946,7 @@ function WorldRoad.forkClearK(a)
 end
 WorldRoad.FORK_END = { from = 0.4, len = 2.4 }
 function WorldRoad.forkFarK(f, i, rel)
-    if not f or f.dirs[i] == 0 then return 1 end
+    if not f or f.dirs[i] == 0 or WorldRoad.isWalkType(f.nodes[i] and f.nodes[i].type) then return 1 end
     local E = WorldRoad.FORK_END
     local endRel = (f.markZ or (WorldRoad._camZ + MARK_REL)) - WorldRoad._camZ
     local e = math.min(1, math.max(0, (rel - endRel - E.from) / E.len))
