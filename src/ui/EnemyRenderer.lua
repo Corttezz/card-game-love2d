@@ -1156,7 +1156,10 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     love.graphics.setColor(tintR, tintG, tintB, bodyA)
 
     if hasAnim then
-        currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, bodyA })
+        if not EnemyLife.States.drawBody(currentAnim.frames[currentAnim.currentFrame], drawX, drawY, scale,
+            tintR, tintG, tintB, bodyA, gradeC) then
+            currentAnim:draw(drawX, drawY, scale, { tintR, tintG, tintB, bodyA })
+        end
     else
         local sprites = loadStatic(id)
         local staticImg = sprites and (sprites.south or sprites.east or sprites.west or sprites.north)
@@ -1166,19 +1169,6 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     end
 
     if hasAnim and bodyA >= 1 then
-        local ck = EnemyLife.charK(t)
-        if ck > 0 then
-            local sx0, sy0, sw0, sh0 = love.graphics.getScissor()
-            local cH = curM.frameHeights and curM.frameHeights[frameIdx]
-            if not cH or cH <= 0 then cH = ih - footPad end
-            local yTop = drawY + (ih - footPad - cH * 0.40) * scale
-            local qx, qy = love.graphics.transformPoint(drawX - 4, yTop)
-            local qx2, qy2 = love.graphics.transformPoint(drawX + iw * scale + 4, drawY + ih * scale + 4)
-            love.graphics.intersectScissor(math.floor(qx), math.floor(qy),
-                math.max(1, math.floor(qx2 - qx)), math.max(1, math.floor(qy2 - qy)))
-            currentAnim:draw(drawX, drawY, scale, { 0.14, 0.08, 0.04, 0.58 * ck })
-            if sx0 then love.graphics.setScissor(sx0, sy0, sw0, sh0) else love.graphics.setScissor() end
-        end
         local ep = EnemyLife.eyePulse(t)
         if ep > 0 then
             local eyes, ne = EnemyLife.States.eyes()
@@ -1320,6 +1310,11 @@ function EnemyRenderer.draw(game, cx, cy, opts)
     if currentAnimName ~= "death" then
         local exT, eyT = love.graphics.transformPoint(drawX, drawY)
         submitEmissives(id, exT, eyT, iw, ih, scale, 9)
+        if not reducedMotion() then
+            EnemyLife.States.submitLight(LightEngine, exT + iw * scale * 0.5, eyT + (ih - footPad) * scale * 0.78,
+                ((curM.cw > 0) and curM.cw or iw) * scale,
+                (((package.loaded["src.ui.WorldRoad"] or {}).BATTLE_REL) or 9) + 5)
+        end
     end
 
     do

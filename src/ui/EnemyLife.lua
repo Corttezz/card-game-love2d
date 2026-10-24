@@ -47,17 +47,27 @@ EnemyLife.SPEC = {
                     c = { 1.00, 0.97, 0.86 }, a = 1.00, grade = 0.3, glint = true },
     [K_BUBBLES] = { rate = 1.0, l0 = 1.2, l1 = 2.0, v0 = 3.0, v1 = 5.0, jit = 0.6, wind = 0.5, wob = 0.7,
                     c = { 0.62, 0.82, 0.50 }, a = 0.85, grade = 1, pop = 0.12 },
-    [11]        = { rate = 0, l0 = 0.35, l1 = 0.70, v0 = 4.0, v1 = 8.0, jit = 1.0, wind = 2.0, wob = 0.8,
-                    c = { 1.00, 0.58, 0.16 }, a = 1.00, grade = 0.25, flicker = true, flame = true },
-    [12]        = { rate = 0, l0 = 0.8, l1 = 1.0, v0 = 0, v1 = 0, jit = 0, wind = 0, wob = 0,
-                    c = { 0.72, 0.86, 1.00 }, a = 0.90, grade = 0.6, hang = 0.30, grav = 55 },
-    [13]        = { rate = 0, l0 = 0.6, l1 = 1.0, v0 = 8.0, v1 = 12.0, jit = 3.0, wind = 4.0, wob = 0.8,
-                    c = { 0.92, 0.92, 0.94 }, a = 0.78, grade = 0.8, grow = true },
-    [14]        = { rate = 0, l0 = 0.45, l1 = 0.80, v0 = 10.0, v1 = 16.0, jit = 2.0, wind = 1.0, wob = 1.0,
-                    c = { 1.00, 0.24, 0.14 }, a = 1.00, grade = 0.25, flicker = true },
-    [15]        = { rate = 0, l0 = 1.5, l1 = 2.2, v0 = 3.0, v1 = 5.0, jit = 1.0, wind = 1.0, wob = 1.2,
-                    c = { 0.56, 0.96, 0.56 }, a = 0.80, grade = 0.5, flicker = true },
+    [12]        = { rate = 0, l0 = 0.6, l1 = 0.8, v0 = 0, v1 = 0, jit = 0, wind = 0, wob = 0,
+                    c = { 0.60, 0.82, 1.00 }, a = 1.00, grade = 0.4, ballistic = true, grav = 70, drop = true },
+    [13]        = { rate = 0, l0 = 1.0, l1 = 1.6, v0 = 0, v1 = 0, jit = 0, wind = 4.0, wob = 0.8,
+                    c = { 0.97, 0.96, 0.95 }, a = 0.92, grade = 0.4, grow3 = true, drag = 1.4, lift = 8 },
+    [14]        = { rate = 0, l0 = 0.45, l1 = 0.85, v0 = 14.0, v1 = 24.0, jit = 3.0, wind = 1.0, wob = 2.0,
+                    c = { 1.00, 0.97, 0.66 }, ramp = { 1.00, 0.62, 0.16 }, a = 1.00, grade = 0.1, flicker = true,
+                    trail = true },
+    [17]        = { rate = 0, l0 = 0.22, l1 = 0.30, v0 = 0, v1 = 0, jit = 0, wind = 0, wob = 0,
+                    c = { 0.46, 0.82, 0.24 }, a = 0.95, grade = 0.7, ballistic = true, grav = 120 },
+    [18]        = { rate = 0, l0 = 1e9, l1 = 1e9, v0 = 0, v1 = 0, jit = 0, wind = 0, wob = 0,
+                    c = { 1.00, 0.93, 0.48 }, a = 1.00, grade = 0.2, star = true },
+    [19]        = { rate = 0, l0 = 1.6, l1 = 2.4, v0 = 3.0, v1 = 5.5, jit = 1.2, wind = 3.0, wob = 1.4,
+                    c = { 0.50, 0.80, 0.30 }, a = 0.60, grade = 0.6, grow3 = true },
+    [20]        = { rate = 0, l0 = 1.8, l1 = 2.6, v0 = 2.0, v1 = 3.5, jit = 1.0, wind = 2.5, wob = 1.0,
+                    c = { 0.70, 0.74, 0.80 }, a = 0.55, grade = 0.8, grow3 = true },
+    [21]        = { rate = 0, l0 = 0.6, l1 = 1.0, v0 = 0, v1 = 0, jit = 0, wind = 0, wob = 0,
+                    c = { 0.55, 1.00, 0.55 }, a = 1.00, grade = 0.3, absorb = true },
 }
+EnemyLife.SPEC[K_EMBERS].ramp = { 0.95, 0.22, 0.08 }
+EnemyLife.SPEC[K_EMBERS].curl = 2.2
+EnemyLife.SPEC[K_DRIPS].splash = 17
 EnemyLife.SPEC[K_SMOKE].grow = true
 EnemyLife.SPEC[K_DRAFT] = { rate = 0, l0 = 0.45, l1 = 0.80, v0 = 14.0, v1 = 26.0, jit = 0, wind = 0.5, wob = 0,
                             c = { 0.66, 0.60, 0.50 }, a = 0.90, grade = 0.6, back = true, draft = true,
@@ -379,7 +389,7 @@ local function spawn(e, ei)
     S.live = S.live + 1
 end
 
-function EnemyLife._spawnRaw(kind, ax, ay, tint)
+function EnemyLife._spawnRaw(kind, ax, ay, tint, vx, vy, life, seed)
     local i = freeSlot()
     if not i then return end
     local sp = EnemyLife.SPEC[kind]
@@ -388,14 +398,25 @@ function EnemyLife._spawnRaw(kind, ax, ay, tint)
     pem[i] = 0
     px[i] = ax + S.dx
     py[i] = ay + S.dy
-    local life = sp.l0 + (sp.l1 - sp.l0) * R()
-    plife[i], pmax[i] = life, life
-    pseed[i] = R() * 6.2832
-    local v = sp.v0 + (sp.v1 - sp.v0) * R()
-    pvx[i], pvy[i] = (R() - 0.5) * sp.jit, -v
+    local lf = life or (sp.l0 + (sp.l1 - sp.l0) * R())
+    plife[i], pmax[i] = lf, lf
+    pseed[i] = seed or R() * 6.2832
+    if vx then
+        pvx[i], pvy[i] = vx, vy or 0
+    else
+        local v = sp.v0 + (sp.v1 - sp.v0) * R()
+        pvx[i], pvy[i] = (R() - 0.5) * sp.jit, -v
+    end
     local c = tint or sp.c
     pcr[i], pcg[i], pcb[i] = c[1], c[2], c[3]
     S.live = S.live + 1
+    return i
+end
+
+function EnemyLife.countKind(kind)
+    local n = 0
+    for i = 1, N do if pk[i] == kind then n = n + 1 end end
+    return n
 end
 EnemyLife.spawnRaw = EnemyLife._spawnRaw
 
@@ -510,6 +531,20 @@ local function tickFx(dt, spawning)
                 kill(i)
             elseif sp.orbit then
                 pseed[i] = pseed[i] + pvx[i] * dt / 6
+            elseif sp.star then
+                pseed[i] = pseed[i] + dt * 3.4
+            elseif sp.ballistic then
+                pvy[i] = pvy[i] + sp.grav * dt
+                px[i] = px[i] + pvx[i] * dt
+                py[i] = py[i] + pvy[i] * dt
+            elseif sp.absorb then
+                px[i] = px[i] + pvx[i] * dt
+                py[i] = py[i] + pvy[i] * dt
+            elseif sp.drag and not sp.draft then
+                pvx[i] = pvx[i] * math.max(0, 1 - sp.drag * dt)
+                pvy[i] = pvy[i] * math.max(0, 1 - sp.drag * 0.6 * dt) - (sp.lift or 0) * dt
+                px[i] = px[i] + (pvx[i] + wind * sp.wind) * dt
+                py[i] = py[i] + pvy[i] * dt
             elseif sp.draft then
                 pvx[i] = pvx[i] * math.max(0, 1 - sp.drag * dt)
                 pvy[i] = pvy[i] + sp.grav * dt
@@ -522,9 +557,20 @@ local function tickFx(dt, spawning)
                     if age > sp.hang then
                         pvy[i] = pvy[i] + sp.grav * dt
                         py[i] = py[i] + pvy[i] * dt
+                        if sp.splash and py[i] >= S.groundA - 1 then
+                            local sx, sy = px[i] - S.dx, S.groundA - 1 - S.dy
+                            local cr, cg, cb = pcr[i], pcg[i], pcb[i]
+                            kill(i)
+                            for side = -1, 1, 2 do
+                                local j = EnemyLife._spawnRaw(sp.splash, sx, sy, nil,
+                                    side * (10 + EnemyLife._rand() * 10), -(12 + EnemyLife._rand() * 10))
+                                if j then pcr[j], pcg[j], pcb[j] = cr, cg, cb end
+                            end
+                        end
                     end
                 else
                     local wob = sp.wob > 0 and math.sin(age * 2.7 + pseed[i]) * sp.wob or 0
+                    if sp.curl then wob = wob + math.sin(age * 7.0 + pseed[i] * 2) * sp.curl * 4 end
                     px[i] = px[i] + (pvx[i] + wind * sp.wind + wob) * dt
                     py[i] = py[i] + pvy[i] * dt
                 end
@@ -619,7 +665,6 @@ function EnemyLife.jitterPx()
     return EnemyStates.jitterPx()
 end
 function EnemyLife.tint(r, g, b) return EnemyStates.tint(r, g, b) end
-function EnemyLife.charK(t) return EnemyStates.charK(t) end
 function EnemyLife.eyePulse(t)
     if reduced() then return 0 end
     return EnemyStates.eyePulse(t)
@@ -660,12 +705,14 @@ local function drawLayer(back, mask)
         local k = pk[i]
         if k ~= 0 then
             local sp = EnemyLife.SPEC[k]
-            if (sp.back == true) == back then
+            local isBack = sp.back == true
+            if sp.star then isBack = math.sin(pseed[i]) < 0 end
+            if isBack == back then
                 local age = pmax[i] - plife[i]
                 local on = deathK >= 0.5
-                if on and sp.draft then
-                    on = age >= 0.03 and plife[i] >= 0.08
-                elseif on and not sp.orbit then
+                if on and (sp.draft or sp.ballistic or sp.absorb) then
+                    on = age >= 0.03 and plife[i] >= 0.04
+                elseif on and not sp.orbit and not sp.star then
                     on = age >= 0.12 and plife[i] >= 0.2
                 end
                 if on and sp.flicker then
@@ -677,16 +724,42 @@ local function drawLayer(back, mask)
                         love.graphics.setColor(1, 1, 1, 1)
                     else
                         local g = sp.grade
-                        local r = pcr[i] * (1 - g + g * gc[1])
-                        local gg = pcg[i] * (1 - g + g * gc[2])
-                        local b = pcb[i] * (1 - g + g * gc[3])
+                        local cr0, cg0, cb0 = pcr[i], pcg[i], pcb[i]
+                        if sp.ramp then
+                            local q = math.min(1, age / pmax[i])
+                            cr0 = cr0 + (sp.ramp[1] - cr0) * q
+                            cg0 = cg0 + (sp.ramp[2] - cg0) * q
+                            cb0 = cb0 + (sp.ramp[3] - cb0) * q
+                        end
+                        local r = cr0 * (1 - g + g * gc[1])
+                        local gg = cg0 * (1 - g + g * gc[2])
+                        local b = cb0 * (1 - g + g * gc[3])
                         if sp.orbit and math.sin(pseed[i] * 23) > 0.6 then
                             r, gg, b = r + 0.30, gg + 0.29, b + 0.26
                         end
                         love.graphics.setColor(r, gg, b, a)
                     end
                     local ax, ay
-                    if sp.orbit then
+                    if sp.star then
+                        local B = EnemyStates._B
+                        local ph = pseed[i]
+                        local rx = math.max(5, (B.baseR - B.baseL) * 0.16 + 3)
+                        ax = fl(px[i] + math.cos(ph) * rx + 0.5)
+                        ay = fl(py[i] + math.sin(ph) * 2.2 + 0.5)
+                        rect(ax - 1, ay, 3, 1); rect(ax, ay - 1, 1, 3)
+                        if math.sin(ph * 2.0 + i) > 0.3 then
+                            rect(ax - 2, ay, 1, 1); rect(ax + 2, ay, 1, 1)
+                            rect(ax, ay - 2, 1, 1); rect(ax, ay + 2, 1, 1)
+                        end
+                    elseif sp.absorb then
+                        ax, ay = fl(px[i]), fl(py[i])
+                        rect(ax, ay, 1, 1)
+                        local q = age / pmax[i]
+                        if q < 0.85 then
+                            rect(ax - 1, ay, 1, 1); rect(ax + 1, ay, 1, 1)
+                            rect(ax, ay - 1, 1, 1); rect(ax, ay + 1, 1, 1)
+                        end
+                    elseif sp.orbit then
                         local ph = pseed[i]
                         ax = fl(px[i] + S.dx + math.cos(ph) * pvy[i] + math.sin(ph * 2.3) * 1.2)
                         ay = fl(py[i] + S.dy + math.sin(ph * 1.7) * pvy[i] * 0.45)
@@ -710,13 +783,24 @@ local function drawLayer(back, mask)
                             rect(ax, ay, sp.w, 1)
                         elseif sp.draft then
                             rect(ax, ay, (pvx[i] > 9 or pvx[i] < -9) and 2 or 1, 1)
+                        elseif sp.trail then
+                            rect(ax, ay, 1, 2)
+                        elseif sp.drop then
+                            rect(ax, ay, 1, 2)
+                            love.graphics.setColor(1, 1, 1, a)
+                            rect(ax, ay, 1, 1)
+                        elseif sp.grow3 then
+                            local q = age / pmax[i]
+                            if q > 0.62 then
+                                rect(ax - 1, ay, 3, 1); rect(ax, ay - 1, 1, 3)
+                            elseif q > 0.28 then
+                                rect(ax, ay, 2, 2)
+                            else
+                                rect(ax, ay, 1, 1)
+                            end
                         else
                             local sz = (sp.grow and age > pmax[i] * 0.45) and 2 or 1
-                            if sp.flame then
-                                if age < pmax[i] * 0.5 then rect(ax, ay, 1, 2) else rect(ax, ay, 1, 1) end
-                            else
-                                rect(ax, ay, sz, sz)
-                            end
+                            rect(ax, ay, sz, sz)
                         end
                     end
                 end

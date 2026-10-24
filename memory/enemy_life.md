@@ -65,18 +65,50 @@ Pedido do dono: "um estado para cada tipo de efeito... todos os mobs, todos os e
   (`intentVeilCause == "veil"`). `EnemyStates.canonical` mapeia: fury e fases do kit (eclipse...) = enraged,
   frail = vulnerable. `swarm` (corvos) e token de chefe e NAO ganha estado (sem duplicar BossTokens).
 - Intensidade por acumulos/duracao (0,45 a 1). Varios estados somam cor/ritmo/postura; PARTICULA de estado
-  tem teto de 2 tipos (`MAX_KINDS`), escolhidos por `PRIORITY` (burn, poison, enraged, block, strength, regen,
-  vulnerable, weak, veil). As particulas proprias da criatura (fx da fase 1) nao contam no teto.
-- Visual generico (sempre pixel, sem halo, sem contorno, sem disco):
-  poison = corpo esverdeado (multiplica r/b), bolhas sobem e gotas caem, idle 0,9x, tremida de 1 px a cada 3-6 s;
-  burn = chamas 1x2 na linha do pe + brasas, metade de baixo escurecida (sprite redesenhado escuro sob scissor);
-  weak = idle 0,7x, topo afunda 1-2 px de arte (escala vertical pelo pe), dessatura, gotas de suor da cabeca;
-  vulnerable = brilhos brancos em pontos da borda, tremor curto a cada 2,5-4 s;
-  strength = faiscas vermelhas sobem, idle 1,15x, corpo 1 px mais alto;
-  enraged = baforadas de vapor da cabeca em rajada, idle 1,3x, pixel vermelho pulsando nos olhos (so com
-  emissivo cadastrado em `src/data/enemy_emissives.lua`);
-  regen = motas verdes sobem; block = varredura de brilhos de aco pela borda quando o bloqueio SOBE, depois
-  tom de aco fraco enquanto armor > 0; veil = nevoa nos pes.
+  tem teto de 4 tipos (`MAX_KINDS`), escolhidos em duas passadas por `PRIORITY` (burn, poison, enraged, block,
+  strength, regen, vulnerable, weak, veil): primeiro o 1o tipo de CADA estado ativo, depois os segundos. Com teto
+  2 o veneno+fraco dava os dois tipos ao veneno e o fraco sumia. As particulas proprias da criatura nao contam.
+
+### Estados v2 (24/Out/2026): shader no corpo + particula com detalhe
+O dono testou na galeria e so notou o veneno ("quase imperceptivel"); a queimadura "parece cortada ao meio,
+uma linha preta reta do torso ao pe" (era o sprite redesenhado escuro sob scissor) e o resto "nada". Refeito:
+- `shaders/enemy_states.glsl` desenha o CORPO quando ha estado (`EnemyStates.drawBody`, chamado no lugar do
+  `currentAnim:draw` do corpo). Quad com 10 texels de folga em volta do quadro (`EnemyStates.PAD`, cache por
+  tamanho) para a chama sair do contorno; cada pixel e um texel da arte (grade do sprite). Uniforms reusados
+  (`EnemyStates._SH`), nada alocado por quadro. Sem shader (falha de compilacao) volta ao tom por CPU
+  (`EnemyStates.tint`) com `Debug.warn`. Toda tinta segue os pixels do sprite: gradiente liso, ruido de valor
+  ou frente ondulada por ruido; NUNCA borda reta horizontal (trava `test_enemy_life`).
+- burn: lingua de fogo por coluna nascendo das bordas voltadas pra cima (busca o primeiro pixel opaco abaixo,
+  ate 14 texels), altura por ruido rolando, nucleo claro, laranja, ponta vermelho-escura que pisca, balanco
+  lateral (calor); luz quente de baixo no corpo (gradiente pelo y do pixel x luminancia), base das chamas
+  acesa na borda, fissuras de brasa finas e esparsas; brasas sobem das bordas de cima enrolando e esfriando
+  (rampa amarelo-vermelho), cinza escura da cabeca; na estrada uma luz `LightEngine.submit` com
+  `flicker = "fire"` no pe do corpo (`EnemyStates.submitLight`, tabela reusada).
+- poison: tinta verde que pulsa em onda vertical (+ verde aditivo para sprite escuro), manchas doentes por
+  ruido, bolhas em celula 8x8 que nascem, crescem para 5x5 com aro escuro e brilho e estouram em anel;
+  gotas caem das bordas de BAIXO e espirram 2 pingos no chao (`splash`), miasma verde 1-3 px sobe.
+- weak: dessatura forte e escurece (aplicado antes dos outros, para o veneno junto continuar verde), corpo
+  afunda 2-3 px de arte, idle 0,7x, gotas de suor de 3 texels escorrendo pelo corpo, suor espirrando da
+  cabeca, 3 estrelinhas tontas orbitando a cabeca (passam atras/na frente pela fase).
+- vulnerable: pulso violeta (mistura + aditivo), rachaduras em zigue-zague perto da borda que brilham em
+  sequencia e acendem todas no tremor (guarda quebrada), brilhos lilas na borda.
+- strength: tom dourado e onda de forca subindo com frente ondulada (ruido), borda acende so quando a onda
+  passa, lambidas douradas de 1-3 texels acima da borda na onda, faiscas douradas com rastro de 2 px.
+- enraged: vermelho em batimento duplo (+ aditivo), olhos pulsando, rajadas de 10 baforadas de vapor
+  (1->2x2->cruz 3x3) com tremedeira de 0,3 s em cada rajada, idle 1,3x.
+- regen: onda verde-menta sobe pelo corpo (frente por ruido), centelhas no corpo, cruzes verdes nascem fora
+  do contorno e voam para dentro (`absorb`).
+- block: tom de aco frio, faixa de reflexo diagonal varrendo a cada 1,7 s (clara na frente, escura atras,
+  pela luminancia do pixel), borda brilha na faixa, brilhos de aco ocasionais.
+- veil: corpo translucido que respira (alfa 0,66-0,94), lavado frio, faixas de nevoa inclinadas atravessando o
+  corpo e em volta (ate 6 texels), nevoa nos pes.
+- reducedMotion: o relogio do estado para (`ST.clock` so anda no update) e o shader fica num quadro fixo:
+  tinta, chamas, bolhas e rachaduras paradas continuam informando; sem particula, tremida e ritmo.
+- Provas: `lovec . test_one screenshot_estados` (env `ESTADOS_IDS`, `ESTADOS_LIST`, `ESTADOS_TAG`,
+  `ESTADOS_REDUCED=1`) grava recortes por quadro no save dir; pranchas e GIFs em `tools/preview_out/estados_v2/`
+  (sem estado, antes na main, tira a cada 0,3 s, recorte 3x; seis criaturas: escura, clara, pequena, grande,
+  voadora e chefe no salao). "Antes" = os modulos de 2e665048 copiados no save dir de outra identity (o
+  save dir tem prioridade no `require`).
 - Pontos do corpo: `EnemyStates.prepare(id)` (primeiro job do pre-aquecimento) le o idle 0 uma vez: ate 256
   pontos de borda, cabeca (media das linhas do topo), linha e vao dos pes.
 - Override por criatura em `src/data/enemy_life/<id>.lua`:
@@ -85,8 +117,12 @@ Pedido do dono: "um estado para cada tipo de efeito... todos os mobs, todos os e
   trocam no quadro 0 do loop; fidgets so tocam por cima se `fidgets = true`; ataque/dano/morte continuam por
   cima e voltam para o loop do estado (`backToIdle` usa `EnemyLife.loopClip()`). `fx` troca as particulas
   genericas daquele estado pelas ancoras dadas (tipos do contrato).
-- Morte: nenhum estado (cor, ritmo, particula). reducedMotion: cor e postura ficam (informacao), sem
-  particula, sem tremida e sem mudar o ritmo.
+- Morte: nenhum estado (cor, ritmo, particula). reducedMotion: cor, postura e o quadro parado do shader
+  ficam (informacao), sem particula, sem tremida e sem mudar o ritmo.
+- Trava (`test_enemy_life`, `checkStatePixels`): shader compila; em 6 criaturas cada estado muda >= 4% do
+  corpo contra o mesmo quadro sem estado; nenhuma faixa reta (fração alterada em janelas de 4 linhas acima e
+  abaixo nao salta mais que 0,55; o detector pega a faixa queimada antiga com salto 1,0); `drawBody` sem
+  alocacao.
 
 ## Ferramentas
 - Galeria: `love . vida [id]` (`tools/vida.lua`): criatura na cena do ato. Setas trocam, 1-9 forca o fidget N,

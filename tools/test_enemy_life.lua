@@ -400,7 +400,7 @@ local function checkStates(t, EnemyLife)
         end
         local r, g, b = EnemyLife.tint(1, 1, 1)
         local visual = seenLive or r < 1 or g < 1 or b < 1
-            or EnemyLife.animRate("idle") ~= 1 or EnemyLife.stretchPx() ~= 0 or EnemyLife.charK(1) > 0
+            or EnemyLife.animRate("idle") ~= 1 or EnemyLife.stretchPx() ~= 0 or ES.any()
         if st == "block" then
             fake.armor = 0
             ES.force(nil)
@@ -436,7 +436,7 @@ local function checkStates(t, EnemyLife)
     for _ = 1, 40 do frame("death") end
     local r, g, b = EnemyLife.tint(1, 1, 1)
     t:truthy("morte: nenhum estado (cor, ritmo, particula de estado)",
-        r == 1 and g == 1 and b == 1 and ES.kindCount() == 0 and EnemyLife.charK(1) == 0)
+        r == 1 and g == 1 and b == 1 and ES.kindCount() == 0 and not ES.any())
     t:eq("morte: particulas somem", EnemyLife.liveCount(), 0)
     ES.force(nil)
     fake.statusEffects = { { name = "poison", stacks = 4, duration = 2 }, { name = "fury", stacks = 2, duration = 99 } }
@@ -612,6 +612,160 @@ local function checkDowndraft(t, EnemyLife)
     EnemyLife._setData(id, nil)
 end
 
+M.PIXEL_IDS = { "abyss_acolyte", "frost_troll", "ember_imp", "pit_brute", "dusk_bat", "winter_monarch" }
+M.MIN_CHANGED = 0.04
+M.MAX_ROW_JUMP = 0.55
+M.BAND_WINDOW = 4
+M.DELTA = 0.06
+M._rb, M._rc = {}, {}
+
+function M.measure(base, img, x0, y0, x1, y1)
+    local body, changed = 0, 0
+    local maxJump = 0
+    local RB, RC, nr = M._rb, M._rc, 0
+    for y = y0, y1 do
+        local rb, rc = 0, 0
+        for x = x0, x1 do
+            local r0, g0, b0, a0 = base:getPixel(x, y)
+            local r1, g1, b1 = img:getPixel(x, y)
+            local ch = math.abs(r0 - r1) + math.abs(g0 - g1) + math.abs(b0 - b1) > M.DELTA
+            if a0 > 0.5 then
+                rb = rb + 1
+                if ch then rc = rc + 1 end
+            elseif ch then
+                changed = changed + 1
+            end
+        end
+        body, changed = body + rb, changed + rc
+        nr = nr + 1
+        RB[nr], RC[nr] = rb, rc
+    end
+    local Wn = M.BAND_WINDOW
+    for i = Wn + 1, nr - Wn do
+        local ab, ac, bb, bc = 0, 0, 0, 0
+        local thin = false
+        for j = i - Wn, i - 1 do ab, ac = ab + RB[j], ac + RC[j]; if RB[j] < 30 then thin = true end end
+        for j = i, i + Wn - 1 do bb, bc = bb + RB[j], bc + RC[j]; if RB[j] < 30 then thin = true end end
+        if not thin then
+            local jmp = math.abs(ac / ab - bc / bb)
+            if jmp > maxJump then maxJump = jmp end
+        end
+    end
+    return changed / math.max(1, body), maxJump
+end
+
+local function checkStatePixels(t, EnemyLife)
+    local ER = require("src.ui.EnemyRenderer")
+    local ES = EnemyLife.States
+    t:truthy("shader de estados compila", ES.shader() ~= nil)
+    do
+        local a = love.image.newImageData(120, 120)
+        local b = love.image.newImageData(120, 120)
+        for y = 0, 119 do
+            for x = 0, 119 do
+                local v = 0.4 + 0.3 * ((x * 7 + y * 13) % 5) / 5
+                a:setPixel(x, y, v, v * 0.9, v * 0.8, 1)
+                if y >= 70 then b:setPixel(x, y, v * 0.3, v * 0.2, v * 0.1, 1) else b:setPixel(x, y, v, v * 0.9, v * 0.8, 1) end
+            end
+        end
+        local _, jmp = M.measure(a, b, 0, 0, 119, 119)
+        a:release(); b:release()
+        t:truthy(string.format("detector pega a faixa queimada antiga (salto %.2f)", jmp), jmp > M.MAX_ROW_JUMP)
+    end
+    local realTime = love.timer.getTime
+    love.timer.getTime = function() return 1234.5 end
+    local W, H = 900, 900
+    local canvas = love.graphics.newCanvas(W, H)
+    local function render(game, skip)
+        love.graphics.setCanvas(canvas)
+        love.graphics.clear(0, 0, 0, 0)
+        ER.draw(game, W / 2, H - 120)
+        love.graphics.setCanvas()
+        if skip then return nil end
+        return canvas:newImageData()
+    end
+    local lowFail, bandFail, sanityFail = {}, {}, {}
+    local report = {}
+    for _, id in ipairs(M.PIXEL_IDS) do
+        ER.clearCache()
+        ER.resetRun()
+        EnemyLife.clearCache()
+        local game = { enemy = { spriteId = id, health = 10, maxHealth = 10, isBoss = false, statusEffects = {},
+                                 armor = 0, baseDamage = 5 } }
+        EnemyLife.prewarmNow(id)
+        ES.force({})
+        for _ = 1, 4 do ER.update(1 / 60); render(game, true) end
+        local base = render(game)
+        local again = render(game)
+        local same = 0
+        for y = 0, H - 1, 3 do
+            for x = 0, W - 1, 3 do
+                local r0, g0, b0 = base:getPixel(x, y)
+                local r1, g1, b1 = again:getPixel(x, y)
+                if math.abs(r0 - r1) + math.abs(g0 - g1) + math.abs(b0 - b1) > 0.02 then same = same + 1 end
+            end
+        end
+        if same > 0 then sanityFail[#sanityFail + 1] = id end
+        again:release()
+        local x0, y0, x1, y1 = W, H, 0, 0
+        for y = 0, H - 1, 2 do
+            for x = 0, W - 1, 2 do
+                local _, _, _, a = base:getPixel(x, y)
+                if a > 0.5 then
+                    if x < x0 then x0 = x end
+                    if x > x1 then x1 = x end
+                    if y < y0 then y0 = y end
+                    if y > y1 then y1 = y end
+                end
+            end
+        end
+        x0, y0 = math.max(0, x0 - 40), math.max(0, y0 - 40)
+        x1, y1 = math.min(W - 1, x1 + 40), math.min(H - 1, y1 + 10)
+        local frameIdx = (ER.getLastFoot() or {}).frame or 1
+        for _, st in ipairs(ES.LIST) do
+            ES.force({ st })
+            for _ = 1, 50 do EnemyLife.update(1 / 60, id, "idle", frameIdx, false) end
+            local img = render(game)
+            local frac, maxJump = M.measure(base, img, x0, y0, x1, y1)
+            img:release()
+            report[#report + 1] = string.format("%s/%s %.2f", id, st, frac)
+            if frac < M.MIN_CHANGED then lowFail[#lowFail + 1] = string.format("%s/%s(%.3f)", id, st, frac) end
+            if maxJump > M.MAX_ROW_JUMP then bandFail[#bandFail + 1] = string.format("%s/%s(%.2f)", id, st, maxJump) end
+        end
+        base:release()
+        ES.force(nil)
+    end
+    love.timer.getTime = realTime
+    t:eq("desenho sem estado e estavel (base da comparacao): " .. table.concat(sanityFail, " "), #sanityFail, 0)
+    t:eq(string.format("todo estado muda ao menos %d%% do corpo em 6 criaturas: %s", M.MIN_CHANGED * 100,
+        table.concat(lowFail, " ")), #lowFail, 0)
+    t:eq("nenhum estado pinta faixa reta (salto entre linhas vizinhas <= " .. M.MAX_ROW_JUMP .. "): "
+        .. table.concat(bandFail, " "), #bandFail, 0)
+    t:truthy("cobertura por estado: " .. table.concat(report, " "), #report == #M.PIXEL_IDS * #ES.LIST)
+
+    local img = love.graphics.newImage(love.image.newImageData(64, 64))
+    ES.force(ES.LIST)
+    EnemyLife.update(1 / 60, "frost_troll", "idle", 1, false)
+    love.graphics.setCanvas(canvas)
+    for _ = 1, 10 do ES.drawBody(img, 10, 10, 3, 1, 1, 1, 1, nil) end
+    local samples = {}
+    for r = 1, 3 do
+        collectgarbage("collect")
+        collectgarbage("stop")
+        local k0 = collectgarbage("count")
+        for _ = 1, 200 do ES.drawBody(img, 10, 10, 3, 1, 1, 1, 1, nil) end
+        samples[r] = (collectgarbage("count") - k0) / 200
+        collectgarbage("restart")
+    end
+    love.graphics.setCanvas()
+    table.sort(samples)
+    t:truthy(string.format("corpo com estados sem alocacao por quadro (%.4f KB)", samples[2]), samples[2] < 0.05)
+    ES.force(nil)
+    ER.clearCache()
+    ER.resetRun()
+    EnemyLife.clearCache()
+end
+
 function M.run()
     local t = TK.new("monstros vivos parados (EnemyLife)")
     TK.bootstrap()
@@ -626,6 +780,7 @@ function M.run()
     checkRenderer(t, EnemyLife)
     checkStates(t, EnemyLife)
     checkStateClip(t, EnemyLife)
+    checkStatePixels(t, EnemyLife)
     checkDowndraft(t, EnemyLife)
     _G.gameSettings = gs
     EnemyLife.clearCache()
