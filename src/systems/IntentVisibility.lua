@@ -109,7 +109,7 @@ function IntentVisibility.resolve(enemy, roll)
         end
     end
 
-    return level, cause
+    return require("src.systems.CounterJokers").filterVisibility(enemy, level, cause)
 end
 
 local active = nil

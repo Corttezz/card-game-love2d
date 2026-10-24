@@ -1335,11 +1335,17 @@ local JOKER_EFFECT_SCORE = {
     damage_per_turn = -8,
 }
 
-local function scoreJokerParts(inst)
+local function scoreJokerParts(inst, game)
     local flat, dmgMult, defMult = 0, nil, nil
+    local run = game and game.runManager and game.runManager.currentRun
+    local act = (run and run.actNumber) or 1
+    local Counter = require("src.systems.CounterJokers")
     for _, e in ipairs(inst.effects or {}) do
         local t = e.type
-        if t == "damage_multiplier" and e.target == "attack" then
+        local counter = Counter.pilotScore(e, act)
+        if counter then
+            flat = flat + counter
+        elseif t == "damage_multiplier" and e.target == "attack" then
             dmgMult = math.max(dmgMult or 1, e.value or 1)
         elseif t == "defense_multiplier" and e.target == "defense" then
             defMult = math.max(defMult or 1, e.value or 1)
@@ -1365,7 +1371,7 @@ local function optimizeJokerBench(game, whenLabel)
 
     local entries = {}
     for _, inst in ipairs(all) do
-        local flat, dm, dfm = scoreJokerParts(inst)
+        local flat, dm, dfm = scoreJokerParts(inst, game)
         table.insert(entries, {
             idx = inst._ownedIndex, name = inst.name or inst.id,
             flat = flat, dmgMult = dm, defMult = dfm, score = flat,

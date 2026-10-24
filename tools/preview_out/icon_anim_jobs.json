@@ -558,5 +558,10 @@
     "object_id": "2b4df792-e4a0-41b9-ba8c-88701969f436",
     "group": "d22b0e9e-1561-494d-8b1c-0e5807b8049e",
     "anim_hash": "a81c35ae5af3"
+  },
+  "counter_salamander": {
+    "object_id": "8ff5ee4c-93eb-40be-b598-1a522b3b252c",
+    "group": "e4f7597c-e1b0-493f-8eca-2c1369ebb0b9",
+    "anim_hash": "0b7788534990"
   }
 }

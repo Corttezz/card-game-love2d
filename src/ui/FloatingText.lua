@@ -35,6 +35,7 @@ function FloatingText.spawn(text, x, y, opts)
         fadeOut = 0.25,
         lift = opts.lift or 24,
         scale = 0,
+        clampFrac = opts.clampFrac,
     }
     table.insert(active, entry)
     return entry
@@ -91,6 +92,11 @@ function FloatingText.draw()
 
         local w = font:getWidth(e.text)
         local h = font:getHeight()
+        if e.clampFrac then
+            local sw = love.graphics.getWidth()
+            local m = sw * e.clampFrac + w * 0.5
+            e.x = math.max(m, math.min(sw - m, e.x))
+        end
 
         love.graphics.setColor(0, 0, 0, 0.65 * alpha)
         love.graphics.push()

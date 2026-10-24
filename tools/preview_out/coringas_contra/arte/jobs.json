@@ -1,0 +1,93 @@
+{
+  "counter_lantern_0": {
+    "object_id": "f9658298-a91b-4b38-9b63-11a1c348c836",
+    "subject": "hooded night watchman bust raising an old brass lantern in front of his face, warm amber light cutting through swirling grey fog, eyes glinting under the hood"
+  },
+  "counter_lantern_1": {
+    "object_id": "b24843d6-ddb8-4e46-8f70-9e0a420b4fcd",
+    "subject": "ornate brass lantern with a single staring golden eye glowing inside the glass, wisps of grey fog parting around it, hanging from a hook"
+  },
+  "counter_lantern_2": {
+    "object_id": "568346d5-41bb-4d4b-a3bd-3615b6bfab20",
+    "subject": "old owl with huge glowing amber eyes perched on top of a brass lantern, grey mist around, front view"
+  },
+  "counter_brazier_0": {
+    "object_id": "4de38580-e3a4-4d4a-beb7-0f16c904edee",
+    "subject": "small iron brazier of glowing red coals held in two gloved hands, frost crystals melting and dripping on the rim, warm orange glow"
+  },
+  "counter_brazier_1": {
+    "object_id": "53083fd3-aaa9-42a2-adf6-b9e72084203a",
+    "subject": "stern old blacksmith bust cupping a tiny iron brazier full of embers against his chest, frost on his beard melting, orange glow on face"
+  },
+  "counter_brazier_2": {
+    "object_id": "517a0753-c65d-4da5-9d58-c520f74cf638",
+    "subject": "hanging iron censer full of glowing coals with icicles melting off its chains, sparks rising, front view"
+  },
+  "counter_antidote_0": {
+    "object_id": "6fbeb988-3265-4e15-9a32-bab32b1c685b",
+    "subject": "plague doctor bust with a leather beak mask holding up a small corked glass vial of clear amber antidote, green toxic smoke fading behind"
+  },
+  "counter_antidote_1": {
+    "object_id": "f1402aea-714c-4586-a5ca-20964b03ea7d",
+    "subject": "ornate corked glass flask of golden antidote bound with leather straps, a dead green serpent coiled at its base, front view"
+  },
+  "counter_antidote_2": {
+    "object_id": "11c801e5-1a53-4ad4-a7f1-06aabcc2d4e8",
+    "subject": "bone white amulet of a serpent biting its own tail around a small amber crystal vial, faint green fumes dispersing"
+  },
+  "counter_salamander_0": {
+    "object_id": "8ff5ee4c-93eb-40be-b598-1a522b3b252c",
+    "subject": "rust orange salamander coiled around a black iron amulet, scales glowing like embers, unharmed inside small flames, front view"
+  },
+  "counter_salamander_1": {
+    "object_id": "ef16705c-e18e-41e6-98fd-bb5392e5324f",
+    "subject": "hooded fire walker bust wearing a cloak of salamander scales, flames licking the cloak without burning it, calm stern face"
+  },
+  "counter_salamander_2": {
+    "object_id": "dbb2c818-a39a-4a28-9180-04a96bc6ff8a",
+    "subject": "large burnt sienna dragon scale shield charm with a salamander engraved on it, small flames sliding off its surface"
+  },
+  "counter_weak_0": {
+    "object_id": "2c6f011c-ef64-4f49-afb3-bbebbc3c601c",
+    "subject": "bronze bull head talisman with great curved horns and glowing red eyes on a leather cord, front view"
+  },
+  "counter_weak_1": {
+    "object_id": "7a4fea91-87dc-4f73-9695-99fb8fe2245c",
+    "subject": "muscular horned bull warrior bust with a bronze nose ring, snorting steam, fierce eyes, front view"
+  },
+  "counter_weak_2": {
+    "object_id": "c3950ae6-0d06-4f2c-9092-5e2818b99c20",
+    "subject": "aged gold armband engraved with a charging bull, clenched fist raised through it, front view"
+  },
+  "counter_frail_0": {
+    "object_id": "8e7c0467-af27-45fd-94c0-db0250d9d3e9",
+    "subject": "ancient tortoise shell shield charm with iron rim and engraved runes, unbroken and heavy, front view"
+  },
+  "counter_frail_1": {
+    "object_id": "c8b32a99-c5d6-4e03-9fd0-c2bc12056497",
+    "subject": "old armored tortoise head peeking from a heavy spiked iron shell, calm wise eyes, front view"
+  },
+  "counter_frail_2": {
+    "object_id": "99ecb9fd-e0d8-436e-b5c0-a5e89c297434",
+    "subject": "stern knight bust holding a round shield made from a tortoise shell, cracks sealed with gold, front view"
+  },
+  "counter_vulnerable_0": {
+    "object_id": "a00e1e94-4e24-400d-85ca-2ac0b1724b4d",
+    "subject": "grey stone face carving with closed eyes, skin of granite, a crack sealed with aged gold, front view"
+  },
+  "counter_vulnerable_1": {
+    "object_id": "87d6bb9c-3189-4b67-a792-c1732408097d",
+    "subject": "stone gargoyle bust with arms crossed, granite skin, an arrow broken against its chest, front view"
+  },
+  "counter_vulnerable_2": {
+    "object_id": "c2056de0-6964-4a6d-a5b9-f256b47c15f5",
+    "subject": "warrior bust whose skin turns to grey stone from the chest up, an arrow shattering on the stone shoulder, stern face"
+  },
+  "picked_counter_antidote": "f1402aea-714c-4586-a5ca-20964b03ea7d",
+  "picked_counter_brazier": "53083fd3-aaa9-42a2-adf6-b9e72084203a",
+  "picked_counter_frail": "c8b32a99-c5d6-4e03-9fd0-c2bc12056497",
+  "picked_counter_lantern": "b24843d6-ddb8-4e46-8f70-9e0a420b4fcd",
+  "picked_counter_salamander": "8ff5ee4c-93eb-40be-b598-1a522b3b252c",
+  "picked_counter_vulnerable": "87d6bb9c-3189-4b67-a792-c1732408097d",
+  "picked_counter_weak": "2c6f011c-ef64-4f49-afb3-bbebbc3c601c"
+}

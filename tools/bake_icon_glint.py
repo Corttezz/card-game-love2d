@@ -70,6 +70,42 @@ SPECS = {
     ]),
     # espelho rachado: os dois olhos vermelhos das máscaras acendem
     # alternando (o v3 FECHAVA os olhos e o vermelho sumia — pop no loop).
+    "counter_lantern": dict(frames=12, fps=6, layers=[
+        dict(mode="pulse", hue=(35, 60), smin=0.50, smax=1.0, vmin=0.80, vmax=1.0,
+             box=(20, 18, 44, 50), glow=(255, 236, 170), gain=0.45, stagger=1),
+        dict(hue=(25, 45), smin=0.35, smax=0.85, vmin=0.40, vmax=0.80,
+             dir=(0.3, 1.0), width=4.0, gain=0.4, stagger=1),
+    ]),
+    "counter_brazier": dict(frames=12, fps=7, layers=[
+        dict(mode="pulse", hue=(30, 60), smin=0.45, smax=1.0, vmin=0.75, vmax=1.0,
+             box=(18, 30, 46, 46), glow=(255, 240, 160), gain=0.5, stagger=1),
+        dict(hue=(15, 40), smin=0.55, smax=1.0, vmin=0.55, vmax=1.0,
+             box=(14, 14, 50, 34), dir=(0.0, 1.0), width=3.0, gain=0.35, stagger=1),
+    ]),
+    "counter_antidote": dict(frames=12, fps=7, layers=[
+        dict(hue=(15, 45), smin=0.30, smax=1.0, vmin=0.45, vmax=1.0,
+             box=(0, 0, 64, 46), dir=(1.0, 0.4), width=4.0, gain=0.55,
+             stagger=1),
+    ]),
+    "counter_weak": dict(frames=12, fps=7, layers=[
+        dict(mode="points", points=[(32, 25)], phase=0.0,
+             glow=(255, 214, 120), gain=0.8),
+        dict(hue=(30, 55), smin=0.35, smax=1.0, vmin=0.50, vmax=1.0,
+             dir=(1.0, 0.3), width=4.0, gain=0.5, stagger=1),
+    ]),
+    "counter_frail": dict(frames=12, fps=7, layers=[
+        dict(mode="points", points=[(25, 37), (38, 37)], phase=0.0,
+             glow=(180, 255, 225), gain=0.9),
+        dict(hue=(335, 360), smin=0.25, smax=1.0, vmin=0.45, vmax=1.0,
+             box=(0, 0, 64, 28), dir=(1.0, 0.2), width=4.0, gain=0.45,
+             stagger=1),
+    ]),
+    "counter_vulnerable": dict(frames=12, fps=7, layers=[
+        dict(mode="points", points=[(27, 14), (30, 14)], phase=0.0,
+             glow=(255, 170, 70), gain=1.0),
+        dict(hue=(20, 45), smin=0.30, smax=1.0, vmin=0.50, vmax=1.0,
+             dir=(1.0, 0.35), width=4.0, gain=0.45, stagger=1),
+    ]),
     "combo_pair": dict(frames=12, fps=7, layers=[
         dict(mode="points", points=[(26, 22), (37, 22)], phase=0.5,
              glow=(255, 60, 50), gain=0.9),
