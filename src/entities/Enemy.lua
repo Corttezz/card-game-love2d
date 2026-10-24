@@ -376,6 +376,7 @@ function Enemy:takeDamage(damage, dtype)
     if dtype then
         local raw = damage
         damage, level = Resistances.apply(self, dtype, damage)
+        if not level then require("src.systems.CounterJokers").notePierce(self, dtype) end
         if level then
             self.lastResist = { type = dtype, level = level, raw = raw, final = damage }
             if Enemy.onResist then Enemy.onResist(self, level, dtype, raw, damage) end

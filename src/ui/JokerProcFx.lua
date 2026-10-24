@@ -42,6 +42,7 @@ function JokerProcFx.tick(proc, ordinal)
             fontSize = 16,
             lift = 30,
             hold = 0.4,
+            clampFrac = 0.06,
         })
     end
 

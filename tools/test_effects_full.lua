@@ -168,7 +168,7 @@ function M.run()
             local applies = false
             for _, ef in ipairs(cd.effects or {}) do
                 if (ef.type == "apply_debuff" and ef.value == "poison")
-                    or ef.debuffName == "poison" then
+                    or (ef.debuffName == "poison" and ef.type ~= "counter_debuff") then
                     applies = true
                 end
             end

@@ -1134,6 +1134,15 @@ ANIMS = {
                  "softly"),
         "fps": 7,
     },
+    "counter_salamander": {
+        "object_id": "8ff5ee4c-93eb-40be-b598-1a522b3b252c",
+        "anim": ("the salamander body and head are a frozen statue that keeps "
+                 "exactly the same shape, the ONLY moving thing is the small "
+                 "flame at the tip of its tail flickering gently, it stays "
+                 "orange and red"),
+        "frames": 4,
+        "fps": 7,
+    },
     # combo_wall e combo_pair: o v3 MEXEU nos rostos (barba/boca do
     # veterano ondulando; as máscaras do espelho FECHAVAM os olhos e o
     # vermelho sumia — pop no loop). Idle ASSADO no tools/bake_icon_glint.py

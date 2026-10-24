@@ -42,6 +42,7 @@ function Game:new()
     instance.gameState = "menu"
     instance.currentPhase = 1
     instance.jokerSlots = {}
+    require("src.systems.CounterJokers").bind(instance)
     instance.maxJokerSlots = Config.Game.MAX_JOKER_SLOTS
     instance.score = 0
     instance.messageSystem = MessageSystem:new()
@@ -1164,6 +1165,7 @@ function Game:enemyTurn()
     for _, d in ipairs(it.debuffs or {}) do
         CombatBeats.push("enemy.debuff." .. d.name, beat(function()
             if not self.player:isAlive() then return end
+            if require("src.systems.CounterJokers").blocksDebuff(self, d.name) then return end
             self.player:addDebuff(d.name, d.duration, d.stacks)
             local statusName = I18n.t("status." .. d.name .. ".name", nil,
                 I18n.t("enemy_kit.status." .. d.name .. ".name", nil, d.name))
