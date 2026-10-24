@@ -243,6 +243,10 @@ function EnemyHud.drawHpBar(enemy, cx, groundY, spriteWidth, barYOverride)
 end
 
 local StatusPill = require("src.ui.StatusPill")
+local ResistBadges = require("src.ui.ResistBadges")
+local Resistances = require("src.systems.Resistances")
+
+EnemyHud.RESIST_GAP = 8
 
 local BADGE_SIZE = 42
 local BADGE_SPACING = 10
@@ -269,6 +273,12 @@ function EnemyHud.collectPills(enemy)
     for _, e in ipairs(enemy.statusEffects or {}) do
         local vars = BossMechanics.pillVars(enemy, e.name)
         if vars and vars.stacks then vars.showStacks = false end
+        local dotType = Resistances.DOT_TYPE[e.name]
+        local lvl = dotType and Resistances.level(enemy, dotType)
+        if lvl then
+            vars = vars or {}
+            vars.variant = lvl
+        end
         if vars then
             local copy = {}
             for k, v in pairs(e) do copy[k] = v end
@@ -509,12 +519,17 @@ function EnemyHud.layout(game, bbox, fallbackCx, fallbackGroundY)
     local top = (totalW > 0) and (rowY - 3) or (hpBarY - 13)
     local spriteL = cx - sw / 2
     local left = math.min(cx - clusterW / 2, spriteL)
+    local resistW = ResistBadges.width(game.enemy)
+    if resistW > 0 then
+        left = math.min(left, math.floor(cx - barW / 2) - EnemyHud.RESIST_GAP - resistW)
+        top = math.min(top, hpBarY + 5 - ResistBadges.SIZE / 2)
+    end
     local right = math.max(cx + clusterW / 2, spriteL + sw)
     return {
         cx = cx, groundY = groundY, topY = topY, sw = sw,
         iw = iw, ih = ih, pw = pw, ph = ph, gap = gap,
         pillSize = pillSize, totalW = totalW, rowH = rowH,
-        hpBarY = hpBarY, rowY = rowY,
+        hpBarY = hpBarY, rowY = rowY, resistW = resistW,
         rect = { x = left, y = top, w = right - left, h = groundY - top },
     }
 end
@@ -537,6 +552,20 @@ function EnemyHud.draw(game, bbox, fallbackCx, fallbackGroundY)
     end
 
     EnemyHud.drawHpBar(game.enemy, L.cx, L.groundY, L.sw, L.hpBarY)
+    EnemyHud.drawResistances(game.enemy, L)
+end
+
+function EnemyHud.resistAnchor(L)
+    local bar = EnemyHud.hpBarRect(L)
+    if not bar then return nil end
+    return bar.x - EnemyHud.RESIST_GAP, bar.y + bar.h / 2
+end
+
+function EnemyHud.drawResistances(enemy, L)
+    if not enemy or not L then return 0 end
+    local rx, cy = EnemyHud.resistAnchor(L)
+    if not rx then return 0 end
+    return ResistBadges.draw(enemy, rx, cy)
 end
 
 return EnemyHud

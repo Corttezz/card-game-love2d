@@ -2,6 +2,7 @@ local TagSystem   = require("src.systems.TagSystem")
 local ComboSystem = require("src.systems.ComboSystem")
 local EffectSystem = require("src.systems.EffectSystem")
 local Enemy = require("src.entities.Enemy")
+local Resistances = require("src.systems.Resistances")
 
 local AI = {}
 
@@ -288,8 +289,10 @@ function AI.simulate(game, set, bctx, opts)
         S.hp = S.hp + real
         S.healed = S.healed + real
     end
-    local function hit(d)
+    local function hit(d, dtype)
         if d <= 0 or S.eHp <= 0 then return end
+        d = Resistances.apply(e, dtype, d)
+        if d <= 0 then return end
         if S.vuln then d = math.floor(d * 1.5) end
         local eff = math.max(0, d - S.eArmor)
         S.eArmor = math.max(0, S.eArmor - d)
@@ -302,9 +305,9 @@ function AI.simulate(game, set, bctx, opts)
     local function evoke(o)
         local v = (o.value or 1) + S.focus
         if o.type == "lightning" or o.type == "dark" then
-            hit(EffectSystem.orbEvokeValue(o, S.focus))
+            hit(EffectSystem.orbEvokeValue(o, S.focus), Resistances.ORB_TYPE[o.type])
         elseif o.type == "fire" then
-            hit(EffectSystem.orbEvokeValue(o, S.focus)); S.burn = S.burn + math.max(1, math.floor(v / 2)); S.burnDur = S.burnDur + 2
+            hit(EffectSystem.orbEvokeValue(o, S.focus), "fire"); S.burn = S.burn + math.max(1, math.floor(v / 2)); S.burnDur = S.burnDur + 2
         elseif o.type == "ice" then S.armor = math.min(S.maxArmor, S.armor + v)
         elseif o.type == "holy" then heal(v) end
     end
@@ -348,7 +351,7 @@ function AI.simulate(game, set, bctx, opts)
                     S.echoUsed = true
                     v = math.floor(v * (echoEff.value or 2))
                 end
-                hit(v)
+                hit(v, Resistances.ofCard(c))
                 if game.selectedClass == "rogue" and not S.toxinUsed and S.eHp > 0 then
                     S.toxinUsed = true; addPoison(toxin, 2)
                 end
@@ -391,7 +394,7 @@ function AI.simulate(game, set, bctx, opts)
             elseif t == "increase_max_mana" then
                 S.maxManaGain = S.maxManaGain + (v or 0); S.manaGain = S.manaGain + (v or 0)
             elseif t == "add_armor" then S.armor = math.min(S.maxArmor, S.armor + (v or 0))
-            elseif t == "magic_damage" or t == "aoe_magic_damage" then hit(v or 0)
+            elseif t == "magic_damage" or t == "aoe_magic_damage" then hit(v or 0, Resistances.ofSpell(c))
             elseif t == "draw_cards" then S.drawn = S.drawn + (v or 0)
             elseif t == "discard_cards" then S.discards = S.discards + (v or 0)
             elseif t == "apply_debuff" then
@@ -429,7 +432,7 @@ function AI.simulate(game, set, bctx, opts)
     if endsTurn and S.eHp > 0 then
         for _, o in ipairs(S.orbs) do
             local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus)
-            if o.type == "lightning" or o.type == "fire" then hit(pv)
+            if o.type == "lightning" or o.type == "fire" then hit(pv, Resistances.ORB_TYPE[o.type])
             elseif o.type == "ice" then S.armor = math.min(S.maxArmor, S.armor + pv)
             elseif o.type == "holy" then heal(pv)
             elseif o.type == "dark" then o.value = (o.value or 1) + 2 end
@@ -456,7 +459,7 @@ function AI.simulate(game, set, bctx, opts)
                 S.armorLeft = math.max(0, S.armor - dmg)
             end
             if S.thorn > 0 then
-                hit(S.thorn)
+                hit(S.thorn, "physical")
             end
         else
             S.armorLeft = S.armor
@@ -469,7 +472,8 @@ function AI.simulate(game, set, bctx, opts)
             S.hpLoss = S.hpLoss + pdot
         end
         if S.eHp > 0 then
-            local dot = (S.poisonDur > 0 and S.poison or 0) + (S.burnDur > 0 and S.burn or 0)
+            local dot = Resistances.apply(e, "poison", S.poisonDur > 0 and S.poison or 0)
+                + Resistances.apply(e, "fire", S.burnDur > 0 and S.burn or 0)
             S.eHp = S.eHp - dot
             if Enemy.POISON_DECAY then
                 if S.poison > 0 then S.poison = S.poison - 1 end
@@ -503,6 +507,7 @@ function AI.mechanicBonus(game, set, S)
         for _, c in ipairs(set) do
             if c.type == "attack" then
                 local v = AI.cardValue(game, c, nil, game.player.strength or 0)
+                v = Resistances.apply(e, Resistances.ofCard(c), v)
                 if v - (e.armor or 0) >= T then cuts = cuts + 1 end
             end
         end
@@ -554,13 +559,14 @@ function AI.score(game, set, S, bctx)
     local orbDpt, orbBlk, orbHeal = 0, 0, 0
     for _, o in ipairs(S.orbs) do
         local pv = EffectSystem.orbPulseValue({ type = o.type, value = o.value }, S.focus)
+        local rf = Resistances.factor(e, Resistances.ORB_TYPE[o.type])
         if o.type == "lightning" or o.type == "fire" then
-            orbDpt = orbDpt + pv
-            eLeft = eLeft - ((o.value or 1) + S.focus) * 0.5
+            orbDpt = orbDpt + pv * rf
+            eLeft = eLeft - ((o.value or 1) + S.focus) * 0.5 * rf
         elseif o.type == "ice" then orbBlk = orbBlk + pv
         elseif o.type == "holy" then orbHeal = orbHeal + pv
         elseif o.type == "dark" then
-            eLeft = eLeft - ((o.value or 1) + 2 + S.focus) * 2 * 0.6
+            eLeft = eLeft - ((o.value or 1) + 2 + S.focus) * 2 * 0.6 * rf
         end
     end
     local strBonus = S.strGain * prof.attacksPerTurn * prof.hitsPerAttack
@@ -575,15 +581,17 @@ function AI.score(game, set, S, bctx)
         local pst, pdur = S.poison, math.max(0, S.poisonDur)
         local bst, bdur = S.burn, math.max(0, S.burnDur)
         local d = math.max(1, futDpt)
+        local pRf = Resistances.factor(e, "poison")
+        local bRf = Resistances.factor(e, "fire")
         local t = 0
         while hpLeft > 0 and t < 40 do
             local tick = d
             if pdur > 0 then
-                tick = tick + pst * 0.9
+                tick = tick + pst * 0.9 * pRf
                 pdur = pdur - 1
                 if Enemy.POISON_DECAY then pst = pst - 1; pdur = pst end
             end
-            if bdur > 0 then tick = tick + bst * 0.9; bdur = bdur - 1 end
+            if bdur > 0 then tick = tick + bst * 0.9 * bRf; bdur = bdur - 1 end
             if hpLeft <= tick then
                 t = t + hpLeft / tick
                 hpLeft = 0

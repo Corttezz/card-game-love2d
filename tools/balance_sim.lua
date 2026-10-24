@@ -447,6 +447,11 @@ function M.setup(policy)
         if pd and pd ~= "" then
             require("src.entities.Enemy").POISON_DECAY = pd ~= "0"
         end
+        local im = os.getenv("BALANCE_IMMUNITIES")
+        if im and im ~= "" then
+            require("src.systems.Resistances").ENABLED = im ~= "0"
+            print("[balance_sim] imunidades: " .. (im ~= "0" and "ligadas" or "DESLIGADAS"))
+        end
         local tg = tonumber(os.getenv("BALANCE_TOXIN_GROWTH") or "")
         if tg then
             require("src.core.Game").TOXIN_GROWTH = tg
@@ -601,6 +606,7 @@ function M.run(runsArg, classArg, seedArg, policyArg)
             poisonDecay = os.getenv("BALANCE_POISON_DECAY"),
             impetusAttacks = os.getenv("BALANCE_IMPETUS_ATTACKS"),
             toxinGrowth = os.getenv("BALANCE_TOXIN_GROWTH"),
+            immunities = os.getenv("BALANCE_IMMUNITIES"),
             classHp = os.getenv("BALANCE_CLASS_HP") },
         totalActs = require("src.core.Config").TotalActs }
     local agg = M.aggregate(records)

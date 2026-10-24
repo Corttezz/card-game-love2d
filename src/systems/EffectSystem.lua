@@ -7,6 +7,7 @@ local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
 local CardFeel = require("src.systems.CardFeel")
 local CombatBeats = require("src.systems.CombatBeats")
+local Resistances = require("src.systems.Resistances")
 local function msg(key, vars) return I18n.t("messages." .. key, vars) end
 
 local function notifyOrbUI(fn, ...)
@@ -269,9 +270,9 @@ local EFFECT_HOLD = {
     increase_max_mana = "STATUS",
 }
 
-function EffectSystem:processEffectCardStepped(game, effect, showFallback)
+function EffectSystem:processEffectCardStepped(game, effect, showFallback, srcCard)
     local run = function()
-        local handled = self:processEffectCard(game, effect)
+        local handled = self:processEffectCard(game, effect, srcCard)
         if not handled and showFallback then
             local text = I18n.effectDesc(effect)
             if text and text ~= "" then game:addMessage(text, "info") end
@@ -285,9 +286,16 @@ function EffectSystem:processEffectCardStepped(game, effect, showFallback)
         EFFECT_HOLD[effect.type] or "SIDE_EFFECT")
 end
 
-function EffectSystem:processEffectCard(game, effect)
+local function hitEnemy(game, v, dtype)
+    local landed, lvl = game.enemy:takeDamage(v, dtype)
+    if lvl == "immune" then return 0 end
+    return landed or v
+end
+
+function EffectSystem:processEffectCard(game, effect, srcCard)
     local t = effect.type
     local v = effect.value or 0
+    srcCard = srcCard or game._effectSourceCard
 
     if t == "instant_heal" then
         local amount = self:applyHealMultiplier(game, v)
@@ -314,11 +322,11 @@ function EffectSystem:processEffectCard(game, effect)
         return true
 
     elseif t == "magic_damage" then
-        game.enemy:takeDamage(v)
+        local landed = hitEnemy(game, v, Resistances.ofSpell(srcCard))
         checkEnrage(game)
-        game.score = game.score + v
+        game.score = game.score + landed
         CardFeel.burstAtEnemy("magic", 0.9)
-        showEnemyDamage(v)
+        showEnemyDamage(landed)
         return true
 
     elseif t == "draw_cards" then
@@ -405,11 +413,11 @@ function EffectSystem:processEffectCard(game, effect)
         return true
 
     elseif t == "aoe_magic_damage" then
-        game.enemy:takeDamage(v)
+        local landed = hitEnemy(game, v, Resistances.ofSpell(srcCard))
         checkEnrage(game)
-        game.score = game.score + v
+        game.score = game.score + landed
         CardFeel.burstAtEnemy("magic", 1.2)
-        showEnemyDamage(v)
+        showEnemyDamage(landed)
         return true
 
     elseif t == "mystery" then
@@ -422,7 +430,7 @@ function EffectSystem:processEffectCard(game, effect)
             { type = "channel_orb", orbType = "lightning", value = 3 },
         }
         local pick = pool[require("src.systems.Rng").get():random("misc", #pool)]
-        return self:processEffectCard(game, pick)
+        return self:processEffectCard(game, pick, srcCard)
 
     elseif t == "strength_scaling" or t == "dexterity_scaling"
         or t == "multi_hit" or t == "damage_bonus_self"
@@ -462,7 +470,7 @@ function EffectSystem:_evokeOrbEffect(game, orb)
     v = v + focus
     local dmg = EffectSystem.orbEvokeValue(orb, focus)
     if orb.type == "lightning" then
-        game.enemy:takeDamage(dmg)
+        dmg = hitEnemy(game, dmg, Resistances.ORB_TYPE.lightning)
         checkEnrage(game)
         CardFeel.burstAtEnemy("lightning", 1.1)
         showEnemyDamage(dmg)
@@ -470,12 +478,12 @@ function EffectSystem:_evokeOrbEffect(game, orb)
         game.player:addArmor(v)
         CardFeel.burstAtPlayer("ice", 0.9)
     elseif orb.type == "dark" then
-        game.enemy:takeDamage(dmg)
+        dmg = hitEnemy(game, dmg, Resistances.ORB_TYPE.dark)
         checkEnrage(game)
         CardFeel.burstAtEnemy("dark", 1.2)
         showEnemyDamage(dmg)
     elseif orb.type == "fire" then
-        game.enemy:takeDamage(dmg)
+        dmg = hitEnemy(game, dmg, Resistances.ORB_TYPE.fire)
         checkEnrage(game)
         game.enemy:addStatusEffect({ name = "burn", duration = 2,
             stacks = math.max(1, math.floor(v / 2)) })
@@ -571,9 +579,14 @@ function EffectSystem:orbPassiveTick(game, sink)
         CombatBeats.step(sink, "orb.pulse." .. tostring(o.type), function()
             local landed = false
             if o.type == "lightning" or o.type == "fire" then
-                notifyOrbUI("notifyPulse", idx, "-" .. pulse, "damage")
+                local shown, lvl = Resistances.apply(game.enemy, Resistances.ORB_TYPE[o.type], pulse)
+                if lvl == "immune" then
+                    notifyOrbUI("notifyPulse", idx, I18n.t("resist.float.immune", nil, "IMUNE"), "info")
+                else
+                    notifyOrbUI("notifyPulse", idx, "-" .. tostring(shown), "damage")
+                end
                 if pulse > 0 and game.enemy and game.enemy:isAlive() then
-                    game.enemy:takeDamage(pulse)
+                    game.enemy:takeDamage(pulse, Resistances.ORB_TYPE[o.type])
                     checkEnrage(game)
                     landed = true
                     if o.type == "lightning" and game.enemy.revealNextIntent then
@@ -651,13 +664,15 @@ function EffectSystem:fireThornReflect(game)
     if v <= 0 then return 0 end
     local enemy = game.enemy
     if not enemy or not enemy.isAlive or not enemy:isAlive() then return 0 end
-    enemy:takeDamage(v)
+    local landed, lvl = enemy:takeDamage(v, "physical")
+    if lvl == "immune" then landed = 0 end
+    v = landed or v
     Sfx.play("thornReflect")
     CardFeel.burstAtEnemy("physical", 0.7)
     local okER, ER = pcall(require, "src.ui.EnemyRenderer")
     if okER and ER.triggerHurt then ER.triggerHurt() end
     local okFT, FloatingText = pcall(require, "src.ui.FloatingText")
-    if okFT and okER and ER.getLastPos then
+    if okFT and okER and ER.getLastPos and v > 0 then
         local ex, ey = ER.getLastPos()
         if ex and ey then
             FloatingText.spawn("-" .. v, ex, ey, { kind = "damage", fontSize = 20 })

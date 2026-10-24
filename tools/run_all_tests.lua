@@ -12,6 +12,7 @@ local SUITES = {
     { group = "unit",  name = "test_effects_full" },
     { group = "unit",  name = "test_combat" },
     { group = "unit",  name = "test_damage_preview" },
+    { group = "unit",  name = "test_immunities" },
     { group = "unit",  name = "test_beats" },
     { group = "unit",  name = "test_enemy_death" },
     { group = "unit",  name = "test_enemies" },

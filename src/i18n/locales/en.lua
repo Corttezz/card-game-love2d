@@ -1048,7 +1048,7 @@ return {
         shop_bell   = { name = "Bell: new offers", desc = "Ring the bell and the merchant restocks both shelves. Costs ${n} on this visit and rises by $2 each ring." },
         shop_ledger = { name = "Ledger", desc = "Closes the account and moves on. Leaving the shop pays +${bonus} gold." },
         shop_dice   = { name = "Dice cup", desc = "The Scribe's Dice: one wager per visit. Click to open the table." },
-        poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn, then loses 1 stack." },
+        poison     = { name = "Poison",     desc = "Deals {stacks} damage at end of turn, then loses 1 stack.", desc_immune = "Immune: poison sticks and decays, but deals no damage.", desc_resist = "Resisted: deals half of {stacks} at end of turn, then loses 1 stack.", desc_weak = "Weakness: deals 50% more than {stacks} at end of turn, then loses 1 stack." },
         weak       = { name = "Weak",       desc = "Damage dealt reduced by 25% for {duration} turn(s)." },
         vulnerable = { name = "Vulnerable", desc = "Takes 50% more damage (poison and burn excluded) for {duration} turn(s)." },
         strength   = { name = "Strength",   desc = "Every attack hit deals +{stacks} damage." },
@@ -1060,7 +1060,7 @@ return {
         orb_dark      = { name = "Shadow Orb",       desc = "Does not pulse: grows +2 per turn. Evoke deals {duration} damage (double its value)." },
         orb_holy      = { name = "Holy Orb",       desc = "Pulses {stacks} healing at end of your turn. Evoke heals {duration} HP." },
         orb_empty     = { name = "Orb Slot",       desc = "Empty. Channel cards create orbs here (max {stacks}). When full, channeling evokes the oldest." },
-        burn       = { name = "Burn",       desc = "Deals {stacks} fire damage at end of turn, for {duration} turn(s)." },
+        burn       = { name = "Burn",       desc = "Deals {stacks} fire damage at end of turn, for {duration} turn(s).", desc_immune = "Immune to fire: burn deals no damage.", desc_resist = "Resists fire: deals half of {stacks} at end of turn, for {duration} turn(s).", desc_weak = "Weak to fire: deals 50% more than {stacks} at end of turn, for {duration} turn(s)." },
         thorn        = { name = "Thorns",
             desc = "Armed: when the enemy hits you, it takes {stacks} damage back. Lasts {duration} turn(s).",
             desc_permanent = "When the enemy hits you, it takes {stacks} damage back." },
@@ -1419,6 +1419,7 @@ return {
     cheat = require("src.i18n.locales.cheat.en"),
 
     bestiary = require("src.i18n.locales.bestiary.en"),
+    resist = require("src.i18n.locales.resist.en"),
 
     seals = require("src.i18n.locales.run_modifiers.en").seals,
     seal_ui = require("src.i18n.locales.run_modifiers.en").seal_ui,
