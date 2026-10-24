@@ -8,6 +8,22 @@ type: project
 
 Fluxo completo pra adicionar **um inimigo novo** (sprite + animações + integração no combate).
 
+## CHECKLIST OBRIGATÓRIO de monstro novo (dono, 24/Out/2026)
+
+O dono pediu que todo monstro novo nasça COMPLETO, com tudo o que o roster já tem. Nenhum item abaixo é opcional; o que faltar é defeito.
+
+1. **Arte base e pose:** idle 0 olhado a 4x antes de qualquer prompt. Pose `grounded` ou `floating` em `src/data/enemy_poses.lua`, com pé afundando 2-3 px (FOOT_SINK) e escala humana da cena (memory/enemy_pose_and_scene_anchor.md).
+2. **Idle vivo:** loop de 12 a 16 quadros com o quadro 0 idêntico ao idle 0 e movimento secundário lido da arte (pano, cabelo, cauda, chama). Fidgets `fidget_<nome>` de 2 a 4 por criatura, presos ao idle 0 nas duas pontas (memory/enemy_life.md).
+3. **Estados:** clips `state_poison`, `state_weak` e `state_enraged` presos ao idle 0. Os outros estados usam a camada genérica (shader `enemy_states.glsl`). Conferir na galeria `love . vida <id>` com S em todos os 11 estados.
+4. **Dados de vida:** `src/data/enemy_life/<id>.lua` com fidgets, `gap`, `fx` ancorado em xr/yr do idle 0 e `states`.
+5. **Voo, se flutua:** loop de voo com batida de asa ou capa e corpo subindo na batida, `flapPeak` na pose e `strokes` + fx `downdraft` no arquivo de vida. NUNCA sombra achatada, disco ou elipse sob o corpo (dono rejeitou duas vezes). Só a silhueta projetada.
+6. **Entrada, hurt e morte:** entrada pela estrada (memory/enemy_entrances.md e enemy_entrances_art.md), hurt e death pela fábrica `tools/pixellab_enemy_anims.py` (seção abaixo), emissivos medidos no idle 0 (seção "Emissivos").
+7. **Objetos que vêm com o monstro** (pedestal, poste, círculo): são objetos de CHÃO, presos ao ponto do monstro em todo quadro da entrada, e viram props comuns que saem com a câmera depois da morte (trava `test_enemy_props`).
+8. **Imunidades e resistências:** linha na tabela de memory/enemy_immunities.md com o motivo de lore, ícones no HUD e prévia de dano corretos.
+9. **Combate:** kit com golpes nomeados nos 5 locales (memory/enemies.md), névoa/véu se o bioma pede, roster SÓ do bioma do ato.
+10. **Chefe, a mais:** idle assado, aura e contorno (memory/boss_visuals.md), cinemática (boss_cinematics.md), mecânica-assinatura (boss_mechanics.md), salão (boss_halls.md), coringa próprio (boss_jokers.md), faixa e reação à música (music_reactive.md).
+11. **Prova:** capturas 1:1 na cena real de batalha do ato a 1920x1080, mais a folha de cada clip em tools/preview_out. O lead olha antes de juntar.
+
 ## ⚠️ HURT/DEATH: usar a fábrica `tools/pixellab_enemy_anims.py` (Ago/2026)
 
 **NÃO usar mais os templates `taking-punch`/`falling-back-death` do

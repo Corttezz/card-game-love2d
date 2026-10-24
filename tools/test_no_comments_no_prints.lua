@@ -13,7 +13,7 @@ M.PRINT_INFRA = {
 }
 
 M.TOOL_RESULT_PRINTERS = {
-    "tools/anim_drift.lua", "tools/screenshot_menu_logo.lua", "tools/screenshot_estrada_final.lua", "tools/perf_estrada_final.lua", "tools/estrada_seq.lua", "tools/estrada_fluxo.lua", "tools/mem_guard.lua", "tools/bancada_sombras.lua", "tools/audit_cards.lua", "tools/audit_feedback.lua", "tools/autoplay.lua",
+    "tools/anim_drift.lua", "tools/screenshot_menu_logo.lua", "tools/screenshot_estrada_final.lua", "tools/perf_estrada_final.lua", "tools/estrada_seq.lua", "tools/estrada_fluxo.lua", "tools/props_inimigo.lua", "tools/mem_guard.lua", "tools/bancada_sombras.lua", "tools/audit_cards.lua", "tools/audit_feedback.lua", "tools/autoplay.lua",
     "tools/bake_orb_anim.lua", "tools/balance_bench.lua", "tools/balance_sim.lua", "tools/balance_sync_desc.lua",
     "tools/boss_rooms.lua", "tools/screenshot_bestiario.lua", "tools/screenshot_castelo_base.lua", "tools/screenshot_castelo_luz.lua", "tools/screenshot_luz_suave.lua", "tools/screenshot_loja_base.lua", "tools/screenshot_tufos_viagem.lua", "tools/check_event_i18n.lua", "tools/check_font_metrics.lua", "tools/check_loop.lua",
     "tools/check_music.lua", "tools/check_seal_sfx.lua", "tools/check_sfx.lua", "tools/demo_worldroad.lua",
@@ -39,7 +39,7 @@ M.TOOL_RESULT_PRINTERS = {
     "tools/screenshot_forge.lua", "tools/screenshot_gameplay.lua", "tools/screenshot_guide.lua",
     "tools/screenshot_holo.lua", "tools/screenshot_bordas_cartas.lua", "tools/screenshot_brilho_coringa.lua", "tools/screenshot_descobertas.lua", "tools/screenshot_intro.lua", "tools/screenshot_joker_manager.lua",
     "tools/screenshot_journal.lua", "tools/screenshot_mapscreen.lua", "tools/screenshot_menu_life.lua",
-    "tools/screenshot_menu_v2.lua", "tools/screenshot_menuanim.lua", "tools/screenshot_packopen.lua",
+    "tools/screenshot_menu_v2.lua", "tools/screenshot_menuanim.lua", "tools/screenshot_packopen.lua", "tools/shot_pacotes_v2.lua",
     "tools/screenshot_pause.lua", "tools/screenshot_relic_art.lua", "tools/screenshot_resume_boss.lua",
     "tools/screenshot_rewards.lua", "tools/screenshot_round_eval.lua", "tools/screenshot_shop.lua",
     "tools/screenshot_shop_diag.lua", "tools/screenshot_sombras_mundo.lua", "tools/screenshot_topbar_gear.lua",

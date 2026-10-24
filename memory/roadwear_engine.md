@@ -1,6 +1,6 @@
 ---
 name: roadwear_engine
-description: Solo do caminho — RoadTiles (tile por bioma, escolha do dono), RoadSurface (cache/bake), RoadFork (encruzilhada como um chão só), RoadDecals (folhas sopradas do ato 6)
+description: Solo do caminho — RoadTiles (tile por bioma, escolha do dono; ato 5 sem tábuas desde a rodada 8), RoadSurface (cache/bake), RoadFork (encruzilhada como um chão só), RoadDecals (folhas sopradas do ato 6)
 type: architecture
 ---
 
@@ -8,7 +8,7 @@ type: architecture
 
 O dono escolheu UMA variante por ato na folha `tools/preview_out/estrada_variantes/visao_geral_18_tod65.png`:
 ato 1 A trilha gasta, ato 2 A trilha de cascalho, ato 3 A trilha de cinza com rachaduras e brasa,
-ato 4 A neve pisada, ato 5 B passarela de tábuas, ato 6 A trilha de folhas. As outras 12 variantes,
+ato 4 A neve pisada, ato 5 B passarela de tábuas (trocada pela trilha de lama na rodada 8), ato 6 A trilha de folhas. As outras 12 variantes,
 `engine/RoadVariants.lua`, `CARDGAME_ROAD`, Home/End no cheat, a chave `cheat.road_variant`, o bake
 antigo do `RoadSurface` e o `engine/RoadWear.lua` (catálogo de decalques antigo, já desligado pelas
 variantes) foram APAGADOS. Não há mais chave de variante. Provas antes/depois em
@@ -308,3 +308,37 @@ rodadas 4 a 6 (removidos: `WALK`, `deckSpan`, `walkTk`, `_deckRow`, `_post`, `_w
   480x270, ImageData liberada à mão, `log.frames` com janela de 3 quadros, miniaturas só com `SEQ_THUMBS=1`,
   teto `SEQ_MEM_CAP` (4000 MB, aborta a captura). Medido: ato 5 inteiro com pico de 733 MB (antes 1 GB por
   plano). Rode um processo por ato (`estrada_fluxo "5"`), sempre com `CARDGAME_HEADLESS=1`.
+
+## Rodada 8 (24/Out/2026): ato 5 sem tábua nenhuma, ato 3 refeito
+
+Dono: as tábuas do ato 5 "dão muito glitch" ao escolher batalha com três opções; "tira as tábuas em geral, deixa
+só um caminho, com poças". E o chão do ato 3 "ainda muito feio, muito estranho".
+
+- **Ato 5 = trilha de pântano em toda parte.** Apagados: `PAINT.marsh` de tábuas, `plankTable`, `V.plankAt`,
+  `marshSeed`, o parâmetro `np` da pintura, `V.BLOCKS` (o tile do pântano voltou a 2 blocos), `st.bare`, o
+  borrão especial do pântano (vertical 13 e `k` 0,08) e os `farT0/farT1/farDv` dele; no `WorldRoad` saíram
+  `PLANK_END`, `plankNeed`, `_marshRow` e o deslocamento `ub` do `span`. Tronco e ramos usam o mesmo
+  `span`/`RoadFork.partition` dos atos 1 a 4. As notas das rodadas 2 a 7 sobre passarela/deck/tábuas são
+  histórico. `WorldRoad.forkE` continua (props usam).
+- **Pintura do pântano** (`PAINT.marsh`): lama pisada (`MUD`, rampa de 7 tons mais clara) com sulcos rasos
+  (`rutDepth 0,6`), manchas grandes seca/molhada (`macro`, fbm 3x9) que sobrevivem ao borrão da crista (era o
+  "escuro e chapado ao longe"), poças nos sulcos e baixios (`puddle`, limiar `PW 0,63`): borda de turfa escura,
+  reflexo escuro da margem de longe, brilho na margem de perto, faixas horizontais de céu (rampa `WATER` vem do
+  céu do bioma); lama úmida escurecida em volta com brilho raro; pegadas (algumas cheias d'água); turfa
+  fibrosa (`PEAT`) e musgo nas bordas; juncos só na margem (e > 0,8); raízes entrando; gravetos raros (`leafAt`
+  fino com `woodPick`); tufos de capim na lama.
+- **Ato 3 refeito** (`PAINT.abyss`). Diagnóstico do antes (1:1): asfalto cinza liso e frio sem micro detalhe,
+  rede de voronoi de polígonos iguais desenhada como contorno (casco de tartaruga), brasa em manchas
+  saturadas sem calor em volta, listras verticais de sulco e de `streak`, cor cinza contra o chão vermelho.
+  Agora: cinza vulcânica quente (`ASH` misturado com `rock`), escória em 4 tamanhos de pedra facetada
+  (`SCORIA` vermelha e `SOOT` basalto; a menor, `stone` célula 3, dá o grão), placas de lava fria nos
+  ombros, fendas angulares e ESPARSAS (`crackNet`: voronoi com a aresta aberta só se o hash do PAR de células
+  passar, entrada tremida), poucas fendas com brasa e halo `HEAT` em volta, manchas de cinza soprada,
+  sulcos rasos (`rutDepth 0,35`, a rampa do sulco agora respeita `rutDepth` em todos os atos que o declaram).
+- Provas: `python tools/chao_v8_folha.py` (identity `road_v8`, capturas `ESTRADA_TAG=antes|depois`) →
+  `tools/preview_out/chao_v8/ato{3,5}/<cena>_<res>.png` (batalha, 3 opções, 2 opções, convergência em
+  1280x720, 1920x1080, 3440x1440; perto e longe 1:1). `screenshot_estrada_final` agora chama `present()` por
+  quadro e libera a ImageData. `estrada_fluxo` atos 3 e 5: 0 sinais; `estrada_seq` ato 3: 0, ato 5: 1
+  (`prop:aparece` de árvore morta na viagem do plano 2dir, igual no main 02bd0c2d, só rodando o ato inteiro).
+- Perf (`perf_estrada_final`): encruzilhada ato 3 ~500 dc, ato 5 ~445 dc; bake do ato 3 2,6 a 2,9 s (cede no
+  pré-aquecimento), ato 5 1 a 1,6 s.
