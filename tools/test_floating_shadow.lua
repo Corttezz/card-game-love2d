@@ -46,6 +46,13 @@ function M.run()
             ShadowEngine.setFrame(cx - 500, W, 0.85, 0.8)
             ShadowEngine.setTint(0.30, 0.26, 0.34)
             ShadowEngine.setAlphaK(1)
+        else
+            local now = clock
+            clock = now - 1000
+            ShadowEngine.setFrame(cx - 500, W, 0.85, 0.8)
+            ShadowEngine.setTint(0.30, 0.26, 0.34)
+            ShadowEngine.setAlphaK(1)
+            clock = now
         end
     end
 
@@ -96,15 +103,20 @@ function M.run()
         end
         a:release(); b:release()
         local fb = foot and foot.footBottom or 0
-        local wMax, wMin, rowsN = 0, 1e9, 0
-        for y = math.max(y0, fb + 1), y1 do
-            if rmin[y] then
-                local wv = rmax[y] - rmin[y] + 1
-                rowsN = rowsN + 1
-                if wv > wMax then wMax = wv end
-                if wv < wMin then wMin = wv end
+        local function rowsFrom(yStart)
+            local wMax, wMin, rowsN = 0, 1e9, 0
+            for y = yStart, y1 do
+                if rmin[y] then
+                    local wv = rmax[y] - rmin[y] + 1
+                    rowsN = rowsN + 1
+                    if wv > wMax then wMax = wv end
+                    if wv < wMin then wMin = wv end
+                end
             end
+            return wMax, wMin, rowsN
         end
+        local wMax, wMin, rowsN = rowsFrom(math.max(y0, fb + 1))
+        if rowsN < 4 then wMax, wMin, rowsN = rowsFrom(y0) end
         return { axisTop = axisTop, rowsN = rowsN, wMax = wMax, wMin = wMin, n = n, dark = dark, y0 = y0, y1 = y1, overlap = overlap, last = rec,
                  footBottom = foot and foot.footBottom or 0 }
     end
@@ -140,7 +152,7 @@ function M.run()
                     fails.breath[#fails.breath + 1] = string.format("%s(escuro %.0f/%.0f)", tag, top.dark, bot.dark)
                 end
                 if bot.rowsN < 4 or bot.wMin > 0.7 * bot.wMax then
-                    fails.bar[#fails.bar + 1] = string.format("%s(%d linhas, %d..%d px)", tag, bot.rowsN, bot.wMin, bot.wMax)
+                    fails.bar[#fails.bar + 1] = string.format("%s(%d linhas, %d..%d px, sombra %d..%d pe %d)", tag, bot.rowsN, bot.wMin, bot.wMax, bot.y0, bot.y1, bot.footBottom)
                 end
                 if scene ~= "salao" and top.overlap + bot.overlap > 2 then
                     fails.depth[#fails.depth + 1] = string.format("%s(%d px sobre o corpo)", tag, top.overlap + bot.overlap)
