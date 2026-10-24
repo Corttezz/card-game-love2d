@@ -70,4 +70,7 @@ return {
     { id = "burn",
       match = { pt_BR = { "queimadura" }, en = { "burn" }, es = { "quemadura" },
                 fr = { "brûlure" }, de = { "brand" } } },
+    { id = "resist",
+      match = { pt_BR = { "resist" }, en = { "resist" }, es = { "resist" },
+                fr = { "résist" }, de = { "resist" } } },
 }

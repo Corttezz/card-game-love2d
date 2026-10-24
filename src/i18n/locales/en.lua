@@ -1032,6 +1032,7 @@ return {
         counter_debuff_weak        = "Immune to Weak",
         counter_debuff_frail       = "Immune to Frail",
         counter_debuff_vulnerable  = "Immune to Vulnerable",
+        counter_pierce             = "Enemy resistances don't reduce your damage. Immunity still applies",
         unknown                    = "Unknown effect",
     },
 
@@ -1340,6 +1341,7 @@ return {
         joker_counter_weak       = { name = "Bull Talisman", desc = "You are immune to Weak." },
         joker_counter_frail      = { name = "Tortoise Shell", desc = "You are immune to Frail." },
         joker_counter_vulnerable = { name = "Stoneskin", desc = "You are immune to Vulnerable." },
+        joker_counter_whetstone  = { name = "Whetstone", desc = "Enemy resistances don't reduce your damage. Immunity still applies." },
         joker_boss_carrion      = { name = "Carrion Crown", desc = "Every attack card deals +{value} damage and heals {value2} HP." },
         joker_boss_lich         = { name = "Lich's Phylactery", desc = "Channel 1 Ice (value {value}) at the start of each turn." },
         joker_boss_tyrant       = { name = "Tyrant's Heart", desc = "Every attack card applies {stacks} Burn." },
@@ -1425,12 +1427,13 @@ return {
         immune        = { name = "Immune", text = "While the joker is ACTIVE, the effect never reaches you. Swap jokers on the bench (J) before each act." },
         frail         = { name = "Frail", text = "Target gains 25% less Block." },
         burn          = { name = "Burn", text = "Fire damage at end of turn equal to its stacks." },
+        resist        = { name = "Resistance", text = "A creature that resists a damage type takes only half of it; an immune one takes none. The icons sit next to its health bar." },
         frost         = { name = "Frost", text = "Comes from the Winter Monarch's blows. At 4, the 2 most expensive cards in hand arrive frozen." },
         fog           = { name = "Fog", text = "Hides the number or the type of the enemy's intent. The move is already decided." },
     },
 
     counter_jokers = {
-        proc = { immune = "Immune: {status}", frost = "-{value} Frost", thaw = "Thawed", sight = "Revealed" },
+        proc = { immune = "Immune: {status}", frost = "-{value} Frost", thaw = "Thawed", sight = "Revealed", pierce = "Pierce!" },
     },
 
     enemy_kit = require("src.i18n.locales.enemy_kit.en"),

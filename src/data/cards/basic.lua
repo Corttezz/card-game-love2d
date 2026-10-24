@@ -264,6 +264,15 @@ return {
         rarity = "uncommon", class = "basic",
         effects = { { type = "counter_debuff", debuffName = "vulnerable" } },
     },
+    joker_counter_whetstone = {
+        id = "joker_counter_whetstone", name = "Pedra de Amolar",
+        type = "joker", subtype = "uncommon",
+        cost = 1, attack = 0, defense = 0,
+        description = "Resistências do inimigo não reduzem seu dano. Imunidade continua valendo.",
+        image = "assets/jokers/joker1.png",
+        rarity = "uncommon", class = "basic",
+        effects = { { type = "counter_pierce" } },
+    },
 
     effect_mystery_card = {
         id = "effect_mystery_card", name = "Carta Misterio",

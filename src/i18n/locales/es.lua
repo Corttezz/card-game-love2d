@@ -1032,6 +1032,7 @@ return {
         counter_debuff_weak        = "Inmune a Débil",
         counter_debuff_frail       = "Inmune a Frágil",
         counter_debuff_vulnerable  = "Inmune a Vulnerable",
+        counter_pierce             = "Las resistencias del enemigo no reducen tu daño. La inmunidad sigue valiendo",
         unknown                    = "Efecto desconocido",
     },
 
@@ -1340,6 +1341,7 @@ return {
         joker_counter_weak       = { name = "Cuerno de Toro", desc = "Eres inmune a Débil." },
         joker_counter_frail      = { name = "Caparazón Viejo", desc = "Eres inmune a Frágil." },
         joker_counter_vulnerable = { name = "Piel de Piedra", desc = "Eres inmune a Vulnerable." },
+        joker_counter_whetstone  = { name = "Piedra de Afilar", desc = "Las resistencias del enemigo no reducen tu daño. La inmunidad sigue valiendo." },
         joker_boss_carrion      = { name = "Corona de Carroña", desc = "Cada carta de ataque causa +{value} de daño y cura {value2} PV." },
         joker_boss_lich         = { name = "Filacteria del Liche", desc = "Canaliza 1 Hielo (valor {value}) al inicio de cada turno." },
         joker_boss_tyrant       = { name = "Corazón del Tirano", desc = "Cada carta de ataque aplica {stacks} de Quemadura." },
@@ -1425,12 +1427,13 @@ return {
         immune        = { name = "Inmune", text = "Con el comodín ACTIVO, el efecto nunca te alcanza. Cambia comodines en la banca (J) antes de cada acto." },
         frail         = { name = "Frágil", text = "El objetivo gana un 25% menos de Bloqueo." },
         burn          = { name = "Quemadura", text = "Daño de fuego al final del turno igual a sus acumulaciones." },
+        resist        = { name = "Resistencia", text = "Una criatura que resiste un tipo de daño sufre solo la mitad; una inmune no sufre nada. Los iconos están junto a su barra de vida." },
         frost         = { name = "Escarcha", text = "Viene de los golpes del Monarca del Invierno. Con 4, las 2 cartas más caras de la mano llegan congeladas." },
         fog           = { name = "Niebla", text = "Oculta el número o el tipo de la intención del enemigo. El golpe ya está decidido." },
     },
 
     counter_jokers = {
-        proc = { immune = "Inmune: {status}", frost = "-{value} Escarcha", thaw = "Deshielo", sight = "Revelado" },
+        proc = { immune = "Inmune: {status}", frost = "-{value} Escarcha", thaw = "Deshielo", sight = "Revelado", pierce = "¡Perfora!" },
     },
 
     enemy_kit = require("src.i18n.locales.enemy_kit.es"),

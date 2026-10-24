@@ -89,5 +89,18 @@
   "picked_counter_lantern": "b24843d6-ddb8-4e46-8f70-9e0a420b4fcd",
   "picked_counter_salamander": "8ff5ee4c-93eb-40be-b598-1a522b3b252c",
   "picked_counter_vulnerable": "87d6bb9c-3189-4b67-a792-c1732408097d",
-  "picked_counter_weak": "2c6f011c-ef64-4f49-afb3-bbebbc3c601c"
+  "picked_counter_weak": "2c6f011c-ef64-4f49-afb3-bbebbc3c601c",
+  "counter_whetstone_0": {
+    "object_id": "a1b1d3de-5205-49cc-a808-bd980c206eb5",
+    "subject": "grim old weaponsmith bust drawing a long sword blade across a grey whetstone, bright sparks flying, scarred face lit by the sparks"
+  },
+  "counter_whetstone_1": {
+    "object_id": "655f393b-9ff6-4ce5-8264-c5886a730a16",
+    "subject": "grey whetstone block bound in iron bands with a dagger blade resting on it, sparks flying from the edge, front view"
+  },
+  "counter_whetstone_2": {
+    "object_id": "3184d044-01d4-4d0d-843e-e60802548215",
+    "subject": "armored gauntlet gripping a glowing sharpened spearhead that pierces through a cracked round shield, sparks, front view"
+  },
+  "picked_counter_whetstone": "3184d044-01d4-4d0d-843e-e60802548215"
 }

@@ -1032,6 +1032,7 @@ return {
         counter_debuff_weak        = "Immun gegen Schwach",
         counter_debuff_frail       = "Immun gegen Zerbrechlich",
         counter_debuff_vulnerable  = "Immun gegen Verwundbar",
+        counter_pierce             = "Gegnerische Resistenzen verringern deinen Schaden nicht. Völlig geschützte Gegner bleiben es",
         unknown                    = "Unbekannter Effekt",
     },
 
@@ -1340,6 +1341,7 @@ return {
         joker_counter_weak       = { name = "Stiertalisman", desc = "Du bist immun gegen Schwach." },
         joker_counter_frail      = { name = "Panzerschale", desc = "Du bist immun gegen Zerbrechlich." },
         joker_counter_vulnerable = { name = "Steinhaut", desc = "Du bist immun gegen Verwundbar." },
+        joker_counter_whetstone  = { name = "Schleifstein", desc = "Gegnerische Resistenzen verringern deinen Schaden nicht. Völlig geschützte Gegner bleiben es." },
         joker_boss_carrion      = { name = "Aaskrone", desc = "+{value} Schaden auf Angriffskarten. Heile {value2} LP pro gespielter Angriffskarte." },
         joker_boss_lich         = { name = "Phylakterium des Lichs", desc = "Kanalisiere 1 Eis (Wert {value}) zu Beginn jedes Zuges." },
         joker_boss_tyrant       = { name = "Herz des Tyrannen", desc = "Jede Angriffskarte wendet {stacks} Brand an." },
@@ -1425,12 +1427,13 @@ return {
         immune        = { name = "Immun", text = "Solange der Joker AKTIV ist, erreicht dich der Effekt nie. Tausche Joker auf der Bank (J) vor jedem Akt." },
         frail         = { name = "Zerbrechlich", text = "Das Ziel erhält 25% weniger Block." },
         burn          = { name = "Brand", text = "Feuerschaden am Zugende in Höhe der Stapel." },
+        resist        = { name = "Resistenz", text = "Eine Kreatur mit Resistenz erleidet nur die Hälfte dieser Schadensart, eine geschützte gar nichts. Die Symbole stehen neben ihrer Lebensleiste." },
         frost         = { name = "Raureif", text = "Kommt von den Schlägen des Wintermonarchen. Bei 4 kommen die 2 teuersten Karten der Hand gefroren an." },
         fog           = { name = "Nebel", text = "Verbirgt die Zahl oder die Art der gegnerischen Absicht. Der Zug steht schon fest." },
     },
 
     counter_jokers = {
-        proc = { immune = "Immun: {status}", frost = "-{value} Raureif", thaw = "Getaut", sight = "Enthüllt" },
+        proc = { immune = "Immun: {status}", frost = "-{value} Raureif", thaw = "Getaut", sight = "Enthüllt", pierce = "Durchbohrt!" },
     },
 
     enemy_kit = require("src.i18n.locales.enemy_kit.de"),

@@ -2,7 +2,8 @@ local I18n = require("src.i18n.I18n")
 
 local CounterJokers = {}
 
-CounterJokers.EFFECTS = { counter_debuff = true, counter_frost = true, counter_sight = true }
+CounterJokers.EFFECTS = { counter_debuff = true, counter_frost = true, counter_sight = true,
+    counter_pierce = true }
 
 CounterJokers.DEBUFFS = { poison = true, burn = true, weak = true, frail = true, vulnerable = true }
 
@@ -12,7 +13,7 @@ CounterJokers.IDLE_OFFER_WEIGHT = 0.12
 
 CounterJokers.PILOT_SCORE = {
     poison = 14, burn = 12, weak = 14, frail = 10, vulnerable = 14,
-    frost = 20, fog = 12,
+    frost = 20, fog = 12, resist = 10,
 }
 
 local games = setmetatable({}, { __mode = "k" })
@@ -34,6 +35,7 @@ function CounterJokers.threatOf(effect)
     if effect.type == "counter_debuff" then return effect.debuffName end
     if effect.type == "counter_frost" then return "frost" end
     if effect.type == "counter_sight" then return "fog" end
+    if effect.type == "counter_pierce" then return "resist" end
     return nil
 end
 
@@ -105,6 +107,20 @@ function CounterJokers.filterVisibility(enemy, level, cause)
     return "full", "lantern"
 end
 
+function CounterJokers.piercesResist(enemy)
+    local game = CounterJokers.gameOf(enemy)
+    return game ~= nil and CounterJokers.find(game, "counter_pierce") ~= nil
+end
+
+function CounterJokers.notePierce(enemy, dtype)
+    local raw = require("src.systems.Resistances").tableFor(enemy)[dtype]
+    if raw ~= "resist" then return end
+    local game = CounterJokers.gameOf(enemy)
+    local joker, e = CounterJokers.find(game, "counter_pierce")
+    if not (e and e.type == "counter_pierce") then return end
+    proc(game, joker, I18n.t("counter_jokers.proc.pierce", nil, "Perfura!"), "mult")
+end
+
 local threatCache = {}
 
 local function kitThreats(kit, out)
@@ -142,6 +158,13 @@ function CounterJokers.actThreats(act)
             local found = {}
             kitThreats(Enemies.KITS[id], found)
             for k in pairs(found) do count[k] = (count[k] or 0) + 1 end
+        end
+    end
+    for _, kind in ipairs({ "battle", "elite", "mini_boss", "boss" }) do
+        for _, id in ipairs(roster[kind] or {}) do
+            for _, lvl in pairs((Enemies.RESIST or {})[id] or {}) do
+                if lvl == "resist" then count.resist = (count.resist or 0) + 1 break end
+            end
         end
     end
     local biomes = require("src.data.biomes")

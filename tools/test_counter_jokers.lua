@@ -11,7 +11,7 @@ local LOCALES = { "pt_BR", "en", "es", "fr", "de" }
 M.IDS = {
     "joker_counter_lantern", "joker_counter_brazier", "joker_counter_antidote",
     "joker_counter_salamander", "joker_counter_weak", "joker_counter_frail",
-    "joker_counter_vulnerable",
+    "joker_counter_vulnerable", "joker_counter_whetstone",
 }
 
 M.BY_DEBUFF = {
@@ -91,10 +91,10 @@ local function testData(t)
     end
     for _, loc in ipairs(LOCALES) do
         local tbl = require("src.i18n.locales." .. loc)
-        for _, k in ipairs({ "immune", "frost", "thaw", "sight" }) do
+        for _, k in ipairs({ "immune", "frost", "thaw", "sight", "pierce" }) do
             t:truthy("proc " .. k .. " [" .. loc .. "]", tbl.counter_jokers and tbl.counter_jokers.proc[k])
         end
-        for _, kw in ipairs({ "immune", "fog", "frost", "frail", "burn" }) do
+        for _, kw in ipairs({ "immune", "fog", "frost", "frail", "burn", "resist" }) do
             t:truthy("glossário " .. kw .. " [" .. loc .. "]", tbl.keyword and tbl.keyword[kw] and tbl.keyword[kw].text)
         end
     end
@@ -194,6 +194,45 @@ local function testSight(t)
     t:eq("lanterna em céu limpo: sem tique", g2._counterProcs, 0)
 end
 
+local function testPierce(t)
+    local Resistances = require("src.systems.Resistances")
+    local g = battleWith("spectral_knight", {})
+    t:eq("cavaleiro resiste a físico (tabela)", Resistances.tableFor(g.enemy).physical, "resist")
+    t:eq("sem pedra: físico pela metade", (Resistances.apply(g.enemy, "physical", 10)), 5)
+    local hp = g.enemy.health
+    g.enemy.armor = 0
+    g.enemy:takeDamage(10, "physical")
+    t:eq("sem pedra: golpe real pela metade", hp - g.enemy.health, 5)
+    t:eq("sem pedra: nenhum tique", g._counterProcs or 0, 0)
+
+    equip(g, { "joker_counter_whetstone" })
+    t:eq("pedra: prévia/piloto leem dano cheio", (Resistances.apply(g.enemy, "physical", 10)), 10)
+    t:falsy("pedra: selo de resistência some do HUD", (function()
+        for _, en in ipairs(Resistances.entries(g.enemy)) do
+            if en.type == "physical" then return true end
+        end
+    end)())
+    hp = g.enemy.health
+    g.enemy:takeDamage(10, "physical")
+    t:eq("pedra: golpe real cheio", hp - g.enemy.health, 10)
+    t:truthy("pedra: tique ao furar", (g._counterProcs or 0) >= 1)
+    t:eq("pedra: imunidade continua (veneno)", (Resistances.apply(g.enemy, "poison", 10)), 0)
+    g._counterProcs = 0
+    g.enemy:takeDamage(10, "arcane")
+    t:eq("pedra: tipo sem resistência não tica", g._counterProcs, 0)
+    local DamagePreview = require("src.systems.DamagePreview")
+    local db = g.deckManager.cardDatabase
+    local card = db:createCardInstance(db:getCard("warrior_strike"))
+    local sim = DamagePreview.simulate and DamagePreview.simulate(g, { card })
+    if sim and sim.damage then
+        local equipped = sim.damage
+        equip(g, {})
+        local plain = DamagePreview.simulate(g, { card }).damage
+        t:truthy("prévia: pedra aumenta o total contra quem resiste (" .. plain .. " -> " .. equipped .. ")",
+            equipped > plain)
+    end
+end
+
 local function testAllQuiet(t)
     local g = battleWith(nil, M.IDS)
     g.enemy:forceIntent("attack", g.player)
@@ -235,6 +274,7 @@ function M.run()
     testDebuffs(t)
     testFrost(t)
     testSight(t)
+    testPierce(t)
     testAllQuiet(t)
     testOffersAndPilot(t)
     return t:done()

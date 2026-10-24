@@ -131,6 +131,7 @@ return {
     joker_counter_weak       = { icon = "counter_weak", bg = "rage", accent = "AGED_GOLD", decoration = "dust" },
     joker_counter_frail      = { icon = "counter_frail", bg = "stone", accent = "AGED_GOLD", decoration = "dust" },
     joker_counter_vulnerable = { icon = "counter_vulnerable", bg = "stone", accent = "AGED_GOLD", decoration = "dust" },
+    joker_counter_whetstone  = { icon = "counter_whetstone", bg = "metal", accent = "AGED_GOLD", decoration = "sparks" },
     joker_boss_carrion        = { icon = "joker_boss_carrion", bg = "shadow", accent = "PURPLE", decoration = "smoke", effect = "holo" },
     joker_boss_lich           = { icon = "joker_boss_lich", bg = "ice", accent = "CYAN_PALE", decoration = "sparks", effect = "holo" },
     joker_boss_tyrant         = { icon = "joker_boss_tyrant", bg = "fire", accent = "ORANGE", decoration = "sparks", effect = "holo" },

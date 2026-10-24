@@ -1032,6 +1032,7 @@ return {
         counter_debuff_weak        = "Immunisé contre Faible",
         counter_debuff_frail       = "Immunisé contre Fragile",
         counter_debuff_vulnerable  = "Immunisé contre Vulnérable",
+        counter_pierce             = "Les résistances ennemies ne réduisent pas vos dégâts. L'immunité reste",
         unknown                    = "Effet inconnu",
     },
 
@@ -1340,6 +1341,7 @@ return {
         joker_counter_weak       = { name = "Corne Taurine", desc = "Vous êtes immunisé contre Faible." },
         joker_counter_frail      = { name = "Carapace Dure", desc = "Vous êtes immunisé contre Fragile." },
         joker_counter_vulnerable = { name = "Peau de Pierre", desc = "Vous êtes immunisé contre Vulnérable." },
+        joker_counter_whetstone  = { name = "Affûtoir", desc = "Les résistances ennemies ne réduisent pas vos dégâts. L'immunité reste." },
         joker_boss_carrion      = { name = "Couronne de Charogne", desc = "Chaque carte d'attaque inflige +{value} dégâts et soigne {value2} PV." },
         joker_boss_lich         = { name = "Phylactère de la Liche", desc = "Canalise 1 Glace (valeur {value}) au début de chaque tour." },
         joker_boss_tyrant       = { name = "Coeur du Tyran", desc = "Chaque carte d'attaque applique {stacks} Brûlure." },
@@ -1425,12 +1427,13 @@ return {
         immune        = { name = "Immunisé", text = "Avec le joker ACTIF, l'effet ne vous atteint jamais. Changez de jokers sur le banc (J) avant chaque acte." },
         frail         = { name = "Fragile", text = "La cible gagne 25% de Blocage en moins." },
         burn          = { name = "Brûlure", text = "Dégâts de feu en fin de tour égaux aux cumuls." },
+        resist        = { name = "Résistance", text = "Une créature qui résiste à un type de dégâts n'en subit que la moitié ; immunisée, elle n'en subit aucun. Les icônes sont à côté de sa barre de vie." },
         frost         = { name = "Givre", text = "Vient des coups du Monarque de l'Hiver. À 4, les 2 cartes les plus chères de la main arrivent gelées." },
         fog           = { name = "Brume", text = "Cache le nombre ou le type de l'intention de l'ennemi. Le coup est déjà décidé." },
     },
 
     counter_jokers = {
-        proc = { immune = "Immunisé : {status}", frost = "-{value} Givre", thaw = "Dégel", sight = "Révélé" },
+        proc = { immune = "Immunisé : {status}", frost = "-{value} Givre", thaw = "Dégel", sight = "Révélé", pierce = "Perce !" },
     },
 
     enemy_kit = require("src.i18n.locales.enemy_kit.fr"),

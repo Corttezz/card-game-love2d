@@ -79,6 +79,14 @@ SUBJECTS = {
         "warrior bust whose skin turns to grey stone from the chest up, "
         "an arrow shattering on the stone shoulder, stern face",
     ],
+    "counter_whetstone": [
+        "grim old weaponsmith bust drawing a long sword blade across a grey "
+        "whetstone, bright sparks flying, scarred face lit by the sparks",
+        "grey whetstone block bound in iron bands with a dagger blade resting "
+        "on it, sparks flying from the edge, front view",
+        "armored gauntlet gripping a glowing sharpened spearhead that pierces "
+        "through a cracked round shield, sparks, front view",
+    ],
 }
 
 

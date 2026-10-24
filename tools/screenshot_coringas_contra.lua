@@ -54,12 +54,14 @@ local function shoot(name, w, h)
     print(love.filesystem.getSaveDirectory() .. "/" .. file)
 end
 
-local function enterBattle(act, boss)
+local function enterBattle(act, boss, nodeType, enemyId)
     local CheatMode = require("src.systems.CheatMode")
     CheatMode.goToAct(act, boss)
     if not boss then
         pump(1)
-        CheatMode.jumpTo("battle")
+        CheatMode.jumpTo(nodeType or "battle")
+        local nodes = game().runManager.currentRun.pendingNodes
+        if enemyId and nodes and nodes[1] then nodes[1].enemyId = enemyId end
     end
     local ok = false
     for _ = 1, 40 do
@@ -175,6 +177,24 @@ function M.run(arg)
             if want(d[1]) or want(d[2]) then debuffScene(d[1], d[2], d[3], w, h) end
         end
 
+        if want("whetstone") then
+            enterBattle(2, false, "elite", "spectral_knight")
+            local g = game()
+            equipOnly("joker_counter_whetstone")
+            local strike
+            for _, c in ipairs(g.hand) do
+                if c.type == "attack" then strike = c break end
+            end
+            if strike then
+                g:selectCard(strike)
+                pump(0.6)
+                shoot("joker_counter_whetstone_previa", w, h)
+                g:playSelectedCards()
+                waitProc(6)
+                shoot("joker_counter_whetstone_proc", w, h)
+            end
+        end
+
         if want("manager") then
             local g = game()
             local run = g.runManager.currentRun
@@ -182,7 +202,6 @@ function M.run(arg)
             for _, id in ipairs(require("tools.test_counter_jokers").IDS) do
                 g:addJokerToRun(id)
             end
-            g:addJokerToRun("joker_combo_volley")
             g:rebuildJokerSlots()
             pump(0.5)
             if _G.toggleJokerManager then _G.toggleJokerManager() end

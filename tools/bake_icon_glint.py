@@ -82,6 +82,12 @@ SPECS = {
         dict(hue=(15, 40), smin=0.55, smax=1.0, vmin=0.55, vmax=1.0,
              box=(14, 14, 50, 34), dir=(0.0, 1.0), width=3.0, gain=0.35, stagger=1),
     ]),
+    "counter_whetstone": dict(frames=12, fps=7, layers=[
+        dict(mode="pulse", hue=(35, 65), smin=0.10, smax=1.0, vmin=0.80, vmax=1.0,
+             box=(24, 0, 40, 30), glow=(255, 248, 210), gain=0.5, stagger=1),
+        dict(hue=(10, 35), smin=0.35, smax=1.0, vmin=0.45, vmax=1.0,
+             dir=(1.0, 0.3), width=4.0, gain=0.4, stagger=1),
+    ]),
     "counter_antidote": dict(frames=12, fps=7, layers=[
         dict(hue=(15, 45), smin=0.30, smax=1.0, vmin=0.45, vmax=1.0,
              box=(0, 0, 64, 46), dir=(1.0, 0.4), width=4.0, gain=0.55,

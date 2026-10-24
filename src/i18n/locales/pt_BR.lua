@@ -1047,6 +1047,7 @@ return {
         counter_debuff_weak        = "Imune a Fraco",
         counter_debuff_frail       = "Imune a Frágil",
         counter_debuff_vulnerable  = "Imune a Vulnerável",
+        counter_pierce             = "Resistências do inimigo não reduzem seu dano. Imunidade continua valendo",
         unknown                    = "Efeito desconhecido",
     },
 
@@ -1356,6 +1357,7 @@ return {
         joker_counter_weak       = { name = "Chifre do Touro", desc = "Você é imune a Fraco." },
         joker_counter_frail      = { name = "Casco de Jabuti", desc = "Você é imune a Frágil." },
         joker_counter_vulnerable = { name = "Pele de Pedra", desc = "Você é imune a Vulnerável." },
+        joker_counter_whetstone  = { name = "Pedra de Amolar", desc = "Resistências do inimigo não reduzem seu dano. Imunidade continua valendo." },
         joker_boss_carrion      = { name = "Coroa da Carniça", desc = "Cada carta de ataque causa +{value} de dano e cura {value2} de PV." },
         joker_boss_lich         = { name = "Filactério do Lich", desc = "Canaliza 1 Gelo (valor {value}) no início de cada turno." },
         joker_boss_tyrant       = { name = "Coração do Tirano", desc = "Cada carta de ataque aplica {stacks} de Queimadura." },
@@ -1441,12 +1443,13 @@ return {
         immune        = { name = "Imune", text = "Com o coringa ATIVO, o efeito nunca chega até você. Troque coringas na bancada (J) antes de cada ato." },
         frail         = { name = "Frágil", text = "O alvo ganha 25% menos Bloqueio." },
         burn          = { name = "Queimadura", text = "Dano de fogo no fim do turno igual aos acúmulos." },
+        resist        = { name = "Resistência", text = "Criatura que resiste a um tipo de dano sofre só metade dele; imune não sofre nada. Os ícones ficam ao lado da barra de vida." },
         frost         = { name = "Geada", text = "Vem dos golpes do Monarca do Inverno. Com 4, as 2 cartas mais caras da mão chegam congeladas." },
         fog           = { name = "Névoa", text = "Esconde o número ou o tipo da intenção do inimigo. O golpe já está decidido." },
     },
 
     counter_jokers = {
-        proc = { immune = "Imune: {status}", frost = "-{value} Geada", thaw = "Degelo", sight = "Revelado" },
+        proc = { immune = "Imune: {status}", frost = "-{value} Geada", thaw = "Degelo", sight = "Revelado", pierce = "Perfura!" },
     },
 
     enemy_kit = require("src.i18n.locales.enemy_kit.pt_BR"),
