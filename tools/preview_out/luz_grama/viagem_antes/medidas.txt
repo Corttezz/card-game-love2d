@@ -1,0 +1,16 @@
+ato1 poca1 x=1247 y=910 r=301 sy=0.35
+  grama_centro  n= 14259 luz=  31.4 sem=  15.1 ganho=+16.3 razao=2.07 rgb=( 26, 37, 16) sem=( 12, 18, 11)
+  grama_meio    n= 24346 luz=  16.6 sem=  12.5 ganho= +4.1 razao=1.33 rgb=( 14, 19, 10) sem=( 10, 14,  9)
+  grama_fora    n= 34070 luz=  15.8 sem=  14.1 ganho= +1.7 razao=1.12 rgb=( 13, 18, 11) sem=( 11, 16, 10)
+  chao_centro   n=  5856 luz=  59.0 sem=  38.0 ganho=+21.0 razao=1.55 rgb=( 71, 58, 35) sem=( 45, 36, 28)
+  chao_meio     n= 27331 luz=  74.0 sem=  67.1 ganho= +6.9 razao=1.10 rgb=( 90, 70, 52) sem=( 79, 64, 51)
+  chao_fora     n= 88868 luz=  48.7 sem=  48.0 ganho= +0.6 razao=1.01 rgb=( 56, 47, 37) sem=( 55, 46, 37)
+ato1 viagem: 16 quadros com poca
+ato2 poca1 x=1228 y=911 r=301 sy=0.35
+  grama_centro  n= 12422 luz=  43.8 sem=  22.6 ganho=+21.2 razao=1.94 rgb=( 31, 48, 56) sem=( 15, 24, 33)
+  grama_meio    n= 22417 luz=  27.6 sem=  22.2 ganho= +5.4 razao=1.25 rgb=( 18, 30, 40) sem=( 15, 24, 33)
+  grama_fora    n= 45356 luz=  25.1 sem=  23.8 ganho= +1.3 razao=1.06 rgb=( 17, 27, 36) sem=( 16, 26, 34)
+  chao_centro   n=  7686 luz=  83.9 sem=  57.2 ganho=+26.6 razao=1.47 rgb=( 75, 86, 96) sem=( 55, 57, 65)
+  chao_meio     n= 29248 luz=  75.9 sem=  70.4 ganho= +5.5 razao=1.08 rgb=( 76, 75, 79) sem=( 72, 69, 71)
+  chao_fora     n= 77570 luz=  60.7 sem=  59.9 ganho= +0.8 razao=1.01 rgb=( 61, 60, 63) sem=( 61, 59, 61)
+ato2 viagem: 16 quadros com poca

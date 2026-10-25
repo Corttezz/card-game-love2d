@@ -3,6 +3,7 @@ local GrassField = require("engine.GrassField")
 local ShadowEngine = require("engine.ShadowEngine")
 local Grade = require("engine.SceneGrade")
 local Contact = require("engine.ContactShadow")
+local LightSpill = require("engine.LightSpill")
 
 local GroundClutter = { DATA = DATA, stats = { listed = 0 }, enabled = true }
 
@@ -128,7 +129,11 @@ function GroundClutter.draw(p, env)
     love.graphics.setColor(c[1], c[2], c[3], a)
     local sink = (e.sink or 0) * s
     local fr = not env.reduced and env.frames and env.frames(p.bid, e.kind, p.v)
+    local spSh = LightSpill.reaches(px, py + sink, iw * s * 0.5, ih * s) and LightSpill.spriteShader()
+    local prevSh = spSh and love.graphics.getShader()
+    if spSh then love.graphics.setShader(spSh) end
     love.graphics.draw(fr and env.frameOf(fr, hash01(p.ph)) or img, px, py + sink, rot, s * flip, s, iw / 2, ih)
+    if spSh then love.graphics.setShader(prevSh) end
     if env.seq then env.seq("clutter", p, 0, px, py + sink, iw * s, ih * s, a) end
     ShadowEngine.mask(img, nil, px, py + sink, rot, s * flip, s, iw / 2, ih, 0, t)
     if e.solid then

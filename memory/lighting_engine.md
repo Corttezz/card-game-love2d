@@ -42,6 +42,21 @@ antigo dá 13/255). Capturas: `lovec . test_one screenshot_luz_suave
 (quadro de batalha, `_so_luz` = só a contribuição da luz ×6, recortes 2x/4x da
 borda da poça). Custo medido: +1 troca de canvas e +5 a +25 draws por quadro.
 
+## Luz derrama na grama (25/Out/2026, dono: "as luzes não conseguem iluminar alguns matos, algumas gramas")
+Causa medida (`lovec . test_one screenshot_luz_grama <rótulo>:1,2,4,6`, 1080p, tod 0,9): a poça EMISSIVA
+aditiva (`LuminaireEngine.drawPool`, `LandmarkBase` drawPool) é desenhada no slot do poste e a grama/mato da
+FRENTE, desenhados depois pelo painter, a cobriam inteira; sobrava só o multiply do lightmap, que satura na cor
+da própria arte (grama verde-escura continua verde-escura). Ato 1 antes: grama no centro da poça luma 15→31,
+chão 38→59. Correção: `engine/LightSpill.lua`. O `drawPool` registra a mesma elipse (centro, raio, sy, upK,
+cor×intensidade, em pixel de tela por `transformPoint`) e o shader de pixel da grama (`GrassField.SHADER_PIXEL`)
+e o shader de sprite do mato (`GroundClutter.draw`, `PropCut.spill` = tuft/flowers) somam a mesma queda lisa de
+`light_emit.glsl`, ponta da lâmina 1,30 / raiz 0,85 (`LightSpill.TIP`). Profundidade sai de graça: só vê a poça
+quem é desenhado DEPOIS dela (a grama de trás já recebe a poça por cima). Vento segue no vertex shader, replay
+da grama intacto (só uniformes, `LightSpill.apply` por versão), zero custo por lâmina na CPU, teto 8 poças.
+Depois: ato 1 grama no centro 15→45 (razão 3,0), ato 2 23→70, ato 4 56→94, ato 6 22→56; chão igual.
+Fontes só de lightmap (janelas/portão do castelo, vagalumes, brilho de loja) não mudaram: iluminam grama e chão
+pelo mesmo multiply. Trava: `test_light_spill`. Provas: `tools/preview_out/luz_grama/` (antes/depois/viagem).
+
 ## F6.1 — entardecer progressivo por andar
 `lightDay`/`lightNight` por bioma em biomes.lua; `WorldRoad.setTimeOfDay(t,
 instant)` (0=dia..1=anoitecer, ease 0.30/s durante a viagem — amanhecer suave
