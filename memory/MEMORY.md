@@ -56,6 +56,7 @@
 - [Run Instructions](run_instructions.md) — love . no root, atalhos, smoke tests
 - [Enemy Pipeline](enemy_pipeline.md) — CHECKLIST OBRIGATÓRIO de monstro novo no topo (idle vivo, fidgets, estados, voo, entrada, props de chão, imunidades, extras de chefe); como adicionar inimigo novo; hurt/death SEMPRE via tools/pixellab_enemy_anims.py (animate_image, frame 0 = idle real) — templates taking-punch/falling-back-death PROIBIDOS (drift)
 - [Scene Pipeline](scene_pipeline.md) — cenários full-res 400×256 via create_map_object + overlays animados (tochas/cristais/parallax); anti-pattern: tileset procedural
+- [Detalhes de chão](ground_clutter_audit.md) — GroundClutter: auditoria por ato (ato 3 refeito, cogumelo do pântano fora), nasce atrás da crista e emerge como árvores, nunca brota/some na tela; trava `test_clutter_continuity`
 - [WorldRoad](worldroad_scene.md) — mundo rolante estilo Path of Kings (estrada em perspectiva, props em Z, viagem entre andares); SCENE_MODE em GameplayScene; contrato PNG pra arte PixelLab
 - [Pose do inimigo e âncora de chão](enemy_pose_and_scene_anchor.md) — quem pisa × quem flutua (tabela dos 21 sprites + sombra de contato vs de altura); linha de chão POR CENA (o `height*0.68` fixo punha o chefe do ato 2 na parede); elite luta na estrada, interior é só do boss
 - [Backgrounds Catalog](backgrounds_catalog.md) — inventário COMPLETO (scenes/path/patterns/map_nodes/tilesets) + padrões obrigatórios pra gerar novos mantendo coerência visual

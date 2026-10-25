@@ -1,0 +1,36 @@
+ato1_3_batalha quadros=718 dirsA=0,-1,1 lado=0 dirsB=-1,0,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f651
+  # retoma saiu_da_luta f652
+ato1_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=-1,0,1 castelo=[-0.661,0.047] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato2_3_batalha quadros=748 dirsA=0,-1,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f681
+  # retoma saiu_da_luta f682
+ato2_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=-1,1,0 castelo=[-0.827,0.058] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato3_3_batalha quadros=748 dirsA=0,-1,1 lado=0 dirsB=-1,0,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f681
+  # retoma saiu_da_luta f682
+ato3_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=-1,0,1 castelo=[-0.661,0.047] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato4_3_batalha quadros=778 dirsA=0,-1,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato4_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=0,-1,1 castelo=[-0.693,0.049] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato5_3_batalha quadros=778 dirsA=0,-1,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f711
+  # retoma saiu_da_luta f712
+ato5_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=0,-1,1 castelo=[-0.678,0.048] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200
+ato6_3_batalha quadros=748 dirsA=0,-1,1 lado=0 dirsB=0,-1,1 castelo=[0.000,0.000] flags=0  
+  # pausa luta f681
+  # retoma saiu_da_luta f682
+ato6_2_loja quadros=441 dirsA=0,1 lado=1 dirsB=0,-1,1 castelo=[-0.661,0.047] flags=0  
+  # pausa tela_shop f199
+  # retoma saiu_shop f200

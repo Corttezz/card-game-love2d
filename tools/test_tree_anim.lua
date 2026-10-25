@@ -22,7 +22,7 @@ M.VEGETATION = {
     fields = join(range("fields_tree_", 6), { "fields_bush_0", "fields_flowers_0", "fields_tuft_0" }),
     highlands = join(range("highlands_pine_", 6), { "highlands_deadtree_0" },
         range("highlands_bush_", 3), range("highlands_grass_", 3)),
-    abyss = join(range("abyss_deadtree_", 6), range("abyss_bush_", 3), range("abyss_embers_", 4)),
+    abyss = join(range("abyss_deadtree_", 6), range("abyss_bush_", 3)),
     frost = join(range("frost_pine_", 6), range("frost_deadtree_", 2)),
     marsh = join(range("marsh_deadtree_", 8), { "marsh_bush_0" }, range("marsh_reeds_", 3),
         range("marsh_rock_", 4)),
@@ -84,7 +84,7 @@ local function checkOne(t, WorldRoad, name)
     db:release()
     t:eq(name .. ": silhueta idêntica em todos os quadros", outside, 0)
     t:check(name .. ": algo mexe (" .. moved .. " px somados)", moved > 0)
-    local cap = kind == "embers" and 0.30 or 0.15
+    local cap = 0.15
     t:check(("%s: movimento pequeno (pior quadro %d de %d px)"):format(name, worst, area), worst <= area * cap)
     return true
 end
@@ -132,7 +132,7 @@ function M.run()
     local _, _, f2 = WorldRoad.treeAnim("fields", "tree", 0, 0.25)
     t:check("o quadro avança com o relógio", f1 ~= f2)
 
-    for _, kind in ipairs({ "embers", "deadtree" }) do
+    for _, kind in ipairs({ "deadtree" }) do
         local efr = WorldRoad.treeAnim("abyss", kind, 0)
         t:check(("abyss %s: brilho respira devagar (fps %s ≤ 3)"):format(kind, tostring(efr and efr.fps)),
             efr ~= nil and efr.fps ~= nil and efr.fps <= 3)

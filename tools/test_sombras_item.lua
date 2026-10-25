@@ -16,7 +16,7 @@ function M.rows(only)
     for _, bid in ipairs(B.BIOMES) do
         if not only or only == bid then
             for _, item in ipairs(B.items(bid)) do
-                local shadowed = item.family ~= "clutter" or item.e.solid
+                local shadowed = item.family ~= "clutter" or require("engine.GroundClutter").casts(item.e)
                 if shadowed then
                     for _, tod in ipairs(B.TODS) do
                         local r = B.measure(cv, bid, item, "near", tod)

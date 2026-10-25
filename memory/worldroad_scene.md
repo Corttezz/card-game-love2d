@@ -495,7 +495,7 @@ leitosas, "sem sombra", lanterna acesa de dia, árvores da crista do tamanho do 
   bioma (tufos, pedras, toco, flores; e arte nova `highlands_grass/litter`, `abyss_embers`, `frost_drift`,
   `marsh_reeds/roots`, `dusk_blooms/leaves`, PixelLab `create_image_pro`, 150 gerações). Posição por hash
   da célula de z (`cell` 1,05, `chance` 0,85), lateral em múltiplos da meia-largura da estrada (`uMin`
-  1,3 a `uMax` 3,7, com o mesmo `roadWobble` da estrada), só em t ≥ 0,5. A escala NÃO vem do `size`: é
+  1,3 a `uMax` 3,7, com o mesmo `roadWobble` da estrada), só em t ≥ 0,5 (REVOGADO 25/Out/2026: brotava no meio da tela; agora nasce atrás da crista e emerge como árvores e postes, ver `memory/ground_clutter_audit.md`). A escala NÃO vem do `size`: é
   `k × PIX.ref × enemyScreenK × persp(t)`, então `k` é a razão direta para o pixel do inimigo em t = 1
   (todos ≤ 1,5, teto da regra 2,0). Entra no `nearPass` do `drawProps` (ordenado por z: fatia de grama,
   frente/trás do inimigo), sombra e contato só nos sólidos, tufos de grama na frente da base. Na batalha

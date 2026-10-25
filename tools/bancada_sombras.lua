@@ -151,11 +151,12 @@ function M.place(item, fx, fy, s, t, opts)
         sink = pad * s
         fx = fx - (item.anc.offX or 0) * s
     end
-    if not opts.noShadow and (fam ~= "clutter" or item.e.solid) then
+    local GC = require("engine.GroundClutter")
+    if not opts.noShadow and (fam ~= "clutter" or GC.casts(item.e) or GC.contacts(item.e)) then
         local o = { footPad = pad, flip = flip }
         if prof then o.baseK, o.riseK, o.lenK = prof.baseK, prof.riseK, prof.lenK end
-        SE.queue(img, fx, fy0 - 1, s, o, t)
-        if item.kind ~= "tuft" and item.kind ~= "flowers" then
+        if fam ~= "clutter" or GC.casts(item.e) then SE.queue(img, fx, fy0 - 1, s, o, t) end
+        if fam ~= "clutter" and item.kind ~= "tuft" and item.kind ~= "flowers" or fam == "clutter" and GC.contacts(item.e) then
             Contact.queue(img, fx, fy0, s, t, 1, flip)
         end
     end

@@ -32,9 +32,8 @@ local PropCut = {
     nv = {}, EMPTY = {},
     anim = { fps = 5, pingpong = true }, frames = {},
     animKinds = { tree = true, pine = true, deadtree = true, bush = true, rock = true,
-                  flowers = true, tuft = true, grass = true, reeds = true, blooms = true,
-                  embers = true },
-    animFps = { abyss = { embers = 2.5, deadtree = 3 } },
+                  flowers = true, tuft = true, grass = true, reeds = true, blooms = true },
+    animFps = { abyss = { deadtree = 3 } },
     v4 = { 0, 1, 0, 0 }, v3 = { 0, 0, 0 }, td = {},
     STRIP_W = 400,
 }
@@ -2639,8 +2638,14 @@ local function drawEncounterBehind(g, x, w, camZ)
 end
 
 local function drawPropsBehind(g, x, w, camZ)
+    local cl = WorldRoad._lists.clutterBack
+    for i = #cl, 1, -1 do cl[i] = nil end
+    local cEnv = LMG.clutterEnv(g, x, w, camZ)
+    if Scene.Clutter.collectBehind(cl, cEnv) > 1 then table.sort(cl, LMG.zDesc) end
+    local ci = 1
     for _, p in ipairs(WorldRoad._props) do
         local rel = p.z - camZ
+        while cl[ci] and cl[ci].z > p.z do Scene.Clutter.drawBehind(cl[ci], cEnv); ci = ci + 1 end
         local fadeA = propFadeK(p) * PropCut.hideK(p)
         local roadLum = LuminaireEngine.def(p.bid, p.kind)
         roadLum = roadLum and roadLum.roadside
@@ -2763,6 +2768,7 @@ local function drawPropsBehind(g, x, w, camZ)
         end
         ::continue_emerge::
     end
+    while cl[ci] do Scene.Clutter.drawBehind(cl[ci], cEnv); ci = ci + 1 end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -4343,6 +4349,33 @@ local function shadowOpts(alphaK, flip, footPad, prof)
 end
 
 LMG.cEnv = { profile = WorldRoad.SHADOW_PROFILE }
+function LMG.clutterForkK(px, rel, t, hw)
+    local f2 = WorldRoad._fork
+    if not f2 or rel <= FORK_REL - 1.5 then return 0 end
+    local e = LMG.cEnv
+    local g, w = e.g, e.w
+    local tt = math.min(1, math.max(0, t))
+    local halfRF = ROAD_HALF * w * (0.30 + 0.70 * (tt ^ 1.15))
+    local halfCorr = halfRF * (f2.n > 1 and 0.78 or 1) + (hw or 0)
+    local keep = 1
+    for bi = 1, f2.n do
+        if f2.dirs[bi] ~= 0 then
+            local bc = g.cx + forkOffset(f2, bi, rel, w)
+            local inK = 1 - math.min(1, math.max(0,
+                (math.abs(px - bc) - halfCorr) / math.max(halfRF * 0.15, w * 0.05)))
+            local bk = forkAlpha(f2, bi) * (f2.animIn or 1)
+            if f2.converge and bi == f2.chosen then bk = (1 - (f2.converge.k or 0)) * (f2.animIn or 1) end
+            keep = keep * (1 - inK * bk)
+        end
+    end
+    return 1 - keep
+end
+function LMG.clutterCastleK(px, t)
+    local ct = WorldRoad._castleTop
+    if not ct or t >= 0.36 then return 0 end
+    local kx = math.min(1, math.max(0, (math.abs(px - ct.cx) - ct.w * 0.5) / (ct.w * 0.24)))
+    return (1 - math.min(1, math.max(0, (t - 0.24) / 0.12))) * (1 - kx)
+end
 function LMG.clutterEnv(g, x, w, camZ)
     local e = LMG.cEnv
     e.g, e.x, e.w, e.camZ = g, x, w, camZ
@@ -4357,10 +4390,16 @@ function LMG.clutterEnv(g, x, w, camZ)
     e.flipToSun = PropCut.flipToSun
     e.frames, e.frameOf = PropCut.treeFrames, PropCut.frameOf
     e.sunRight = sunShadowDir(g, x, w, g.cx) < 0
-    e.relMax = REL_CREST * (1 - Scene.Clutter.DATA.tMin ^ (1 / T_POW))
+    e.relCrest, e.band, e.tPow = REL_CREST, EMERGE_BAND, T_POW
     e.fork = WorldRoad._fork ~= nil
-    local fk = WorldRoad._fork
-    e.forkK = fk and (fk.animIn or 1) * (1 - (fk.converge and fk.converge.k or 0)) or 0
+    e.forkK = WorldRoad._fork and LMG.clutterForkK or nil
+    e.castleK = WorldRoad._castleTop and LMG.clutterCastleK or nil
+    local bl = WorldRoad._blend
+    e.bidPrev, e.bidK = nil, 1
+    if bl and WorldRoad._prevBiomeIndex then
+        local k = math.min(1, bl.t / bl.duration)
+        e.bidPrev, e.bidK = rawBiome(WorldRoad._prevBiomeIndex).id, k * k * (3 - 2 * k)
+    end
     local handOn = WorldRoad._enemyDraw and not WorldRoad._travel and not WorldRoad._fork
         and not require("src.ui.HandDeal").hidesHand() and WorldRoad._handZone or nil
     local HK = LMG.handK or { k = 0, t = nil }
@@ -4392,7 +4431,8 @@ local function drawCrestFog(g, x, w)
 end
 
 local propZDesc = function(a, c) return a.z > c.z end
-WorldRoad._lists = { far = {}, near = {}, behind = {}, front = {} }
+LMG.zDesc = propZDesc
+WorldRoad._lists = { far = {}, near = {}, behind = {}, front = {}, clutterBack = {} }
 local function clearList(t) for i = #t, 1, -1 do t[i] = nil end end
 local function occluderSlot()
     local P = WorldRoad._pools

@@ -319,12 +319,55 @@ local function visibleChange(pix, f, r)
     return now > math.max(M.PIX_MIN, M.PIX_K * before), now, before
 end
 
+M.CLUTTER_PHASES = { travel = true, arrival = true, landmark = true,
+    viagem = true, chegada = true, partida = true, no_lugar = true }
+M.BIRTH_K = 0.02
+
+local function clutterEdgeX(log, r)
+    return r.x - r.w * 0.5 < log.w * 0.03 or r.x + r.w * 0.5 > log.w * 0.97
+end
+
+local function liveGeom(log)
+    local WR = package.loaded["src.ui.WorldRoad"]
+    local r = WR and WR._lastRect
+    if not r or not r.w then return log.g end
+    local c = log._cg
+    if not c or c.x ~= r.x or c.y ~= r.y or c.w ~= r.w or c.h ~= r.h then
+        c = { x = r.x, y = r.y, w = r.w, h = r.h, g = WR.domeGeom(r.x, r.y, r.w, r.h) }
+        log._cg = c
+    end
+    return c.g
+end
+
+function M.checkClutter(log, f, A, B, add)
+    if log.cuts[f] or not M.CLUTTER_PHASES[log.phase[f] or ""] then return end
+    local H = log.h
+    local lg = liveGeom(log)
+    for key, r in pairs(B) do
+        if r.kind == "clutter" and not A[key] and not clutterEdgeX(log, r) and r.y - r.h < H - 2 then
+            local crest = lg and lg.crestYAt(r.x) or log.crest
+            if r.y - r.h > crest + M.BIRTH_K * H then
+                add("clutter", "brota", key, string.format("x=%.0f y=%.0f topo=%.0f crista=%.0f a=%.2f",
+                    r.x, r.y, r.y - r.h, crest, r.a))
+            end
+        end
+    end
+    for key, p in pairs(A) do
+        if p.kind == "clutter" and not B[key] and p.a > 0.05 and not clutterEdgeX(log, p)
+           and p.y - p.h < H - 2 then
+            add("clutter", "some_na_tela", key, string.format("x=%.0f y=%.0f topo=%.0f a=%.2f",
+                p.x, p.y, p.y - p.h, p.a))
+        end
+    end
+end
+
 function M.checkStep(log, f, pix, flags)
     local function add(kind, what, key, info)
         flags[#flags + 1] = { f = f, kind = kind, what = what, key = key, info = info }
     end
     local A, B = log.frames[f - 1], log.frames[f]
     local cut = log.cuts[f] and "_no_corte" or ""
+    M.checkClutter(log, f, A, B, add)
     for key, r in pairs(B) do
         local p = A[key]
         if not p then
