@@ -905,14 +905,12 @@ function GameplayScene.update(dt)
     end
 
     if game:checkGameOver() and not game.combatAnimationSystem:isBlocking() then
-        Sfx.play("runDefeat")
         setCurrentState("gameOver")
         return
     end
 
     if game:checkVictory() and game:isReadyForEndScreen()
         and not BossCinematic.holdsEnd() then
-        Sfx.play("runVictory")
         setCurrentState("victory")
         return
     end

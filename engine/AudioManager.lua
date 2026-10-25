@@ -27,7 +27,8 @@ end
 
 local function computeFinalVolume(self, entry)
     local groupVol = self.groups[entry.group] or 1
-    return (entry.baseVolume or 1) * groupVol * (self.groups.master or 1) * (self.focusGain or 1)
+    local duck = (entry.group == "music") and (self.duckGain or 1) or 1
+    return (entry.baseVolume or 1) * groupVol * (self.groups.master or 1) * (self.focusGain or 1) * duck
 end
 
 function AudioManager:new(opts)
@@ -50,6 +51,9 @@ function AudioManager:new(opts)
     self.musicCrossfade = nil
     self.focusGain = 1
     self.focusTarget = 1
+    self.duckGain = 1
+    self.ducks = {}
+    self.musicFilter = nil
 
     self.musicVolume = self.groups.music
     self.sfxVolume   = self.groups.sfx
@@ -379,10 +383,99 @@ local function advanceFocusGain(self, dt)
     self.focusGain = gain
 end
 
+local function duckEnvelope(d)
+    local t = d.t
+    if t < d.attack then
+        local k = d.attack > 0 and (t / d.attack) or 1
+        return d.from + (d.gain - d.from) * k
+    end
+    if d.releaseAt == nil then return d.gain end
+    local r = t - d.releaseAt
+    if r <= 0 then return d.gain end
+    if r >= d.release then return 1 end
+    local base = d.releaseFrom or d.gain
+    return base + (1 - base) * (r / d.release)
+end
+
+function AudioManager:duck(key, gain, attack, hold, release)
+    local cur = self.ducks[key]
+    local from = cur and duckEnvelope(cur) or 1
+    self.ducks[key] = {
+        gain = math.max(0, math.min(1, gain or 0.5)), from = from, t = 0,
+        attack = attack or 0.15, release = release or 0.8,
+        releaseAt = (hold ~= nil and hold ~= math.huge) and ((attack or 0.15) + hold) or nil,
+    }
+end
+
+function AudioManager:holdDuck(key, gain, attack)
+    local cur = self.ducks[key]
+    if cur and cur.releaseAt == nil and cur.gain == gain then return end
+    self:duck(key, gain, attack, nil, nil)
+end
+
+function AudioManager:releaseDuck(key, release)
+    local d = self.ducks[key]
+    if not d then return end
+    if d.releaseAt ~= nil and d.releaseAt <= d.t then return end
+    d.releaseFrom = duckEnvelope(d)
+    d.attack = math.min(d.attack, d.t)
+    d.releaseAt = d.t
+    d.release = release or d.release or 0.8
+end
+
+function AudioManager:isDucked(key)
+    if key then return self.ducks[key] ~= nil end
+    return next(self.ducks) ~= nil
+end
+
+function AudioManager:clearDucks()
+    self.ducks = {}
+    self.duckGain = 1
+end
+
+local function advanceDucks(self, dt)
+    local g = 1
+    for key, d in pairs(self.ducks) do
+        d.t = d.t + dt
+        local e = duckEnvelope(d)
+        if d.releaseAt ~= nil and d.t >= d.releaseAt + d.release then
+            self.ducks[key] = nil
+        elseif e < g then
+            g = e
+        end
+    end
+    self.duckGain = g
+end
+
+local warnedFilter = false
+function AudioManager:setMusicFilter(highgain)
+    if highgain ~= nil then highgain = math.max(0.05, math.min(1, highgain)) end
+    if highgain == 1 then highgain = nil end
+    self.musicFilter = highgain
+end
+
+local function applyFilter(self, entry, src)
+    local want = self.musicFilter
+    if entry.filterOn == want and src == entry.filterSrc then return end
+    local ok = pcall(function()
+        if want then
+            src:setFilter({ type = "lowpass", volume = 1, highgain = want })
+        else
+            src:setFilter()
+        end
+    end)
+    if not ok and not warnedFilter then
+        warnedFilter = true
+        Debug.warn("[AudioManager] filtro passa-baixa indisponivel nesta saida de audio")
+    end
+    entry.filterOn, entry.filterSrc = want, src
+end
+
 function AudioManager:update(dt)
     if not self.audioAvailable then return end
 
     advanceFocusGain(self, dt)
+    advanceDucks(self, dt)
 
     if self.musicCrossfade then
         local cf = self.musicCrossfade
@@ -412,6 +505,7 @@ function AudioManager:update(dt)
             local src = entry.instances[i]
             if src:isPlaying() then
                 if entry.loopEnd then wrapLoopPoints(entry, src) end
+                if entry.group == "music" then applyFilter(self, entry, src) end
                 if not (self.musicCrossfade and (code == self.musicCrossfade.from or code == self.musicCrossfade.to)) then
                     src:setVolume(final * (entry.instGain[src] or 1))
                 end

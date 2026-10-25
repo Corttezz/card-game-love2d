@@ -70,7 +70,10 @@ decide a faixa é o `MusicDirector`, que OBSERVA o estado a cada quadro
 | UnlockShowcase (revelações) | overlay no menu | `menuMusic` | n/a | nenhum |
 | seleção de classe | `classSelection` | `menuMusic` contínua (defeito 2) | n/a | nenhum |
 | início da run (viagem de chegada) | `playing` | `musicAct1` | 1,2 s | clima do bioma (estrada) |
-| batalha comum, elite, mini-chefe | `playing` | `musicAct<n>` | 2,5 s | clima |
+| batalha comum | `playing` | `musicAct<n>` | 2,5 s | clima |
+| entrada de elite / mini-chefe | `playing` | `musicAct<n>` com duck (0,75 / 0,45) na chegada e stinger `elite_entrance` / `miniboss_entrance` no fim; volta a 1,0 | duck | clima |
+| morte de comum / elite / mini-chefe | `playing` | ato, duck curto do sting `victory_small` / `victory_elite` | duck | clima |
+| vida < 25% | `playing` | ato/chefe a 0,80 + passa-baixa 0,45 + batimento; sai acima de 30% | 1,5 s | idem |
 | encruzilhada | `mapSelection` | `musicAct<n>` | 2,5 s | clima |
 | evento | `event` | `musicAct<n>` | 2,5 s | drone do evento |
 | seletor aberto pelo evento | `rest` (origem `event`) | `musicAct<n>` contínua | n/a | forja/descanso |
@@ -82,12 +85,12 @@ decide a faixa é o `MusicDirector`, que OBSERVA o estado a cada quadro
 | bandeira do chefe na encruzilhada | `mapSelection` + `forkOffersBoss` | silêncio | sai em 5 s | clima |
 | viagem, porta, salão vazio, entrada do chefe | `playing` boss, fora do salão ou fase `intro` | silêncio | n/a | clima / sala do chefe |
 | luta do chefe | `playing` boss, no salão, sem cinemática | `bossTrack(run)`: seções `a` → `b`/`c` sem repetir; ≤ 50% de vida sobe para `f1`/`f2` na próxima barra | entra 1,2 s; seção a seção 1,5 s | sala do chefe |
-| morte do chefe (fase `death`, troféu) | `playing` | mantém (nunca começa a faixa na morte) | n/a | sala do chefe |
-| cash out e espólios do chefe | `roundEval`/`cardReward` | faixa do chefe | n/a | "reward" |
+| morte do chefe (fase `death`, troféu) | `playing` | silêncio (`MusicMoments.override`); `boss_pass` em +2,4 s | sai em 3,2 s | sala do chefe |
+| cash out e espólios do chefe | `roundEval`/`cardReward` | silêncio; `act_complete` 0,35 s após abrir o cash out (não no ato 6) | n/a | "reward" |
 | encruzilhada do ato seguinte | `mapSelection` | `musicAct<n+1>` | 2,5 s | clima do bioma novo |
-| último chefe morto | `victory` | `menuMusic` | 2,5 s | nenhum |
+| último chefe morto | `victory` | `run_victory` (4,6 s) e `menuMusic` só depois de 5,6 s (`MusicMoments.holding`) | 2,5 s | nenhum |
 | pausa (Esc), Deck/Coringas/Roteiro/Guia (D/J/M/G) | overlay | mantém, sem reiniciar; crossfade em curso termina | n/a | clima some na batalha (mundo congelado) e volta ao fechar |
-| game over | `gameOver` | `menuMusic` | 2,5 s | some |
+| morte do jogador | `playing` → `gameOver` | silêncio em 1,0 s + `player_death`; `menuMusic` só depois de 3,2 s | 2,5 s | some |
 | entrar no endless (vitória → cash out) | `roundEval` | `musicAct6` (defeito 4) | 2,5 s | "reward" |
 | endless (atos, chefes, maldição) | igual aos atos; chefe do endless com `enemyId` → faixa dele, sem → `musicBoss` | | | |
 | voltar ao menu pela pausa / abandonar | `menu` | `menuMusic` | 1,5 s | clima e lugar somem; loops de chefe param |
@@ -99,6 +102,10 @@ decide a faixa é o `MusicDirector`, que OBSERVA o estado a cada quadro
 | Continuar: luta do chefe | `playing` boss | faixa do chefe (sem repetir a entrada) | 1,2 s | sala do chefe |
 | janela perde o foco / minimiza | qualquer | **mudo em 0,25 s** com "Silenciar fora da janela" LIGADO (padrão): o `focusGain` do `AudioManager` vai a 0, nada para, nada reinicia, crossfade em curso segue contando; ao voltar o foco sobe em 0,25 s. Opção DESLIGADA: segue tocando. O laço cai para 15/8 FPS com `dt` real, os fades seguem no tempo de relógio | 0,25 s | idem (clima, lugar e loops passam pelo mesmo ganho) |
 | cheat: Ctrl+B/E/M/C/L/D/V, F9/F10/F11, Ctrl+1..6, Ctrl+Shift+1..6, F2/F3, rush F12 | os mesmos estados acima | a regra do estado de destino; pulos no meio de um fade assentam na faixa certa | | |
+
+## Momentos (25/Out/2026)
+
+Stingers, duck, passa-baixa e espera de faixa moram em `src/systems/MusicMoments.lua` + `src/data/music_stingers.lua` (borda observada, nunca no Continuar). Auditoria completa por momento em [[audio_audit]].
 
 ## Defeitos achados (15/Out/2026)
 

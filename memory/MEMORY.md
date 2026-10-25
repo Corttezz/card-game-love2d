@@ -44,6 +44,7 @@
 - [Card Feel / Game Feel v1](card_feel.md) — identidade AV por tema de carta (CardFeel THEMES tag→som+burst), procs de joker Balatro (tick sequencial no slot, stagger estica), feedback do inimigo; sons impact-* ElevenLabs
 - [Boot Sequence](boot_sequence.md) — BootScene (loading + splash 3s) + Menu animado com intro stagger e música menuMusic
 - [Music Map](music_map.md) — mapa de TODA transição (menu, atos, chefe, Continuar por estágio, cheat) → faixa, fade e ambiente; 7 defeitos da auditoria 15/Out/2026 (inclui seções de chefe); trava test_music_flow com fontes falsas
+- [Audio Audit](audio_audit.md) — o que toca em cada momento da run; MusicMoments (stingers por borda, nunca no Continuar), duck e passa-baixa do AudioManager, morte do chefe em fade 3,2 s + passagem, entrada de mini-chefe/elite, vida baixa, morte do jogador; arquivos novos medidos e prompts
 - [Música reativa](music_reactive.md) — salão do chefe reage à trilha: cues hit/swell/drop medidos offline (`tools/music_cues.py` → `src/data/music_cues/`), `engine/MusicCues` pela posição real da fonte (sem rajada após pausa, segue o loop), tremor leve, detritos do teto (`engine/CeilingDebris`), pulso das chamas, respiro do chefe; opção na aba Jogo; trava test_music_react
 - [Audio System](audio_system.md) — AudioManager (Balatro port), polifonia, grupos, crossfade, settings persistidos
 - [Save System](save_system.md) — SaveManager + Migrations (atomic write, versioning); RunManager delega tudo

@@ -1,5 +1,6 @@
 local TK = require("tools.testkit")
 local FA = require("tools.fake_audio")
+local TL = require("tools.audio_timeline")
 
 local M = {}
 
@@ -24,6 +25,8 @@ end
 local function audio() return _G.audioSystem end
 local function CM() return require("src.systems.CheatMode") end
 local function MD() return require("src.systems.MusicDirector") end
+local function MM() return require("src.systems.MusicMoments") end
+local logSeen = 0
 
 local function codeIndex()
     local idx = {}
@@ -99,6 +102,25 @@ local function checkFrame()
         if not ok then
             violate("duas faixas audiveis fora de um crossfade: " .. list[1].code .. "+" .. list[2].code)
         end
+    end
+    local log = MM().log
+    if #log < logSeen then logSeen = 0 end
+    for i = logSeen + 1, #log do
+        local e = log[i]
+        if TL.active() and e.kind ~= "beat" then TL.event(clock, e.kind .. ":" .. e.name) end
+        if TL.active() and e.kind == "beat" then TL.event(clock, "beat") end
+    end
+    logSeen = #log
+    if TL.active() then
+        local v, filt = 0, false
+        for _, m in ipairs(list) do
+            v = math.max(v, m.vol / math.max(1e-6, finalVolume(m.code)))
+            if rawget(m.src, "filter") then filt = true end
+        end
+        local names = {}
+        for _, m in ipairs(list) do names[#names + 1] = m.code end
+        TL.sample(clock, tostring(state()), v, a.duckGain or 1, table.concat(names, "+"), filt,
+            require("src.ui.BossCinematic").phase())
     end
     local parts = {}
     for _, m in ipairs(list) do parts[#parts + 1] = m.code end
@@ -236,6 +258,62 @@ local function noRunSoundsInMenu(label)
 end
 
 local function setScene(name) scene = name end
+
+local function logMark() return #MM().log end
+
+local function stingsSince(mark, name)
+    local n = 0
+    local log = MM().log
+    for i = mark + 1, #log do
+        local e = log[i]
+        if e.kind == "sting" and (name == nil or e.name == name) then n = n + 1 end
+    end
+    return n
+end
+
+local function stingPlays(name)
+    local e = audio().sources[MM().code(name)]
+    if not e then return nil end
+    local n = 0
+    for _, s in ipairs(e.instances) do n = n + (s.plays or 0) end
+    return n
+end
+
+local function musicLevel(code)
+    local m = audibleOf(code)
+    if not m then return 0 end
+    return m.vol / finalVolume(m.code)
+end
+
+local function expectBossDeath(code, final)
+    local mark = logMark()
+    local plays0 = stingPlays("boss_pass") or 0
+    CM().kill()
+    local died = pump(30, function() return MM()._debug().bossDeadKey ~= nil end)
+    t:truthy(scene .. ": a morte do chefe foi vista", died)
+    local curve, t0 = {}, clock
+    local mono = true
+    local last = musicLevel(code)
+    pump(4.2, nil, function()
+        local v = musicLevel(code)
+        curve[#curve + 1] = { t = clock - t0, v = v }
+        if v > last + 0.02 then mono = false end
+        last = v
+    end)
+    local function at(sec)
+        local best = curve[1]
+        for _, p in ipairs(curve) do if p.t <= sec then best = p end end
+        return best and best.v or 0
+    end
+    t:truthy(("%s: a faixa do chefe some DEVAGAR (1 s depois ainda em %.2f)"):format(scene, at(1.0)),
+        at(1.0) > 0.35 and at(1.0) < 0.9)
+    t:truthy(("%s: e chega ao silencio em ~3,2 s (%.3f em 3,6 s)"):format(scene, at(3.6)), at(3.6) < 0.01)
+    t:truthy(scene .. ": a curva so desce", mono)
+    t:eq(scene .. ": a passagem toca uma vez", stingsSince(mark, "boss_pass"), 1)
+    t:eq(scene .. ": a fonte da passagem tocou uma vez", (stingPlays("boss_pass") or 0) - plays0, 1)
+    t:falsy(scene .. ": a faixa do chefe nao volta depois da cinematica", audibleOf(code) ~= nil)
+    return mark
+end
 
 local function newRun(class)
     require("src.ui.InputFocus").hideAll()
@@ -394,6 +472,7 @@ local function scenarioRunAct1()
         setScene(nt)
         CM().jumpTo(nt)
         waitState("playing", 20)
+        waitReady(30)
         expectTrack(nt, "musicAct1", 3.2)
     end
     waitReady(30)
@@ -506,11 +585,13 @@ local function scenarioBoss(act)
     end
     setScene("morte do chefe A" .. act)
     local code = bossCode(id)
-    expectContinuous("cinematica de morte e trofeu", code, 3, function() CM().kill() end)
+    local mark = expectBossDeath(code)
     if act == require("src.core.Config").TotalActs then
         waitState("victory", 30)
         t:eq(scene .. ": o ultimo chefe leva a vitoria", state(), "victory")
-        expectTrack("vitoria depois do ultimo chefe", "menuMusic", 3.0)
+        t:eq(scene .. ": a peca da vitoria toca uma vez", stingsSince(mark, "run_victory"), 1)
+        t:eq(scene .. ": sem sting de fim de ato no ultimo chefe", stingsSince(mark, "act_complete"), 0)
+        expectTrack("vitoria depois do ultimo chefe", "menuMusic", 9.0)
         local loops = snapshot().loops
         t:eq(scene .. ": nenhum loop de SFX do chefe na vitoria (" .. table.concat(loops, ",") .. ")",
             #loops, 0)
@@ -518,7 +599,8 @@ local function scenarioBoss(act)
     end
     waitState("roundEval", 30)
     t:eq(scene .. ": cash out depois do chefe", state(), "roundEval")
-    expectContinuous("cash out do chefe", code, 1.5)
+    expectTrack("cash out do chefe em silencio", nil, 1.5)
+    t:eq(scene .. ": fim de ato toca uma vez", stingsSince(mark, "act_complete"), 1)
     local loops = snapshot().loops
     t:eq(scene .. ": nenhum loop de SFX do chefe depois da luta (" .. table.concat(loops, ",") .. ")",
         #loops, 0)
@@ -630,10 +712,10 @@ local function scenarioBossLoops()
 
         setScene("morte do chefe A" .. b.act .. " (" .. b.id .. ")")
         t:truthy(scene .. ": luta pronta depois do Continuar", waitReady(40))
-        expectContinuous("matar o chefe na luta", b.code, 3, function() CM().kill() end)
+        expectBossDeath(b.code)
         waitState("roundEval", 30)
         t:eq(scene .. ": cash out depois do chefe", state(), "roundEval")
-        expectContinuous("cash out do chefe", b.code, 1.5)
+        expectTrack("cash out do chefe em silencio", nil, 1.5)
 
         setScene("matar " .. b.id .. " durante a entrada")
         CM().goToAct(b.act, true)
@@ -816,7 +898,7 @@ local function scenarioEnd()
     CM().die()
     waitState("gameOver", 20)
     t:eq(scene .. ": chegou ao game over", state(), "gameOver")
-    expectTrack("game over", "menuMusic", 3.0)
+    expectTrack("game over", "menuMusic", 6.0)
     setScene("game over -> menu")
     expectContinuous("game over volta ao menu", "menuMusic", 1.5, function() toMenu() end)
     noRunSoundsInMenu("menu depois do game over")
@@ -827,7 +909,7 @@ local function scenarioEnd()
     CM().winCampaign()
     waitState("victory", 120)
     t:eq(scene .. ": chegou a vitoria", state(), "victory")
-    expectTrack("vitoria", "menuMusic", 3.0)
+    expectTrack("vitoria", "menuMusic", 9.0)
     setScene("endless")
     local EndScreens = require("src.scenes.EndScreens")
     local cbs = EndScreens._callbacks and EndScreens._callbacks() or nil
@@ -902,6 +984,173 @@ local function scenarioMenuRunMenu()
     expectTrack("menu", "menuMusic", 3.0)
 end
 
+local function entranceCase(nt, stingName, minDuck)
+    setScene(nt .. "_entrance")
+    ensureRun()
+    CM().goToAct(1, false)
+    waitState("mapSelection", 10)
+    pump(3.0)
+    TL.start(nt .. "_entrance")
+    local mark = logMark()
+    local plays0 = stingPlays(stingName) or 0
+    local minG, eeSeen, stingInEE = 1, false, false
+    CM().jumpTo(nt)
+    waitState("playing", 20)
+    local EE = require("src.ui.EnemyEntrance")
+    pump(40, function() return CM().combatReady(true) end, function()
+        minG = math.min(minG, audio().duckGain or 1)
+        if EE.isActive() then eeSeen = true end
+        if stingsSince(mark, stingName) == 1 and EE.isActive() then stingInEE = true end
+    end)
+    pump(3.0)
+    TL.finish()
+    t:truthy(scene .. ": houve entrada pela estrada", eeSeen)
+    t:eq(scene .. ": o stinger toca uma vez", stingsSince(mark, stingName), 1)
+    t:eq(scene .. ": a fonte do stinger tocou uma vez", (stingPlays(stingName) or 0) - plays0, 1)
+    t:truthy(scene .. ": o stinger toca DURANTE a entrada", stingInEE)
+    t:truthy(("%s: a musica do ato abaixa na entrada (minimo %.2f)"):format(scene, minG), minG <= minDuck)
+    t:eq(scene .. ": nenhum outro stinger", stingsSince(mark, nil), 1)
+    expectTrack("luta segue na faixa do ato em volume cheio", "musicAct1", 0.5)
+    t:eq(scene .. ": sem duck pendurado", audio().duckGain, 1)
+
+    setScene(nt .. "_entrance: Continuar")
+    toMenu()
+    continueRun()
+    pump(4, function() return state() == "playing" end)
+    local mark2 = logMark()
+    pump(8)
+    t:eq(scene .. ": retomar a luta nao repete o stinger", stingsSince(mark2, nil), 0)
+    expectTrack("depois do Continuar", "musicAct1", 0.5)
+end
+
+local function scenarioMinibossEntrance()
+    entranceCase("mini_boss", "miniboss_entrance", 0.35)
+    entranceCase("elite", "elite_entrance", 0.6)
+    setScene("morte comum e de elite")
+    for _, c in ipairs({ { "battle", "victory_small" }, { "elite", "victory_elite" } }) do
+        CM().jumpTo(c[1])
+        waitState("playing", 20)
+        waitReady(40)
+        local mark = logMark()
+        CM().kill()
+        waitState("roundEval", 20)
+        pump(1.5)
+        t:eq(scene .. ": " .. c[1] .. ": sting de resolucao toca uma vez", stingsSince(mark, c[2]), 1)
+        t:eq(scene .. ": " .. c[1] .. ": nada alem dele", stingsSince(mark, nil), 1)
+        expectTrack(c[1] .. ": cash out na faixa do ato", "musicAct1", 2.0)
+        local re = api().screens().roundEval
+        pump(8, function() return re.cashOutReady end)
+        re:_onCashOutClick()
+        waitState("cardReward", 10)
+        CM().advanceFloor()
+        waitState("mapSelection", 10)
+    end
+end
+
+local function scenarioBossDeathFade()
+    setScene("boss_death_fade")
+    ensureRun()
+    CM().goToAct(1, true)
+    t:truthy(scene .. ": luta pronta", waitReady(60))
+    local code = bossCode(run().currentNode.enemyId)
+    expectTrack("faixa do chefe", code, 2.0)
+    TL.start("boss_death_fade")
+    local mark = expectBossDeath(code)
+    waitState("roundEval", 30)
+    pump(3.0)
+    TL.finish()
+    t:eq(scene .. ": cash out do chefe", state(), "roundEval")
+    t:eq(scene .. ": sem som de moedas do cash out comum no chefe",
+        stingsSince(mark, "victory_small") + stingsSince(mark, "victory_elite"), 0)
+    expectTrack("cash out em silencio", nil, 0.5)
+
+    setScene("act_complete")
+    t:eq(scene .. ": fim de ato toca uma vez", stingsSince(mark, "act_complete"), 1)
+    t:eq(scene .. ": a fonte do fim de ato tocou uma vez", stingPlays("act_complete") ~= nil and stingPlays("act_complete") >= 1, true)
+    local re = api().screens().roundEval
+    pump(8, function() return re.cashOutReady end)
+    re:_onCashOutClick()
+    waitState("cardReward", 10)
+    expectTrack("espolios do chefe em silencio", nil, 1.0)
+    toMenu()
+    local mark2 = logMark()
+    continueRun()
+    pump(4, function() return state() == "cardReward" end)
+    pump(4)
+    t:eq(scene .. ": Continuar nos espolios nao repete nenhum sting", stingsSince(mark2, nil), 0)
+    CM().leaveCurrent()
+    api().showMapSelection()
+    waitState("mapSelection", 10)
+    expectTrack("encruzilhada do ato seguinte", "musicAct2", 3.5)
+end
+
+local function scenarioPlayerDeath()
+    setScene("player_death")
+    ensureRun()
+    CM().goToAct(2, false)
+    CM().jumpTo("battle")
+    waitState("playing", 20)
+    waitReady(30)
+    expectTrack("batalha", "musicAct2", 1.0)
+    TL.start("player_death")
+    local mark = logMark()
+    local plays0 = stingPlays("player_death") or 0
+    pump(1.0)
+    CM().die()
+    local tDeath = clock
+    local silentAt, menuAt, goAt = nil, nil, nil
+    pump(12, nil, function()
+        local codes = audibleCodes()
+        if not silentAt and #codes == 0 then silentAt = clock - tDeath end
+        if not goAt and state() == "gameOver" then goAt = clock - tDeath end
+        if not menuAt and audibleOf("menuMusic") then menuAt = clock - tDeath end
+    end)
+    TL.finish()
+    t:truthy(("%s: a faixa do ato corta para o silencio em ate 1,3 s (%.2f)"):format(scene, silentAt or -1),
+        silentAt and silentAt <= 1.3)
+    t:eq(scene .. ": o sting da morte toca uma vez", stingsSince(mark, "player_death"), 1)
+    t:eq(scene .. ": a fonte do sting tocou uma vez", (stingPlays("player_death") or 0) - plays0, 1)
+    t:eq(scene .. ": nenhum outro sting", stingsSince(mark, nil), 1)
+    t:truthy(scene .. ": o game over chega", goAt ~= nil)
+    t:truthy(("%s: a musica do menu so volta depois do sting (%.2f s)"):format(scene, menuAt or -1),
+        menuAt and menuAt >= 3.0)
+    expectTrack("game over", "menuMusic", 3.0)
+    toMenu()
+end
+
+local function scenarioLowHp()
+    setScene("lowhp")
+    ensureRun()
+    CM().goToAct(1, false)
+    CM().jumpTo("battle")
+    waitState("playing", 20)
+    waitReady(30)
+    expectTrack("batalha", "musicAct1", 1.0)
+    TL.start("lowhp")
+    local mark = logMark()
+    local g = game()
+    pump(1.0)
+    g.player.health = math.max(1, math.floor(g.player.maxHealth * 0.18))
+    local beats0 = 0
+    pump(4.0)
+    local beats = 0
+    for i = mark + 1, #MM().log do if MM().log[i].kind == "beat" then beats = beats + 1 end end
+    local m = audibleOf("musicAct1")
+    local lvl = musicLevel("musicAct1")
+    t:truthy(scene .. ": vida baixa liga o estado", MM().lowHp())
+    t:truthy(("%s: musica abaixa de leve (%.2f)"):format(scene, lvl), lvl > 0.7 and lvl < 0.9)
+    t:truthy(scene .. ": passa-baixa na faixa", m and m.src.filter ~= nil and m.src.filter.type == "lowpass")
+    t:truthy(("%s: batimento toca (%d em 4 s)"):format(scene, beats), beats >= 3 and beats <= 5)
+    g.player.health = g.player.maxHealth
+    pump(2.5)
+    TL.finish()
+    t:falsy(scene .. ": vida cheia desliga", MM().lowHp())
+    m = audibleOf("musicAct1")
+    t:truthy(scene .. ": filtro sai da faixa", m and rawget(m.src, "filter") == nil)
+    expectTrack("musica volta ao volume cheio", "musicAct1", 0.5)
+    t:eq(scene .. ": nenhum sting na vida baixa", stingsSince(mark, nil), 0 + beats0)
+end
+
 local function report()
     print("\n  -- linha do tempo (estado | faixas audiveis) --")
     local from = math.max(1, #timeline - 400)
@@ -939,6 +1188,8 @@ function M.run()
             { "boss", scenarioBossFlow }, { "bossedge", scenarioBossEdge }, { "bossloop", scenarioBossLoops },
             { "continue", scenarioContinue }, { "end", scenarioEnd }, { "cheat", scenarioCheatKeys },
             { "menurun", scenarioMenuRunMenu },
+            { "miniboss_entrance", scenarioMinibossEntrance }, { "boss_death_fade", scenarioBossDeathFade },
+            { "player_death", scenarioPlayerDeath }, { "lowhp", scenarioLowHp },
         }
         for i, s in ipairs(steps) do
             if i == 1 or not only or only:find(s[1], 1, true) then
