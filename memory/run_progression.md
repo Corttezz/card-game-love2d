@@ -56,6 +56,23 @@ playing → enemy dies
             SHOP → cardRewardScreen (como loja) → skipBattleAndShowMap
 ```
 
+## Encruzilhada nunca repete tipo (25/Out/2026)
+
+Dono: "2 battle, isso não pode acontecer" (ato 5, Loja/Batalha/Batalha, e a
+2ª batalha empurrada para o ramo lateral). Causa: `MapManager.generate`
+sorteia por rejeição (20 tentativas no stream "map") e, se não juntasse 3
+tipos distintos, completava com `rollWeighted` SEM excluir os usados. Com
+batalha a 55-70% de peso isso falhava em ~0,6% das encruzilhadas dos andares
+1-2 e raramente nos 3-6 (336 de 112.000 em 2000 seeds). Agora o
+complemento sorteia só entre tipos ainda não usados (mesmos pesos, mesma
+quantidade de sorteios, então toda seed que não repetia gera as MESMAS
+opções); sem tipo sobrando, a encruzilhada encolhe em vez de repetir. Save
+antigo com repetido é reparado no `loadRun` (`RunManager:repairPendingNodes`
+→ `MapManager.dedupeNodes`: fica a 1ª ocorrência, ordem preservada, sem
+RNG). Trava: `love . test_one test_fork_types`; prova visual
+`lovec . test_one screenshot_fork_types` (antes/depois/save reparado no
+ato 5, 1920x1080).
+
 ## Starter deck
 
 `CardRegistry:getStarterDeckForClass` retorna **2 cartas**: 1 attack + 1 defense da classe. Deck cresce via recompensas, loja, eventos, forge.

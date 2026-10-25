@@ -142,10 +142,31 @@ function MapManager.generate(floorInAct, actNumber, numNodes, opts)
         end
     end
     while #nodes < numNodes do
-        local t = rollWeighted(weights)
+        local rest = {}
+        for _, e in ipairs(weights) do
+            if not usedTypes[e.type] and (e.weight or 1) > 0 then rest[#rest + 1] = e end
+        end
+        if #rest == 0 then break end
+        local t = rollWeighted(rest)
+        usedTypes[t] = true
         table.insert(nodes, MapManager._makeNode(t, floorInAct, actNumber))
     end
     return nodes
+end
+
+function MapManager.dedupeNodes(nodes)
+    if type(nodes) ~= "table" then return nodes, 0 end
+    local seen, out, removed = {}, {}, 0
+    for _, n in ipairs(nodes) do
+        local t = type(n) == "table" and n.type or nil
+        if t and not seen[t] then
+            seen[t] = true
+            out[#out + 1] = n
+        else
+            removed = removed + 1
+        end
+    end
+    return out, removed
 end
 
 function MapManager._makeNode(nodeType, floorInAct, actNumber)

@@ -312,6 +312,17 @@ function RunManager:generateNextNodes(numNodes)
     return self.currentRun.pendingNodes
 end
 
+function RunManager:repairPendingNodes()
+    local run = self.currentRun
+    if not run or type(run.pendingNodes) ~= "table" then return 0 end
+    local fixed, removed = require("src.systems.MapManager").dedupeNodes(run.pendingNodes)
+    if removed > 0 then
+        Debug.warn("[RunManager] encruzilhada salva com tipo repetido: " .. removed .. " opcao(oes) removida(s)")
+        run.pendingNodes = (#fixed > 0) and fixed or nil
+    end
+    return removed
+end
+
 function RunManager:chooseNode(index, snapshot)
     if not self.currentRun or not self.currentRun.pendingNodes then return nil end
     local node = self.currentRun.pendingNodes[index]
@@ -898,6 +909,7 @@ function RunManager:loadRun()
 
     self.currentRun = runData
     self.isRunActive = true
+    self:repairPendingNodes()
 
     Rng.setActive(Rng.fromState(runData.rngState))
     if not runData.rngState then
