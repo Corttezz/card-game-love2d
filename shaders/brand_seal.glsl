@@ -4,6 +4,7 @@ extern number trevScale;
 extern vec2 texSize;
 extern vec2 origin;
 extern number sweepP;
+extern number pxScale;
 extern number tRay0;
 extern number tRayStep;
 extern number tCharge;
@@ -51,7 +52,7 @@ vec4 effect(vec4 color, Image tex, vec2 tc, vec2 sc) {
     if (a < 0.05) c = palAt(3.0, max(idx, 5.0));
     else if (a < 0.13) c = palAt(2.0, idx);
     if (idx > 2.5) {
-        vec2 px = floor(tc * texSize) + origin;
+        vec2 px = floor(tc * texSize) * pxScale + origin;
         c = sweepCol(c, px.x + px.y * 0.55 - sweepP);
     }
     return vec4(c, 1.0) * color;

@@ -39,6 +39,7 @@ local SUITES = {
     { group = "unit",  name = "test_world_shadows" },
     { group = "unit",  name = "test_sky_strip" },
     { group = "unit",  name = "test_light_emit" },
+    { group = "unit",  name = "test_light_spill" },
     { group = "unit",  name = "test_light_falloff" },
     { group = "unit",  name = "test_enemy_light_fringe" },
     { group = "unit",  name = "test_tree_anim" },

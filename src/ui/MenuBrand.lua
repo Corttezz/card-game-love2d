@@ -10,7 +10,6 @@ MenuBrand.T = {
     SWEEP0 = 4.15, BUTTONS = 3.95, BUTTON_STEP = 0.08, BUTTON_DUR = 0.30,
     BG_FADE = 0.8, ELECTRIC = 2.55, END = 6.5,
 }
-MenuBrand.TOTAL_H = Data.seal.h + Data.gap + Data.word.h
 MenuBrand.SWEEP_SPEED = 600 / 0.9
 MenuBrand.IDLE_SWEEP = { 8, 12 }
 MenuBrand.IDLE_TWINKLE = { 1.4, 3.2 }
@@ -134,23 +133,42 @@ function MenuBrand.canSting()
     return r ~= nil and r.sealShader ~= nil and r.wordShader ~= nil and r.fxShader ~= nil
 end
 
+MenuBrand.COLUMN = { bottom = 0.975, spacingRatio = 0.092, spacingMax = 80, heightRatio = 0.08, heightMax = 60 }
+MenuBrand.ZONE = { top = 0.025, clear = 0.02, wordMaxW = 0.42, sealDrop = 2 }
+
+function MenuBrand.buttonColumn(vh)
+    local C = MenuBrand.COLUMN
+    local spacing = math.min(C.spacingMax, vh * C.spacingRatio)
+    local h = math.min(C.heightMax, vh * C.heightRatio)
+    return vh * C.bottom - 4 * spacing - h, spacing, h
+end
+
 function MenuBrand.layout(vw, vh, k)
     k = k or 1
+    local Z = MenuBrand.ZONE
     local W, H = vw * k, vh * k
-    local spacing = math.min(80, vh * 0.1)
-    local topV = vh * 0.04
-    local limitV = vh * 0.5 - spacing - vh * 0.03
-    local region = (limitV - topV) * k
-    local P = math.max(1, math.floor(region / MenuBrand.TOTAL_H))
-    while P > 1 and Data.word.w * P > W * 0.5 do P = P - 1 end
-    local ox = math.floor((W - Data.word.w * P) / 2 + 0.5)
-    local oy = math.floor(topV * k + math.max(0, region - MenuBrand.TOTAL_H * P) / 2 + 0.5)
+    local y0, spacing = MenuBrand.buttonColumn(vh)
+    local topV = vh * Z.top
+    local region = (y0 - spacing - vh * Z.clear - topV) * k
+    local sw, sh, ww, wh, gap = Data.seal.w, Data.seal.h, Data.word.w, Data.word.h, Data.gap
+    local P = math.max(1, math.floor(W * Z.wordMaxW / ww))
+    local Ps
+    while true do
+        for s = P, math.max(1, P - Z.sealDrop), -1 do
+            if (sh + gap) * s + wh * P <= region then Ps = s; break end
+        end
+        if Ps or P == 1 then break end
+        P = P - 1
+    end
+    Ps = Ps or 1
+    local total = (sh + gap) * Ps + wh * P
+    local top = math.floor(topV * k + math.max(0, region - total) / 2 + 0.5)
+    local ox = math.floor((W - ww * P) / 2 + 0.5)
     return {
-        P = P, ox = ox, oy = oy, W = W, H = H, k = k,
-        sealX = math.floor((Data.word.w - Data.seal.w) / 2), sealY = 0,
-        wordX = 0, wordY = Data.seal.h + Data.gap,
-        nW = W / P, nH = H / P,
-        cNX = (W / 2 - ox) / P, cNY = (H / 2 - oy) / P,
+        P = P, Ps = Ps, ox = ox, oy = top + (sh + gap) * Ps, W = W, H = H, k = k,
+        top = top, total = total,
+        sealPX = math.floor(ox + (ww * P - sw * Ps) / 2 + 0.5), sealPY = top,
+        wordX = 0, wordY = 0,
     }
 end
 
@@ -183,7 +201,7 @@ function MenuBrand.new()
     for i = 1, N_EMBERS do
         self.embers[i] = {
             x0 = -50 + rng:random() * (Data.word.w + 100),
-            y0 = Data.seal.h * 0.6 + rng:random() * (Data.seal.h * 0.4 + Data.gap + Data.word.h + 40),
+            yn = rng:random(),
             vy = -22 + rng:random() * 13, ph = rng:random() * 6.28, amp = 2 + rng:random() * 5,
             t0 = rng:random() * 2.6, life = 1.8 + rng:random() * 1.6, fl = 4 + rng:random() * 5,
         }
@@ -260,8 +278,8 @@ function MenuBrand:update(dt, reduced)
     end
 end
 
-local SWEEP_FROM = -20
-local SWEEP_TO = Data.word.w + MenuBrand.TOTAL_H * 0.55 + 20
+local SWEEP_FROM = -60
+local SWEEP_TO = Data.word.w + Data.word.h * 0.55 + 20
 
 function MenuBrand:sweepP()
     for _, s0 in ipairs(self.sweeps) do
@@ -298,25 +316,26 @@ local function emberColor(u)
     return EMBER[math.min(#EMBER, math.floor(u * #EMBER) + 1)]
 end
 
+MenuBrand.STING_SEAL_H = 0.42
+
 function MenuBrand.stingScale(L)
-    local Ps = L.P * 2
-    while Ps > L.P and Data.seal.h * Ps > L.H * 0.62 do Ps = Ps - 1 end
-    return Ps
+    local Ps = math.max(1, math.floor(L.H * MenuBrand.STING_SEAL_H / Data.seal.h + 0.5))
+    while Ps > 1 and Data.seal.h * Ps > L.H * 0.62 do Ps = Ps - 1 end
+    return math.max(Ps, L.Ps)
 end
 
 function MenuBrand:_sealGeom(L)
     local t = self.clock
     local w, h = Data.seal.w, Data.seal.h
     local sting = self.mode == "sting"
-    local Ps = sting and MenuBrand.stingScale(L) or L.P
+    local Ps = sting and MenuBrand.stingScale(L) or L.Ps
     local sox = math.floor((L.W - w * Ps) / 2 + 0.5)
     local soy = math.floor((L.H - h * Ps) / 2 + 0.5) - 4 * Ps
-    local fx = L.ox + L.sealX * L.P
-    local fy = L.oy + L.sealY * L.P
+    local fx, fy = L.sealPX, L.sealPY
     local u = sting and easeOut((t - T.MOVE) / (T.MOVE_END - T.MOVE)) or 1
-    local s = Ps - math.floor((Ps - L.P) * u + 0.5)
+    local s = Ps - math.floor((Ps - L.Ps) * u + 0.5)
     local c0x, c0y = sox + w * Ps / 2, soy + h * Ps / 2
-    local c1x, c1y = fx + w * L.P / 2, fy + h * L.P / 2
+    local c1x, c1y = fx + w * L.Ps / 2, fy + h * L.Ps / 2
     local ccx, ccy = c0x + (c1x - c0x) * u, c0y + (c1y - c0y) * u
     local G = {
         x = math.floor(ccx - w * s / 2 + 0.5), y = math.floor(ccy - h * s / 2 + 0.5), s = s,
@@ -445,7 +464,7 @@ function MenuBrand:draw(alpha, bgAmt, reduced)
     alphaMul = alpha
     local G = self:_sealGeom(L)
     if not sting then
-        G.x, G.y, G.s, G.jx, G.jy = L.ox + L.sealX * L.P, L.oy + L.sealY * L.P, L.P, 0, 0
+        G.x, G.y, G.s, G.jx, G.jy = L.sealPX, L.sealPY, L.Ps, 0, 0
     end
     self._seal = G
     local cx, cy = Data.seal.cx, Data.seal.cy
@@ -484,7 +503,8 @@ function MenuBrand:draw(alpha, bgAmt, reduced)
         local sh = r.sealShader
         g.setShader(sh)
         sh:send("T", animSeal and t or 99)
-        sh:send("origin", { L.sealX, L.sealY })
+        sh:send("origin", { (L.sealPX - L.ox) / L.P, (L.sealPY - L.oy) / L.P })
+        sh:send("pxScale", L.Ps / L.P)
         sh:send("sweepP", sweepP or -10000)
         g.setColor(1, 1, 1, alpha)
         g.draw(r.sealData, G.jx, G.jy)
@@ -506,13 +526,16 @@ function MenuBrand:draw(alpha, bgAmt, reduced)
     g.scale(L.P, L.P)
     if not sting or t >= T.WORD0 - 0.01 then self:_drawWord(L, t, sweepP, reduced) end
     if not reduced and t >= self.emberT0 then
+        local sealTop = (L.sealPY - L.oy) / L.P
+        local yA = sealTop + Data.seal.h * L.Ps / L.P * 0.6
+        local yB = Data.word.h + 20
         for _, e in ipairs(self.embers) do
             local te = t - self.emberT0 - e.t0
             if te >= 0 then
                 te = te % (e.life + 0.4)
                 if te <= e.life and math.sin(e.ph + te * e.fl) >= -0.6 then
                     local u = te / e.life
-                    px(e.x0 + math.sin(e.ph + te * 1.7) * e.amp, e.y0 + e.vy * te, emberColor(0.25 + u * 0.75))
+                    px(e.x0 + math.sin(e.ph + te * 1.7) * e.amp, yA + e.yn * (yB - yA) + e.vy * te, emberColor(0.25 + u * 0.75))
                 end
             end
         end
@@ -561,7 +584,7 @@ end
 function MenuBrand:wordRect()
     local L = self._layout
     if not L then return nil end
-    return (L.ox + L.wordX * L.P) / L.k, (L.oy + L.wordY * L.P) / L.k,
+    return L.ox / L.k, L.oy / L.k,
         Data.word.w * L.P / L.k, Data.word.h * L.P / L.k, L.P
 end
 

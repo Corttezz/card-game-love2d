@@ -107,6 +107,8 @@ local function drawPool(P, color, gx, gy, r, alpha)
     love.graphics.setBlendMode("add", "alphamultiply")
     love.graphics.setColor(color[1], color[2], color[3], 1)
     love.graphics.draw(emit.img, math.floor(gx), math.floor(gy), 0, r, r * (P.sy or 0.35), 1, 1)
+    require("engine.LightSpill").add(math.floor(gx), math.floor(gy), r, P.sy or 0.35, E.upK,
+        color[1] * inten, color[2] * inten, color[3] * inten)
     love.graphics.setShader(prev)
     love.graphics.setBlendMode(bm, am)
     love.graphics.setColor(pr, pg, pb, pa)

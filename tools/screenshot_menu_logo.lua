@@ -73,6 +73,7 @@ function M.run(arg)
             love.graphics.setShader(r.sealShader)
             r.sealShader:send("T", t)
             r.sealShader:send("origin", { 0, 0 })
+            r.sealShader:send("pxScale", 1)
             r.sealShader:send("sweepP", -10000)
             love.graphics.setColor(1, 1, 1, 1)
             love.graphics.draw(r.sealData, 0, 0)
@@ -128,16 +129,22 @@ function M.run(arg)
     end
 
     local dir = outDir(nil)
-    for _, sz in ipairs(SIZES) do
-        local w, h = sz[1], sz[2]
-        local restore = fakeWindow(w, h)
-        FontManager.clearCache()
-        local menu = Menu:new()
-        menu:enterWithIntro()
-        for _ = 1, 60 * 7 do step(menu, dt) end
-        save(render(menu, w, h), dir, ("%s_%dx%d.png"):format(label, w, h))
-        restore()
+    local SaveManager = require("engine.SaveManager")
+    local realHasRun = SaveManager.hasRun
+    for _, withSave in ipairs({ false, true }) do
+        SaveManager.hasRun = function() return withSave end
+        for _, sz in ipairs(SIZES) do
+            local w, h = sz[1], sz[2]
+            local restore = fakeWindow(w, h)
+            FontManager.clearCache()
+            local menu = Menu:new()
+            menu:enterWithIntro()
+            for _ = 1, 60 * 7 do step(menu, dt) end
+            save(render(menu, w, h), dir, ("%s_%dx%d_%s.png"):format(label, w, h, withSave and "comsave" or "semsave"))
+            restore()
+        end
     end
+    SaveManager.hasRun = realHasRun
     FontManager.clearCache()
     return true
 end

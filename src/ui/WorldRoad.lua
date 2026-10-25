@@ -16,6 +16,7 @@ local Scene = {
     Var = require("engine.PropVariation"),
     Clutter = require("engine.GroundClutter"),
     Cut = require("engine.GroundCut"),
+    Spill = require("engine.LightSpill"),
 }
 
 local PropCut = {
@@ -27,6 +28,7 @@ local PropCut = {
     lit = setmetatable({}, { __mode = "k" }),
     texel = setmetatable({}, { __mode = "k" }),
     kinds = { tree = true, pine = true, deadtree = true, bush = true },
+    spill = { tuft = true, flowers = true },
     nv = {}, EMPTY = {},
     anim = { fps = 5, pingpong = true }, frames = {},
     animKinds = { tree = true, pine = true, deadtree = true, bush = true, rock = true,
@@ -164,11 +166,16 @@ end
 function PropCut.draw(img, kind, x, y, rot, sx, sy, kx, fimg)
     local q, ihv = PropCut.get(img, kind)
     local iw = img:getWidth()
+    local spSh = PropCut.spill[kind] and Scene.Spill.reaches(x, y, math.abs(iw * sx) * 0.5, ihv * math.abs(sy))
+        and Scene.Spill.spriteShader()
+    local prevSh = spSh and love.graphics.getShader()
+    if spSh then love.graphics.setShader(spSh) end
     if q then
         love.graphics.draw(fimg or img, q, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
     else
         love.graphics.draw(fimg or img, x, y, rot, sx, sy, iw / 2, ihv, kx or 0, 0)
     end
+    if spSh then love.graphics.setShader(prevSh) end
 end
 
 local WorldRoad = {}
