@@ -49,91 +49,181 @@ Pedido do dono: "os mobs, quando tomam dano, emitam um som específico deles ass
   - o `_onEnemyDeath` real sem `enemyDeath`;
   - o fallback, o warn único, o ALIAS e o scan com sonda gravada no save dir.
 
-## Como os arquivos foram feitos
+## v1 REJEITADA pelo dono (25/Out/2026)
 
-- **Cota ElevenLabs**: restavam 209 créditos (reset ~12/Nov). O lead deu 50 à frente, e a prioridade ficou com AUDIO-FLOW.
-  Foram gastas 2 gerações de 2,5 s (`tools/preview_out/vozes_inimigos/raw/el_beast_pain.mp3` = rosnado de besta grande,
-  `el_undead_pain.mp3` = gemido de morto-vivo). Elas são as fontes COMPARTILHADAS, com pitch por criatura.
-- Todo o resto é DSP offline: `python tools/enemy_voices/build.py [id ...]` (numpy/scipy + ffmpeg). Cada som soma:
-  1. **voz**: recorte do pico do som de ENTRADA da própria criatura (`audio/sfx/entrances/`), e/ou a fonte EL com pitch, e/ou
-     voz sintetizada (`ghost` lamento, `shriek` guincho, `squeak` chiado, `croak` coaxo, `hiss`);
-  2. **material** procedural (`tools/enemy_voices/synth.py`): osso, molhado, pedra, metal, gelo, fogo, madeira, palha,
-     penas, corrente, baque, zumbido escuro, brilho.
-  - Variantes: hurt = 3 picos diferentes da fonte × pitch 1,00/0,94/1,07 + semente do material.
-  - Death: a região mais longa da fonte, pitch 1,00/0,93.
-  - Corte de silêncio, cauda com fade, normalização LUFS + limitador.
-- Prova: `python tools/enemy_voices/report.py` gera:
-  - `tools/preview_out/vozes_inimigos/tabela.md`: duração, LUFS ativo, LUFS ebur128 com loop 4x, pico e ataque de cada um dos 210;
-  - `ato1..6.png`: onda + espectrograma, onde vermelho na onda = clip.
-  - Faixas: hurt 0,2 a 0,62 s com ataque ≤ 0,06 s; death 0,6 a 1,55 s.
-  - Nenhuma fonte tem música nem fala. Sem escuta real: o veredito é por medida e espectrograma.
+"Muito infantis: parecem brinquedo que apita, barulhinho de palhaço fofo. A ideia é certa, mas tem que ser mais sério e
+mais ligado a cada inimigo." Os culpados mais prováveis da v1:
+- os sintéticos tonais `shriek` (FM), `squeak` (senoide), `croak` (trem de pulsos) e `shimmer`;
+- o pitch PARA CIMA (fonte EL ×1,3 a ×1,9);
+- o lamento de senoide.
 
-## Tabela por criatura (voz + material | morte)
+Tudo isso saiu (`tools/enemy_voices/synth.py` foi apagado). **Regra: voz de inimigo é dark fantasy séria (pesada,
+grave, gutural, com material e respiração); nunca pitch acima de 1,0, nunca contorno que sobe, nunca síntese tonal.**
 
-| ato | criatura | tipo | hurt: voz | hurt: material | death |
-|---|---|---|---|---|---|
-| 1 | cursed_scarecrow | comum | corda/palha da entrada (wake) + chiado | palha + madeira | queda + corvos da entrada + palha |
-| 1 | hollow_farmer | comum | EL morto-vivo ×1,05 | madeira + baque | EL morto-vivo + baque |
-| 1 | plague_rats | comum | chiados + ratos da entrada ×1,10 | palha (patinhas) | ratos da entrada + chiados |
-| 1 | harvest_reaper | elite | lamento + foice da entrada ×1,10 | metal | foice + lamento caindo |
-| 1 | blight_bull | elite | EL besta ×0,85 | baque + molhado | EL besta + baque grave |
-| 1 | wicker_effigy | mini-chefe | vime em chamas da entrada + rangido | fogo + palha | vime + fogo + palha |
-| 1 | carrion_king | chefe | corvo `appear_2` ×0,8 + EL morto-vivo ×0,8 | penas | corvo `cine_2` + EL morto-vivo + penas |
-| 2 | moon_gargoyle | comum | guincho + pedra da entrada + EL besta ×1,6 | pedra | pedra rachando + pedra |
-| 2 | ram_cultist | comum | EL besta ×1,45 (balido) | zumbido | EL besta + runa da entrada |
-| 2 | storm_harpy | comum | guincho + EL besta ×1,9 | penas | guincho + trovão da entrada + penas |
-| 2 | rune_golem | elite | pedras da entrada ×1,1 + zumbido | pedra | pedras + pedra |
-| 2 | spectral_knight | elite | lamento + armadura oca da entrada | metal oco | lamento + armadura + metal |
-| 2 | storm_griffin | mini-chefe | guincho + EL besta ×1,3 | penas | pouso da entrada + guincho |
-| 2 | tower_lich | chefe | lamento grave + EL morto-vivo ×0,8 | osso | EL morto-vivo + ossos + lamento |
-| 3 | ember_imp | comum | guincho + EL besta ×1,7 | fogo | guincho + fenda de fogo + fogo |
-| 3 | hellhound | comum | rosnado da entrada + EL besta ×1,15 | fogo | EL besta + rosnado + fogo |
-| 3 | abyss_acolyte | comum | EL morto-vivo ×1,2 | zumbido escuro | EL morto-vivo + sigilo + zumbido |
-| 3 | obsidian_sentinel | elite | pedra da entrada ×1,1 | pedra + metal | pedra + pedra |
-| 3 | pit_brute | elite | EL besta ×0,75 + grunhido da entrada | baque | EL besta + queda + baque |
-| 3 | abyss_watcher | mini-chefe | lamento de ar + drone da entrada ×1,2 | molhado | drone + molhado |
-| 3 | abyss_tyrant | chefe | EL besta ×0,6 | corrente + fogo | EL besta + `tyrant_chain_snap` + baque |
-| 4 | frost_wight | comum | lamento + vento gelado da entrada | gelo | lamento + vento + gelo |
-| 4 | frost_wolf | comum | EL besta ×1,3 (ganido) + uivo da entrada | palha (neve) | uivo + EL besta |
-| 4 | rime_shaman | comum | EL morto-vivo ×1,15 | gelo + madeira | EL morto-vivo + cajado + gelo |
-| 4 | glacier_knight | elite | EL morto-vivo ×0,95 (baixo) | metal + gelo | armadura da entrada + metal + gelo |
-| 4 | frost_troll | elite | EL besta ×0,8 + grunhido da entrada | gelo + baque | EL besta + neve explodindo + baque |
-| 4 | ice_wyrm | mini-chefe | EL besta ×0,9 + sibilo | gelo | EL besta + gelo rompendo + gelo |
-| 4 | winter_monarch | chefe | lamento + EL morto-vivo ×0,85 | gelo | `boss_frost_shatter` + lamento + EL |
-| 5 | bog_ghoul | comum | EL morto-vivo | molhado | EL + lama da entrada + molhado |
-| 5 | plague_toad | comum | coaxo | molhado | coaxo + splash da entrada + molhado |
-| 5 | leech_horror | comum | sibilo + gosma da entrada ×1,15 | molhado | gosma + molhado |
-| 5 | mire_hag | elite | EL morto-vivo ×1,35 (bruxa) | molhado + madeira | EL + lanterna/lama da entrada |
-| 5 | croc_warrior | elite | sibilo/rosnado da entrada + EL besta ×0,95 | molhado | EL besta + splash da entrada |
-| 5 | spore_mother | mini-chefe | sibilo de esporo + cogumelo da entrada | molhado | cogumelo + `boss_spore_collapse` + molhado |
-| 5 | rot_colossus | chefe | EL besta ×0,6 + `colossus_crack` | molhado + madeira | `colossus_crumble` + EL besta |
-| 6 | dusk_shade | comum | lamento + sombra da entrada | sibilo | lamento + sombra |
-| 6 | dusk_bat | comum | chiados + asas da entrada ×1,15 | penas (asas) | asas + chiados + penas |
-| 6 | grave_thrall | comum | EL morto-vivo ×0,95 | osso | ossos + EL + terra da entrada |
-| 6 | blood_duke | elite | EL morto-vivo ×1,1 + sibilo | asas | morcegos da entrada + EL + sibilo |
-| 6 | dullahan | elite | lamento grave + armadura da entrada | metal | armadura + metal + lamento |
-| 6 | fallen_angel | mini-chefe | EL morto-vivo ×1,05 + brilho | penas | luz da entrada + penas + lamento |
-| 6 | eclipse_queen | chefe | lamento agudo + EL morto-vivo ×1,2 | brilho | `boss_eclipse_break` + lamento + brilho |
+## Como os arquivos foram feitos (v2)
 
-Vozes COMPARTILHADAS:
-- **EL besta**: blight_bull, ram_cultist, storm_harpy, storm_griffin, moon_gargoyle, ember_imp, hellhound, pit_brute,
-  abyss_tyrant, frost_wolf, frost_troll, ice_wyrm, croc_warrior e rot_colossus.
-- **EL morto-vivo**: hollow_farmer, carrion_king, tower_lich, abyss_acolyte, rime_shaman, glacier_knight, winter_monarch,
-  bog_ghoul, mire_hag, grave_thrall, blood_duke, fallen_angel e eclipse_queen.
+**Modelo local: inviável hoje.** RTX 2060 SUPER 8 GB serve, mas:
+- **Stable Audio Open 1.0** (e small) é GATED no Hugging Face (HTTP 401 sem token): exige conta do dono, aceitar a
+  licença e um token, e não há token nesta máquina. A licença (Stability AI Community License, versão de 05/Jul/2024)
+  PERMITE uso comercial gratuito para quem fatura menos de US$ 1 mi/ano, e o usuário é dono das saídas. Acima disso é
+  preciso a licença Enterprise.
+- **AudioLDM2**: CC-BY-NC-SA 4.0, sem uso comercial, então está descartado.
+- **AudioGen/AudioCraft**: os pesos são CC-BY-NC, também descartados.
+- Caminho futuro: o dono loga no HF, aceita a licença do SAO 1.0, e a geração roda num venv isolado no scratchpad.
 
-Os chefes mantêm corvos/CrowSfx e os sons de mecânica/cinemática; só ganharam hurt/death.
+**Feito por DSP sobre material GRAVADO do repo**:
+- `python tools/enemy_voices/build.py [id ...]`, reprodutível (sementes por arquivo); são uns 2,5 min para as 42.
+- Fontes:
+  - as 2 EL (`raw/el_beast_pain.mp3` e `raw/el_undead_pain.mp3`);
+  - o som de entrada da criatura;
+  - `audio/sfx/boss/*` (colossus_crack/crumble, death_thud, land_impact, lava_implosion, eyes_rumble, tyrant_chain_snap,
+    frost_shatter, ice_crackle, spore_collapse, wing_pass, feather_burst, eclipse_*);
+  - `impact-*`, `scene-stone-thud`/`wood-knock`/`rustle` e `event-enter-wind`;
+  - `audio/sword-sound` e `audio/punching-light-armour`;
+  - os trovões de `weather/`.
+- Cadeia por camada:
+  - recorte do pico (hurt: 3 picos diferentes) ou da região mais longa (death);
+  - pitch SEMPRE ≤ 1,0 (`assert`);
+  - **queda de pitch embutida**: reamostragem com taxa caindo de p a 0,9p (hurt) ou 0,82p (death), então o contorno só cai;
+  - variantes ×1,00/0,95/0,90 (hurt) e ×1,00/0,93 (death).
+- "Corpo" por família (`FX`): low-shelf +4 a 6 dB em 170 Hz, saturação tanh, passa-baixa 3,6 a 6 kHz, respiração (ruído
+  180 a 1000 Hz seguindo o envelope da voz), sala curta (IR 0,32 s, molhado 10 a 42%, o máximo nos fantasmas) e passa-alta
+  75 Hz (sem sub-ronco que gasta a loudness).
+- Teto de centroide por família (`CENTROID_CAP`, com `cap` opcional por criatura): se passar, aperta o passa-baixa.
+- Se a subida de pitch medida passar de 1,05, o arquivo é refeito com queda maior (até 5 tentativas).
+- Loudness (-17/-16 LUFS), pico ≤ -2 dBFS, duração, cooldown, não-repetição e runtime ficam iguais à v1.
+- Prova: rode `ENEMY_VOICES_OLD=<pasta da v1> python tools/enemy_voices/report.py`. Ele grava em
+  `tools/preview_out/vozes_inimigos/v2/`:
+  - `tabela.md`: por arquivo, duração, LUFS, pico, ataque, centroide v1/v2 e subida de pitch; por criatura e por família, a
+    média do centroide;
+  - `ato1..6_ab.png`: onda + espectrograma, com a v1 em cima e a v2 embaixo.
+- Critérios:
+  - hurt de 0,2 a 0,62 s, com ataque ≤ 0,06 s;
+  - death de 0,6 a 1,55 s, com ataque ≤ 0,15 s;
+  - pico ≤ -0,5 dBFS;
+  - subida de pitch ≤ 1,06 (rastreador por autocorrelação em `dsp.max_rise`, resistente a salto de oitava);
+  - centroide médio da criatura abaixo do da v1.
+- A v1 (rejeitada) fica em `tools/preview_out/vozes_inimigos/ato*.png` e `tabela.md`, para comparação.
 
-## Pendente / regerar quando houver cota (~12/Nov) ou plano pago
+| familia | centroide medio v1 (Hz) | centroide medio v2 (Hz) | veredito |
+|---|---|---|---|---|
+| cursed_scarecrow | undead | 3029 | 639 | ok |
+| hollow_farmer | undead | 593 | 584 | ok |
+| plague_rats | vermin | 4804 | 741 | ok |
+| harvest_reaper | ghost | 1077 | 602 | ok |
+| blight_bull | beast | 338 | 326 | ok |
+| wicker_effigy | fire | 5804 | 488 | ok |
+| carrion_king | undead | 1416 | 633 | ok |
+| moon_gargoyle | stone | 1697 | 439 | ok |
+| ram_cultist | undead | 553 | 508 | ok |
+| storm_harpy | vermin | 2872 | 424 | ok |
+| rune_golem | stone | 438 | 424 | ok |
+| spectral_knight | ghost | 866 | 567 | ok |
+| storm_griffin | beast | 1628 | 333 | ok |
+| tower_lich | ghost | 860 | 481 | ok |
+| ember_imp | fire | 3113 | 424 | ok |
+| hellhound | beast | 519 | 316 | ok |
+| abyss_acolyte | undead | 461 | 454 | ok |
+| obsidian_sentinel | stone | 748 | 361 | ok |
+| pit_brute | beast | 299 | 280 | ok |
+| abyss_watcher | wet | 517 | 295 | ok |
+| abyss_tyrant | beast | 570 | 257 | ok |
+| frost_wight | ghost | 1371 | 607 | ok |
+| frost_wolf | beast | 612 | 371 | ok |
+| rime_shaman | undead | 2343 | 626 | ok |
+| glacier_knight | metal | 1695 | 519 | ok |
+| frost_troll | beast | 451 | 304 | ok |
+| ice_wyrm | beast | 1604 | 331 | ok |
+| winter_monarch | ghost | 1350 | 537 | ok |
+| bog_ghoul | wet | 910 | 552 | ok |
+| plague_toad | wet | 660 | 308 | ok |
+| leech_horror | wet | 1159 | 544 | ok |
+| mire_hag | undead | 1222 | 670 | ok |
+| croc_warrior | beast | 534 | 348 | ok |
+| spore_mother | wet | 1488 | 509 | ok |
+| rot_colossus | beast | 354 | 247 | ok |
+| dusk_shade | ghost | 861 | 467 | ok |
+| dusk_bat | vermin | 3129 | 346 | ok |
+| grave_thrall | undead | 1872 | 551 | ok |
+| blood_duke | undead | 2868 | 619 | ok |
+| dullahan | metal | 604 | 354 | ok |
+| fallen_angel | ghost | 1274 | 482 | ok |
+| eclipse_queen | ghost | 916 | 572 | ok |
 
-- TUDO aqui é ElevenLabs FREE (as 2 fontes EL e os recortes das entradas) e não tem uso comercial: está listado em `known_gaps.md` 0b.
-- Prioridade de regeração com voz própria de verdade (hoje é síntese, e é a mais "eletrônica"):
-  1. storm_harpy, storm_griffin e ember_imp (guincho FM);
-  2. plague_rats e dusk_bat (chiado sintético);
-  3. plague_toad (coaxo em trem de pulsos);
-  4. frost_wight, dusk_shade, spectral_knight, eclipse_queen e harvest_reaper (lamento sintético).
-- Depois disso, as famílias que dividem a mesma fonte EL com pitch (14 bestas e 13 mortos-vivos) merecem voz própria
-  cada uma: o 3-cabeças, o lobo, o touro e o croc soam parentes.
-- `attack` (vocal de preparo) e `roar` (buff): o runtime e os ganchos existem, mas NENHUM arquivo foi feito. Soltar
-  `attack_1.mp3`/`roar_1.mp3` na pasta já toca.
+| familia | centroide medio v1 (Hz) | centroide medio v2 (Hz) | arquivos |
+|---|---|---|---|
+| beast | 691 | 311 | 50 |
+| fire | 4458 | 456 | 10 |
+| ghost | 1072 | 539 | 40 |
+| metal | 1150 | 437 | 10 |
+| stone | 961 | 408 | 15 |
+| undead | 1595 | 587 | 45 |
+| vermin | 3602 | 504 | 15 |
+| wet | 947 | 442 | 25 |
+| TODAS | 1416 | 463 | 210 |
+
+## Tabela por criatura (v2)
+
+| ato | criatura | tipo | família | hurt: voz | hurt: material | death |
+|---|---|---|---|---|---|---|
+| 1 | cursed_scarecrow | comum | undead | EL morto-vivo x0.70 + entrada wake x0.80 | scene-rustle x0.80 + scene-wood-knock x0.70 | entrada stop x0.85 + EL morto-vivo x0.60 |
+| 1 | hollow_farmer | comum | undead | EL morto-vivo x0.72 | scene-stone-thud x0.75 + scene-wood-knock x0.65 | EL morto-vivo x0.62 + entrada stop x0.75 |
+| 1 | plague_rats | comum | vermin | entrada stop x0.70 + EL besta x0.95 | scene-rustle x0.80 | entrada start x0.75 + entrada stop x0.70 + EL besta x0.85 |
+| 1 | harvest_reaper | elite | ghost | EL morto-vivo x0.65 + entrada stop x0.80 | sword-sound x0.70 | EL morto-vivo x0.55 + entrada stop x0.70 + event-enter-wind x0.80 |
+| 1 | blight_bull | elite | beast | EL besta x0.70 + entrada stop x0.75 | scene-stone-thud x0.75 | EL besta x0.65 + boss_land_impact x0.80 |
+| 1 | wicker_effigy | mini-chefe | fire | entrada wake x0.80 + EL morto-vivo x0.60 | impact-fire x0.80 + scene-wood-knock x0.70 | entrada wake x0.70 + boss_hellfire_wall x0.80 + EL morto-vivo x0.55 |
+| 1 | carrion_king | chefe | undead | EL morto-vivo x0.70 + appear_2 x0.70 | boss_wing_pass x0.80 | EL morto-vivo x0.60 + cine_2 x0.75 + boss_death_thud x0.90 |
+| 2 | moon_gargoyle | comum | stone | entrada wake x0.80 + EL besta x0.80 | colossus_crack x0.85 + scene-stone-thud x0.80 | colossus_crumble x0.85 + EL besta x0.70 |
+| 2 | ram_cultist | comum | undead | EL morto-vivo x0.80 + EL besta x0.95 | impact-dark x0.80 | EL morto-vivo x0.70 + entrada stop x0.80 |
+| 2 | storm_harpy | comum | vermin | EL besta x0.95 + entrada stop x0.85 | boss_wing_pass x0.85 | EL besta x0.80 + thunder-near x0.90 + boss_feather_burst x0.80 |
+| 2 | rune_golem | elite | stone | entrada stop x0.80 + boss_eyes_rumble x0.85 | colossus_crack x0.80 | colossus_crumble x0.80 + entrada stop x0.70 |
+| 2 | spectral_knight | elite | ghost | EL morto-vivo x0.60 + entrada stop x0.85 | punching-light-armour x0.80 | EL morto-vivo x0.50 + entrada stop x0.70 + event-enter-wind x0.80 |
+| 2 | storm_griffin | mini-chefe | beast | EL besta x0.85 + entrada stop x0.85 | boss_wing_pass x0.80 | EL besta x0.70 + entrada stop x0.80 + thunder-mid x0.90 |
+| 2 | tower_lich | chefe | ghost | EL morto-vivo x0.60 + boss_rune_ignite x0.80 | scene-wood-knock x0.60 | EL morto-vivo x0.50 + boss_death_thud x0.85 + boss_ice_crackle x0.80 |
+| 3 | ember_imp | comum | fire | EL besta x1.00 + entrada rise x0.85 | impact-fire x0.85 | EL besta x0.85 + boss_lava_implosion x0.90 |
+| 3 | hellhound | comum | beast | entrada stop x0.85 + EL besta x0.85 | impact-fire x0.80 | EL besta x0.70 + entrada stop x0.75 + impact-fire x0.70 |
+| 3 | abyss_acolyte | comum | undead | EL morto-vivo x0.60 | scene-stone-thud x0.70 | EL morto-vivo x0.65 + entrada stop x0.75 + boss_eyes_rumble x0.85 |
+| 3 | obsidian_sentinel | elite | stone | entrada wake x0.80 + boss_eyes_rumble x0.80 | punching-light-armour x0.75 + colossus_crack x0.85 | colossus_crumble x0.80 + entrada stop x0.80 |
+| 3 | pit_brute | elite | beast | EL besta x0.65 + entrada stop x0.85 | scene-stone-thud x0.75 | EL besta x0.55 + entrada rise x0.80 + boss_land_impact x0.80 |
+| 3 | abyss_watcher | mini-chefe | wet | entrada stop x0.80 + EL morto-vivo x0.55 | impact-poison x0.75 | boss_death_thud x0.85 + entrada stop x0.70 + boss_spore_collapse x0.80 + EL morto-vivo x0.50 |
+| 3 | abyss_tyrant | chefe | beast | EL besta x0.55 + tyrant_unchained x0.80 | tyrant_chain_snap x0.80 | EL besta x0.50 + tyrant_chain_snap x0.80 + boss_lava_implosion x0.85 |
+| 4 | frost_wight | comum | ghost | EL morto-vivo x0.60 + entrada stop x0.80 | boss_ice_crackle x0.80 | impact-ice x0.70 + EL morto-vivo x0.50 + entrada stop x0.70 + boss_frost_shatter x0.80 |
+| 4 | frost_wolf | comum | beast | EL besta x0.95 + entrada stop x0.80 | scene-rustle x0.75 | entrada stop x0.85 + EL besta x0.80 |
+| 4 | rime_shaman | comum | undead | EL morto-vivo x0.80 | boss_ice_crackle x0.80 + scene-wood-knock x0.70 | EL morto-vivo x0.70 + entrada stop x0.80 + impact-ice x0.75 |
+| 4 | glacier_knight | elite | metal | EL morto-vivo x0.65 + entrada stop x0.80 | punching-light-armour x0.75 + impact-ice x0.80 | punching-light-armour x0.75 + entrada stop x0.70 + EL morto-vivo x0.55 + boss_frost_shatter x0.80 |
+| 4 | frost_troll | elite | beast | EL besta x0.70 + entrada stop x0.85 | scene-stone-thud x0.75 + impact-ice x0.75 | EL besta x0.60 + entrada start x0.80 + boss_land_impact x0.80 |
+| 4 | ice_wyrm | mini-chefe | beast | EL besta x0.75 + entrada rise x0.80 | boss_ice_crackle x0.75 | EL besta x0.60 + entrada rise x0.75 + boss_frost_shatter x0.80 |
+| 4 | winter_monarch | chefe | ghost | EL morto-vivo x0.60 + monarch_strike x0.80 | boss_ice_crackle x0.75 | EL morto-vivo x0.50 + boss_frost_shatter x0.75 + boss_blizzard_whiteout x0.85 |
+| 5 | bog_ghoul | comum | wet | EL morto-vivo x0.72 + entrada rise x0.70 | impact-poison x0.75 | EL morto-vivo x0.65 + entrada rise x0.75 |
+| 5 | plague_toad | comum | wet | EL besta x0.65 + entrada stop x0.80 | entrada hop x0.75 | EL besta x0.55 + entrada stop x0.70 + boss_spore_collapse x0.80 |
+| 5 | leech_horror | comum | wet | entrada rise x0.75 + EL morto-vivo x0.60 | impact-poison x0.70 | entrada rise x0.65 + boss_spore_collapse x0.75 + EL morto-vivo x0.50 |
+| 5 | mire_hag | elite | undead | EL morto-vivo x0.90 | entrada stop x0.80 | boss_death_thud x0.85 + entrada stop x0.75 + EL morto-vivo x0.80 + impact-poison x0.75 |
+| 5 | croc_warrior | elite | beast | entrada stop x0.80 + EL besta x0.75 | entrada start x0.80 | EL besta x0.60 + entrada start x0.75 |
+| 5 | spore_mother | mini-chefe | wet | entrada rise x0.75 + EL morto-vivo x0.55 | boss_spore_collapse x0.80 | entrada rise x0.65 + boss_spore_collapse x0.75 + EL morto-vivo x0.50 |
+| 5 | rot_colossus | chefe | beast | EL besta x0.55 + colossus_crack x0.80 | boss_roots_crawl x0.80 | colossus_crumble x0.80 + EL besta x0.50 |
+| 6 | dusk_shade | comum | ghost | EL morto-vivo x0.55 + entrada stop x0.80 | event-enter-wind x0.80 | boss_death_thud x0.85 + EL morto-vivo x0.45 + entrada stop x0.70 + boss_eclipse_fade x0.80 |
+| 6 | dusk_bat | comum | vermin | entrada stop x0.70 + EL besta x0.90 | boss_wing_pass x0.85 | entrada stop x0.65 + EL besta x0.75 + boss_feather_burst x0.80 |
+| 6 | grave_thrall | comum | undead | EL morto-vivo x0.70 + entrada rise x0.80 | scene-wood-knock x0.65 + punching-light-armour x0.80 | EL morto-vivo x0.60 + entrada rise x0.75 + boss_death_thud x0.85 |
+| 6 | blood_duke | elite | undead | EL morto-vivo x0.75 + entrada stop x0.80 | impact-dark x0.80 | EL morto-vivo x0.60 + entrada stop x0.75 + boss_wing_pass x0.80 |
+| 6 | dullahan | elite | metal | EL morto-vivo x0.55 + entrada stop x0.80 | punching-light-armour x0.75 | entrada stop x0.70 + EL morto-vivo x0.45 + tyrant_chain_snap x0.80 |
+| 6 | fallen_angel | mini-chefe | ghost | EL morto-vivo x0.70 + entrada stop x0.80 | boss_feather_burst x0.80 | EL morto-vivo x0.60 + entrada start x0.75 + boss_feathers_settle x0.85 |
+| 6 | eclipse_queen | chefe | ghost | EL morto-vivo x0.75 + boss_eclipse_hum x0.80 | impact-arcane x0.75 | boss_death_thud x0.85 + EL morto-vivo x0.60 + boss_eclipse_break x0.80 + boss_eclipse_fade x0.80 |
+
+Vozes COMPARTILHADAS (mesma fonte EL com pitch e material diferentes):
+- **EL besta**: touro, ratos, harpia, grifo, gárgula, diabrete, cão infernal, bruto, tirano, lobo, troll, wyrm, sapo,
+  croc, colosso, morcego e cultista.
+- **EL morto-vivo**: os demais humanoides, fantasmas e chefes que não são besta.
+
+## Pendente
+
+- TUDO ainda nasce de ElevenLabs FREE (as 2 fontes, as entradas e os sons de chefe): `known_gaps.md` 0d.
+- **Ouvir primeiro**:
+  - plague_rats, dusk_bat e storm_harpy: eram os mais "brinquedo" e agora são guincho grave com rosnado;
+  - plague_toad: era o trem de pulsos;
+  - um morto-vivo bem grave (abyss_acolyte, hollow_farmer, rime_shaman hurt_1, mire_hag), para checar se não virou só
+    ronco abafado em caixa de som pequena.
+- Voz própria por criatura, em vez de 2 fontes divididas por 42 criaturas: gerar com Stable Audio Open (depois do login
+  do dono) ou ElevenLabs pago, com prompts sérios por criatura.
+- `attack`/`roar`: runtime e ganchos prontos, sem arquivos.
 
 Ligações: [[sfx_generation]] · [[audio_system]] · [[enemy_entrances]] · [[boss_mechanics]]

@@ -161,3 +161,70 @@ def ascii_env(x, win=0.02):
     e = env(x, win)
     pk = e.max() + 1e-12
     return ''.join(' .:-=+*#%@'[min(9, int(9 * v / pk))] for v in e)
+
+
+def centroid(x, floor_db=-40):
+    n, hop = 2048, 512
+    if len(x) < n:
+        x = np.pad(x, (0, n - len(x)))
+    win = np.hanning(n)
+    freqs = np.fft.rfftfreq(n, 1 / SR)
+    num, den = 0.0, 0.0
+    frames = [x[i:i + n] for i in range(0, len(x) - n + 1, hop)]
+    rms = np.array([np.sqrt(np.mean(f ** 2)) for f in frames])
+    thr = rms.max() * 10 ** (floor_db / 20)
+    for f, r in zip(frames, rms):
+        if r < thr:
+            continue
+        mag = np.abs(np.fft.rfft(f * win)) ** 2
+        num += np.sum(freqs * mag)
+        den += np.sum(mag)
+    return num / den if den > 0 else 0.0
+
+
+def f0_track(x, fmin=55, fmax=2000, frame=0.04, hop=0.01, thresh=0.55):
+    n, h = int(frame * SR), int(hop * SR)
+    lo, hi = int(SR / fmax), int(SR / fmin)
+    y = signal.sosfilt(signal.butter(2, 3000 / (SR / 2), output="sos"), x)
+    e = env(x, hop)
+    pk = e.max() + 1e-12
+    out = []
+    for k, i in enumerate(range(0, len(y) - n - hi, h)):
+        f = y[i:i + n + hi]
+        if k < len(e) and e[k] < pk * 0.15:
+            out.append(0.0)
+            continue
+        a = f[:n] - f[:n].mean()
+        best, lag = 0.0, 0
+        den0 = np.sqrt(np.sum(a * a)) + 1e-12
+        for L in range(lo, hi):
+            b = f[L:L + n] - f[L:L + n].mean()
+            c = np.sum(a * b) / (den0 * (np.sqrt(np.sum(b * b)) + 1e-12))
+            if c > best:
+                best, lag = c, L
+        out.append(SR / lag if best >= thresh and lag else 0.0)
+    return np.array(out)
+
+
+def max_rise(x, minrun=6):
+    f = f0_track(x, thresh=0.7)
+    runs, cur = [], []
+    for v in f:
+        if v > 0 and (not cur or 0.85 < v / cur[-1] < 1.18):
+            cur.append(v)
+        else:
+            if len(cur) >= minrun:
+                runs.append(cur)
+            cur = [v] if v > 0 else []
+    if len(cur) >= minrun:
+        runs.append(cur)
+    worst = 1.0
+    for r in runs:
+        s = signal.medfilt(np.array(r), 5)[2:-2]
+        if len(s) < 2:
+            continue
+        lowest = s[0]
+        for v in s[1:]:
+            worst = max(worst, v / lowest)
+            lowest = min(lowest, v)
+    return worst

@@ -84,6 +84,31 @@ def grid(rows, out, title, cols=5, px_per_s=420):
     img.save(out)
 
 
+def ab_grid(groups, out, title, px_per_s=360):
+    label_w = 190
+    colw = [int(0.62 * px_per_s)] * 3 + [int(1.55 * px_per_s)] * 2
+    rh = WAVE_H + SPEC_H + 20
+    img = Image.new('RGB', (label_w + sum(colw) + 40, 30 + rh * len(groups)), (8, 8, 12))
+    d = ImageDraw.Draw(img)
+    d.text((6, 8), title, fill=(255, 255, 255))
+    for r, (label, items) in enumerate(groups):
+        y = 30 + r * rh
+        if label.endswith('(v2)'):
+            d.line([(0, y + rh - 1), (img.width, y + rh - 1)], fill=(90, 90, 110))
+        d.text((6, y + 30), label, fill=(240, 240, 200) if label.endswith('(v2)') else (150, 150, 150))
+        for c, (name, x, info) in enumerate(items):
+            xo = label_w + sum(colw[:c]) + 8 * c
+            w = max(1, min(colw[c], int(len(x) / D.SR * px_per_s)))
+            img.paste(wave_img(x, w), (xo, y + 16))
+            img.paste(spec_img(x, w), (xo, y + 16 + WAVE_H))
+            d.text((xo, y + 2), info, fill=(180, 180, 180))
+            for s10 in range(0, 16):
+                px = xo + int(s10 * 0.1 * px_per_s)
+                if px - xo <= w:
+                    d.line([(px, y + 16 + WAVE_H - 3), (px, y + 16 + WAVE_H)], fill=(255, 255, 0) if s10 % 5 == 0 else (90, 90, 0))
+    img.save(out)
+
+
 if __name__ == '__main__':
     out = sys.argv[1]
     rows = []
