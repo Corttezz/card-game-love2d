@@ -392,6 +392,7 @@ function Enemy:takeDamage(damage, dtype)
     self.health = math.max(0, self.health - effectiveDamage)
     BossMechanics.onDamaged(self, hpBefore - self.health, "hit")
     self:_markDeathIfCrossed(wasAlive)
+    require("src.systems.EnemySfx").hurt(self, hpBefore - self.health, level)
 
     if self.health < self.maxHealth * 0.3 then
         local wasEnraged = (self.attackPattern == "aggressive")

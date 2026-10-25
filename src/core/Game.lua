@@ -1090,6 +1090,7 @@ function Game:enemyTurn()
         local function applyHit(damage, pierce)
             local atkPitch = math.max(0.7, math.min(1.05, 1.1 - damage * 0.012))
             Sfx.playWithVariation("enemyAttack", atkPitch, 0.08)
+            require("src.systems.EnemySfx").attack(self.enemy)
             BossMechanics.onHitLanded(self.enemy, it)
             local hpBefore = self.player.health
             self.player:takeDamage(damage, pierce)
@@ -1184,7 +1185,7 @@ function Game:enemyTurn()
     if (it.strength or 0) > 0 then
         CombatBeats.push("enemy.buff", beat(function()
             self.enemy:gainStrength(it.strength)
-            Sfx.playWithVariation("enemyBuffRoar", 1.0, 0.06)
+            if not require("src.systems.EnemySfx").roar(self.enemy) then Sfx.playWithVariation("enemyBuffRoar", 1.0, 0.06) end
             if self.enemy.juice_up then self.enemy:juice_up(0.4, 0.1) end
             if ER and ER.triggerBuff then ER.triggerBuff() end
             local okCF, CardFeel = pcall(require, "src.systems.CardFeel")
@@ -1413,7 +1414,7 @@ function Game:_onEnemyDeath()
     end
     if _G.triggerShake then _G.triggerShake(18, 0.4) end
     if _G.jiggleScreen then _G.jiggleScreen(1.5) end
-    Sfx.play("enemyDeath")
+    require("src.systems.EnemySfx").death(self.enemy)
     self._deathPauseTimer = Game.DEATH_HOLD
 
     self.scoreSystem:finishBattle(self)
