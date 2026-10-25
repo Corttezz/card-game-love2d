@@ -4,7 +4,14 @@ local Resistances = {}
 
 Resistances.ENABLED = true
 
-Resistances.TYPES = { "physical", "fire", "ice", "lightning", "dark", "arcane", "poison" }
+Resistances.TYPES = { "physical", "fire", "ice", "lightning", "dark", "arcane", "poison", "holy" }
+
+local VALID = {}
+for _, ty in ipairs(Resistances.TYPES) do VALID[ty] = true end
+
+function Resistances.isValidType(ty)
+    return ty ~= nil and VALID[ty] == true
+end
 
 Resistances.MULT = { immune = 0, resist = 0.5, weak = 1.5 }
 
@@ -12,12 +19,12 @@ Resistances.LEVEL_ORDER = { immune = 1, resist = 2, weak = 3 }
 
 Resistances.ICON = {
     physical = "sword_short", fire = "flame", ice = "snowflake", lightning = "bolt",
-    dark = "moon", arcane = "rune", poison = "status_poison",
+    dark = "moon", arcane = "rune", poison = "status_poison", holy = "star",
 }
 
 Resistances.THEME = {
     physical = "physical", fire = "fire", ice = "ice", lightning = "lightning",
-    dark = "dark", arcane = "magic", poison = "poison",
+    dark = "dark", arcane = "magic", poison = "poison", holy = "holy",
 }
 
 Resistances.DOT_TYPE = { poison = "poison", burn = "fire" }
@@ -40,7 +47,15 @@ local function elementOf(card)
     return nil
 end
 
+local function explicitOf(card)
+    local ty = card and card.damageType
+    if ty and VALID[ty] then return ty end
+    return nil
+end
+
 function Resistances.ofCard(card)
+    local ex = explicitOf(card)
+    if ex then return ex end
     local el = elementOf(card)
     if el then return el end
     if hasTag(card, "magic") then return "arcane" end
@@ -48,7 +63,39 @@ function Resistances.ofCard(card)
 end
 
 function Resistances.ofSpell(card)
+    local ex = explicitOf(card)
+    if ex and ex ~= "physical" then return ex end
     return elementOf(card) or "arcane"
+end
+
+local function dealsDamage(card)
+    if card.type == "attack" and (card.attack or 0) > 0 then return true end
+    for _, e in ipairs(card.effects or {}) do
+        local t = e.type
+        if t == "magic_damage" or t == "aoe_magic_damage" then return true end
+        if t == "apply_debuff" and Resistances.DOT_TYPE[e.value] then return true end
+        if t == "on_attack_debuff" and Resistances.DOT_TYPE[e.debuffName or "poison"] then return true end
+    end
+    return false
+end
+
+function Resistances.dealsDamage(card)
+    return card ~= nil and dealsDamage(card)
+end
+
+function Resistances.elementOfCard(card)
+    if not card then return nil, false end
+    local ex = explicitOf(card)
+    local dmg = dealsDamage(card)
+    if ex then return ex, dmg end
+    if dmg then return Resistances.ofCard(card), true end
+    return nil, false
+end
+
+function Resistances.badgeOf(card)
+    local ty = Resistances.elementOfCard(card)
+    if ty == "physical" then return nil end
+    return ty
 end
 
 local EMPTY = {}

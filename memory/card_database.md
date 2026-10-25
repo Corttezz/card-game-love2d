@@ -31,6 +31,7 @@ my_card_id = {
     rarity      = "common",                  -- common | uncommon | rare | legendary
     class       = "warrior",                 -- warrior | mage | rogue | basic
     tags        = { "strike", "strength" },  -- Fase 1 (TagSystem)
+    damageType  = "physical",                -- OBRIGATÓRIO em carta que causa dano (memory/card_damage_types.md)
     innate      = false,                     -- opcional; Fase 2
     retain      = false,                     -- opcional
     effects     = { ... },                    -- data-driven

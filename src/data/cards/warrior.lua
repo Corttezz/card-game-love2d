@@ -1,6 +1,7 @@
 return {
     warrior_strike = {
         id = "warrior_strike", name = "Golpe",
+        damageType = "physical",
         type = "attack", subtype = "common",
         cost = 1, attack = 8, defense = 0,
         description = "Causa 8 de dano.",
@@ -21,6 +22,7 @@ return {
     },
     warrior_quick_strike = {
         id = "warrior_quick_strike", name = "Golpe Rapido",
+        damageType = "physical",
         type = "attack", subtype = "common",
         cost = 0, attack = 3, defense = 0,
         description = "Causa 3 de dano. Conta em DOBRO na Saraivada.",
@@ -55,6 +57,7 @@ return {
     },
     warrior_bash = {
         id = "warrior_bash", name = "Pancada",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 2, attack = 10, defense = 0,
         description = "Causa 10 de dano. Aplica Vulnerável por 2 turnos.",
@@ -68,6 +71,7 @@ return {
     },
     warrior_iron_wave = {
         id = "warrior_iron_wave", name = "Onda de Ferro",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 1, attack = 5, defense = 0,
         description = "Causa 5 de dano. Ganha 5 de Bloqueio.",
@@ -80,6 +84,7 @@ return {
     },
     warrior_heavy_blade = {
         id = "warrior_heavy_blade", name = "Lamina Pesada",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Força conta em DOBRO.",
@@ -176,6 +181,7 @@ return {
     },
     warrior_twin_strike = {
         id = "warrior_twin_strike", name = "Golpe Duplo",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 2, attack = 7, defense = 0,
         description = "Causa 7 de dano 2 vezes.",
@@ -228,6 +234,7 @@ return {
 
     warrior_colossus_blow = {
         id = "warrior_colossus_blow", name = "Golpe Colossal",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 3, attack = 24, defense = 0,
         description = "Causa 24 de dano. Força conta em DOBRO.",
@@ -304,6 +311,7 @@ return {
     },
     warrior_dark_embrace = {
         id = "warrior_dark_embrace", name = "Abraco Sombrio",
+        damageType = "dark",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
         description = "+3 de Bloqueio em cartas de defesa. Todas as curas recebidas são aumentadas em 50%.",
@@ -329,6 +337,7 @@ return {
     },
     warrior_feed = {
         id = "warrior_feed", name = "Alimentar",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 1, attack = 12, defense = 0,
         description = "Causa 12 de dano. Cura 8 de HP. Exaurir.",
@@ -342,12 +351,13 @@ return {
     },
     warrior_immolate = {
         id = "warrior_immolate", name = "Imolar",
+        damageType = "fire",
         type = "attack", subtype = "skill",
         cost = 2, attack = 18, defense = 0,
         description = "Causa 18 de dano. Aplica Vulnerável por 2 turnos. Exaurir.",
         image = "assets/cards/attack/theRock.png",
         rarity = "rare", class = "warrior",
-        tags = { "strike", "exhaust", "finisher" },
+        tags = { "strike", "fire", "exhaust", "finisher" },
         effects = {
             { type = "apply_debuff", value = "vulnerable", stacks = 1, duration = 2 },
             { type = "exhaust" },

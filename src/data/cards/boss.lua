@@ -1,6 +1,7 @@
 return {
     joker_boss_carrion = {
         id = "joker_boss_carrion", name = "Coroa da Carnica",
+        damageType = "dark",
         type = "joker", subtype = "boss",
         cost = 2, attack = 0, defense = 0,
         description = "Cada carta de ataque causa +1 de dano e cura 1 de PV.",
@@ -15,6 +16,7 @@ return {
     },
     joker_boss_lich = {
         id = "joker_boss_lich", name = "Filacterio do Lich",
+        damageType = "ice",
         type = "joker", subtype = "boss",
         cost = 2, attack = 0, defense = 0,
         description = "Canaliza 1 orbe de Gelo (valor 3) no inicio de cada turno.",
@@ -27,6 +29,7 @@ return {
     },
     joker_boss_tyrant = {
         id = "joker_boss_tyrant", name = "Coracao do Tirano",
+        damageType = "fire",
         type = "joker", subtype = "boss",
         cost = 2, attack = 0, defense = 0,
         description = "Cada carta de ataque aplica 3 de Queimadura.",
@@ -40,6 +43,7 @@ return {
     },
     joker_boss_winter = {
         id = "joker_boss_winter", name = "Egide do Inverno",
+        damageType = "ice",
         type = "joker", subtype = "boss",
         cost = 2, attack = 0, defense = 0,
         description = "O Bloqueio nao zera entre turnos. +2 de Bloqueio em cartas de defesa.",
@@ -66,6 +70,7 @@ return {
     },
     joker_boss_eclipse = {
         id = "joker_boss_eclipse", name = "Halo do Eclipse",
+        damageType = "dark",
         type = "joker", subtype = "boss",
         cost = 2, attack = 0, defense = 0,
         description = "A primeira carta de ataque de cada turno causa dano dobrado. Compra 1 carta extra no inicio de cada turno.",
