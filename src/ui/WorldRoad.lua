@@ -3682,6 +3682,14 @@ local function forkOffset(f, i, rel, w, plan)
     return off
 end
 
+function WorldRoad.branchTurn(f, i, g, w)
+    if not f or not f.dirs or (f.dirs[i] or 0) == 0 then return 0 end
+    local t0, t1 = g.tOf(FORK_REL), g.tOf(MARK_REL)
+    if not (t0 and t1) then return 0 end
+    local dx = forkOffset(f, i, MARK_REL, w, true) - forkOffset(f, i, FORK_REL, w, true)
+    local dy = g.latY(0, t0) - g.latY(dx, t1)
+    return math.min(90, math.max(0, math.deg(math.atan2(math.abs(dx), math.max(1e-3, dy)))))
+end
 function WorldRoad.forkWobK(f, i, plan)
     local ai = plan and 1 or (f.animIn or 1)
     ai = ai * ai * (3 - 2 * ai)
@@ -3894,8 +3902,9 @@ function WorldRoad.forkMousePressed(mx, my)
         local fights = nt == "battle" or nt == "elite" or nt == "mini_boss"
         WorldRoad.planStop(WorldRoad._camZ + MARK_REL - ARRIVE_REL
             + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), fights)
+        local pg, pw = LMG.planGeom()
         require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL, nt == "boss",
-            WorldRoad.isWalkType(nt))
+            WorldRoad.isWalkType(nt), WorldRoad.branchTurn(f, i, pg, pw))
         if node then
             local key = landmarkKeyFor(node.type)
             local img = key and getLandmark(key)

@@ -34,6 +34,36 @@ function M.run()
             :format(bid, f.frames), same)
     end
 
+    do
+        local g = WorldRoad.domeGeom(0, 80, 1920, 1000)
+        local function swingFor(off, walk)
+            local f = { n = 2, dirs = { 0, 1 }, offK = { 0, off }, markZ = 17.5 }
+            local deg = WorldRoad.branchTurn(f, 2, g, 1920)
+            CD.reset()
+            CD.pick(1, 0, 1, false, walk, deg)
+            return math.abs(CD.target()), deg
+        end
+        local prev, mono, worstAt = -1, true, 0
+        for k = 1, 60 do
+            local off = k * 0.01
+            local sw = swingFor(off, false)
+            if sw < prev - 1e-9 then mono, worstAt = false, off end
+            prev = sw
+        end
+        t:truthy(("giro do castelo cresce com a curva do ramo (offK 0,01 a 0,60%s)")
+            :format(mono and "" or (", cai em " .. worstAt)), mono)
+        local full, fdeg = swingFor(20, false)
+        t:truthy(("ramo de 90 graus leva o castelo ao canto inteiro (curva %.1f graus, giro %.3f)"):format(fdeg, full),
+            full >= 0.99 and CD.turnK(90) == 1)
+        local shallow, sdeg = swingFor(0.04, false)
+        t:truthy(("ramo raso fica longe do canto (curva %.1f graus, giro %.3f)"):format(sdeg, shallow),
+            shallow <= 0.4 and sdeg < 36)
+        local we = swingFor(0.3, true)
+        local wd = swingFor(0.3, false)
+        t:truthy(("elite usa a mesma curva vezes %.2f (%.3f contra %.3f)"):format(CD.WALK_K, we, wd),
+            math.abs(we - wd * CD.WALK_K) < 1e-6)
+        CD.reset()
+    end
     local drifts = { -1, -CD.WALK_K, 0, CD.WALK_K, 1 }
     for _, res in ipairs(P.RES) do
         local W, H = res[1], res[2]

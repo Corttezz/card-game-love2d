@@ -58,6 +58,25 @@ def gif(items, dst, tw=640):
     return dst
 
 
+def pair(left, right, dst, title, n=8, tw=640):
+    if not left or not right:
+        return None
+    a, b = pick(left, n), pick(right, n)
+    rows = min(len(a), len(b))
+    th = int(tw * 1080 / 1920)
+    out = Image.new("RGB", (2 * tw, rows * th + 18), (0, 0, 0))
+    ImageDraw.Draw(out).text((4, 3), title, fill=(255, 255, 0))
+    for r in range(rows):
+        for c, (n_, ph, p) in enumerate((a[r], b[r])):
+            im = Image.open(p).convert("RGB").resize((tw, th), Image.LANCZOS)
+            d = ImageDraw.Draw(im)
+            d.rectangle((0, 0, 230, 14), fill=(0, 0, 0))
+            d.text((3, 1), "%s %s f%d" % ("raso" if c == 0 else "fechado", ph, n_), fill=(255, 255, 255))
+            out.paste(im, (c * tw, 18 + r * th))
+    out.save(dst, quality=82)
+    return dst
+
+
 def run():
     want = sys.argv[1] if len(sys.argv) > 1 else ""
     gif_tag = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -72,10 +91,16 @@ def run():
         a = sheet(pick(turn, 12), os.path.join(OUT, "curva_%s.jpg" % tag), "%s: curva (escolha do ramo)" % tag)
         b = sheet(pick(back, 14) + nxt, os.path.join(OUT, "volta_%s.jpg" % tag), "%s: volta a trilha" % tag)
         made += [p for p in (a, b) if p]
+        if tag.endswith("_3_loja"):
+            raso = frames().get(tag.replace("_3_loja", "_3_descanso"), [])
+            seq = lambda lst: [x for x in lst if x[1] in ("converge", "partida")]
+            made.append(pair(seq(raso), seq(lst), os.path.join(OUT, "comparar_%s.jpg" % tag.split("_")[0]),
+                             "%s: curva rasa (esq.) x curva fechada (dir.)" % tag.split("_")[0]))
         if gif_tag and tag == gif_tag:
             made.append(gif(turn + back + nxt, os.path.join(OUT, "curva_%s.gif" % tag)))
     for p in made:
-        print(p)
+        if p:
+            print(p)
 
 
 if __name__ == "__main__":

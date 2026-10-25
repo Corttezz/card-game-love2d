@@ -7,6 +7,7 @@ CastleDrift.FADE_TO = 0.8
 CastleDrift.INSET = 0.3
 CastleDrift.MIN_REACH = 0.05
 CastleDrift.WALK_K = 0.55
+CastleDrift.FULL_TURN = 90
 CastleDrift.BACK_P = -2.4
 CastleDrift.REDUCED = { reach = 0.12 }
 
@@ -44,12 +45,17 @@ function CastleDrift.target()
     return st.to
 end
 
-function CastleDrift.pick(dir, camZ, len, toCenter, walk)
+function CastleDrift.turnK(deg)
+    if deg == nil then return 1 end
+    return math.min(1, math.max(0, deg / CastleDrift.FULL_TURN))
+end
+
+function CastleDrift.pick(dir, camZ, len, toCenter, walk, turnDeg)
     local cur = CastleDrift.raw(camZ)
     local to = 0
     if not toCenter then
         local d = (dir or 0) > 0 and 1 or ((dir or 0) < 0 and -1 or 0)
-        to = CastleDrift.SIGN * d * (walk and CastleDrift.WALK_K or 1)
+        to = CastleDrift.SIGN * d * (walk and CastleDrift.WALK_K or 1) * CastleDrift.turnK(turnDeg)
     end
     st.from, st.to, st.z0, st.len, st.back = cur, to, camZ, math.max(1e-3, len or 1), false
 end
