@@ -80,8 +80,8 @@ function M.run()
     t:eq("chefe desconhecido cai na faixa generica",
          MD.pick("playing", chefe("chefe_inexistente", 2), "boss", true, false), MD.GENERIC_BOSS)
 
-    t:eq("fase death da cinematica: mantem o que toca (nunca comeca a faixa na morte)",
-         MD.pick("playing", rei, "boss", true, "death"), nil)
+    t:eq("fase death da cinematica: a faixa do chefe some (silencio, nunca comeca a faixa na morte)",
+         MD.pick("playing", rei, "boss", true, "death"), S)
     t:eq("fase intro como texto = silencio", MD.pick("playing", rei, "boss", true, "intro"), S)
     t:eq("actTrack e a fonte unica da faixa do ato", MD.actTrack({ actNumber = 4 }), "musicAct4")
     t:eq("morte do chefe (fase death, salao) mantem a faixa dele",
