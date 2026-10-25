@@ -297,7 +297,10 @@ showRoundEval = function()
     setRunStage("cashout")
 
     if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
-    Sfx.play("battleVictory")
+    do
+        local r = game.runManager and game.runManager.currentRun
+        require("src.systems.MusicMoments").cashOutChime(r, r and r.currentNode and r.currentNode.type)
+    end
 
     local sources = game:_buildRoundEvalSources()
     roundEvalScreen:show(game, sources, function()
@@ -1479,7 +1482,7 @@ function love.update(dt)
         if musicState == "rest" and restScreen and restScreen.pickerFrom then
             musicState = restScreen.pickerFrom
         end
-        require("src.systems.MusicDirector").apply(musicState, run, node and node.type)
+        require("src.systems.MusicDirector").apply(musicState, run, node and node.type, dt)
         local nt = node and node.type
         require("src.systems.PlaceAudio").apply(dt, currentState, {
             nodeType = nt,

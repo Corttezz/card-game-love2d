@@ -56,6 +56,7 @@ function MusicDirector.registerTracks(audioSystem)
         load(code, "audio/music/" .. MusicDirector.bossFile(id))
     end
     require("src.systems.MusicSections").scan(MusicDirector.BOSS_TRACKS)
+    require("src.systems.MusicMoments").register(audioSystem)
     return loaded
 end
 
@@ -168,7 +169,7 @@ function MusicDirector.pick(state, run, nodeType, inHall, introPlaying)
         if inHall == false or introPlaying == true or introPlaying == "intro" then
             return MusicDirector.SILENCE
         end
-        if introPlaying == "death" then return nil end
+        if introPlaying == "death" then return MusicDirector.SILENCE end
         return MusicDirector.bossTrack(run)
     end
 
@@ -222,10 +223,14 @@ local function introNow(nodeType)
     return (ok and BC and BC.phase and BC.phase()) or false
 end
 
-function MusicDirector.apply(state, run, nodeType)
+function MusicDirector.apply(state, run, nodeType, dt)
     if not MusicDirector.enabled then return end
 
+    local Moments = require("src.systems.MusicMoments")
+    Moments.update(dt, state, run, nodeType)
     local wanted = MusicDirector.pick(state, run, nodeType, inHallNow(nodeType), introNow(nodeType))
+    local forced = Moments.override(state, nodeType)
+    if forced then wanted = MusicDirector.SILENCE end
     if not wanted and MusicDirector.KEEP_STATES[state] then
         local atual = atualDe()
         if atual == "menuMusic"
@@ -241,7 +246,7 @@ function MusicDirector.apply(state, run, nodeType)
             Debug.log(string.format("[Musica] silencio | tocando %s (estado=%s, no=%s)",
                 tostring(tocandoAgora()), tostring(state), tostring(nodeType or "-")))
         end
-        if tocandoAgora() then Sfx.silenceMusic(MusicDirector.FADE_SILENCE) end
+        if tocandoAgora() then Sfx.silenceMusic(forced or Moments.silenceFade(MusicDirector.FADE_SILENCE)) end
         MusicDirector._current = MusicDirector.SILENCE
         return
     end
@@ -277,6 +282,8 @@ function MusicDirector.apply(state, run, nodeType)
         end
         return
     end
+
+    if Moments.holding(state) then return end
 
     local saindoDoMenu = (atual == "menuMusic" and code ~= "menuMusic")
     local fade = (BOSS_CODES[code] or saindoDoMenu) and FADE_FAST or FADE_SLOW

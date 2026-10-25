@@ -58,6 +58,8 @@ function Source:getDuration() return self.dur end
 function Source:tell() return self.pos end
 function Source:seek(p) self.pos = math.max(0, math.min(self.dur, p or 0)) end
 function Source:getType() return self.kind end
+function Source:setFilter(f) self.filter = f end
+function Source:getFilter() return self.filter end
 function Source:release() self.playing = false end
 function Source:typeOf(n) return n == "Source" or n == "Object" end
 function Source:clone()
