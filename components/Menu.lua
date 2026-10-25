@@ -72,10 +72,8 @@ function Menu:_title()    return I18n.t("menu.title") end
 
 function Menu:createButtons()
     local centerX = love.graphics.getWidth() / 2
-    local startY = love.graphics.getHeight() * 0.5
+    local startY, spacing, buttonHeight = MenuBrand.buttonColumn(love.graphics.getHeight())
     local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 250, "width")
-    local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 60, "height")
-    local spacing = Config.Utils.getResponsiveSize(Config.UI.BUTTON_SPACING_RATIO, 80, "height")
 
     local SaveManager = require("engine.SaveManager")
     self._hasSave = SaveManager.hasRun and SaveManager.hasRun() or false
@@ -161,10 +159,8 @@ end
 
 function Menu:updatePositions()
     local centerX = love.graphics.getWidth() / 2
-    local startY = love.graphics.getHeight() * 0.5
+    local startY, spacing, buttonHeight = MenuBrand.buttonColumn(love.graphics.getHeight())
     local buttonWidth = Config.Utils.getResponsiveSize(Config.UI.BUTTON_WIDTH_RATIO, 250, "width")
-    local buttonHeight = Config.Utils.getResponsiveSize(Config.UI.BUTTON_HEIGHT_RATIO, 60, "height")
-    local spacing = Config.Utils.getResponsiveSize(Config.UI.BUTTON_SPACING_RATIO, 80, "height")
 
     if self.buttons.continueRun then
         self.buttons.continueRun:setPosition(centerX - buttonWidth / 2, startY - spacing)

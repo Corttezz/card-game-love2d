@@ -1,6 +1,8 @@
 local TK = require("tools.testkit")
 local M = {}
 
+local OLD_P = { ["1280x720"] = 1, ["1920x1080"] = 2, ["2560x1440"] = 2, ["3840x2160"] = 4 }
+
 local SIZES = { { 1280, 720 }, { 1366, 768 }, { 1920, 1080 }, { 2560, 1440 }, { 3840, 2160 }, { 1024, 768 } }
 
 local function fakeWindow(w, h)
@@ -192,11 +194,31 @@ function M.run()
             local tag = ("%dx%d"):format(w, h)
             t:truthy(tag .. ": escala inteira >= 1 (P=" .. L.P .. ")", L.P >= 1 and L.P == math.floor(L.P))
             t:truthy(tag .. ": origem no pixel fisico", L.ox == math.floor(L.ox) and L.oy == math.floor(L.oy))
-            t:truthy(tag .. ": cabe na metade da largura", require("src.data.menu_brand").word.w * L.P <= w * 0.5 + 0.5)
-            local spacing = math.min(80, vh * 0.1)
-            local bottomV = (L.oy + MenuBrand.TOTAL_H * L.P) / k
-            t:truthy(("%s: acima do primeiro botao (%.0f <= %.0f)"):format(tag, bottomV, vh * 0.5 - spacing),
-                bottomV <= vh * 0.5 - spacing)
+            local D = require("src.data.menu_brand")
+            t:truthy(tag .. ": palavra ate 42% da largura", D.word.w * L.P <= w * MenuBrand.ZONE.wordMaxW + 0.5)
+            local want = OLD_P[tag] and math.ceil(OLD_P[tag] * 1.5) or 1
+            t:truthy(("%s: palavra >= 1,5x o tamanho antigo (P=%d, antes %s)"):format(tag, L.P, tostring(OLD_P[tag])),
+                L.P >= want)
+            t:truthy(tag .. ": selo no maximo 2 degraus menor que a palavra (Ps=" .. L.Ps .. ")",
+                L.Ps >= 1 and L.Ps <= L.P and L.Ps >= L.P - MenuBrand.ZONE.sealDrop)
+            local bottomV = (L.top + L.total) / k
+            local SaveManager = require("engine.SaveManager")
+            local realHasRun = SaveManager.hasRun
+            for _, withSave in ipairs({ false, true }) do
+                SaveManager.hasRun = function() return withSave end
+                local m = Menu:new()
+                local minY, n = math.huge, 0
+                for _, b in pairs(m.buttons) do
+                    n = n + 1
+                    minY = math.min(minY, b.y)
+                    t:truthy(("%s %s: botao dentro da tela (%.0f <= %d)"):format(tag, withSave and "com save" or "sem save",
+                        b.y + b.height, vh), b.y + b.height <= vh + 0.5)
+                end
+                t:eq(("%s %s: numero de botoes"):format(tag, withSave and "com save" or "sem save"), n, withSave and 6 or 5)
+                t:truthy(("%s %s: logo acima do 1o botao (%.0f <= %.0f)"):format(tag, withSave and "com save" or "sem save",
+                    bottomV, minY), bottomV <= minY)
+            end
+            SaveManager.hasRun = realHasRun
             local menu = Menu:new()
             step(menu, 0.1)
             menu.brand.sweeps, menu.brand.twinkles, menu.brand.emberT0 = {}, {}, math.huge
