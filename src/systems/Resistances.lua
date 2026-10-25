@@ -92,12 +92,6 @@ function Resistances.elementOfCard(card)
     return nil, false
 end
 
-function Resistances.badgeOf(card)
-    local ty = Resistances.elementOfCard(card)
-    if ty == "physical" then return nil end
-    return ty
-end
-
 local EMPTY = {}
 
 function Resistances.tableFor(enemy)

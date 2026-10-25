@@ -13,8 +13,6 @@ local CardRaritySeal  = require("src.ui.card.components.CardRaritySeal")
 local CardArtSlot     = require("src.ui.card.components.CardArtSlot")
 local CardDecoration  = require("src.ui.card.components.CardDecoration")
 local CardStatsFooter = require("src.ui.card.components.CardStatsFooter")
-local CardElementBadge = require("src.ui.card.components.CardElementBadge")
-local Resistances     = require("src.systems.Resistances")
 
 local JokerBorder = require("src.ui.card.components.joker.JokerBorder")
 local JokerHeader = require("src.ui.card.components.joker.JokerHeader")
@@ -86,12 +84,6 @@ function CardFrame.artSlotBounds(card)
     return artSlotBounds(card)
 end
 
-function CardFrame.elementBadgeRect(card)
-    if not card or not CardElementBadge.has(Resistances.badgeOf(card)) then return nil end
-    local footerH = (card.type == "joker") and JokerFooter.HEIGHT or CardStatsFooter.HEIGHT
-    return CardElementBadge.rect(CardFrame.WIDTH, CardFrame.HEIGHT, footerH)
-end
-
 local BANNER_SHADOW_INSET = {
     common    = 3,
     uncommon  = 3,
@@ -145,7 +137,6 @@ local function renderStandard(card, w, h, iconOverride, skipIcon)
     CardCostBadge.draw(card.cost or 0)
     CardRaritySeal.draw(w, rarity)
     CardStatsFooter.draw(w, h, card)
-    CardElementBadge.draw(w, h, CardStatsFooter.HEIGHT, Resistances.badgeOf(card))
 end
 
 local function renderJoker(card, w, h, iconOverride, skipIcon)
@@ -169,7 +160,6 @@ local function renderJoker(card, w, h, iconOverride, skipIcon)
     JokerMoon.draw()
     JokerSeal.draw(w, rarity)
     JokerFooter.draw(w, h)
-    CardElementBadge.draw(w, h, JokerFooter.HEIGHT, Resistances.badgeOf(card))
 end
 
 local keyMemo = setmetatable({}, { __mode = "k" })
@@ -573,7 +563,6 @@ CardFrame.components = {
     artSlot = CardArtSlot,
     decoration = CardDecoration,
     footer = CardStatsFooter,
-    elementBadge = CardElementBadge,
     jokerBorder = JokerBorder,
     jokerHeader = JokerHeader,
     jokerSeal   = JokerSeal,

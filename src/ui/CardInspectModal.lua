@@ -234,6 +234,18 @@ function CardInspectModal:draw()
         statY = statY + 20
     end
 
+    do
+        local Glyph = require("src.ui.ElementGlyph")
+        local elem = Glyph.line(inst)
+        self._elementRect = nil
+        if elem then
+            local eh = Glyph.drawLine(elem, panelX + PAD, statY, FontManager.getFont(10), anim, TEXT_W)
+            local sx, sy = love.graphics.transformPoint(panelX + PAD, statY)
+            self._elementRect = { x = panelX + PAD, y = statY, sx = sx, sy = sy, type = elem.type }
+            statY = statY + math.max(20, eh + 6)
+        end
+    end
+
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], 0.6 * anim)
     love.graphics.rectangle("fill", panelX + PAD, statY + 4, TEXT_W, 1)
     statY = statY + 14

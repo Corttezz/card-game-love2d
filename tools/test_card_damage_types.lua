@@ -77,98 +77,138 @@ local function checkCombat(t)
     t:eq("Imolar e fraco contra o lich (fogo)", R.level(lich, R.ofCard(imm)), "weak")
 end
 
-local function nonEmpty(data, x0, y0, w, h)
+local function glyphHits(data, x0, y0, w, h, col)
+    local W, H = data:getDimensions()
     local n = 0
-    for y = y0, y0 + h - 1 do
-        for x = x0, x0 + w - 1 do
-            local _, _, _, a = data:getPixel(x, y)
-            if a > 0 then n = n + 1 end
+    for y = math.max(0, y0), math.min(H - 1, y0 + h - 1) do
+        for x = math.max(0, x0), math.min(W - 1, x0 + w - 1) do
+            local r, g, b = data:getPixel(x, y)
+            if math.abs(r - col[1]) < 0.03 and math.abs(g - col[2]) < 0.03
+                and math.abs(b - col[3]) < 0.03 then
+                n = n + 1
+            end
         end
     end
     return n
 end
 
+local function sameImage(a, b)
+    local w, h = a:getDimensions()
+    local w2, h2 = b:getDimensions()
+    if w ~= w2 or h ~= h2 then return false, -1 end
+    local diff = 0
+    for y = 0, h - 1 do
+        for x = 0, w - 1 do
+            local r1, g1, b1, a1 = a:getPixel(x, y)
+            local r2, g2, b2, a2 = b:getPixel(x, y)
+            if r1 ~= r2 or g1 ~= g2 or b1 ~= b2 or a1 ~= a2 then diff = diff + 1 end
+        end
+    end
+    return diff == 0, diff
+end
+
+local function stripped(cd)
+    local c = {}
+    for k, v in pairs(cd) do c[k] = v end
+    c.damageType = nil
+    return c
+end
+
 local function checkRender(t, db)
     local CardFrame = require("src.ui.CardFrame")
-    local Badge = require("src.ui.card.components.CardElementBadge")
-    local R = require("src.systems.Resistances")
+    t:eq("CardFrame nao conhece selo de elemento", CardFrame.elementBadgeRect, nil)
+    t:eq("nenhum componente de selo na moldura", (CardFrame.components or {}).elementBadge, nil)
+    t:falsy("componente antigo apagado",
+        love.filesystem.getInfo("src/ui/card/components/CardElementBadge.lua"))
     local all = db:getAllCards()
-    local out, overlap, noBadge, badgeOnPhysical = {}, {}, {}, {}
-    local W, H = CardFrame.WIDTH, CardFrame.HEIGHT
-    for _, id in ipairs(sortedIds(all)) do
-        local cd = all[id]
-        local inst = db:createCardInstance(cd)
-        local ty = R.badgeOf(inst)
-        local rect = { CardFrame.elementBadgeRect(inst) }
-        if ty then
-            if not Badge.has(ty) or not rect[1] then
-                noBadge[#noBadge + 1] = id
-            else
-                local x, y, w, h = rect[1], rect[2], rect[3], rect[4]
-                if x < 0 or y < 0 or x + w > W or y + h + 1 > H then out[#out + 1] = id end
-                local ax, ay, aw, ah = CardFrame.artSlotBounds(inst)
-                if x < ax or x + w > ax + aw or y < ay or y + h > ay + ah then
-                    overlap[#overlap + 1] = id
-                end
-            end
-        elseif rect[1] then
-            badgeOnPhysical[#badgeOnPhysical + 1] = id
-        end
-    end
-    t:eq("todo tipo nao fisico tem selo", table.concat(noBadge, ","), "")
-    t:eq("selo dentro da carta", table.concat(out, ","), "")
-    t:eq("selo dentro da janela da arte (nao cobre custo, selo, nome nem rodape)",
-        table.concat(overlap, ","), "")
-    t:eq("fisico e sem tipo nao ganham selo", table.concat(badgeOnPhysical, ","), "")
-
-    for _, id in ipairs({ "mage_fireball", "rogue_poison_dart", "joker_boss_lich", "mage_radiant_prayer" }) do
-        CardFrame.invalidate({ id = id })
-        local inst = db:createCardInstance(all[id])
-        local img = CardFrame.render(inst)
-        local data = img:newImageData()
-        local x, y, w, h = CardFrame.elementBadgeRect(inst)
-        local col = Badge.colors(R.badgeOf(inst)).glyph
-        local hits = 0
-        for py = y, y + h - 1 do
-            for px = x, x + w - 1 do
-                local r, g, b = data:getPixel(px, py)
-                if math.abs(r - col[1]) < 0.02 and math.abs(g - col[2]) < 0.02
-                    and math.abs(b - col[3]) < 0.02 then
-                    hits = hits + 1
-                end
-            end
-        end
-        t:truthy(id .. ": glifo do elemento pintado no canvas (" .. hits .. " px)", hits >= 8)
-        t:truthy(id .. ": canvas inteiro opaco no miolo", nonEmpty(data, x, y, w, h) == w * h)
-        data:release()
-        local anim = CardFrame.getAnimation(inst)
-        if anim then
-            local missingFrames = 0
-            for i, cv in ipairs(anim.canvases) do
-                local d = cv:newImageData()
-                local fh = 0
-                for py = y, y + h - 1 do
-                    for px = x, x + w - 1 do
-                        local r, g, b = d:getPixel(px, py)
-                        if math.abs(r - col[1]) < 0.02 and math.abs(g - col[2]) < 0.02
-                            and math.abs(b - col[3]) < 0.02 then
-                            fh = fh + 1
-                        end
-                    end
-                end
-                if fh < 8 then missingFrames = missingFrames + 1 end
-                d:release()
-                if i >= 6 then break end
-            end
-            t:eq(id .. ": selo em todo quadro animado", missingFrames, 0)
-        end
+    local ids = { "mage_fireball", "rogue_poison_dart", "joker_boss_lich", "mage_radiant_prayer",
+        "warrior_immolate", "mage_doom_and_gloom", "mage_zap", "mage_arcane_torrent" }
+    for _, id in ipairs(ids) do
+        CardFrame.clearCache()
+        local a = CardFrame.render(db:createCardInstance(all[id])):newImageData()
+        CardFrame.clearCache()
+        local b = CardFrame.render(db:createCardInstance(stripped(all[id]))):newImageData()
+        local same, diff = sameImage(a, b)
+        t:truthy(id .. ": arte da carta nao muda com o damageType (" .. diff .. " px diferentes)", same)
+        a:release()
+        b:release()
         love.graphics.present()
     end
+    CardFrame.clearCache()
+end
+
+local function drawTo(w, h, fn)
+    local cv = love.graphics.newCanvas(w, h)
+    love.graphics.push("all")
+    love.graphics.setCanvas(cv)
+    love.graphics.clear(0, 0, 0, 1)
+    fn()
+    love.graphics.pop()
+    local data = cv:newImageData()
+    cv:release()
+    return data
+end
+
+local function checkSurface(t, label, data, rect, ty)
+    local Glyph = require("src.ui.ElementGlyph")
+    if not t:truthy(label .. ": linha de tipo desenhada", rect and rect.type == ty) then return end
+    local hits = glyphHits(data, math.floor(rect.sx or rect.x), math.floor(rect.sy or rect.y), 40, 30, Glyph.colors(ty).glyph)
+    t:truthy(label .. ": glifo na cor do elemento (" .. hits .. " px)", hits >= 8)
+end
+
+local function checkSurfaces(t, db)
+    local all = db:getAllCards()
+    local fire = db:createCardInstance(all.mage_fireball)
+
+    local CID = require("src.ui.CardInfoDisplay")
+    local d = CID:new()
+    local data = drawTo(800, 600, function() d:draw(fire, 400, 400, {}) end)
+    checkSurface(t, "tooltip", data, d.lastElementRect, "fire")
+    data:release()
+    local dd = CID:new()
+    data = drawTo(800, 600, function() dd:draw(db:createCardInstance(all.warrior_defend), 400, 400, {}) end)
+    t:eq("tooltip de defesa sem elemento nao tem linha", dd.lastElementRect, nil)
+    data:release()
+
+    local Modal = require("src.ui.CardInspectModal")
+    local m = Modal:new()
+    m:show(db:createCardInstance(all.rogue_poison_dart))
+    m.anim = 1
+    data = drawTo(love.graphics.getWidth(), love.graphics.getHeight(), function() m:draw() end)
+    checkSurface(t, "inspecao (deck/recompensa)", data, m._elementRect, "poison")
+    data:release()
+
+    local okC, err = pcall(function()
+        require("src.systems.UnlockSystem").setRevealAll(true)
+        local c = require("components.CollectionScreen"):new()
+        c:show(function() end)
+        c.inspectedCard, c.inspectAnim = db:createCardInstance(all.mage_frost_nova), 1
+        data = drawTo(love.graphics.getWidth(), love.graphics.getHeight(), function() c:draw() end)
+        checkSurface(t, "inspecao da Colecao", data, c._elementRect, "ice")
+        data:release()
+        c:hide()
+    end)
+    t:truthy("inspecao da Colecao desenha" .. (okC and "" or (": " .. tostring(err))), okC)
+
+    local okD, errD = pcall(function()
+        local Panel = require("src.ui.CardDetailPanel")
+        local inst = db:createCardInstance(all.mage_zap)
+        local payload = { kind = "card", instance = inst,
+            offer = { id = inst.id, name = inst.name, description = inst.description, cost = 50,
+                rarity = inst.rarity } }
+        data = drawTo(800, 900, function()
+            Panel.draw({ x = 40, y = 20, w = 360, h = 860 }, payload, { canAfford = true })
+        end)
+        checkSurface(t, "painel de detalhe da loja", data, payload.elementRect, "lightning")
+        data:release()
+    end)
+    t:truthy("painel de detalhe desenha" .. (okD and "" or (": " .. tostring(errD))), okD)
+    love.graphics.present()
 end
 
 local function checkTooltip(t, db)
     local I18n = require("src.i18n.I18n")
-    local CID = require("src.ui.CardInfoDisplay")
+    local Glyph = require("src.ui.ElementGlyph")
     local all = db:getAllCards()
     local problems = {}
     local R = require("src.systems.Resistances")
@@ -190,32 +230,26 @@ local function checkTooltip(t, db)
         end
     end
     t:eq("linha de tipo nos 5 idiomas", table.concat(problems, ","), "")
+    local noGlyph = {}
+    for _, ty in ipairs(R.TYPES) do
+        if not Glyph.has(ty) then noGlyph[#noGlyph + 1] = ty end
+    end
+    t:eq("todo tipo tem glifo", table.concat(noGlyph, ","), "")
 
     local prev = I18n.getLocale and I18n.getLocale() or "pt_BR"
     for _, loc in ipairs(I18n.available) do
         I18n.setLocale(loc)
-        local line = CID.buildElementLine(db:createCardInstance(all.rogue_poison_dart))
+        local line = Glyph.line(db:createCardInstance(all.rogue_poison_dart))
         local name = I18n.t("resist.type.poison")
-        t:truthy(loc .. ": tooltip do dardo diz o tipo (" .. tostring(line and line.text) .. ")",
+        t:truthy(loc .. ": linha do dardo diz o tipo (" .. tostring(line and line.text) .. ")",
             line and line.text:find(name, 1, true) and not line.text:find("{", 1, true))
     end
     I18n.setLocale(prev)
-    local strike = CID.buildElementLine(db:createCardInstance(all.warrior_strike))
-    t:truthy("golpe fisico mostra o tipo so no tooltip", strike and strike.type == "physical" and not strike.badge)
-    t:eq("defesa sem elemento nao ganha linha", CID.buildElementLine(db:createCardInstance(all.warrior_defend)), nil)
-    local holy = CID.buildElementLine(db:createCardInstance(all.mage_radiant_prayer))
-    t:truthy("carta sagrada sem dano diz Elemento", holy and holy.badge and holy.type == "holy")
-
-    local ok = pcall(function()
-        local cv = love.graphics.newCanvas(800, 600)
-        love.graphics.push("all")
-        love.graphics.setCanvas(cv)
-        local d = CID:new()
-        d:draw(db:createCardInstance(all.mage_fireball), 400, 400, {})
-        love.graphics.pop()
-        cv:release()
-    end)
-    t:truthy("tooltip desenha com a linha de tipo", ok)
+    local strike = Glyph.line(db:createCardInstance(all.warrior_strike))
+    t:truthy("golpe fisico: linha de dano fisico", strike and strike.type == "physical" and strike.damage)
+    t:eq("defesa sem elemento nao ganha linha", Glyph.line(db:createCardInstance(all.warrior_defend)), nil)
+    local holy = Glyph.line(db:createCardInstance(all.mage_radiant_prayer))
+    t:truthy("carta sagrada sem dano diz Elemento", holy and holy.type == "holy" and not holy.damage)
 end
 
 function M.run()
@@ -226,6 +260,7 @@ function M.run()
     checkCombat(t)
     checkRender(t, db)
     checkTooltip(t, db)
+    checkSurfaces(t, db)
     return t:done()
 end
 

@@ -808,7 +808,9 @@ local function drawHoverTooltip(self)
     if inst._hidden then return drawHiddenTooltip(self, inst) end
 
     local TIP_W = 320
-    local TIP_H = 180
+    local Glyph = require("src.ui.ElementGlyph")
+    local elem = Glyph.line(inst)
+    local TIP_H = elem and 200 or 180
     local PAD = 10
     local TEXT_W = TIP_W - PAD * 2
 
@@ -875,6 +877,11 @@ local function drawHoverTooltip(self)
         statLine = statLine .. "  DEF: " .. tostring(inst.defense or 0)
     end
     love.graphics.print(statLine, cx + PAD, cy + TIP_H - 20)
+    self._hoverElementRect = nil
+    if elem then
+        Glyph.drawLine(elem, cx + PAD, cy + TIP_H - 40, FontManager.getFont(8), 1, TEXT_W)
+        self._hoverElementRect = { x = cx + PAD, y = cy + TIP_H - 40, type = elem.type }
+    end
 end
 
 local function drawInspectArrows(self, width, height)
@@ -1014,6 +1021,18 @@ local function drawInspectModal(self)
         love.graphics.setColor(Palette.STEEL_LIGHT[1], Palette.STEEL_LIGHT[2], Palette.STEEL_LIGHT[3], anim)
         love.graphics.print(I18n.t("card_info.defense") .. tostring(inst.defense or 0), panelX + PAD, statY)
         statY = statY + 20
+    end
+
+    do
+        local Glyph = require("src.ui.ElementGlyph")
+        local elem = Glyph.line(inst)
+        self._elementRect = nil
+        if elem then
+            local eh = Glyph.drawLine(elem, panelX + PAD, statY, FontManager.getFont(10), anim, TEXT_W)
+            local sx, sy = love.graphics.transformPoint(panelX + PAD, statY)
+            self._elementRect = { x = panelX + PAD, y = statY, sx = sx, sy = sy, type = elem.type }
+            statY = statY + math.max(20, eh + 6)
+        end
     end
 
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], 0.6 * anim)

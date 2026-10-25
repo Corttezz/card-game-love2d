@@ -292,6 +292,13 @@ function CardDetailPanel.draw(rect, payload, opts)
             statParts[#statParts + 1] = { I18n.t("card_info.defense", nil, "Defesa: ") .. tostring(inst.defense), PAL.defense }
         end
     end
+    local Glyph = require("src.ui.ElementGlyph")
+    local elemLine = (payload.kind == "card" and inst) and Glyph.line(inst) or nil
+    local function elemH(Fx)
+        if not elemLine then return 0 end
+        local f = FontManager.getFont(Fx.meta)
+        return math.max(f:getHeight(), Glyph.SIZE * Glyph.scaleFor(f)) + 6
+    end
     local affinityTxt = (offer.affinity and offer.affinityTags)
         and I18n.t("reward.affinity_line", { tags = table.concat(offer.affinityTags, ", ") },
             "Afinidade com seu deck: " .. table.concat(offer.affinityTags, ", ")) or nil
@@ -314,6 +321,7 @@ function CardDetailPanel.draw(rect, payload, opts)
         local mf = fitFont({ joined }, textW, Fx.meta, math.max(6, Fx.meta - 3))
         hgt = hgt + mf:getHeight() + 10
         hgt = hgt + (statsLayout(Fx))
+        hgt = hgt + elemH(Fx)
         if chipTxt then hgt = hgt + FontManager.getFont(Fx.stat):getHeight() + 16 end
         hgt = hgt + 8 + linesH(desc, FontManager.getFont(Fx.desc), textW)
         if flavor then hgt = hgt + 6 + linesH('"' .. flavor .. '"', FontManager.getFont(Fx.tiny), textW) end
@@ -406,6 +414,16 @@ function CardDetailPanel.draw(rect, payload, opts)
             end
         end
         cy = cy + hgt
+    end
+
+    payload.elementRect = nil
+    if elemLine then
+        local f = FontManager.getFont(F.meta)
+        local _, gx = Glyph.drawLine(elemLine, textX, cy, f, alpha, textW,
+            { center = true, textColor = opts.parchment and PAL.body or nil })
+        local sx, sy = love.graphics.transformPoint(gx, cy)
+        payload.elementRect = { x = gx, y = cy, sx = sx, sy = sy, type = elemLine.type }
+        cy = cy + elemH(F)
     end
 
     if chipTxt then

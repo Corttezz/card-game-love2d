@@ -58,15 +58,7 @@ end
 local TextCase = require("src.i18n.TextCase")
 
 local function buildElementLine(inst)
-    local Resistances = require("src.systems.Resistances")
-    local ty, dmg = Resistances.elementOfCard(inst)
-    if not ty then return nil end
-    local typeName = I18n.t("resist.type." .. ty, nil, ty)
-    local key = dmg and "card_info.damage_type" or "card_info.element"
-    local Badge = require("src.ui.card.components.CardElementBadge")
-    local col = Badge.colors(ty)
-    return { text = I18n.t(key, { type = typeName }, typeName), type = ty,
-             badge = Badge.has(ty), color = col and col.glyph or Palette.PARCHMENT_LIGHT }
+    return require("src.ui.ElementGlyph").line(inst)
 end
 
 CardInfoDisplay.buildElementLine = buildElementLine
@@ -148,9 +140,8 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     if desc == "" then desc = nil end
     local forgeLine = buildForgeLine(cardInstance)
     local elemLine = buildElementLine(cardInstance)
-    local Badge = require("src.ui.card.components.CardElementBadge")
-    local elemLH = math.max(kwLH, Badge.SIZE + 1)
-    local elemIndent = Badge.SIZE + 5
+    local Glyph = require("src.ui.ElementGlyph")
+    local elemLH = math.max(kwLH, Glyph.SIZE * Glyph.scaleFor(kwFont) + 2)
     local kwHits = desc and collectKeywords(desc) or {}
 
     local rarityText = nil
@@ -179,7 +170,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         innerW = math.max(innerW, math.min(MAX_INNER, forgeFont:getWidth(forgeLine)))
     end
     if elemLine then
-        innerW = math.max(innerW, math.min(MAX_INNER, kwFont:getWidth(elemLine.text) + elemIndent))
+        innerW = math.max(innerW, math.min(MAX_INNER, Glyph.lineWidth(elemLine, kwFont)))
     end
     innerW = math.min(innerW, MAX_INNER)
 
@@ -224,6 +215,7 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     if panelX < 10 then panelX = 10 end
     if panelX + panelW > sw - 10 then panelX = sw - panelW - 10 end
     self.lastRect = { x = panelX, y = panelY, w = panelW, h = panelH }
+    self.lastElementRect = nil
 
     love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.rectangle("fill", panelX + 3, panelY + 4, panelW, panelH, 6, 6)
@@ -258,15 +250,8 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     end
 
     if elemLine then
-        local lx = tx
-        if elemLine.badge then
-            Badge.drawAt(tx, cy + 1, elemLine.type)
-            lx = tx + elemIndent
-        end
-        love.graphics.setColor(elemLine.color[1], elemLine.color[2], elemLine.color[3], 1)
-        require("src.ui.TextFit").print(elemLine.text, lx,
-            cy + 1 + math.floor((elemLH - kwFont:getHeight()) / 2),
-            { size = 9, maxW = innerW - (lx - tx) })
+        Glyph.drawLine(elemLine, tx, cy + 1, kwFont, 1)
+        self.lastElementRect = { x = tx, y = cy + 1, type = elemLine.type }
         cy = cy + elemLH + 2
     end
 
