@@ -142,6 +142,7 @@ function CardDatabase:createCardInstance(cd)
         end
     end
     instance.class = cd.class
+    instance.damageType = cd.damageType
     local TagSystem = require("src.systems.TagSystem")
     instance.tags = TagSystem.getCardTags(cd)
     instance.innate = cd.innate

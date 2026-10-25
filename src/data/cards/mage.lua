@@ -1,6 +1,7 @@
 return {
     mage_zap = {
         id = "mage_zap", name = "Descarga",
+        damageType = "lightning",
         type = "attack", subtype = "common",
         cost = 1, attack = 8, defense = 0,
         description = "Causa 8 de dano. Canaliza 1 Raio (valor 5).",
@@ -13,6 +14,7 @@ return {
     },
     mage_dualcast = {
         id = "mage_dualcast", name = "Conjuracao Dupla",
+        damageType = "lightning",
         type = "effect", subtype = "common",
         cost = 1, attack = 0, defense = 0,
         description = "Evoca o orbe mais antigo e canaliza 1 Raio (valor 5).",
@@ -26,6 +28,7 @@ return {
     },
     mage_ball_lightning = {
         id = "mage_ball_lightning", name = "Raio Esferico",
+        damageType = "lightning",
         type = "attack", subtype = "skill",
         cost = 1, attack = 9, defense = 0,
         description = "Causa 9 de dano. Canaliza 1 Raio (valor 6).",
@@ -38,6 +41,7 @@ return {
     },
     mage_lightning = {
         id = "mage_lightning", name = "Relampago",
+        damageType = "lightning",
         type = "attack", subtype = "common",
         cost = 1, attack = 8, defense = 0,
         description = "Causa 8 de dano. Canaliza 1 Raio (valor 3).",
@@ -50,6 +54,7 @@ return {
     },
     mage_fireball = {
         id = "mage_fireball", name = "Bola de Fogo",
+        damageType = "fire",
         type = "attack", subtype = "common",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Canaliza 1 Fogo (valor 4).",
@@ -62,6 +67,7 @@ return {
     },
     mage_flame_tongue = {
         id = "mage_flame_tongue", name = "Lingua de Chamas",
+        damageType = "fire",
         type = "attack", subtype = "common",
         cost = 1, attack = 6, defense = 0,
         description = "Causa 6 de dano. Aplica Vulnerável por 2 turnos.",
@@ -84,6 +90,7 @@ return {
     },
     mage_arcane_orb = {
         id = "mage_arcane_orb", name = "Orbe Arcano",
+        damageType = "dark",
         type = "effect", subtype = "orb",
         cost = 1, attack = 0, defense = 0,
         description = "Canaliza 1 Sombra (valor 3).",
@@ -96,6 +103,7 @@ return {
     },
     mage_healing_drop = {
         id = "mage_healing_drop", name = "Gota Curativa",
+        damageType = "holy",
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
         description = "Cura 7 de HP. Canaliza 1 orbe Sagrado (valor 3).",
@@ -123,6 +131,7 @@ return {
     },
     mage_aggregate = {
         id = "mage_aggregate", name = "Agregar",
+        damageType = "dark",
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
         description = "Compra 2 cartas. Canaliza 1 Sombra (valor 2).",
@@ -148,6 +157,7 @@ return {
     },
     mage_blizzard = {
         id = "mage_blizzard", name = "Nevasca",
+        damageType = "ice",
         type = "effect", subtype = "skill",
         cost = 2, attack = 0, defense = 0,
         description = "Causa 14 de dano mágico (fixo). Canaliza 1 Gelo (valor 6).",
@@ -161,6 +171,7 @@ return {
     },
     mage_boot_sequence = {
         id = "mage_boot_sequence", name = "Sequencia de Boot",
+        damageType = "lightning",
         type = "effect", subtype = "skill",
         cost = 0, attack = 0, defense = 0,
         description = "Inato. Canaliza 1 Raio (valor 3).",
@@ -175,6 +186,7 @@ return {
     },
     mage_chill = {
         id = "mage_chill", name = "Congelar",
+        damageType = "ice",
         type = "effect", subtype = "skill",
         cost = 0, attack = 0, defense = 0,
         description = "Inato. Canaliza 1 Gelo (valor 5).",
@@ -189,6 +201,7 @@ return {
     },
     mage_overcharge = {
         id = "mage_overcharge", name = "Sobrecarga",
+        damageType = "lightning",
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Canaliza 1 Raio (valor 6).",
@@ -213,6 +226,7 @@ return {
     },
     mage_mind_spike = {
         id = "mage_mind_spike", name = "Estaca Mental",
+        damageType = "arcane",
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Compra 1 carta.",
@@ -225,6 +239,7 @@ return {
     },
     mage_twin_bolts = {
         id = "mage_twin_bolts", name = "Raios Gemeos",
+        damageType = "lightning",
         type = "attack", subtype = "skill",
         cost = 2, attack = 9, defense = 0,
         description = "Causa 9 de dano 2 vezes. Canaliza 1 Raio (valor 3).",
@@ -238,6 +253,7 @@ return {
     },
     mage_arcane_torrent = {
         id = "mage_arcane_torrent", name = "Torrente Arcana",
+        damageType = "arcane",
         type = "attack", subtype = "skill",
         cost = 2, attack = 24, defense = 0,
         description = "Causa 24 de dano.",
@@ -262,6 +278,7 @@ return {
     },
     mage_doom_and_gloom = {
         id = "mage_doom_and_gloom", name = "Perdicao e Melancolia",
+        damageType = "dark",
         type = "attack", subtype = "skill",
         cost = 2, attack = 12, defense = 0,
         description = "Causa 12 de dano. Canaliza 1 Sombra (valor 5).",
@@ -286,6 +303,7 @@ return {
     },
     mage_crystal_shard = {
         id = "mage_crystal_shard", name = "Cristal de Sangue",
+        damageType = "arcane",
         type = "attack", subtype = "skill",
         cost = 1, attack = 7, defense = 0,
         description = "Causa 7 de dano. Cura 3 de HP.",
@@ -298,6 +316,7 @@ return {
     },
     mage_frost_nova = {
         id = "mage_frost_nova", name = "Nova de Gelo",
+        damageType = "ice",
         type = "attack", subtype = "skill",
         cost = 2, attack = 10, defense = 0,
         description = "Causa 10 de dano. Canaliza 1 Gelo (valor 6).",
@@ -325,6 +344,7 @@ return {
 
     mage_radiant_prayer = {
         id = "mage_radiant_prayer", name = "Prece Radiante",
+        damageType = "holy",
         type = "effect", subtype = "skill",
         cost = 2, attack = 0, defense = 0,
         description = "Cura 5 de HP. Canaliza 1 orbe Sagrado (valor 5).",
@@ -390,6 +410,7 @@ return {
     },
     mage_electrodynamics = {
         id = "mage_electrodynamics", name = "Eletrodinamica",
+        damageType = "lightning",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
         description = "Canaliza 1 Raio (valor 3) no início de cada turno.",
@@ -427,6 +448,7 @@ return {
     },
     mage_meteor_strike = {
         id = "mage_meteor_strike", name = "Chuva de Meteoros",
+        damageType = "fire",
         type = "attack", subtype = "skill",
         cost = 3, attack = 20, defense = 0,
         description = "Causa 20 de dano. Canaliza 3 orbes de Fogo (valor 4).",
@@ -481,6 +503,7 @@ return {
 
     mage_sacred_chalice = {
         id = "mage_sacred_chalice", name = "Calice do Sabio",
+        damageType = "holy",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
         description = "Todas as curas recebidas são aumentadas em 50%.",

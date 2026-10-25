@@ -57,6 +57,20 @@ end
 
 local TextCase = require("src.i18n.TextCase")
 
+local function buildElementLine(inst)
+    local Resistances = require("src.systems.Resistances")
+    local ty, dmg = Resistances.elementOfCard(inst)
+    if not ty then return nil end
+    local typeName = I18n.t("resist.type." .. ty, nil, ty)
+    local key = dmg and "card_info.damage_type" or "card_info.element"
+    local Badge = require("src.ui.card.components.CardElementBadge")
+    local col = Badge.colors(ty)
+    return { text = I18n.t(key, { type = typeName }, typeName), type = ty,
+             badge = Badge.has(ty), color = col and col.glyph or Palette.PARCHMENT_LIGHT }
+end
+
+CardInfoDisplay.buildElementLine = buildElementLine
+
 local function hasWord(lower, word)
     local from = 1
     while true do
@@ -133,6 +147,10 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     local desc = showDescription and I18n.cardDesc(cardInstance) or nil
     if desc == "" then desc = nil end
     local forgeLine = buildForgeLine(cardInstance)
+    local elemLine = buildElementLine(cardInstance)
+    local Badge = require("src.ui.card.components.CardElementBadge")
+    local elemLH = math.max(kwLH, Badge.SIZE + 1)
+    local elemIndent = Badge.SIZE + 5
     local kwHits = desc and collectKeywords(desc) or {}
 
     local rarityText = nil
@@ -160,11 +178,15 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
     if forgeLine then
         innerW = math.max(innerW, math.min(MAX_INNER, forgeFont:getWidth(forgeLine)))
     end
+    if elemLine then
+        innerW = math.max(innerW, math.min(MAX_INNER, kwFont:getWidth(elemLine.text) + elemIndent))
+    end
     innerW = math.min(innerW, MAX_INNER)
 
     local panelH = PAD
     panelH = panelH + #nameLines * nameLH
     if forgeLine then panelH = panelH + kwLH + 2 end
+    if elemLine then panelH = panelH + elemLH + 2 end
     if #descLines > 0 then
         panelH = panelH + 7 + #descLines * bodyLH
     end
@@ -233,6 +255,19 @@ function CardInfoDisplay:draw(cardInstance, x, y, options)
         require("src.ui.TextFit").print(forgeLine, tx, cy + 2,
             { size = 9, maxW = innerW })
         cy = cy + kwLH + 2
+    end
+
+    if elemLine then
+        local lx = tx
+        if elemLine.badge then
+            Badge.drawAt(tx, cy + 1, elemLine.type)
+            lx = tx + elemIndent
+        end
+        love.graphics.setColor(elemLine.color[1], elemLine.color[2], elemLine.color[3], 1)
+        require("src.ui.TextFit").print(elemLine.text, lx,
+            cy + 1 + math.floor((elemLH - kwFont:getHeight()) / 2),
+            { size = 9, maxW = innerW - (lx - tx) })
+        cy = cy + elemLH + 2
     end
 
     if #descLines > 0 then

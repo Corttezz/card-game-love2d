@@ -32,11 +32,15 @@ balanceamento do jogo."*
 | `lightning` | ataque/magia `lightning`, orbe de Raio |
 | `dark` | ataque/magia `dark`, orbe de Sombra |
 | `arcane` | ataque com só a tag `magic`, magia de carta sem elemento |
-| `poison` | tique de Veneno (o golpe da carta de veneno é `physical`) |
+| `poison` | tique de Veneno e, desde 25/Out/2026, o GOLPE das cartas de veneno do ladino (dardo, lâmina suja, presas, frasco, cadáver) |
+| `holy` | só elemento de exibição (orbe Sagrado cura); nenhuma carta causa dano sagrado, nenhuma criatura reage a ele |
 
-  Prioridade de elemento numa carta: fire > ice > lightning > dark > (magic = arcane) > physical.
-  `holy` existe no catálogo de tags mas nenhuma carta causa dano sagrado, então
-  ficou fora da tabela (ícone sem efeito seria ruído).
+  O tipo de cada carta é o campo explícito `damageType` (tabela em memory/card_damage_types.md); a tag só vale de reserva para carta sem o campo, com prioridade fire > ice > lightning > dark > (magic = arcane) > physical.
+  `holy` entrou em `Resistances.TYPES` (25/Out/2026) só para o selo das 3 cartas
+  sagradas do mago, que curam. Como nenhuma carta causa dano sagrado, NENHUMA
+  criatura ganhou regra de sagrado (mortos-vivos e fantasmas ficariam com uma
+  fraqueza que ninguém consegue usar). Se um dia surgir dano sagrado, lich,
+  esqueleto, cavaleiro espectral, sombra do crepúsculo e dullahan são os candidatos.
 
 ## Tabela por criatura (o porquê é de lore, os números são da bateria)
 

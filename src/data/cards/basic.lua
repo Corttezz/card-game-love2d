@@ -1,6 +1,7 @@
 return {
     attack_001 = {
         id = "attack_001", name = "The Rock",
+        damageType = "physical",
         type = "attack", subtype = "iron",
         cost = 1, attack = 7, defense = 0,
         description = "Causa 7 de dano.",
@@ -11,6 +12,7 @@ return {
     },
     attack_002 = {
         id = "attack_002", name = "Blood Sword",
+        damageType = "physical",
         type = "attack", subtype = "blood",
         cost = 1, attack = 6, defense = 0,
         description = "Causa 6 de dano. Cura 2 de HP.",
@@ -46,6 +48,7 @@ return {
     },
     warrior_rage = {
         id = "warrior_rage", name = "Furia",
+        damageType = "physical",
         type = "attack", subtype = "common",
         cost = 0, attack = 3, defense = 0,
         description = "Causa 3 de dano. Ganha 1 de Força.",
@@ -58,6 +61,7 @@ return {
     },
     attack_cleave = {
         id = "attack_cleave", name = "Cutilada",
+        damageType = "physical",
         type = "attack", subtype = "common",
         cost = 2, attack = 13, defense = 0,
         description = "Causa 13 de dano.",

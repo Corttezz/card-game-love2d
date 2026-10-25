@@ -1,6 +1,7 @@
 return {
     rogue_strike = {
         id = "rogue_strike", name = "Golpe Furtivo",
+        damageType = "physical",
         type = "attack", subtype = "common",
         cost = 1, attack = 8, defense = 0,
         description = "Causa 8 de dano.",
@@ -21,6 +22,7 @@ return {
     },
     rogue_stiletto = {
         id = "rogue_stiletto", name = "Estilete",
+        damageType = "physical",
         type = "attack", subtype = "common",
         cost = 1, attack = 5, defense = 0,
         description = "Causa 5 de dano. Conta em DOBRO na Saraivada.",
@@ -43,6 +45,7 @@ return {
     },
     rogue_neutralize = {
         id = "rogue_neutralize", name = "Neutralizar",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 0, attack = 4, defense = 0,
         description = "Causa 4 de dano. Aplica Fraco por 1 turno.",
@@ -55,6 +58,7 @@ return {
     },
     rogue_backstab = {
         id = "rogue_backstab", name = "Punhalada pelas Costas",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 0, attack = 8, defense = 0,
         description = "Causa 8 de dano. Inato. Exaurir.",
@@ -69,6 +73,7 @@ return {
     },
     rogue_rake = {
         id = "rogue_rake", name = "Garra Rapida",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 1, attack = 7, defense = 0,
         description = "Causa 7 de dano. Aplica Fraco por 2 turnos.",
@@ -96,6 +101,7 @@ return {
 
     rogue_poison_dart = {
         id = "rogue_poison_dart", name = "Dardo Envenenado",
+        damageType = "poison",
         type = "attack", subtype = "skill",
         cost = 0, attack = 2, defense = 0,
         description = "Causa 2 de dano. Aplica 3 de Veneno.",
@@ -109,6 +115,7 @@ return {
 
     rogue_dirty_blade = {
         id = "rogue_dirty_blade", name = "Lamina Suja",
+        damageType = "poison",
         type = "attack", subtype = "skill",
         cost = 1, attack = 4, defense = 0,
         description = "Causa 4 de dano. Aplica 4 de Veneno.",
@@ -172,6 +179,7 @@ return {
     },
     rogue_bouncing_flask = {
         id = "rogue_bouncing_flask", name = "Frasco Ricochete",
+        damageType = "poison",
         type = "attack", subtype = "skill",
         cost = 2, attack = 6, defense = 0,
         description = "Causa 6 de dano. Aplica 6 de Veneno.",
@@ -209,6 +217,7 @@ return {
     },
     rogue_venom_coating = {
         id = "rogue_venom_coating", name = "Lamina Envenenada",
+        damageType = "poison",
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
         description = "Aplica 5 de Veneno.",
@@ -221,6 +230,7 @@ return {
     },
     rogue_twin_fangs = {
         id = "rogue_twin_fangs", name = "Presas Gemeas",
+        damageType = "poison",
         type = "attack", subtype = "skill",
         cost = 2, attack = 5, defense = 0,
         description = "Causa 5 de dano 2 vezes. Aplica 2 de Veneno.",
@@ -261,6 +271,7 @@ return {
 
     rogue_leech_blade = {
         id = "rogue_leech_blade", name = "Lamina Sanguessuga",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 1, attack = 6, defense = 0,
         description = "Causa 6 de dano. Cura 2 de HP.",
@@ -286,6 +297,7 @@ return {
     },
     rogue_catalyst = {
         id = "rogue_catalyst", name = "Catalisador",
+        damageType = "poison",
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
         description = "Aplica 7 de Veneno. Exaurir.",
@@ -299,6 +311,7 @@ return {
     },
     rogue_venom_fang = {
         id = "rogue_venom_fang", name = "Presa Venenosa",
+        damageType = "poison",
         type = "attack", subtype = "skill",
         cost = 1, attack = 5, defense = 0,
         description = "Causa 5 de dano. Aplica 4 de Veneno.",
@@ -324,6 +337,7 @@ return {
 
     rogue_executioner = {
         id = "rogue_executioner", name = "Carrasco",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 3, attack = 30, defense = 0,
         description = "Causa 30 de dano.",
@@ -373,6 +387,7 @@ return {
     },
     rogue_corpse_explosion = {
         id = "rogue_corpse_explosion", name = "Explosao de Cadaver",
+        damageType = "poison",
         type = "attack", subtype = "skill",
         cost = 2, attack = 8, defense = 0,
         description = "Causa 8 de dano. Aplica 5 de Veneno. Exaurir.",
@@ -399,6 +414,7 @@ return {
     },
     rogue_envenom = {
         id = "rogue_envenom", name = "Envenenar",
+        damageType = "poison",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
         description = "Cada carta de ataque aplica 1 de Veneno.",
@@ -412,6 +428,7 @@ return {
     },
     rogue_storm_of_steel = {
         id = "rogue_storm_of_steel", name = "Tempestade de Aco",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 1, attack = 10, defense = 0,
         description = "Causa 10 de dano. Compra 1 carta.",
@@ -424,6 +441,7 @@ return {
     },
     rogue_shooting_star = {
         id = "rogue_shooting_star", name = "Medalhao Estelar",
+        damageType = "physical",
         type = "attack", subtype = "skill",
         cost = 2, attack = 8, defense = 0,
         description = "Causa 8 de dano 2 vezes.",
@@ -450,6 +468,7 @@ return {
 
     rogue_toxin_master = {
         id = "rogue_toxin_master", name = "Mestre das Toxinas",
+        damageType = "poison",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
         description = "Cada carta de ataque aplica 2 de Veneno.",

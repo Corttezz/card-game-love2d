@@ -405,6 +405,8 @@ return {
         atk_short    = "ATQ",
         def_short    = "DEF",
         class_basic  = "Neutral",
+        damage_type  = "Tipo de daño: {type}",
+        element      = "Elemento: {type}",
     },
 
     card_type = {

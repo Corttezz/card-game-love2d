@@ -956,7 +956,12 @@ end
 
 function M.collect()
     TK.bootstrap()
-    local bIssues, rows, counted = M.behaviorAudit()
+    local Resistances = require("src.systems.Resistances")
+    local prevResist = Resistances.ENABLED
+    Resistances.ENABLED = false
+    local okB, bIssues, rows, counted = pcall(M.behaviorAudit)
+    Resistances.ENABLED = prevResist
+    if not okB then error(bIssues, 0) end
     local dIssues = M.descAudit()
     local curve, cstats = M.powerCurve()
     return { behavior = bIssues, desc = dIssues, rows = rows, counted = counted,

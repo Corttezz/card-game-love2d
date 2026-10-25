@@ -8,6 +8,7 @@ return {
         dark = "Sombra",
         arcane = "Arcano",
         poison = "Veneno",
+        holy = "Sagrado",
     },
     title = {
         immune = "Imune a {type}",

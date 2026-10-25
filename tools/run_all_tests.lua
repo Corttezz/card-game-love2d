@@ -14,6 +14,7 @@ local SUITES = {
     { group = "unit",  name = "test_combat" },
     { group = "unit",  name = "test_damage_preview" },
     { group = "unit",  name = "test_immunities" },
+    { group = "unit",  name = "test_card_damage_types" },
     { group = "unit",  name = "test_beats" },
     { group = "unit",  name = "test_enemy_death" },
     { group = "unit",  name = "test_enemies" },
