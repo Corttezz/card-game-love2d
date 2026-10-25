@@ -1,5 +1,6 @@
 local LightEngine = require("engine.LightEngine")
 local Debug = require("src.core.Debug")
+local LightSpill = require("engine.LightSpill")
 
 local LuminaireEngine = {}
 
@@ -318,6 +319,8 @@ function LuminaireEngine.drawPool(bid, kind, a)
     love.graphics.setColor(pc[1], pc[2], pc[3], 1)
     local sc = r
     love.graphics.draw(emit.img, math.floor(a.gx), math.floor(a.gy), 0, sc, sc * (P.sy or 0.35), 1, 1)
+    LightSpill.add(math.floor(a.gx), math.floor(a.gy), r, P.sy or 0.35, E.upK,
+        pc[1] * inten, pc[2] * inten, pc[3] * inten)
     love.graphics.setShader(prevSh)
     love.graphics.setBlendMode(bm, am)
     love.graphics.setColor(pr, pg, pb, pa)

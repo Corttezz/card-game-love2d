@@ -2,6 +2,7 @@ local Debug = require("src.core.Debug")
 
 local GrassField = {}
 local QuadMesh = require("engine.QuadMesh")
+local LightSpill = require("engine.LightSpill")
 
 GrassField.PRESETS = {
     fields    = { density = 1.00, heightK = 1.00, windAmp = 0.72,
@@ -170,7 +171,7 @@ local K_CLUMP, K_CREST, K_BLADE, K_BROAD, K_FLOWER = 0, 1, 2, 3, 4
 GrassField.CELL_H = CELL_H
 local tufts, tuftN = {}, 0
 local clears, clearN = {}, 0
-function GrassField.beginFrame() tuftN = 0; clearN = 0 end
+function GrassField.beginFrame() tuftN = 0; clearN = 0; LightSpill.beginFrame() end
 function GrassField.requireClearing(relLo, relHi, x, halfW, rim)
     if relLo ~= relLo or x ~= x or not halfW or halfW < 2 or relHi <= relLo then return end
     clearN = clearN + 1
@@ -309,9 +310,11 @@ vec4 position(mat4 transform_projection, vec4 vertex_position) {
     return transform_projection * vertex_position;
 }
 ]]
-GrassField.SHADER_PIXEL = [[
+GrassField.SHADER_PIXEL = LightSpill.GLSL .. [[
 vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
-    return Texel(tex, uv) * color;
+    vec4 c = Texel(tex, uv) * color;
+    if (uSpN > 0.5) c.rgb += lightSpill(sc, uv.y);
+    return c;
 }
 ]]
 
@@ -531,6 +534,7 @@ function GrassField.draw(ctx)
             if sl[4] > 0 then
                 local prev = love.graphics.getShader()
                 love.graphics.setShader(shader)
+                LightSpill.apply(shader)
                 love.graphics.setColor(1, 1, 1, 1)
                 qm:draw(sl[3], sl[4], atlasImg)
                 love.graphics.setShader(prev)
@@ -1049,6 +1053,7 @@ function GrassField.draw(ctx)
         qm:upload(sliceStart, qm.n)
         local prev = love.graphics.getShader()
         love.graphics.setShader(shader)
+        LightSpill.apply(shader)
         love.graphics.setColor(1, 1, 1, 1)
         qm:draw(sliceStart, count, atlasImg)
         love.graphics.setShader(prev)
