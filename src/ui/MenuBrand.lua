@@ -22,7 +22,15 @@ local EMBER = { { 255, 246, 214 }, { 252, 208, 110 }, { 230, 134, 48 }, { 150, 5
 local DUST = { 96, 70, 92 }
 local BAYER = { { 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 } }
 local SPARK_SIZES = { 1, 2, 3, 3, 2, 1, 1 }
+local TREMBLE = { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 } }
 local N_EMBERS, N_BURST, N_CONVERGE = 16, 46, 28
+local N_MOTES, N_RAY_SPARKS = 96, 6
+local GOLD_D, GOLD_M, GOLD_L = { 122, 74, 26 }, { 172, 118, 42 }, { 212, 160, 68 }
+MenuBrand.FX = {
+    moteFrom = 0.15, moteRim = 58, moteWarpAt = 0.3, moteWarp = 1.6,
+    runeFrom = 0.2, runeTo = 1.6, rayLife = 0.4, streak = 0.10,
+    trembleFrom = 0.25,
+}
 
 local res = nil
 
@@ -197,6 +205,19 @@ function MenuBrand.new()
         self.converge[i] = { a = rng:random() * 2 * math.pi, r0 = 110 + rng:random() * 80,
             t0 = T.CHARGE - 0.1 + rng:random() * 0.2 }
     end
+    self.motes = {}
+    for i = 1, N_MOTES do
+        self.motes[i] = {
+            a0 = rng:random() * 2 * math.pi, spin = rng:random() < 0.5 and -1 or 1,
+            ts = MenuBrand.FX.moteFrom + rng:random() * 1.6, period = 0.8 + rng:random() * 0.6,
+            r0 = 150 + rng:random() * 100, big = rng:random() < 0.35,
+        }
+    end
+    self.raySparks = {}
+    for i = 1, 8 * N_RAY_SPARKS do
+        self.raySparks[i] = { da = (rng:random() - 0.5) * 1.6, v = 40 + rng:random() * 70,
+            life = 0.18 + rng:random() * 0.2 }
+    end
     self.embers = {}
     for i = 1, N_EMBERS do
         self.embers[i] = {
@@ -342,12 +363,106 @@ function MenuBrand:_sealGeom(L)
         jx = 0, jy = 0, Ps = Ps, sox = sox, soy = soy,
     }
     if u >= 1 then G.x, G.y = fx, fy end
-    if sting and t >= T.CHARGE + 0.14 and t < T.FLASH then
-        local k = math.floor(t * 60) % 4
-        local J = { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 } }
-        G.jx, G.jy = J[k + 1][1], J[k + 1][2]
+    local t0 = T.CHARGE - MenuBrand.FX.trembleFrom
+    if sting and t >= t0 and t < T.FLASH then
+        local d, D = t - t0, T.FLASH - t0
+        local phase = 6 * d + 54 * d * d * d / (3 * D * D)
+        local k = math.floor(phase) % 4
+        G.jx, G.jy = TREMBLE[k + 1][1], TREMBLE[k + 1][2]
     end
     return G
+end
+
+local function hash(x)
+    local v = math.sin(x * 12.9898) * 43758.5453
+    return v - math.floor(v)
+end
+
+local function moteWarp(t)
+    local d = t - (T.CHARGE - MenuBrand.FX.moteWarpAt)
+    if d <= 0 then return t end
+    return t + MenuBrand.FX.moteWarp * d * d
+end
+
+function MenuBrand:_drawMotes(t, cx, cy)
+    local F = MenuBrand.FX
+    if t < F.moteFrom or t >= T.FLASH then return end
+    local wt = moteWarp(t)
+    for _, m in ipairs(self.motes) do
+        if t >= m.ts then
+            local tau = wt - moteWarp(m.ts)
+            local q = tau / m.period
+            local cyc = math.floor(q)
+            local u = q - cyc
+            local r = F.moteRim + (m.r0 - F.moteRim) * (1 - u) ^ 1.4
+            local a = m.a0 + cyc * 2.4 + m.spin * u * 2.6
+            local c = u > 0.8 and SPARK[2] or (u > 0.5 and EMBER[3] or EMBER[4])
+            px(cx + math.cos(a) * r, cy + math.sin(a) * r, c)
+            if m.big and u > 0.45 then
+                local a2 = a - m.spin * 0.06
+                px(cx + math.cos(a2) * (r + 2), cy + math.sin(a2) * (r + 2), EMBER[4])
+            end
+        end
+    end
+end
+
+function MenuBrand:_drawRunes(t, cx, cy)
+    local F = MenuBrand.FX
+    if t < F.runeFrom or t >= F.runeTo then return end
+    local env = math.min(1, (t - F.runeFrom) / 0.25, (F.runeTo - t) / 0.3)
+    local tick = math.floor(t * 14)
+    for a = 1, 3 do
+        if hash(tick + a * 7) > 0.12 then
+            local R = 62 + a * 4
+            local dir = (a % 2 == 0) and -1 or 1
+            local start = a * 2.1 + dir * t * (0.7 + 0.2 * a)
+            local n = math.floor(0.8 * R / 2)
+            for i = 0, n do
+                if ((i * 7) % 16) / 16 < env then
+                    local ang = start + i * 2 / R
+                    local ca, sa = math.cos(ang), math.sin(ang)
+                    if i % 6 == 3 then
+                        px(cx + ca * (R + 2), cy + sa * (R + 2), GOLD_L)
+                        px(cx + ca * (R + 1), cy + sa * (R + 1), GOLD_M)
+                        px(cx + ca * (R - 1), cy + sa * (R - 1), GOLD_D)
+                    elseif i % 3 ~= 2 then
+                        px(cx + ca * R, cy + sa * R, (i % 6 < 2) and GOLD_M or GOLD_D)
+                    end
+                end
+            end
+        end
+    end
+end
+
+function MenuBrand:_drawRayIgnition(t, cx, cy)
+    local F = MenuBrand.FX
+    for k = 0, 7 do
+        local age = t - (T.RAY0 + k * T.RAYSTEP)
+        if age >= 0 and age < F.rayLife then
+            local th = -math.pi / 2 + k * math.pi / 4
+            local ux, uy = math.cos(th), math.sin(th)
+            local tip = Data.tips[k + 1]
+            local L = math.sqrt((tip[1] - cx) ^ 2 + (tip[2] - cy) ^ 2)
+            if age < F.streak + 0.06 then
+                local head = 12 + (L - 12) * math.min(1, age / F.streak)
+                local fade = age > F.streak and 4 or 10
+                for d = head - fade, head, 2 do
+                    if d >= 12 and d <= L then
+                        px(cx + ux * d, cy + uy * d, (d > head - 3) and SPARK[2] or SPARK[3])
+                    end
+                end
+            end
+            for j = 1, N_RAY_SPARKS do
+                local sp = self.raySparks[k * N_RAY_SPARKS + j]
+                if age < sp.life then
+                    local f = (1 - math.exp(-3 * age)) / 3
+                    local ang = th + sp.da
+                    local c = age < sp.life * 0.35 and SPARK[1] or (age < sp.life * 0.7 and SPARK[3] or EMBER[4])
+                    px(tip[1] + math.cos(ang) * sp.v * f, tip[2] + math.sin(ang) * sp.v * f + 14 * age * age, c)
+                end
+            end
+        end
+    end
 end
 
 local function sendRing(sh, name, col, on, R, thick, dens, c)
@@ -480,6 +595,8 @@ function MenuBrand:draw(alpha, bgAmt, reduced)
         g.translate(G.sox, G.soy)
         g.scale(G.Ps, G.Ps)
         self:_fxPass(L, G, true, bgAmt, cx, cy)
+        self:_drawMotes(t, cx, cy)
+        self:_drawRunes(t, cx, cy)
         if t >= T.CHARGE and t < T.FLASH then
             for _, c in ipairs(self.converge) do
                 local u = (t - c.t0) / (T.FLASH - c.t0)
@@ -519,6 +636,7 @@ function MenuBrand:draw(alpha, bgAmt, reduced)
             sparkle(tip[1], tip[2], t - tw[1])
         end
     end
+    if sting and t < T.FLASH then self:_drawRayIgnition(t, cx, cy) end
     g.pop()
 
     g.push()
