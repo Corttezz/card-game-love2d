@@ -180,7 +180,7 @@ function GrassField.requireClearing(relLo, relHi, x, halfW, rim)
     c.relLo, c.relHi, c.x, c.halfW, c.rim = relLo, relHi, x, halfW, rim or 0.22
 end
 function GrassField._clearings() return clears, clearN end
-function GrassField.requireTufts(rel, x, w, n, scale, seed)
+function GrassField.requireTufts(rel, x, w, n, scale, seed, onRoad)
     if rel ~= rel or x ~= x then return end
     tuftN = tuftN + 1
     local q = tufts[tuftN]
@@ -188,6 +188,7 @@ function GrassField.requireTufts(rel, x, w, n, scale, seed)
     q.rel, q.x, q.w = rel, x, math.max(2, w or 2)
     q.n, q.s, q.done = math.max(1, math.floor(n or 3)), math.max(0.02, scale or 1), false
     q.seed = seed and math.floor(seed) or nil
+    q.onRoad = onRoad and true or false
 end
 function GrassField._tuftRequests() return tufts, tuftN end
 local function clearHash(a, b)
@@ -1023,25 +1024,39 @@ function GrassField.draw(ctx)
                 local nx = (q.x - ctx.x) / w
                 local zq = camZ + q.rel
                 local qx = (not GrassField._legacyTuftHash and q.seed) or math.floor(q.x)
+                local rC, rCs, rW, rClr, rOL, rOR
+                if not q.onRoad then
+                    rC = ctx.roadCenter(zq, tq)
+                    local half = ctx.roadHalf(tq)
+                    local aK
+                    if ctx.roadCenters then rCs, aK, rW = ctx.roadCenters(zq, tq) end
+                    rClr = half * (rCs and (aK or 1) or 1)
+                    rOL = ctx.roadEdgeOff and ctx.roadEdgeOff(zq, tq, -1, rClr) or 0
+                    rOR = ctx.roadEdgeOff and ctx.roadEdgeOff(zq, tq, 1, rClr) or 0
+                end
                 for bi = 0, q.n - 1 do
                     local hb = hash(qx * 31 + bi, 17)
                     local hv = hash(qx * 53 + bi, 7)
                     local bx = q.x - q.w * 0.5 + (bi + 0.5) / q.n * q.w
                         + (hb - 0.5) * q.w / q.n
-                    local base = g.latY(bx - g.cx, tq)
                     local s = q.s * (0.72 + hb * 0.55)
-                    local probe = GrassField.tuftProbe
-                    if probe then
-                        probe[#probe + 1] = { seed = q.seed, bi = bi, x = bx, qx = q.x, w = q.w, s = s }
+                    local blocked = rC and (roadDist(bx, rCs, rW, rClr, rOL, rOR, rC) < CELL_W * 0.5 * s
+                        or (clearN > 0 and cleared(bx, q.rel)))
+                    if not blocked then
+                        local base = g.latY(bx - g.cx, tq)
+                        local probe = GrassField.tuftProbe
+                        if probe then
+                            probe[#probe + 1] = { seed = q.seed, bi = bi, x = bx, qx = q.x, w = q.w, s = s }
+                        end
+                        local vquad = (hv < P.broad)
+                            and (N_THIN + math.floor(hb * N_BROAD)) or math.floor(hv * N_THIN)
+                        local ht = hash(qx * 17 + bi, 23)
+                        local c = (ht < 0.25) and cDark or ((ht < 0.55) and cMid or cLight)
+                        emit(math.floor(bx), math.floor(base + 1),
+                            s * ((hb < 0.5) and 1 or -1), s,
+                            CELL_W / 2, CELL_H, CELL_W, CELL_H, quads[vquad],
+                            c8(c[1]), c8(c[2]), c8(c[3]), K_BLADE, nx, zq, hb, hv)
                     end
-                    local vquad = (hv < P.broad)
-                        and (N_THIN + math.floor(hb * N_BROAD)) or math.floor(hv * N_THIN)
-                    local ht = hash(qx * 17 + bi, 23)
-                    local c = (ht < 0.25) and cDark or ((ht < 0.55) and cMid or cLight)
-                    emit(math.floor(bx), math.floor(base + 1),
-                        s * ((hb < 0.5) and 1 or -1), s,
-                        CELL_W / 2, CELL_H, CELL_W, CELL_H, quads[vquad],
-                        c8(c[1]), c8(c[2]), c8(c[3]), K_BLADE, nx, zq, hb, hv)
                 end
                 GrassField.stats.tufts = GrassField.stats.tufts + q.n
             end

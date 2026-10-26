@@ -1372,14 +1372,14 @@ end
 local LANDMARK_ANIM = {
     landmark_rest   = { fps = 10, hoverFpsK = 1.8 },
     landmark_battle = { fps = 8, pingpong = true, hoverFpsK = 1.7 },
-    landmark_elite  = { fps = 9, hoverFpsK = 1.6 },
+    landmark_elite  = { fps = 9, hoverFpsK = 1.6, staticShadow = true },
     landmark_event  = { fps = 7, pingpong = true, hoverFpsK = 1.6 },
     landmark_shop   = { fps = 6, pingpong = true, hoverAnim = "landmark_shop_hover" },
     abyss_landmark_rest      = { fps = 10, pingpong = true, hoverFpsK = 1.8 },
-    abyss_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
-    highlands_landmark_elite = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
-    frost_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
-    dusk_landmark_elite      = { fps = 9,  pingpong = true, hoverFpsK = 1.6 },
+    abyss_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6, staticShadow = true },
+    highlands_landmark_elite = { fps = 9,  pingpong = true, hoverFpsK = 1.6, staticShadow = true },
+    frost_landmark_elite     = { fps = 9,  pingpong = true, hoverFpsK = 1.6, staticShadow = true },
+    dusk_landmark_elite      = { fps = 9,  pingpong = true, hoverFpsK = 1.6, staticShadow = true },
     fields_castle    = { fps = 8, pingpong = true },
     highlands_castle = { fps = 5, pingpong = true },
     abyss_castle     = { fps = 9, pingpong = true },
@@ -1521,6 +1521,13 @@ local function landmarkFrame(key, seed)
     local period = (a and a.pingpong) and (2 * #fr - 2) or #fr
     return landmarkFrameAt(key,
         WorldRoad._time * ((a and a.fps) or 8) + (seed or 0) % period)
+end
+
+function WorldRoad.landmarkShadowImg(key, img)
+    local a = lmCfg(LANDMARK_ANIM, key)
+    if not (a and a.staticShadow) then return img end
+    local fr = landmarkFrames(key)
+    return (fr and fr[1]) or img
 end
 
 local LMG = { NO_CRITTERS = {}, ORIG_H = {
@@ -2504,7 +2511,7 @@ local function drawCastleOf(g, x, w, camZ, bid, alpha, segBase)
         }
         WorldRoad._castleBaseHalf = iw * s * 0.44
         GrassField.requireTufts(REL_CREST - 0.1, cx, iw * s * 1.06, 8,
-            (ih * s * 0.05) / GrassField.CELL_H, 4241 + bid:byte(1))
+            (ih * s * 0.05) / GrassField.CELL_H, 4241 + bid:byte(1), true)
 
         local LW = Config.Lighting.WINDOW
         local bio = BIOME_BY_ID[bid]
@@ -4541,9 +4548,10 @@ local function drawProps(g, x, w, camZ)
         local lx = g.cx + roadWobble(lm.z, t, w) + WorldRoad.landmarkSlide(lm, t, w)
         lmMark.h, lmMark.w, lmMark.py, lmMark.px = ih * s, iw * s, py, lx
         LMG.Base.under(lm.key, lx, py, iw, s, t, aL, Scene.Grade.color("landmark", t, LMG.c), rel, g)
-        local shPad = Scene.Contact.padOf(img) or lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
+        local shImg = WorldRoad.landmarkShadowImg(lm.key, img)
+        local shPad = Scene.Contact.padOf(shImg) or lmCfg(LANDMARK_SHADOW_PAD, lm.key) or 0
         local shY = py - 1 - shPad * s
-        if not ShadowEngine.sprite(img, lx, shY, s,
+        if not ShadowEngine.sprite(shImg, lx, shY, s,
             shadowOpts(aL, nil, shPad, lmCfg(WorldRoad.SHADOW_PROFILE, lm.key))) then
             love.graphics.setColor(0, 0, 0, 0.22 * aL)
             love.graphics.ellipse("fill",
@@ -4555,7 +4563,7 @@ local function drawProps(g, x, w, camZ)
         if lmk and lmk.scorch then
             Scene.Contact.scorch(lx, shY, iw * s, t, lmk.scorch.radius, lmk.scorch.alpha * aL)
         end
-        Scene.Contact.queue(img, lx, shY, s, t, aL, 1)
+        Scene.Contact.queue(shImg, lx, shY, s, t, aL, 1)
         local lc = Scene.Grade.color("landmark", t, LMG.c)
         love.graphics.setColor(lc[1], lc[2], lc[3], aL)
         local kxF = 0
@@ -4607,7 +4615,7 @@ local function drawProps(g, x, w, camZ)
                 local animT = f._animT and f._animT[i]
                 img = (animT and landmarkFrameAt(key, animT + i * 3.7)
                     or landmarkFrame(key, i * 3.7)) or img
-                local shImg = img
+                local shImg = WorldRoad.landmarkShadowImg(key, img)
                 local hoverK = (f._hoverK and f._hoverK[i]) or 0
                 local aDef = lmCfg(LANDMARK_ANIM, key)
                 if hoverK > 0.02 and aDef and aDef.hoverAnim then
