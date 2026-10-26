@@ -723,6 +723,7 @@ local function clipMetrics(id, animName)
     clipMetricsCache[key] = m
     return m
 end
+EnemyRenderer.clipMetrics = clipMetrics
 
 function EnemyRenderer.bodyAxis(id)
     local over = (EnemyPoses.BY_ID[id] or {}).axisX

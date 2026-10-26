@@ -938,7 +938,7 @@ function EE.begin(enc, opts)
         t = 0, k = 0, sK = 0, sT = 0, left = dur + settle, tail = dur, stopped = false,
         clips = {}, used = {}, fired = {},
         idle = enc.anim, staticImg = enc.img, img = nil, idleImg = nil,
-        alpha = 1, tintK = 1, riseK = 1, frozen = false,
+        alpha = 1, tintK = 1, riseK = 1, frozen = false, padDy = 0,
         sideFrac = 0, offFrac = 0, dxK = 0, anchorHalfW = 0, anchorH = 0,
         glowK = 0, veilA = 0, lanternK = 0, columnK = 0, swarmK = 0, rocksK = 0, passK = -1,
         squash = 0, squashT = 0, squashDur = 0.2, squashAmp = 0, pokeT = 0, landed = 0, crouch = 0, pokeSide = 1,
@@ -1158,6 +1158,17 @@ function K.investida(S, dt)
     end
 end
 
+function EE.emergePadDy(S, emerge)
+    if S.img ~= emerge.frames[emerge.currentFrame] then return 0 end
+    local ER = require("src.ui.EnemyRenderer")
+    local em = ER.clipMetrics(S.id, "emerge")
+    local im = ER.clipMetrics(S.id, "idle")
+    local fp = em.framePads and em.framePads[emerge.currentFrame]
+    local ip = (im.framePads and im.framePads[1]) or im.pad
+    if not fp or not ip then return 0 end
+    return math.max(0, fp - ip)
+end
+
 EE.BURROW_REVEAL = 0.4
 EE.BURROW_HINT = 0.7
 
@@ -1169,6 +1180,7 @@ function K.brotar(S, dt)
     if not S.stopped and spec.inertStart and emerge then
         S.img = chainFrame(S, "emerge", 0)
         S.view.currentFrame = 1
+        S.padDy = EE.emergePadDy(S, emerge)
         return
     end
     if not S.stopped then
@@ -1191,6 +1203,7 @@ function K.brotar(S, dt)
     if emerge then
         S.img = chainFrame(S, "emerge", rise)
         S.view.currentFrame = 1
+        if spec.inertStart then S.padDy = EE.emergePadDy(S, emerge) end
         if rise >= 1 then S.endFrame1 = true end
     else
         S.endFrame1 = true
@@ -1641,6 +1654,7 @@ function EE.update(dt, tr)
     S.left = S.total - tr.t
     S.pose.relOff, S.pose.hidden, S.pose.liftK, S.pose.shadowA = 0, false, 0, 1
     S.alpha, S.tintK, S.riseK, S.crouch, S.squash = 1, 1, 1, 0, 0
+    S.padDy = 0
     S.sideFrac, S.offFrac, S.dxK = 0, 0, 0
     local fn = K[S.kind] or K.andar
     fn(S, dt)

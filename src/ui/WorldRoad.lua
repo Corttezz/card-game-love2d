@@ -5167,6 +5167,7 @@ function LMG.drawEncounterFront(g, x, w, camZ)
     if e.framePads and e.anim and e.framePads[e.anim.currentFrame] then
         pad = e.framePads[e.anim.currentFrame]
     end
+    if e.anim and e.anim.st and e.anim.st.padDy then pad = pad + e.anim.st.padDy end
     local sink = (e.footSink or 0) * math.min(1, k)
     local footY = pad * s + sink
     local es = e.shadow or LMG.NO_CRITTERS
