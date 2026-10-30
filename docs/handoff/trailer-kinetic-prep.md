@@ -375,6 +375,40 @@ Pico em 52,99 s = 81,5 % da duração. Leitura: todos os cartões passam da regr
 4. O 1º quadro do trailer é preto (TV desligada, igual ao v8): ruim para thumbnail/microtrailer; resolver no editor (pôster) ou começar em 0,50.
 5. SFX sintetizados ainda não foram ouvidos.
 
+## 7. Regravação para o B (30/10/2026)
+
+**Processos antes de começar:** nenhum `love`/`lovec` aberto (consulta por `Get-CimInstance Win32_Process`).
+
+**Merge da `main` na `steam-store-v2`: abortado.** O merge entrou sem conflito, mas a suíte completa (`test_all` via `suite_lock.sh`, `CARDGAME_HEADLESS=1`) deu 167 PASS / 4 FAIL / 1 CRASH em 172 suítes:
+- `test_landmark_fx` (sombra do castelo na fila de contato) e `test_scene_continuity` (CRASH na suíte; isolada, "1 cena com descontinuidade") **já falham na `steam-store-v2` sem o merge**;
+- `test_immunities` (retorno IMUNE), `test_enemy_life` (ember_imp) e `test_cheat_mode` (FORÇAR CORINGA) falharam só na suíte inteira e passam isoladas, com e sem o merge: dependem da ordem da suíte.
+
+Nada foi commitado nem enviado na `steam-store-v2`. Os 5 PNG de `tools/preview_out/audio_fluxo/` que a suíte reescreveu foram restaurados. As tomadas abaixo foram gravadas no código da `steam-store-v2` (`f68db8e5`), que está **2 commits de código atrás da `main`** (`e40c1249` Mãe dos Esporos, `14d5eba5` estrada sem mato e sombra do obelisco). Isso pode aparecer nas estradas.
+
+**Gravação:** uma única execução, `CARDGAME_HEADLESS=1 CARDGAME_IDENTITY=card-game-trailer-v9`, 1920x1080 a 60 fps, noite 0,85, sem barra superior, `en`. Comando = o da seção 3. Saiu com exit 0. O save ficou em `card-game-trailer-v9\run.tool.lua`. Saída em `%APPDATA%\LOVE\card-game-trailer-v9\trailer\` (103 GB; C: ficou com 166 GB livres).
+
+| Tomada | Quadros | Duração | Conteúdo |
+|---|---|---|---|
+| poweron | 433 | 7,22 s | TV liga (linha em ≈1,4 s) e estrada do ato 1 |
+| fork_a1 … fork_a6 | 462 cada | 7,70 s cada | encruzilhada de cada ato, castelo ao centro, sem rótulos |
+| night_a1 … night_a6 | 478 cada | 7,97 s cada | viagem pela estrada sem monstro (6 atos) |
+| entr_storm_griffin | 751 | 12,52 s | grifo inteiro (handoff 627, pouso 661) |
+| entr_fallen_angel | 781 | 13,02 s | anjo caído |
+| entr_ice_wyrm | 781 | 13,02 s | serpente de gelo |
+| deck8 | 1562 | 26,03 s | ladino x bruto do fosso desde a viagem, mão dada; JOGAR 830, golpes 868/946/989/1043, 2º JOGAR 1269, golpe 1354 |
+| reward | 859 | 14,32 s | cash out + Spoils of Battle com a 3ª carta (adaga verde) na revelação rara (cartas do ladino) |
+| shop | 323 | 5,38 s | chegada à loja e balcão com o ladino |
+| boss8 | 2093 | 34,88 s | **porta vista de fora** (portão em 564), salão escuro, entrada, nome (sting 1015), luta do guerreiro: JOGAR 1422, golpes 1448/1519/1564, 2º JOGAR 1783, golpes 1806/1868/2034/2086 |
+
+Mais `audio.jsonl` (marcas de tempo; nenhum som do jogo vai para o trailer) e `shots.txt`.
+
+**Conferência por folha de contato:** nenhum mago em nenhuma tomada. Atos, encruzilhadas e entradas são só mundo. Deck e recompensa mostram cartas do ladino (Backstab, Venom Fang, Shadow Dance). O chefe aparece com cartas do guerreiro.
+
+**Ressalvas:**
+- **Cauda da luta:** depois do 3º golpe do turno 1 (quadro 1564) há 1,5 s limpo (1564–1650: o rei reage, nada novo na tela). Em 27,68 s abre o tooltip "Twin Strike" da jogada seguinte. O turno 2 acaba 0,1 s depois do último golpe. Faltam ~0,5 s para os 2 s pedidos: segurar o último quadro limpo no editor ou regravar com espera maior.
+- A loja mostra coringas com rosto (caveira, demônio); o dono já recusou "coringas de rosto" no v7. Escolher planos da loja em que eles não dominem.
+- O 1º quadro de cada viagem nasce num clarão (convergência da encruzilhada), como já anotado no v8.
+
 ## Pendências para a fase 2
 
 1. Decidir: regravar (recomendado) ou montar com as janelas limpas do v8.
