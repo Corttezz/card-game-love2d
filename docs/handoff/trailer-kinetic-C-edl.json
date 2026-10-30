@@ -1,0 +1,943 @@
+{
+ "id": "grimoire_trailer_v9_kinetic",
+ "concept": "C: v8 recortado nos graves do Rei-Carnica",
+ "status": "EDL fechada, nao renderizada",
+ "root": "E:/dev/projects/card-game-trailer",
+ "output": {
+  "size": [
+   3840,
+   2160
+  ],
+  "fps": 60,
+  "duration": 65.0,
+  "deliver_1080": true,
+  "loudness_lufs": -14
+ },
+ "time_map": {
+  "rule": "t = p - 8.55 (p = segundo da faixa)",
+  "offset": 8.55
+ },
+ "music": {
+  "path": "audio/music/boss-carrion_king.mp3",
+  "license": "ACE-Step 1.5 local, uso comercial",
+  "in": 10.05,
+  "out": 73.55,
+  "t": 1.5,
+  "fade_in": 0.0,
+  "fade_out": {
+   "t0": 64.4,
+   "t1": 65.0
+  },
+  "beats": "build/trailer/music/boss-carrion_king_beats.json"
+ },
+ "peak": {
+  "t": 52.99,
+  "p": 61.54,
+  "fraction": 0.815
+ },
+ "clips": [
+  {
+   "id": "tv_estrada",
+   "src": "build/trailer/kinetic/clips_v8/poweron.mp4",
+   "in": 0.0,
+   "out": 4.0,
+   "t0": 0.0,
+   "t1": 4.0,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "inicio"
+   },
+   "note": "TV liga (ponto 0,50, imagem 1,25, assentada 1,75) e estrada do ato 1 com castelo ao centro; musica entra em 1,50",
+   "v8_window": [
+    0.0,
+    4.0
+   ],
+   "hold_last_frame_until": 4.01
+  },
+  {
+   "id": "encruzilhada_a4",
+   "src": "build/trailer/kinetic/clips_v8/fork_a4.mp4",
+   "in": 0.0,
+   "out": 2.067,
+   "t0": 4.01,
+   "t1": 6.28,
+   "speed": 0.9106,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 12.56,
+    "delta": 0.0
+   },
+   "note": "no lugar do fork_a1 do v8 (o fork_a1 limpo nao existe: SIX ACTS queimado)",
+   "v8_window": [
+    18.54,
+    20.6
+   ],
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   }
+  },
+  {
+   "id": "cartas_ladino",
+   "src": "build/trailer/kinetic/clips_v8/deck8_limpo.mp4",
+   "in": 0.72,
+   "out": 5.69,
+   "t0": 6.28,
+   "t1": 11.25,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 14.83,
+    "delta": 0.0
+   },
+   "note": "deck8 a partir da mao ja dada (o inicio tem BUILD A LIVING DECK queimado); JOGAR no grave 15,10",
+   "v8_window": [
+    10.72,
+    15.69
+   ],
+   "tr": {
+    "type": "dissolve",
+    "d": 0.3
+   },
+   "events": [
+    {
+     "what": "JOGAR (plano do v8: p 23,99 da T4)",
+     "clip_t": 0.99,
+     "t": 6.55,
+     "anchor": {
+      "type": "grave",
+      "p": 15.1,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 1 (onset medido no audio do v8 13,70)",
+     "clip_t": 3.7,
+     "t": 9.26,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 17.81,
+      "nearest_grave": 17.6,
+      "delta": 0.21
+     }
+    },
+    {
+     "what": "golpe 2 (onset 14,30)",
+     "clip_t": 4.3,
+     "t": 9.86,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 18.41,
+      "nearest_grave": 18.86,
+      "delta": -0.45
+     }
+    }
+   ]
+  },
+  {
+   "id": "salao_acento_hall1_carrion",
+   "src": "build/trailer/kinetic/clips_v8/hall1_carrion.mp4",
+   "in": 2.0,
+   "out": 3.55,
+   "t0": 11.25,
+   "t1": 12.8,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 19.8,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), 30 fps, um por grave; in-point do v8",
+   "tr": {
+    "type": "flash",
+    "d": 0.16
+   }
+  },
+  {
+   "id": "salao_acento_hall2_lich",
+   "src": "build/trailer/kinetic/clips_v8/hall2_lich.mp4",
+   "in": 1.33,
+   "out": 2.6,
+   "t0": 12.8,
+   "t1": 14.07,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 21.35,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), 30 fps, um por grave; in-point do v8",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_acento_hall3_tyrant",
+   "src": "build/trailer/kinetic/clips_v8/hall3_tyrant.mp4",
+   "in": 1.0,
+   "out": 2.26,
+   "t0": 14.07,
+   "t1": 15.33,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 22.62,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), 30 fps, um por grave; in-point do v8",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_acento_hall4_ice",
+   "src": "build/trailer/kinetic/clips_v8/hall4_ice.mp4",
+   "in": 1.33,
+   "out": 2.27,
+   "t0": 15.33,
+   "t1": 16.27,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 23.88,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), 30 fps, um por grave; in-point do v8",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_acento_hall5_heart",
+   "src": "build/trailer/kinetic/clips_v8/hall5_heart.mp4",
+   "in": 4.0,
+   "out": 5.56,
+   "t0": 16.27,
+   "t1": 17.83,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 24.82,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), 30 fps, um por grave; in-point do v8",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "entrada_anjo",
+   "src": "build/trailer/kinetic/clips_v8/entr_anjo.mp4",
+   "in": 0.0,
+   "out": 2.2,
+   "t0": 17.83,
+   "t1": 20.36,
+   "speed": 0.8696,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 26.38,
+    "delta": 0.0
+   },
+   "note": "anjo caido pousando (o grifo limpo nao existe)",
+   "v8_window": [
+    30.54,
+    32.73
+   ],
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   }
+  },
+  {
+   "id": "entrada_serpente",
+   "src": "build/trailer/kinetic/clips_v8/entr_serpente.mp4",
+   "in": 0.0,
+   "out": 2.183,
+   "t0": 20.36,
+   "t1": 22.86,
+   "speed": 0.8732,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 28.91,
+    "delta": 0.0
+   },
+   "note": "serpente de gelo erguendo e soprando",
+   "v8_window": [
+    32.85,
+    35.02
+   ],
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   }
+  },
+  {
+   "id": "estrada_a_noite",
+   "src": "build/trailer/kinetic/clips_v8/fork_a2.mp4",
+   "in": 0.0,
+   "out": 2.1,
+   "t0": 22.86,
+   "t1": 26.64,
+   "speed": 0.5556,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 31.41,
+    "delta": 0.0
+   },
+   "note": "TROCA das 2 telas pretas do v8: encruzilhada do ato 2 a noite (lua roxa, castelo ao centro), a unica estrada de noite limpa do v8; quase parada, aguenta 0,56x",
+   "v8_window": [
+    16.31,
+    18.4
+   ],
+   "tr": {
+    "type": "dissolve",
+    "d": 0.4
+   }
+  },
+  {
+   "id": "salao_pad_hall2_lich",
+   "src": "build/trailer/kinetic/clips_v8/hall2_lich.mp4",
+   "in": 3.0,
+   "out": 6.905,
+   "t0": 26.64,
+   "t1": 30.545,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 35.19,
+    "delta": 0.0
+   },
+   "note": "pad sem grave (p 35,19 a 55,07): segunda passada lenta nos saloes, trecho do clipe que o acento nao usou",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.6
+   }
+  },
+  {
+   "id": "salao_pad_hall3_tyrant",
+   "src": "build/trailer/kinetic/clips_v8/hall3_tyrant.mp4",
+   "in": 2.4,
+   "out": 6.305,
+   "t0": 30.545,
+   "t1": 34.45,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 39.095,
+    "nearest_grave": 35.19,
+    "delta": 3.905
+   },
+   "note": "pad sem grave (p 35,19 a 55,07): segunda passada lenta nos saloes, trecho do clipe que o acento nao usou",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.6
+   }
+  },
+  {
+   "id": "salao_pad_hall4_ice",
+   "src": "build/trailer/kinetic/clips_v8/hall4_ice.mp4",
+   "in": 2.4,
+   "out": 6.305,
+   "t0": 34.45,
+   "t1": 38.355,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 43.0,
+    "nearest_grave": 35.19,
+    "delta": 7.81
+   },
+   "note": "pad sem grave (p 35,19 a 55,07): segunda passada lenta nos saloes, trecho do clipe que o acento nao usou",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.6
+   }
+  },
+  {
+   "id": "salao_pad_hall1_carrion",
+   "src": "build/trailer/kinetic/clips_v8/hall1_carrion.mp4",
+   "in": 3.8,
+   "out": 7.705,
+   "t0": 38.355,
+   "t1": 42.26,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 46.905,
+    "nearest_grave": 55.26,
+    "delta": -8.355
+   },
+   "note": "pad sem grave (p 35,19 a 55,07): segunda passada lenta nos saloes, trecho do clipe que o acento nao usou",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.6
+   }
+  },
+  {
+   "id": "porta_entrada_nome",
+   "src": "build/trailer/kinetic/clips_v8/boss_entrada_nome.mp4",
+   "in": 0.0,
+   "out": 5.533,
+   "t0": 42.26,
+   "t1": 47.97,
+   "speed": 0.969,
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 50.81,
+    "nearest_grave": 55.26,
+    "delta": -4.45
+   },
+   "note": "salao do Rei-Carnica no escuro (a porta em si esta sob EVERY BOSS queimado no v8: entra so o som), olhos, rasantes, pouso e cartao nome+epiteto do jogo",
+   "v8_window": [
+    42.67,
+    48.2
+   ],
+   "tr": {
+    "type": "dissolve",
+    "d": 0.3
+   },
+   "events": [
+    {
+     "what": "cartao do nome (REVEAL do v8, 46,93)",
+     "clip_t": 4.26,
+     "t": 46.656,
+     "anchor": {
+      "type": "grave",
+      "p": 55.26,
+      "delta": -0.054
+     }
+    }
+   ]
+  },
+  {
+   "id": "luta_guerreiro",
+   "src": "build/trailer/kinetic/clips_v8/boss_luta.mp4",
+   "in": 0.0,
+   "out": 7.0,
+   "t0": 47.97,
+   "t1": 55.3,
+   "speed": 0.955,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 56.52,
+    "delta": 0.0
+   },
+   "note": "luta sem corte; 1o golpe = numero grande = pico",
+   "v8_window": [
+    48.2,
+    55.2
+   ],
+   "events": [
+    {
+     "what": "golpe 1, numero de dano (pico)",
+     "clip_t": 4.8,
+     "t": 52.996,
+     "anchor": {
+      "type": "grave",
+      "p": 61.54,
+      "delta": 0.006
+     }
+    },
+    {
+     "what": "golpe 2",
+     "clip_t": 5.71,
+     "t": 53.949,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 62.499,
+      "nearest_grave": 62.78,
+      "delta": -0.281
+     }
+    },
+    {
+     "what": "golpe 3",
+     "clip_t": 6.97,
+     "t": 55.268,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 63.818,
+      "nearest_grave": 64.04,
+      "delta": -0.222
+     }
+    }
+   ]
+  },
+  {
+   "id": "glitch",
+   "kind": "glitch",
+   "t0": 55.3,
+   "t1": 55.49,
+   "note": "efeito do editor (glitch do v8), termina no grave 64,04"
+  },
+  {
+   "id": "logo",
+   "src": "build/trailer/kinetic/clips_v8/logo_sting.mp4",
+   "in": 0.0,
+   "out": 6.5,
+   "t0": 55.49,
+   "t1": 61.716,
+   "speed": 1.044,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 64.04,
+    "delta": 0.0
+   },
+   "note": "logo_sting original (1080p, unico que existe: subir 2x nearest no master 4K), mudo; 1,044x para o impacto da arte (2,62 s) cair no grave 66,55",
+   "events": [
+    {
+     "what": "impacto/flash da arte do logo",
+     "clip_t": 2.62,
+     "t": 58.0,
+     "anchor": {
+      "type": "grave",
+      "p": 66.55,
+      "delta": 0.0
+     }
+    }
+   ],
+   "hold_last_frame_until": 65.0
+  }
+ ],
+ "texts": [
+  {
+   "phrase": "SIX ACTS. ONE ROAD TO THE CASTLE.",
+   "words": [
+    {
+     "text": "SIX",
+     "t": 1.5,
+     "anchor": {
+      "type": "grave",
+      "p": 10.05,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "ACTS.",
+     "t": 2.78,
+     "anchor": {
+      "type": "grave",
+      "p": 11.33,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "ONE ROAD TO THE CASTLE.",
+     "t": 4.01,
+     "anchor": {
+      "type": "grave",
+      "p": 12.56,
+      "delta": 0.0
+     },
+     "line": 2
+    }
+   ],
+   "out": 6.25,
+   "chars": 33,
+   "hold_after_last_word": 2.24,
+   "hold_total": 4.75,
+   "min_by_rule_13cps": 2.54
+  },
+  {
+   "phrase": "BUILD A LIVING DECK.",
+   "words": [
+    {
+     "text": "BUILD",
+     "t": 7.8,
+     "anchor": {
+      "type": "grave",
+      "p": 16.35,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "A LIVING",
+     "t": 9.05,
+     "anchor": {
+      "type": "grave",
+      "p": 17.6,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "DECK.",
+     "t": 10.31,
+     "anchor": {
+      "type": "grave",
+      "p": 18.86,
+      "delta": 0.0
+     }
+    }
+   ],
+   "out": 11.2,
+   "chars": 20,
+   "hold_after_last_word": 0.89,
+   "hold_total": 3.4,
+   "min_by_rule_13cps": 1.54
+  },
+  {
+   "phrase": "YOUR CARDS DECIDE WHAT SURVIVES.",
+   "words": [
+    {
+     "text": "YOUR CARDS",
+     "t": 17.83,
+     "anchor": {
+      "type": "grave",
+      "p": 26.38,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "DECIDE",
+     "t": 19.09,
+     "anchor": {
+      "type": "grave",
+      "p": 27.64,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "WHAT SURVIVES.",
+     "t": 20.36,
+     "anchor": {
+      "type": "grave",
+      "p": 28.91,
+      "delta": 0.0
+     },
+     "line": 2
+    }
+   ],
+   "out": 22.8,
+   "chars": 32,
+   "hold_after_last_word": 2.44,
+   "hold_total": 4.97,
+   "min_by_rule_13cps": 2.46
+  },
+  {
+   "phrase": "EVERY BOSS IS A PUZZLE.",
+   "words": [
+    {
+     "text": "EVERY BOSS",
+     "t": 38.355,
+     "anchor": {
+      "type": "evento",
+      "what": "corte do salao, pad sem grave",
+      "p": 46.905
+     }
+    },
+    {
+     "text": "IS A PUZZLE.",
+     "t": 39.51,
+     "anchor": {
+      "type": "evento",
+      "what": "inicio do rangido da porta",
+      "p": 48.06
+     },
+     "line": 2
+    }
+   ],
+   "out": 41.95,
+   "chars": 23,
+   "hold_after_last_word": 2.44,
+   "hold_total": 3.6,
+   "min_by_rule_13cps": 1.77
+  },
+  {
+   "phrase": "WISHLIST ON STEAM.",
+   "words": [
+    {
+     "text": "WISHLIST ON STEAM.",
+     "t": 60.51,
+     "anchor": {
+      "type": "grave",
+      "p": 69.06,
+      "delta": 0.0
+     }
+    }
+   ],
+   "out": 65.0,
+   "chars": 18,
+   "hold_after_last_word": 4.49,
+   "hold_total": 4.49,
+   "min_by_rule_13cps": 1.38
+  }
+ ],
+ "sfx": [
+  {
+   "file": "build/trailer/sfx_synth/tv_on.wav",
+   "attack_offset": 0.0,
+   "event_t": 0.45,
+   "start_t": 0.45,
+   "gain_db": -8,
+   "what": "TV liga (ponto aceso em 0,50)",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 9.0,
+    "nearest_grave": 10.05,
+    "delta": -1.05
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 4.01,
+   "start_t": 3.652,
+   "gain_db": -14,
+   "what": "corte encruzilhada",
+   "anchor": {
+    "type": "grave",
+    "p": 12.56,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 11.25,
+   "start_t": 10.892,
+   "gain_db": -14,
+   "what": "salao 1",
+   "anchor": {
+    "type": "grave",
+    "p": 19.8,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 12.8,
+   "start_t": 12.442,
+   "gain_db": -14,
+   "what": "salao 2",
+   "anchor": {
+    "type": "grave",
+    "p": 21.35,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 14.07,
+   "start_t": 13.712,
+   "gain_db": -14,
+   "what": "salao 3",
+   "anchor": {
+    "type": "grave",
+    "p": 22.62,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 15.33,
+   "start_t": 14.972,
+   "gain_db": -14,
+   "what": "salao 4",
+   "anchor": {
+    "type": "grave",
+    "p": 23.88,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 16.27,
+   "start_t": 15.912,
+   "gain_db": -14,
+   "what": "salao 5",
+   "anchor": {
+    "type": "grave",
+    "p": 24.82,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 9.26,
+   "start_t": 9.26,
+   "gain_db": -10,
+   "what": "golpe 1 das cartas (onset do v8)",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 17.81,
+    "nearest_grave": 17.6,
+    "delta": 0.21
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 9.86,
+   "start_t": 9.86,
+   "gain_db": -11,
+   "what": "golpe 2 das cartas (onset do v8)",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 18.41,
+    "nearest_grave": 18.86,
+    "delta": -0.45
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 17.83,
+   "start_t": 17.272,
+   "gain_db": -13,
+   "what": "entrada do anjo",
+   "anchor": {
+    "type": "grave",
+    "p": 26.38,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 20.36,
+   "start_t": 19.802,
+   "gain_db": -13,
+   "what": "entrada da serpente",
+   "anchor": {
+    "type": "grave",
+    "p": 28.91,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 22.86,
+   "start_t": 22.302,
+   "gain_db": -18,
+   "what": "estrada a noite",
+   "anchor": {
+    "type": "grave",
+    "p": 31.41,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/castle_door.wav",
+   "attack_offset": 2.75,
+   "event_t": 42.26,
+   "start_t": 39.51,
+   "gain_db": -4,
+   "what": "rangido 39,51 e baque no corte para o salao do rei",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 50.81,
+    "nearest_grave": 55.26,
+    "delta": -4.45
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_heavy.wav",
+   "attack_offset": 0.0,
+   "event_t": 46.71,
+   "start_t": 46.71,
+   "gain_db": -6,
+   "what": "cartao do nome",
+   "anchor": {
+    "type": "grave",
+    "p": 55.26,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_heavy.wav",
+   "attack_offset": 0.0,
+   "event_t": 52.99,
+   "start_t": 52.99,
+   "gain_db": -4,
+   "what": "golpe 1, pico",
+   "anchor": {
+    "type": "grave",
+    "p": 61.54,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 53.95,
+   "start_t": 53.95,
+   "gain_db": -9,
+   "what": "golpe 2",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 62.5,
+    "nearest_grave": 62.78,
+    "delta": -0.28
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 55.27,
+   "start_t": 55.27,
+   "gain_db": -9,
+   "what": "golpe 3",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 63.82,
+    "nearest_grave": 64.04,
+    "delta": -0.22
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/glitch.wav",
+   "attack_offset": 0.0,
+   "event_t": 55.3,
+   "start_t": 55.3,
+   "gain_db": -12,
+   "what": "glitch antes do logo",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 63.85,
+    "nearest_grave": 64.04,
+    "delta": -0.19
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 58.0,
+   "start_t": 58.0,
+   "gain_db": -8,
+   "what": "flash do logo",
+   "anchor": {
+    "type": "grave",
+    "p": 66.55,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/logo_seal.wav",
+   "attack_offset": 0.0,
+   "event_t": 60.51,
+   "start_t": 60.51,
+   "gain_db": -6,
+   "what": "selo + WISHLIST",
+   "anchor": {
+    "type": "grave",
+    "p": 69.06,
+    "delta": 0.0
+   }
+  }
+ ],
+ "rules": [
+  "bezel do CRT ja esta queimado nos clipes do v8: tipografia DENTRO da tela",
+  "nenhum audio dos clipes (todos -an)",
+  "texto = so as 5 frases antigas; nomes dos chefes nos saloes ficaram de fora",
+  "Grimoire Pixel, escala inteira, sem blur/gradiente"
+ ]
+}

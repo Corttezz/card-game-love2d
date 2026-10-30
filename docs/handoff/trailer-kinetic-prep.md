@@ -149,6 +149,8 @@ Notas B: gameplay no quadro 0; loop completo (jogar → recompensa → mapa → 
 
 ### Conceito C: "v9" (v8 recortado nos graves do Rei-Carniça)
 
+> **Substituído pela seção 6** (EDL fechada só com clipes limpos do v8; a tabela abaixo supunha grifo, porta e fork_a1 limpos, que não existem).
+
 Mesma ordem e mesmas imagens do v8. Faixa de p = 10,05 até 73,5. **t = p − 8,55**. Duração **65,0 s** (v8: 62,0). Pico em t = 52,99 → **81,5 %**. O drop 55,07 cai em t = 46,52, a 0,42 s do nome do chefe no v8 (46,94): o desenho do v8 cabe quase sem mexer, e o pad do Rei-Carniça ocupa o lugar do silêncio do v8 (frases + porta).
 
 | t | p | âncora | bloco do v8 (t no v8) | texto | SFX |
@@ -314,6 +316,64 @@ Uso por conceito: `tv_on` no t 0; `whoosh` nos cortes de atos/salões/encruzilha
 | sons do jogo nas tomadas, `castleGateOpen`, áudio do v8, T4/T1 | ElevenLabs free / origem não documentada | **não usar** |
 
 Divergência para o chefe olhar: `memory/trailer_capture.md` (no R, rodada de 21/10) diz que a `trailer_T4.wav` é ACE-Step; o handoff diz que a licença da T4 não está documentada. Não muda nada aqui (nenhum conceito usa a T4), mas decide se o v8 atual é publicável como está.
+
+## 6. Clipes do v8 extraídos e EDL do C (30/10/2026)
+
+Decisões do Grimoire aplicadas: regravação espera o OK do Daniel (nenhum `lovec` rodado, `main` e `steam-store-v2` intocadas); no C as duas telas pretas saem e entra estrada à noite; só faixas ACE-Step dos chefes.
+
+### Clipes (`R\build\trailer\kinetic\clips_v8\`, todos mudos)
+
+Fonte: **`grimoire_trailer_v8_4k.mp4`** (existe; 3840x2160, 60 fps, 3720 quadros, idêntico em tempo ao 1080p). Extração com `-ss/-to` depois do `-i` (quadro exato), `-an`, x264 CRF 12. As janelas do prep foram refinadas depois de olhar as bordas quadro a quadro: o editor do v8 aplica a transição no COMEÇO do trecho seguinte, então os primeiros 0,12 a 0,14 s de fork_a2/fork_a4/anjo/serpente foram cortados (glitch_soft); o deck termina em 16,00 porque um tooltip ("Dirty Blade") abre em ≈16,1; a estrada do poweron vai até 4,00 (limpa; o fork_a1 entra em dissolve depois).
+
+| Clipe | Janela no v8 | Resolução | fps | Duração |
+|---|---|---|---|---|
+| `poweron.mp4` | 0,00–4,00 | 3840x2160 | 60 | 4,000 s |
+| `deck8_limpo.mp4` | 10,00–16,00 | 3840x2160 | 60 | 6,000 s |
+| `fork_a2.mp4` | 16,31–18,40 | 3840x2160 | 60 | 2,100 s |
+| `fork_a4.mp4` | 18,54–20,60 | 3840x2160 | 60 | 2,067 s |
+| `entr_anjo.mp4` | 30,54–32,73 | 3840x2160 | 60 | 2,200 s |
+| `entr_serpente.mp4` | 32,85–35,02 | 3840x2160 | 60 | 2,183 s |
+| `boss_entrada_nome.mp4` | 42,67–48,20 | 3840x2160 | 60 | 5,533 s |
+| `boss_luta.mp4` | 48,20–55,20 | 3840x2160 | 60 | 7,000 s |
+| `hall1_carrion.mp4` … `hall5_heart.mp4` | cópia de `ai_4k\` sem áudio | 3840x2160 | 30 | 7,967 s cada |
+| `logo_sting.mp4` | cópia de `brand\` sem áudio | **1920x1080** (só existe nessa resolução) | 60 | 6,500 s |
+
+Os clipes do v8 já carregam a moldura do CRT e os pulsos de brilho dos graves da T4 (lista na seção 3). O 4K do v8 é o 1080p ampliado 2x (nearest), então não há detalhe extra; serve para o master sair em 4K sem segunda ampliação.
+
+### EDL do C
+
+`docs/handoff/trailer-kinetic-C-edl.json` (cópia em `R\build\trailer\kinetic\C_edl.json`). Faixa `boss-carrion_king.mp3` de p 10,05 a 73,55 entrando em t 1,50; **t = p − 8,55**; 65,0 s; 3840x2160 a 60 fps. Cada clipe tem `in/out` no tempo do próprio clipe, `t0/t1` no trailer, `speed` e a âncora do corte (grave do JSON com Δ); textos com o tempo de cada palavra e a âncora; SFX com `attack_offset` do `manifest.json` e `start_t = evento − ataque`.
+
+| t | âncora (p) | clipe | texto |
+|---|---|---|---|
+| 0,00–4,01 | — / música em 1,50 (grave 10,05) | `poweron` 0–4 (TV liga + estrada do ato 1) | SIX (1,50) · ACTS. (2,78) |
+| 4,01–6,28 | grave 12,56 | `fork_a4` 0,91x (no lugar do fork_a1) | 2ª linha ONE ROAD TO THE CASTLE. (até 6,25) |
+| 6,28–11,25 | grave 14,83 | `deck8_limpo` 0,72–5,69; JOGAR em 6,55 = grave 15,10 | BUILD (7,80) · A LIVING (9,05) · DECK. (10,31) |
+| 11,25 / 12,80 / 14,07 / 15,33 / 16,27 | graves 19,80 / 21,35 / 22,62 / 23,88 / 24,82 | 5 salões 4K, um por grave (in-points do v8) | — |
+| 17,83–20,36 | grave 26,38 | `entr_anjo` 0,87x | YOUR CARDS (17,83) · DECIDE (19,09) |
+| 20,36–22,86 | grave 28,91 | `entr_serpente` 0,87x | 2ª linha WHAT SURVIVES. (20,36, até 22,80) |
+| 22,86–26,64 | grave 31,41 | **estrada à noite** = `fork_a2` 0,56x | — |
+| 26,64–42,26 | grave 35,19, depois pad sem grave | 4 salões lentos (lich, tirano, gelo, Rei-Carniça), trechos que o acento não usou, dissolve 0,6 s | EVERY BOSS (38,36, corte do salão) · IS A PUZZLE. (39,51, início do rangido) |
+| 42,26–47,97 | pad / cartão do nome em 46,66 = grave 55,26 (Δ −0,05) | `boss_entrada_nome` 0,97x | — |
+| 47,97–55,30 | grave 56,52 | `boss_luta` 0,955x; 1º golpe = pico em 52,99 (grave 61,54) | — |
+| 55,30–55,49 | termina no grave 64,04 | glitch | — |
+| 55,49–65,0 | grave 64,04; flash 58,00 = grave 66,55 | `logo_sting` 1,044x, último quadro parado de 61,72 a 65,0 | WISHLIST ON STEAM. (60,51 = grave 69,06) |
+
+Pico em 52,99 s = 81,5 % da duração. Leitura: todos os cartões passam da regra de 1 s a cada 13 caracteres (o mais justo é YOUR CARDS… com 2,44 s parados depois da última palavra para 2,46 pedidos, 5,0 s no total).
+
+**Escolhas registradas:**
+- **Estrada à noite (troca das telas pretas):** o v8 não tem uma tomada só de estrada à noite sem texto. A melhor sem texto é a encruzilhada do ato 2 (`fork_a2`: noite roxa, lua, castelo ao centro, quase parada), por isso aguenta 0,56x. A estrada do ato 1 (`poweron`) é entardecer e já abre o trailer.
+- **Saem do v8 por falta de imagem limpa:** grifo (texto queimado em 26,83–29,43), fork_a1 (SIX ACTS queimado; entra o fork_a4), a porta vista de fora (EVERY BOSS queimado em 39,92–42,67: a porta fica só no som, com o baque no corte para o salão escuro do rei) e os nomes dos chefes nos salões (regra: só as 5 frases).
+- **O pad de 20 s** (p 35,19–55,07) não tem grave: ali os cortes são dissolves e o texto entra em acontecimento de imagem/som. Os salões aparecem duas vezes (acento rápido no groove, passada lenta no pad), porque os clipes limpos do v8 não somam imagem suficiente para 65 s sem isso.
+- **Golpes fora do grave** (só uma âncora por bloco sem regravar): cartas 9,26 (Δ +0,21) e 9,86 (Δ −0,45), onsets medidos no áudio do v8; luta 53,95 (Δ −0,28) e 55,27 (Δ −0,22). O 1º golpe da luta (o pico) está no grave.
+
+### O que faltou
+
+1. Grifo, porta vista de fora, fork_a1 e mão sendo dada: só com regravação (aguardando o Daniel).
+2. A luta acaba 0,03 s depois do 3º golpe: o glitch entra logo em seguida, sem número parado.
+3. `logo_sting` só existe em 1080p.
+4. O 1º quadro do trailer é preto (TV desligada, igual ao v8): ruim para thumbnail/microtrailer; resolver no editor (pôster) ou começar em 0,50.
+5. SFX sintetizados ainda não foram ouvidos.
 
 ## Pendências para a fase 2
 
