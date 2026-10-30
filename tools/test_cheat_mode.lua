@@ -139,6 +139,7 @@ local EXPECT = {
 }
 
 local function checkFullFlow(t, CheatMode)
+    require("src.systems.UnlockQueue").clear()
     local okLoad, errLoad = pcall(love.load, {})
     t:truthy("boot completo do jogo" .. (okLoad and "" or (": " .. tostring(errLoad))), okLoad)
     if not okLoad then return end
