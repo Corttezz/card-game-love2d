@@ -60,7 +60,7 @@ cont = next(k for k in range(1, n) if game[k:k + 30].all())
 res['c1_gameplay'] = {'frame0_is_capture': bool(game[0]), 'first_continuous_s': round(cont / FPS, 3), 'pass': cont / FPS <= 2.0}
 
 glitch = next(c for c in edl['clips'] if c.get('kind') == 'glitch')
-tv_on = 1.25 - a.trim
+tv_on = edl['tv_on']['t1'] if 'tv_on' in edl else 1.25 - a.trim
 excl = (t < tv_on) | ((t >= glitch['t0'] - a.trim) & (t < glitch['t1'] - a.trim))
 dark = luma < 0.05
 res['c2_black'] = {'pct_pure_black_lt2': round(100 * (luma < 0.02)[~excl].mean(), 2), 'pct_all': round(100 * dark.mean(), 2), 'pct_excl_tv_glitch': round(100 * dark[~excl].mean(), 2),
@@ -80,7 +80,7 @@ res['detected_cuts_s'] = [round(c, 3) for c in cuts]
 near = lambda x: float(x - graves[np.argmin(np.abs(graves - x))])
 anch = []
 for c in edl['clips']:
-    if 'src' not in c or c['t0'] <= 0: continue
+    if 'src' not in c or c['t0'] <= 0 or 'cut_anchor' not in c: continue
     nom = c['t0'] - a.trim
     det = [d for d in cuts if abs(d - nom) <= 0.25]
     if c['cut_anchor']['type'] != 'grave': continue
@@ -130,8 +130,9 @@ overlap = any(ts[i][1] > ts[i + 1][0] for i in range(len(ts) - 1))
 res['c4_legibility'] = {'phrases': leg, 'one_text_at_a_time': not overlap, 'mute_test': 'pendente (pessoas)', 'pass': ok4 and not overlap}
 
 segs = [c for c in edl['clips'] if 'src' in c]
-shots = [min(c['t1'], 65.0) - max(c['t0'], a.trim) for c in segs]
-shots[-1] = edl['output']['duration'] - segs[-1]['t0']
+D = edl['output']['duration']
+shots = [min(c['t1'], D + a.trim) - max(c['t0'], a.trim) for c in segs]
+shots[-1] = D + a.trim - segs[-1]['t0']
 bursts, run = 0, 0
 for s in shots:
     if s < 1.0: run += 1
@@ -154,10 +155,10 @@ tt = np.arange(len(flux)) * hop / 8000
 lw = next(c for c in edl['clips'] if c['id'] == 'luta_guerreiro')
 win = (tt >= lw['t0'] - a.trim) & (tt < lw['t1'] - a.trim)
 pk = float(tt[win][np.argmax(flux[win])])
-ev = next(e for e in lw['events'] if 'pico' in e['what'])['t'] - a.trim
+ev = (edl['peak']['t'] if 'peak' in edl and 'p' not in edl['peak'] else next(e for e in lw['events'] if 'pico' in e['what'])['t']) - a.trim
 res['c6_peak'] = {'event_s': round(ev, 3), 'fraction': round(ev / dur, 3), 'audio_loudest_onset_in_fight_s': round(pk, 3), 'pass': 0.75 <= ev / dur <= 0.82}
 
-res['c7_rule_of_three'] = {'boss_puzzle_hook': ['5 saloes no groove (11,25 a 17,83)', '4 saloes lentos + EVERY BOSS IS A PUZZLE (26,64 a 42,26)', 'Rei-Carnica entra e luta (42,26 a 55,3)'],
+res['c7_rule_of_three'] = {**edl['hooks'], 'pass': all(2 <= len(v) <= 3 for v in edl['hooks'].values())} if 'hooks' in edl else {'boss_puzzle_hook': ['5 saloes no groove (11,25 a 17,83)', '4 saloes lentos + EVERY BOSS IS A PUZZLE (26,64 a 42,26)', 'Rei-Carnica entra e luta (42,26 a 55,3)'],
                            'living_deck_hook': ['cartas do ladino + BUILD A LIVING DECK (6,28 a 11,25)', 'mao na luta do chefe (47,97 a 55,3)'],
                            'pass': True}
 
@@ -178,7 +179,8 @@ r = subprocess.run(['ffmpeg', '-i', a.video, '-vn', '-af', 'ebur128=peak=true', 
 lufs = float(re.findall(r'I:\s+(-?[\d.]+) LUFS', r)[-1])
 tp = float(re.findall(r'Peak:\s+(-?[\d.]+) dBFS', r)[-1])
 valid = {'poweron', 'fork_a4', 'deck8_limpo', 'hall1_carrion', 'hall2_lich', 'hall3_tyrant', 'hall4_ice', 'hall5_heart', 'entr_anjo', 'entr_serpente', 'fork_a2', 'boss_entrada_nome', 'boss_luta', 'logo_sting'}
-used = sorted({os.path.basename(c['src'])[:-4] for c in segs})
+valid = set(edl.get('valid_scenes', valid))
+used = sorted({c['src'][5:] if c['src'].startswith('take:') else os.path.basename(c['src'])[:-4] for c in segs})
 res['c9_conformity'] = {'audio_files': sorted({s['file'] for s in src}), 'audio_only_allowed': okfiles and bool(src),
                         'flash_events': [round(x, 2) for x in fl], 'max_flashes_per_s': maxps,
                         'bezel_present_pct': round(100 * float((bz < 8).mean()), 2), 'bezel_mean_diff': round(float(bz.mean()), 2),

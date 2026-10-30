@@ -1,0 +1,478 @@
+{
+ "frames": 3918,
+ "duration": 65.3,
+ "video": "E:/dev/projects/card-game-trailer/build/trailer/grimoire_kinetic_new.mp4",
+ "size": "3840,2160",
+ "fps": "60/1",
+ "c1_gameplay": {
+  "frame0_is_capture": true,
+  "first_continuous_s": 0.333,
+  "pass": true
+ },
+ "c2_black": {
+  "pct_pure_black_lt2": 0.1,
+  "pct_all": 4.85,
+  "pct_excl_tv_glitch": 4.56,
+  "dark_spans": [
+   [
+    32.6,
+    33.55
+   ],
+   [
+    33.57,
+    33.58
+   ],
+   [
+    33.6,
+    33.63
+   ],
+   [
+    55.3,
+    57.2
+   ],
+   [
+    57.45,
+    57.47
+   ]
+  ],
+  "pass": false
+ },
+ "detected_cuts_s": [
+  0.017,
+  0.267,
+  0.333,
+  0.4,
+  8.533,
+  11.05,
+  12.3,
+  14.817,
+  16.083,
+  17.333,
+  20.7,
+  22.7,
+  23.533,
+  25.0,
+  36.817,
+  36.867,
+  36.933,
+  37.033,
+  38.667,
+  38.75,
+  38.833,
+  39.917,
+  41.15,
+  42.433,
+  43.683,
+  46.183,
+  55.067,
+  55.3
+ ],
+ "c3_sync": {
+  "cuts_on_grave": [
+   {
+    "clip": "recompensa",
+    "nominal_s": 8.52,
+    "detected_s": 8.533,
+    "transition": "glitch_soft",
+    "delta_grave_frames": 0.8,
+    "measured": true
+   },
+   {
+    "clip": "ato_1",
+    "nominal_s": 11.05,
+    "detected_s": 11.05,
+    "transition": "glitch_soft",
+    "delta_grave_frames": 0.0,
+    "measured": true
+   },
+   {
+    "clip": "ato_2",
+    "nominal_s": 12.29,
+    "detected_s": 12.3,
+    "transition": "zoom",
+    "delta_grave_frames": 0.6,
+    "measured": true
+   },
+   {
+    "clip": "ato_3",
+    "nominal_s": 13.55,
+    "detected_s": null,
+    "transition": "zoom",
+    "delta_grave_frames": 0.0,
+    "measured": false
+   },
+   {
+    "clip": "ato_4",
+    "nominal_s": 14.81,
+    "detected_s": 14.817,
+    "transition": "zoom",
+    "delta_grave_frames": 0.4,
+    "measured": true
+   },
+   {
+    "clip": "ato_5",
+    "nominal_s": 16.07,
+    "detected_s": 16.083,
+    "transition": "zoom",
+    "delta_grave_frames": 0.8,
+    "measured": true
+   },
+   {
+    "clip": "ato_6",
+    "nominal_s": 17.33,
+    "detected_s": 17.333,
+    "transition": "zoom",
+    "delta_grave_frames": 0.2,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall2_lich",
+    "nominal_s": 38.66,
+    "detected_s": 38.667,
+    "transition": "flash",
+    "delta_grave_frames": 0.4,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall3_tyrant",
+    "nominal_s": 39.91,
+    "detected_s": 39.917,
+    "transition": "zoom",
+    "delta_grave_frames": 0.4,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall4_ice",
+    "nominal_s": 41.15,
+    "detected_s": 41.15,
+    "transition": "zoom",
+    "delta_grave_frames": 0.0,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall5_heart",
+    "nominal_s": 42.43,
+    "detected_s": 42.433,
+    "transition": "zoom",
+    "delta_grave_frames": 0.2,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall1_carrion",
+    "nominal_s": 43.68,
+    "detected_s": 43.683,
+    "transition": "zoom",
+    "delta_grave_frames": 0.2,
+    "measured": true
+   },
+   {
+    "clip": "luta_guerreiro",
+    "nominal_s": 46.18,
+    "detected_s": 46.183,
+    "transition": null,
+    "delta_grave_frames": 0.2,
+    "measured": true
+   }
+  ],
+  "words": [
+   {
+    "text": "BUILD",
+    "t": 3.49,
+    "frame": 210,
+    "anchor": "grave",
+    "layer_first_ink_frame": 210,
+    "delta_grave_frames": 0.6
+   },
+   {
+    "text": "A LIVING",
+    "t": 4.76,
+    "frame": 286,
+    "anchor": "grave",
+    "layer_first_ink_frame": 286,
+    "delta_grave_frames": 0.4
+   },
+   {
+    "text": "DECK.",
+    "t": 6.02,
+    "frame": 362,
+    "anchor": "grave",
+    "layer_first_ink_frame": 362,
+    "delta_grave_frames": 0.8
+   },
+   {
+    "text": "EVERY CARD",
+    "t": 8.52,
+    "frame": 512,
+    "anchor": "grave",
+    "layer_first_ink_frame": 512,
+    "delta_grave_frames": 0.8
+   },
+   {
+    "text": "IS ALIVE.",
+    "t": 9.78,
+    "frame": 587,
+    "anchor": "grave",
+    "layer_first_ink_frame": 587,
+    "delta_grave_frames": 0.2
+   },
+   {
+    "text": "SIX",
+    "t": 11.05,
+    "frame": 663,
+    "anchor": "grave",
+    "layer_first_ink_frame": 663,
+    "delta_grave_frames": 0.0
+   },
+   {
+    "text": "ACTS.",
+    "t": 12.29,
+    "frame": 738,
+    "anchor": "grave",
+    "layer_first_ink_frame": 738,
+    "delta_grave_frames": 0.6
+   },
+   {
+    "text": "ONE ROAD",
+    "t": 17.33,
+    "frame": 1040,
+    "anchor": "grave",
+    "layer_first_ink_frame": 1040,
+    "delta_grave_frames": 0.2
+   },
+   {
+    "text": "TO THE CASTLE.",
+    "t": 17.33,
+    "frame": 1040,
+    "anchor": "grave",
+    "layer_first_ink_frame": 1040,
+    "delta_grave_frames": 0.2
+   },
+   {
+    "text": "YOUR CARDS",
+    "t": 21.3,
+    "frame": 1278,
+    "anchor": "sem_grave",
+    "layer_first_ink_frame": 1278
+   },
+   {
+    "text": "DECIDE",
+    "t": 22.42,
+    "frame": 1346,
+    "anchor": "sem_grave",
+    "layer_first_ink_frame": 1346
+   },
+   {
+    "text": "WHAT SURVIVES.",
+    "t": 24.37,
+    "frame": 1463,
+    "anchor": "sem_grave",
+    "layer_first_ink_frame": 1463
+   },
+   {
+    "text": "BEND",
+    "t": 27.1,
+    "frame": 1626,
+    "anchor": "sem_grave",
+    "layer_first_ink_frame": 1626
+   },
+   {
+    "text": "EVERY HAND.",
+    "t": 27.8,
+    "frame": 1668,
+    "anchor": "sem_grave",
+    "layer_first_ink_frame": 1668
+   },
+   {
+    "text": "EVERY BOSS",
+    "t": 38.66,
+    "frame": 2320,
+    "anchor": "grave",
+    "layer_first_ink_frame": 2320,
+    "delta_grave_frames": 0.4
+   },
+   {
+    "text": "IS A PUZZLE.",
+    "t": 39.91,
+    "frame": 2395,
+    "anchor": "grave",
+    "layer_first_ink_frame": 2395,
+    "delta_grave_frames": 0.4
+   },
+   {
+    "text": "WISHLIST ON STEAM.",
+    "t": 60.01,
+    "frame": 3601,
+    "anchor": "grave",
+    "layer_first_ink_frame": 3601,
+    "delta_grave_frames": 0.4
+   }
+  ],
+  "cuts_median_frames": 0.2,
+  "cuts_max_frames": 0.8,
+  "words_median_frames": 0.4,
+  "words_max_frames": 0.8,
+  "pass": true
+ },
+ "c4_legibility": {
+  "phrases": [
+   {
+    "phrase": "BUILD A LIVING DECK.",
+    "hold_after_last_s": 2.28,
+    "hold_total_s": 4.81,
+    "need_s": 1.54,
+    "min_glyph_px_1080": 70,
+    "max_chars_per_line": 8,
+    "pass": true
+   },
+   {
+    "phrase": "EVERY CARD IS ALIVE.",
+    "hold_after_last_s": 1.17,
+    "hold_total_s": 2.43,
+    "need_s": 1.54,
+    "min_glyph_px_1080": 84,
+    "max_chars_per_line": 10,
+    "pass": true
+   },
+   {
+    "phrase": "SIX ACTS.",
+    "hold_after_last_s": 2.41,
+    "hold_total_s": 3.65,
+    "need_s": 0.69,
+    "min_glyph_px_1080": 112,
+    "max_chars_per_line": 5,
+    "pass": true
+   },
+   {
+    "phrase": "ONE ROAD TO THE CASTLE.",
+    "hold_after_last_s": 2.97,
+    "hold_total_s": 2.97,
+    "need_s": 1.77,
+    "min_glyph_px_1080": 84,
+    "max_chars_per_line": 14,
+    "pass": true
+   },
+   {
+    "phrase": "YOUR CARDS DECIDE WHAT SURVIVES.",
+    "hold_after_last_s": 2.53,
+    "hold_total_s": 5.6,
+    "need_s": 2.46,
+    "min_glyph_px_1080": 70,
+    "max_chars_per_line": 14,
+    "pass": true
+   },
+   {
+    "phrase": "BEND EVERY HAND.",
+    "hold_after_last_s": 1.35,
+    "hold_total_s": 2.05,
+    "need_s": 1.23,
+    "min_glyph_px_1080": 84,
+    "max_chars_per_line": 11,
+    "pass": true
+   },
+   {
+    "phrase": "EVERY BOSS IS A PUZZLE.",
+    "hold_after_last_s": 2.39,
+    "hold_total_s": 3.64,
+    "need_s": 1.77,
+    "min_glyph_px_1080": 84,
+    "max_chars_per_line": 12,
+    "pass": true
+   },
+   {
+    "phrase": "WISHLIST ON STEAM.",
+    "hold_after_last_s": 5.29,
+    "hold_total_s": 5.29,
+    "need_s": 1.38,
+    "min_glyph_px_1080": 70,
+    "max_chars_per_line": 18,
+    "pass": true
+   }
+  ],
+  "one_text_at_a_time": true,
+  "mute_test": "pendente (pessoas)",
+  "pass": true
+ },
+ "c5_rhythm": {
+  "shots_edl": 20,
+  "mean_shot_s_edl": 3.25,
+  "shots_under_1s_edl": 0,
+  "bursts_under_1s_edl": 0,
+  "mean_shot_s_detected_hard_cuts": 2.25,
+  "pass": true
+ },
+ "c6_peak": {
+  "event_s": 52.15,
+  "fraction": 0.799,
+  "audio_loudest_onset_in_fight_s": 47.71,
+  "pass": true
+ },
+ "c7_rule_of_three": {
+  "boss_puzzle_hook": [
+   "porta, salao escuro e entrada do Rei-Carnica (29,29 a 38,66)",
+   "5 saloes + EVERY BOSS IS A PUZZLE (38,66 a 46,18)",
+   "luta e golpe de 42 (46,18 a 54,99)"
+  ],
+  "living_deck_hook": [
+   "cartas do ladino + BUILD A LIVING DECK (0 a 8,52)",
+   "carta rara viva + EVERY CARD IS ALIVE (8,52 a 11,05)",
+   "loja + BEND EVERY HAND (27,10 a 29,29)"
+  ],
+  "pass": true
+ },
+ "c8_end_card": {
+  "cta_on_s": 60.01,
+  "end_card_s": 5.29,
+  "cta_on_last_frame": true,
+  "pass": true
+ },
+ "c9_conformity": {
+  "audio_files": [
+   "audio/music/boss-carrion_king.mp3",
+   "build/trailer/sfx_synth/castle_door.wav",
+   "build/trailer/sfx_synth/glitch.wav",
+   "build/trailer/sfx_synth/impact_1.wav",
+   "build/trailer/sfx_synth/impact_2.wav",
+   "build/trailer/sfx_synth/impact_heavy.wav",
+   "build/trailer/sfx_synth/logo_seal.wav",
+   "build/trailer/sfx_synth/tv_on.wav",
+   "build/trailer/sfx_synth/whoosh_1.wav",
+   "build/trailer/sfx_synth/whoosh_2.wav"
+  ],
+  "audio_only_allowed": true,
+  "flash_events": [
+   14.82,
+   36.82,
+   38.67
+  ],
+  "max_flashes_per_s": 1,
+  "bezel_present_pct": 100.0,
+  "bezel_mean_diff": 2.16,
+  "clips": [
+   "boss8",
+   "deck8",
+   "entr_fallen_angel",
+   "entr_ice_wyrm",
+   "entr_storm_griffin",
+   "hall1_carrion",
+   "hall2_lich",
+   "hall3_tyrant",
+   "hall4_ice",
+   "hall5_heart",
+   "logo_sting",
+   "night_a1",
+   "night_a2",
+   "night_a3",
+   "night_a4",
+   "night_a5",
+   "night_a6",
+   "reward",
+   "shop"
+  ],
+  "only_valid_scenes": true,
+  "lufs": -14.3,
+  "true_peak_dbfs": -0.8,
+  "pass": true
+ },
+ "c10_daniel": "manual (tabela no doc)",
+ "contact_sheet": "E:/dev/projects/card-game-trailer/build/trailer/kinetic/B_review/contact_sheet.jpg"
+}

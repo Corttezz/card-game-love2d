@@ -66,3 +66,8 @@ Referências: docs/handoff/trailer-kinetic-referencias.md
 - Métricas dos 10 critérios, folha de contato, o que mudou em relação ao v8 e a origem de cada áudio: `docs/handoff/trailer-kinetic-C-metrics.md`. Resumo: 8 PASS, critério 2 FAIL (escuro de conteúdo: salão do Rei no escuro e abertura do logo; 0 % de preto puro), checklist do Daniel com 3 itens parciais (regravação, porta vista de fora, escuta humana dos SFX).
 - Áudio publicável: só `boss-carrion_king.mp3` (ACE-Step) + `sfx_synth` (síntese local). Salões Higgsfield = IA, declarar na Steam.
 - Conceitos A e B: ainda não renderizados (B aguarda as tomadas regravadas).
+
+### Conceito B (grimoire_kinetic_new), 30/10/2026
+- **Master 4K:** `E:\dev\projects\card-game-trailer\build\trailer\grimoire_kinetic_new.mp4` (3840x2160, 60 fps, H.264 L5.2 + AAC, 65,3 s, 0,94 GB, −14,3 LUFS); 1080p ao lado (`grimoire_kinetic_new_1080p.mp4`). Render 4K em 962 s.
+- Feito com as tomadas regravadas (`card-game-trailer-v9`): porta vista de fora, grifo, 6 atos, recompensa rara, loja. Métricas, corte e o que as tomadas novas melhorariam no C: `docs/handoff/trailer-kinetic-B-metrics.md`. Resumo: 8 PASS; critério 2 FAIL (4,6 % de escuro de conteúdo: salão do Rei antes dos olhos e abertura do logo; 0,1 % de preto puro); checklist do Daniel com 2 itens parciais (tomadas gravadas 2 commits atrás da `main`, escuta humana dos SFX).
+- Candidato a 1º vídeo da página (gameplay em 0,33 s; pôster no quadro 0).

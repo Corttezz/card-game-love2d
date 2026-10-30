@@ -1,0 +1,1498 @@
+{
+ "id": "grimoire_kinetic_new",
+ "concept": "B: principal 65 s, tomadas regravadas (card-game-trailer-v9) nos graves do Rei-Carnica",
+ "root": "E:/dev/projects/card-game-trailer",
+ "takes": "C:/Users/corte/AppData/Roaming/LOVE/card-game-trailer-v9/trailer",
+ "output": {
+  "size": [
+   3840,
+   2160
+  ],
+  "fps": 60,
+  "duration": 65.3,
+  "loudness_lufs": -14
+ },
+ "time_map": {
+  "rule": "t = p - 17.86",
+  "offset": 17.86
+ },
+ "music": {
+  "path": "audio/music/boss-carrion_king.mp3",
+  "license": "ACE-Step 1.5 local, uso comercial",
+  "in": 18.86,
+  "out": 83.16,
+  "t": 1.0,
+  "fade_out": {
+   "t0": 64.66,
+   "t1": 65.3
+  },
+  "beats": "build/trailer/music/boss-carrion_king_beats.json"
+ },
+ "tv_on": {
+  "t0": 0.0,
+  "t1": 1.0
+ },
+ "poster_frame_t": 6.6,
+ "peak": {
+  "t": 52.15,
+  "fraction": 0.799,
+  "what": "golpe de 42 no Rei-Carnica"
+ },
+ "hooks": {
+  "boss_puzzle_hook": [
+   "porta, salao escuro e entrada do Rei-Carnica (29,29 a 38,66)",
+   "5 saloes + EVERY BOSS IS A PUZZLE (38,66 a 46,18)",
+   "luta e golpe de 42 (46,18 a 54,99)"
+  ],
+  "living_deck_hook": [
+   "cartas do ladino + BUILD A LIVING DECK (0 a 8,52)",
+   "carta rara viva + EVERY CARD IS ALIVE (8,52 a 11,05)",
+   "loja + BEND EVERY HAND (27,10 a 29,29)"
+  ]
+ },
+ "valid_scenes": [
+  "deck8",
+  "reward",
+  "night_a1",
+  "night_a2",
+  "night_a3",
+  "night_a4",
+  "night_a5",
+  "night_a6",
+  "entr_storm_griffin",
+  "entr_fallen_angel",
+  "entr_ice_wyrm",
+  "shop",
+  "boss8",
+  "hall1_carrion",
+  "hall2_lich",
+  "hall3_tyrant",
+  "hall4_ice",
+  "hall5_heart",
+  "logo_sting"
+ ],
+ "clips": [
+  {
+   "id": "cartas_ladino",
+   "src": "take:deck8",
+   "t0": 0.0,
+   "t1": 8.52,
+   "map": [
+    [
+     0.0,
+     560
+    ],
+    [
+     3.49,
+     830
+    ],
+    [
+     4.76,
+     868
+    ],
+    [
+     6.02,
+     946
+    ],
+    [
+     6.96,
+     989
+    ],
+    [
+     8.52,
+     1083
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 17.86,
+    "nearest_grave": 17.6,
+    "delta": 0.26
+   },
+   "note": "TV liga sintetizada sobre o combate (0 a 1,0); JOGAR e 3 golpes nos graves, time-remap por trecho",
+   "events": [
+    {
+     "what": "JOGAR",
+     "frame": 830,
+     "t": 3.49,
+     "anchor": {
+      "type": "grave",
+      "p": 21.35,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 1",
+     "frame": 868,
+     "t": 4.76,
+     "anchor": {
+      "type": "grave",
+      "p": 22.62,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 2",
+     "frame": 946,
+     "t": 6.02,
+     "anchor": {
+      "type": "grave",
+      "p": 23.88,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 3 (COMBO)",
+     "frame": 989,
+     "t": 6.96,
+     "anchor": {
+      "type": "grave",
+      "p": 24.82,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 4",
+     "frame": 1043,
+     "t": 7.86,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 25.72,
+      "nearest_grave": 26.38,
+      "delta": -0.66
+     }
+    }
+   ]
+  },
+  {
+   "id": "recompensa",
+   "src": "take:reward",
+   "t0": 8.52,
+   "t1": 11.05,
+   "map": [
+    [
+     8.52,
+     548
+    ],
+    [
+     9.78,
+     624
+    ],
+    [
+     11.05,
+     700
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 26.38,
+    "delta": 0.0
+   },
+   "note": "Spoils of Battle; revelacao rara da 3a carta (clarão 624) no grave",
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   },
+   "events": [
+    {
+     "what": "revelacao rara",
+     "frame": 624,
+     "t": 9.78,
+     "anchor": {
+      "type": "grave",
+      "p": 27.64,
+      "delta": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "ato_1",
+   "src": "take:night_a1",
+   "t0": 11.05,
+   "t1": 12.29,
+   "map": [
+    [
+     11.05,
+     110
+    ],
+    [
+     12.29,
+     184.39999999999992
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 28.91,
+    "delta": 0.0
+   },
+   "note": "viagem do ato 1, castelo ao centro (sem o clarão dos primeiros quadros)",
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   }
+  },
+  {
+   "id": "ato_2",
+   "src": "take:night_a2",
+   "t0": 12.29,
+   "t1": 13.55,
+   "map": [
+    [
+     12.29,
+     110
+    ],
+    [
+     13.55,
+     185.60000000000008
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 30.15,
+    "delta": 0.0
+   },
+   "note": "viagem do ato 2, castelo ao centro (sem o clarão dos primeiros quadros)",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "ato_3",
+   "src": "take:night_a3",
+   "t0": 13.55,
+   "t1": 14.81,
+   "map": [
+    [
+     13.55,
+     110
+    ],
+    [
+     14.81,
+     185.6
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 31.41,
+    "delta": 0.0
+   },
+   "note": "viagem do ato 3, castelo ao centro (sem o clarão dos primeiros quadros)",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "ato_4",
+   "src": "take:night_a4",
+   "t0": 14.81,
+   "t1": 16.07,
+   "map": [
+    [
+     14.81,
+     110
+    ],
+    [
+     16.07,
+     185.6
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 32.67,
+    "delta": 0.0
+   },
+   "note": "viagem do ato 4, castelo ao centro (sem o clarão dos primeiros quadros)",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "ato_5",
+   "src": "take:night_a5",
+   "t0": 16.07,
+   "t1": 17.33,
+   "map": [
+    [
+     16.07,
+     110
+    ],
+    [
+     17.33,
+     185.59999999999988
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 33.93,
+    "delta": 0.0
+   },
+   "note": "viagem do ato 5, castelo ao centro (sem o clarão dos primeiros quadros)",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "ato_6",
+   "src": "take:night_a6",
+   "t0": 17.33,
+   "t1": 20.4,
+   "map": [
+    [
+     17.33,
+     110
+    ],
+    [
+     20.4,
+     294.20000000000005
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 35.19,
+    "delta": 0.0
+   },
+   "note": "viagem do ato 6, castelo ao centro (sem o clarão dos primeiros quadros)",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "entrada_grifo",
+   "src": "take:entr_storm_griffin",
+   "t0": 20.4,
+   "t1": 22.7,
+   "map": [
+    [
+     20.4,
+     540
+    ],
+    [
+     22.7,
+     678
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 38.26,
+    "nearest_grave": 35.19,
+    "delta": 3.07
+   },
+   "note": "grifo ja no quadro, rasante e pouso (661)",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.3
+   },
+   "events": [
+    {
+     "what": "pouso",
+     "frame": 661,
+     "t": 22.42,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 40.28,
+      "nearest_grave": 35.19,
+      "delta": 5.09
+     }
+    }
+   ]
+  },
+  {
+   "id": "entrada_anjo",
+   "src": "take:entr_fallen_angel",
+   "t0": 22.7,
+   "t1": 25.0,
+   "map": [
+    [
+     22.7,
+     520
+    ],
+    [
+     25.0,
+     658
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 40.56,
+    "nearest_grave": 35.19,
+    "delta": 5.37
+   },
+   "note": "anjo caido descendo e pousando (~620)",
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   },
+   "events": [
+    {
+     "what": "pouso",
+     "frame": 620,
+     "t": 24.37,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 42.23,
+      "nearest_grave": 35.19,
+      "delta": 7.04
+     }
+    }
+   ]
+  },
+  {
+   "id": "entrada_serpente",
+   "src": "take:entr_ice_wyrm",
+   "t0": 25.0,
+   "t1": 27.1,
+   "map": [
+    [
+     25.0,
+     470
+    ],
+    [
+     27.1,
+     596
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 42.86,
+    "nearest_grave": 35.19,
+    "delta": 7.67
+   },
+   "note": "serpente de gelo emergindo e soprando",
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   }
+  },
+  {
+   "id": "loja",
+   "src": "take:shop",
+   "t0": 27.1,
+   "t1": 29.29,
+   "map": [
+    [
+     27.1,
+     90
+    ],
+    [
+     29.29,
+     221
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 44.96,
+    "nearest_grave": 35.19,
+    "delta": 9.77
+   },
+   "note": "chegada ao mercador e balcao antes dos coringas de rosto dominarem (para em 221)",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.3
+   }
+  },
+  {
+   "id": "porta_entrada_nome",
+   "src": "take:boss8",
+   "t0": 29.29,
+   "t1": 38.66,
+   "map": [
+    [
+     29.29,
+     497
+    ],
+    [
+     32.59,
+     695
+    ],
+    [
+     32.89,
+     745
+    ],
+    [
+     37.4,
+     1015.6
+    ],
+    [
+     38.66,
+     1091
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 47.15,
+    "nearest_grave": 55.26,
+    "delta": -8.11
+   },
+   "note": "porta vista de fora (portao 564), salao escuro, olhos, rasantes, pouso e cartao do nome no grave 37,40 (drop 55,07 em 37,21)",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.3
+   },
+   "events": [
+    {
+     "what": "portao",
+     "frame": 564,
+     "t": 30.41,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 48.27,
+      "nearest_grave": 55.26,
+      "delta": -6.99
+     }
+    },
+    {
+     "what": "escuro comprimido 695-745 em 0,3 s",
+     "frame": 695,
+     "t": 32.59,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 50.45,
+      "nearest_grave": 55.26,
+      "delta": -4.81
+     }
+    },
+    {
+     "what": "olhos",
+     "frame": 745,
+     "t": 32.89,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 50.75,
+      "nearest_grave": 55.26,
+      "delta": -4.51
+     }
+    },
+    {
+     "what": "cartao do nome",
+     "frame": 1015,
+     "t": 37.4,
+     "anchor": {
+      "type": "grave",
+      "p": 55.26,
+      "delta": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "salao_hall2_lich",
+   "src": "build/trailer/kinetic/clips_v8/hall2_lich.mp4",
+   "t0": 38.66,
+   "t1": 39.91,
+   "in": 1.33,
+   "out": 4.58,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 56.52,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "flash",
+    "d": 0.16
+   }
+  },
+  {
+   "id": "salao_hall3_tyrant",
+   "src": "build/trailer/kinetic/clips_v8/hall3_tyrant.mp4",
+   "t0": 39.91,
+   "t1": 41.15,
+   "in": 1.0,
+   "out": 4.240000000000002,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 57.77,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_hall4_ice",
+   "src": "build/trailer/kinetic/clips_v8/hall4_ice.mp4",
+   "t0": 41.15,
+   "t1": 42.43,
+   "in": 1.33,
+   "out": 4.610000000000001,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 59.01,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_hall5_heart",
+   "src": "build/trailer/kinetic/clips_v8/hall5_heart.mp4",
+   "t0": 42.43,
+   "t1": 43.68,
+   "in": 4.0,
+   "out": 7.25,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 60.29,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_hall1_carrion",
+   "src": "build/trailer/kinetic/clips_v8/hall1_carrion.mp4",
+   "t0": 43.68,
+   "t1": 46.18,
+   "in": 2.0,
+   "out": 6.5,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 61.54,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "luta_guerreiro",
+   "src": "take:boss8",
+   "t0": 46.18,
+   "t1": 54.99,
+   "map": [
+    [
+     46.18,
+     1160
+    ],
+    [
+     51.2,
+     1422
+    ],
+    [
+     52.15,
+     1448
+    ],
+    [
+     53.72,
+     1564
+    ],
+    [
+     54.99,
+     1640
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 64.04,
+    "delta": 0.0
+   },
+   "note": "luta sem corte (volta ao salao do Rei depois dos saloes, ja sem o cartao do nome, 0,87x ate o JOGAR); JOGAR no grave, golpe de 42 (o maior numero) no pico 52,15 = drop 70,01; termina antes do tooltip (1661)",
+   "events": [
+    {
+     "what": "JOGAR",
+     "frame": 1422,
+     "t": 51.2,
+     "anchor": {
+      "type": "grave",
+      "p": 69.06,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 1: 42, numero maior (pico)",
+     "frame": 1448,
+     "t": 52.15,
+     "anchor": {
+      "type": "grave",
+      "p": 70.01,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 2: 33",
+     "frame": 1519,
+     "t": 53.13,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 70.99,
+      "nearest_grave": 71.58,
+      "delta": -0.59
+     }
+    },
+    {
+     "what": "golpe 3: 27 + COMBO",
+     "frame": 1564,
+     "t": 53.72,
+     "anchor": {
+      "type": "grave",
+      "p": 71.58,
+      "delta": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "glitch",
+   "kind": "glitch",
+   "t0": 54.99,
+   "t1": 55.29,
+   "note": "glitch do editor sobre o ultimo quadro da luta"
+  },
+  {
+   "id": "logo",
+   "src": "build/trailer/kinetic/clips_v8/logo_sting.mp4",
+   "t0": 55.29,
+   "t1": 65.3,
+   "in": 0.0,
+   "out": 6.5,
+   "speed": 1.386,
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 73.15,
+    "nearest_grave": 72.85,
+    "delta": 0.3
+   },
+   "note": "logo_sting 1080p (2x vizinho no 4K) a 1,386x: impacto da arte (2,62 s) no grave 57,18, termina em 59,98 e segura ate o fim",
+   "hold_last_frame_until": 65.3,
+   "events": [
+    {
+     "what": "impacto/flash do logo",
+     "clip_t": 2.62,
+     "t": 57.18,
+     "anchor": {
+      "type": "grave",
+      "p": 75.04,
+      "delta": 0.0
+     }
+    }
+   ]
+  }
+ ],
+ "texts": [
+  {
+   "phrase": "BUILD A LIVING DECK.",
+   "words": [
+    {
+     "text": "BUILD",
+     "t": 3.49,
+     "anchor": {
+      "type": "grave",
+      "p": 21.35,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "A LIVING",
+     "t": 4.76,
+     "anchor": {
+      "type": "grave",
+      "p": 22.62,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "DECK.",
+     "t": 6.02,
+     "anchor": {
+      "type": "grave",
+      "p": 23.88,
+      "delta": 0.0
+     },
+     "line": 2
+    }
+   ],
+   "out": 8.3,
+   "chars": 20,
+   "hold_after_last_word": 2.28,
+   "hold_total": 4.81,
+   "min_by_rule_13cps": 1.54
+  },
+  {
+   "phrase": "EVERY CARD IS ALIVE.",
+   "words": [
+    {
+     "text": "EVERY CARD",
+     "t": 8.52,
+     "anchor": {
+      "type": "grave",
+      "p": 26.38,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "IS ALIVE.",
+     "t": 9.78,
+     "anchor": {
+      "type": "grave",
+      "p": 27.64,
+      "delta": 0.0
+     },
+     "line": 2
+    }
+   ],
+   "out": 10.95,
+   "chars": 20,
+   "hold_after_last_word": 1.17,
+   "hold_total": 2.43,
+   "min_by_rule_13cps": 1.54
+  },
+  {
+   "phrase": "SIX ACTS.",
+   "words": [
+    {
+     "text": "SIX",
+     "t": 11.05,
+     "anchor": {
+      "type": "grave",
+      "p": 28.91,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "ACTS.",
+     "t": 12.29,
+     "anchor": {
+      "type": "grave",
+      "p": 30.15,
+      "delta": 0.0
+     }
+    }
+   ],
+   "out": 14.7,
+   "chars": 9,
+   "hold_after_last_word": 2.41,
+   "hold_total": 3.65,
+   "min_by_rule_13cps": 0.69
+  },
+  {
+   "phrase": "ONE ROAD TO THE CASTLE.",
+   "words": [
+    {
+     "text": "ONE ROAD",
+     "t": 17.33,
+     "anchor": {
+      "type": "grave",
+      "p": 35.19,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "TO THE CASTLE.",
+     "t": 17.33,
+     "anchor": {
+      "type": "grave",
+      "p": 35.19,
+      "delta": 0.0
+     },
+     "line": 2
+    }
+   ],
+   "out": 20.3,
+   "chars": 23,
+   "hold_after_last_word": 2.97,
+   "hold_total": 2.97,
+   "min_by_rule_13cps": 1.77
+  },
+  {
+   "phrase": "YOUR CARDS DECIDE WHAT SURVIVES.",
+   "words": [
+    {
+     "text": "YOUR CARDS",
+     "t": 21.3,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 39.16,
+      "nearest_grave": 35.19,
+      "delta": 3.97,
+      "what": "rasante do grifo"
+     }
+    },
+    {
+     "text": "DECIDE",
+     "t": 22.42,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 40.28,
+      "nearest_grave": 35.19,
+      "delta": 5.09,
+      "what": "pouso do grifo"
+     },
+     "line": 2
+    },
+    {
+     "text": "WHAT SURVIVES.",
+     "t": 24.37,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 42.23,
+      "nearest_grave": 35.19,
+      "delta": 7.04,
+      "what": "pouso do anjo"
+     },
+     "line": 3
+    }
+   ],
+   "out": 26.9,
+   "chars": 32,
+   "hold_after_last_word": 2.53,
+   "hold_total": 5.6,
+   "min_by_rule_13cps": 2.46
+  },
+  {
+   "phrase": "BEND EVERY HAND.",
+   "words": [
+    {
+     "text": "BEND",
+     "t": 27.1,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 44.96,
+      "nearest_grave": 35.19,
+      "delta": 9.77,
+      "what": "corte para a loja"
+     }
+    },
+    {
+     "text": "EVERY HAND.",
+     "t": 27.8,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 45.66,
+      "nearest_grave": 55.26,
+      "delta": -9.6,
+      "what": "loja"
+     },
+     "line": 2
+    }
+   ],
+   "out": 29.15,
+   "chars": 16,
+   "hold_after_last_word": 1.35,
+   "hold_total": 2.05,
+   "min_by_rule_13cps": 1.23
+  },
+  {
+   "phrase": "EVERY BOSS IS A PUZZLE.",
+   "words": [
+    {
+     "text": "EVERY BOSS",
+     "t": 38.66,
+     "anchor": {
+      "type": "grave",
+      "p": 56.52,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "IS A PUZZLE.",
+     "t": 39.91,
+     "anchor": {
+      "type": "grave",
+      "p": 57.77,
+      "delta": 0.0
+     },
+     "line": 2
+    }
+   ],
+   "out": 42.3,
+   "chars": 23,
+   "hold_after_last_word": 2.39,
+   "hold_total": 3.64,
+   "min_by_rule_13cps": 1.77
+  },
+  {
+   "phrase": "WISHLIST ON STEAM.",
+   "words": [
+    {
+     "text": "WISHLIST ON STEAM.",
+     "t": 60.01,
+     "anchor": {
+      "type": "grave",
+      "p": 77.87,
+      "delta": 0.0
+     }
+    }
+   ],
+   "out": 65.3,
+   "chars": 18,
+   "hold_after_last_word": 5.29,
+   "hold_total": 5.29,
+   "min_by_rule_13cps": 1.38
+  }
+ ],
+ "sfx": [
+  {
+   "file": "build/trailer/sfx_synth/tv_on.wav",
+   "attack_offset": 0.0,
+   "event_t": 0.0,
+   "start_t": 0.0,
+   "gain_db": -8,
+   "what": "TV liga",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 17.86,
+    "nearest_grave": 17.6,
+    "delta": 0.26
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 4.76,
+   "start_t": 4.76,
+   "gain_db": -8,
+   "what": "golpe 1 das cartas",
+   "anchor": {
+    "type": "grave",
+    "p": 22.62,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 6.02,
+   "start_t": 6.02,
+   "gain_db": -9,
+   "what": "golpe 2 das cartas",
+   "anchor": {
+    "type": "grave",
+    "p": 23.88,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 6.96,
+   "start_t": 6.96,
+   "gain_db": -8,
+   "what": "golpe 3 das cartas",
+   "anchor": {
+    "type": "grave",
+    "p": 24.82,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 7.86,
+   "start_t": 7.86,
+   "gain_db": -12,
+   "what": "golpe 4 das cartas",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 25.72,
+    "nearest_grave": 26.38,
+    "delta": -0.66
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 8.52,
+   "start_t": 8.162,
+   "gain_db": -3,
+   "what": "corte recompensa",
+   "anchor": {
+    "type": "grave",
+    "p": 26.38,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 9.78,
+   "start_t": 9.78,
+   "gain_db": -10,
+   "what": "revelacao rara",
+   "anchor": {
+    "type": "grave",
+    "p": 27.64,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 11.05,
+   "start_t": 10.692,
+   "gain_db": -3,
+   "what": "ato 1",
+   "anchor": {
+    "type": "grave",
+    "p": 28.91,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 12.29,
+   "start_t": 11.932,
+   "gain_db": -6,
+   "what": "ato 2",
+   "anchor": {
+    "type": "grave",
+    "p": 30.15,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 13.55,
+   "start_t": 13.192,
+   "gain_db": -6,
+   "what": "ato 3",
+   "anchor": {
+    "type": "grave",
+    "p": 31.41,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 14.81,
+   "start_t": 14.452,
+   "gain_db": -6,
+   "what": "ato 4",
+   "anchor": {
+    "type": "grave",
+    "p": 32.67,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 16.07,
+   "start_t": 15.712,
+   "gain_db": -6,
+   "what": "ato 5",
+   "anchor": {
+    "type": "grave",
+    "p": 33.93,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 17.33,
+   "start_t": 16.972,
+   "gain_db": -6,
+   "what": "ato 6",
+   "anchor": {
+    "type": "grave",
+    "p": 35.19,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 20.4,
+   "start_t": 19.842,
+   "gain_db": -6,
+   "what": "entrada do grifo",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 38.26,
+    "nearest_grave": 35.19,
+    "delta": 3.07
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 22.42,
+   "start_t": 22.42,
+   "gain_db": -9,
+   "what": "pouso do grifo",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 40.28,
+    "nearest_grave": 35.19,
+    "delta": 5.09
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 22.7,
+   "start_t": 22.142,
+   "gain_db": -6,
+   "what": "entrada do anjo",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 40.56,
+    "nearest_grave": 35.19,
+    "delta": 5.37
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 24.37,
+   "start_t": 24.37,
+   "gain_db": -9,
+   "what": "pouso do anjo",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 42.23,
+    "nearest_grave": 35.19,
+    "delta": 7.04
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 25.0,
+   "start_t": 24.442,
+   "gain_db": -4,
+   "what": "serpente emerge",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 42.86,
+    "nearest_grave": 35.19,
+    "delta": 7.67
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 27.1,
+   "start_t": 26.542,
+   "gain_db": -6,
+   "what": "loja",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 44.96,
+    "nearest_grave": 35.19,
+    "delta": 9.77
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/castle_door.wav",
+   "attack_offset": 2.75,
+   "event_t": 30.41,
+   "start_t": 27.66,
+   "gain_db": -4,
+   "what": "rangido na loja, baque no portao (boss8 564)",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 48.27,
+    "nearest_grave": 55.26,
+    "delta": -6.99
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_heavy.wav",
+   "attack_offset": 0.0,
+   "event_t": 37.4,
+   "start_t": 37.4,
+   "gain_db": -6,
+   "what": "cartao do nome",
+   "anchor": {
+    "type": "grave",
+    "p": 55.26,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 38.66,
+   "start_t": 38.302,
+   "gain_db": -3,
+   "what": "salao",
+   "anchor": {
+    "type": "grave",
+    "p": 56.52,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 39.91,
+   "start_t": 39.552,
+   "gain_db": -3,
+   "what": "salao",
+   "anchor": {
+    "type": "grave",
+    "p": 57.77,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 41.15,
+   "start_t": 40.792,
+   "gain_db": -3,
+   "what": "salao",
+   "anchor": {
+    "type": "grave",
+    "p": 59.01,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 42.43,
+   "start_t": 42.072,
+   "gain_db": -3,
+   "what": "salao",
+   "anchor": {
+    "type": "grave",
+    "p": 60.29,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 43.68,
+   "start_t": 43.322,
+   "gain_db": -3,
+   "what": "salao",
+   "anchor": {
+    "type": "grave",
+    "p": 61.54,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 46.18,
+   "start_t": 45.822,
+   "gain_db": -6,
+   "what": "volta a luta",
+   "anchor": {
+    "type": "grave",
+    "p": 64.04,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_heavy.wav",
+   "attack_offset": 0.0,
+   "event_t": 52.15,
+   "start_t": 52.15,
+   "gain_db": -4,
+   "what": "golpe 42, pico",
+   "anchor": {
+    "type": "grave",
+    "p": 70.01,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 53.13,
+   "start_t": 53.13,
+   "gain_db": -9,
+   "what": "golpe 33",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 70.99,
+    "nearest_grave": 71.58,
+    "delta": -0.59
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 53.72,
+   "start_t": 53.72,
+   "gain_db": -7,
+   "what": "golpe 27 + COMBO",
+   "anchor": {
+    "type": "grave",
+    "p": 71.58,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/glitch.wav",
+   "attack_offset": 0.0,
+   "event_t": 54.99,
+   "start_t": 54.99,
+   "gain_db": -9,
+   "what": "glitch",
+   "anchor": {
+    "type": "grave",
+    "p": 72.85,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 57.18,
+   "start_t": 57.18,
+   "gain_db": -6,
+   "what": "flash do logo",
+   "anchor": {
+    "type": "grave",
+    "p": 75.04,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/logo_seal.wav",
+   "attack_offset": 0.0,
+   "event_t": 60.01,
+   "start_t": 60.01,
+   "gain_db": -2,
+   "what": "selo + WISHLIST",
+   "anchor": {
+    "type": "grave",
+    "p": 77.87,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 62.21,
+   "start_t": 62.21,
+   "gain_db": -14,
+   "what": "brilho final",
+   "anchor": {
+    "type": "grave",
+    "p": 80.07,
+    "delta": 0.0
+   }
+  }
+ ]
+}
