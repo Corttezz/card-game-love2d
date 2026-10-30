@@ -145,7 +145,7 @@ As tomadas usadas nos três trailers foram gravadas nesse código, 2 commits de 
 2. **Teste mudo** com pessoas (critério 4).
 3. **Coringas com rosto:** conferido pela folha de contato e em recortes 1:1. Resta um artefato pequeno: durante a faixa COMBO da luta (~0,5 s em A, B e C), a parte reconstruída da faixa mostra listras horizontais leves. Se incomodar, a saída é regravar com a faixa de coringas desligada no HUD.
 4. **Merge da `main` / suíte:** os 4 FAIL e o CRASH acima. Depois de resolver, regravar se as 2 mudanças de estrada da `main` precisarem aparecer.
-5. **Melhorias opcionais:** nenhuma pendente no C (grifo, porta de fora e cauda já entraram). Opcionais: textos novos de A/B (PLAY., BREAK., EVERY CARD IS ALIVE., BEND EVERY HAND.) passarem pelo Daniel; abrir o cartão final do A para ~4 s; conferir o microtrailer da Steam depois do upload.
+5. **Melhorias opcionais:** nenhuma pendente no C (grifo, porta de fora e cauda já entraram). Os textos novos de A/B (PLAY., BREAK., EVERY CARD IS ALIVE., BEND EVERY HAND.) já foram aprovados pelo Daniel (repassado pelo Grimoire). Opcionais: abrir o cartão final do A para ~4 s; conferir o microtrailer da Steam depois do upload.
 6. **Licença da T4:** o v8 (todas as versões) continua **não publicável** até a licença de `trailer_T4.wav` aparecer. Nenhum dos três novos usa a T4.
 7. **IA declarada:** os salões `ai_4k/hall1..5` (Higgsfield) aparecem em A, B e C e precisam ser declarados na Steam.
 8. Apagar as 4 pastas listadas (14,1 GB) só com OK explícito.
