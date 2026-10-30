@@ -59,15 +59,95 @@ _Escrita pelo grimoire em 29/10/2026. Pedido do Daniel (via chefe): "olhe as con
 
 Referências: docs/handoff/trailer-kinetic-referencias.md
 
-## Entrega
+## Entrega (grimoire-dev, 2026-10-30 04:00)
 
-### Conceito C (v9 kinetic), 30/10/2026
-- **Master 4K:** `E:\dev\projects\card-game-trailer\build\trailer\grimoire_trailer_v9_kinetic.mp4` (3840x2160, 60 fps, H.264 L5.2 + AAC, 64,5 s, 0,52 GB, −14,4 LUFS); 1080p ao lado (`grimoire_trailer_v9_kinetic_1080p.mp4`). Render 4K em 1141 s.
-- Métricas dos 10 critérios, folha de contato, o que mudou em relação ao v8 e a origem de cada áudio: `docs/handoff/trailer-kinetic-C-metrics.md`. Resumo: 8 PASS, critério 2 FAIL (escuro de conteúdo: salão do Rei no escuro e abertura do logo; 0 % de preto puro), checklist do Daniel com 3 itens parciais (regravação, porta vista de fora, escuta humana dos SFX).
-- Áudio publicável: só `boss-carrion_king.mp3` (ACE-Step) + `sfx_synth` (síntese local). Salões Higgsfield = IA, declarar na Steam.
-- Conceitos A e B: ainda não renderizados (B aguarda as tomadas regravadas).
+Três trailers renderizados com a skill Kinetic Film (sem Scenario) neste PC, pelo mesmo método de duas camadas: tipografia Grimoire Pixel pelo motor Kinetic (fundo transparente, escala inteira, passos de 15 fps, 1 amostra por quadro) + composição das tomadas por script, com a moldura do CRT em todo quadro. Áudio só ACE-Step (Rei-Carniça ou Tirano) + `build/trailer/sfx_synth` (síntese local), loudnorm −14 LUFS. **0 crédito gasto**, nada publicado, nenhum `lovec` rodado por esta frente, nenhuma tomada apagada.
 
-### Conceito B (grimoire_kinetic_new), 30/10/2026
-- **Master 4K:** `E:\dev\projects\card-game-trailer\build\trailer\grimoire_kinetic_new.mp4` (3840x2160, 60 fps, H.264 L5.2 + AAC, 65,3 s, 0,94 GB, −14,3 LUFS); 1080p ao lado (`grimoire_kinetic_new_1080p.mp4`). Render 4K em 962 s.
-- Feito com as tomadas regravadas (`card-game-trailer-v9`): porta vista de fora, grifo, 6 atos, recompensa rara, loja. Métricas, corte e o que as tomadas novas melhorariam no C: `docs/handoff/trailer-kinetic-B-metrics.md`. Resumo: 8 PASS; critério 2 FAIL (4,6 % de escuro de conteúdo: salão do Rei antes dos olhos e abertura do logo; 0,1 % de preto puro); checklist do Daniel com 2 itens parciais (tomadas gravadas 2 commits atrás da `main`, escuta humana dos SFX).
-- Candidato a 1º vídeo da página (gameplay em 0,33 s; pôster no quadro 0).
+### Masters
+
+| | A: gancho (redes / 2º vídeo) | B: principal (1º vídeo) | C: v9, substituto do v8 |
+|---|---|---|---|
+| Arquivo 4K | `R\build\trailer\grimoire_kinetic_hook30.mp4` | `R\build\trailer\grimoire_kinetic_new.mp4` | `R\build\trailer\grimoire_trailer_v9_kinetic.mp4` |
+| 1080p (do master) | `..._hook30_1080p.mp4` | `..._new_1080p.mp4` | `..._v9_kinetic_1080p.mp4` |
+| Duração | 32,30 s | 65,30 s | 64,50 s |
+| Formato | 3840x2160, 60 fps, H.264 High L5.2 + AAC | idem | idem |
+| Tamanho | 0,42 GB | 0,93 GB | 0,77 GB |
+| Loudness | −13,9 LUFS | −14,3 LUFS | −14,4 LUFS |
+| Render 4K (final) | **490 s** | **946 s** | **893 s** |
+| Faixa | Tirano p 13,38 → 44,23 | Rei-Carniça p 18,86 → 83,16 | Rei-Carniça p 10,05 → 73,55 |
+| Imagem | tomadas novas + 3 salões + logo | tomadas novas + 5 salões + logo | TV/estrada do v8 + tomadas novas + 9 passadas de salão + logo |
+| Detalhes | `trailer-kinetic-A-metrics.md` | `trailer-kinetic-B-metrics.md` | `trailer-kinetic-C-metrics.md` (2º corte) |
+
+(R = `E:\dev\projects\card-game-trailer`. Folhas de contato: `R\build\trailer\kinetic\{A_review, B_review, v9_review}\contact_sheet.jpg`. Renders anteriores no mesmo dia: C 1º corte 1141 s, B 1ª versão 962 s, A 1ª versão 448 s, todos substituídos no mesmo caminho.)
+
+### Os 10 critérios, remedidos nos masters finais (`tools/trailer_kinetic_metrics.py`)
+
+| # | Critério | A | B | C |
+|---|---|---|---|---|
+| 1 | Gameplay até (≤ 2 s) | 0,33 s (pôster no quadro 0) | 0,33 s (pôster) | 0,77 s (pôster) |
+| 2 | Sem preto (< 3 %) | **0,0 %** (antes 4,6 %) | **0,0 %** (antes 4,6 %) | **0,0 %** (antes 7,8 %) |
+| 3 | Sincronia (mediana ≤ 1, máx ≤ 3 quadros) | cortes 0,2 / 0,8; palavras 0,4 / 0,8 | cortes 0,2 / 0,8; palavras 0,4 / 0,8 | cortes 0,0 / 0,8; palavras 0,3 / 0,6 |
+| 4 | Legibilidade (1 s/13 car., glifo ≥ 64 px, 1 texto por vez) | 6 frases ok, glifo mín. 70 px | 8 frases ok, 70 px | 5 frases ok, 70 px |
+| 5 | Ritmo (plano 2–4 s, ≤ 2 rajadas) | 2,46 s, 1 rajada | 3,25 s, 0 rajadas | 3,38 s, 1 rajada |
+| 6 | Pico (75–82 %) | 76,2 % | 79,9 % (no drop) | 81,4 % |
+| 7 | Regra de 3 | chefe 3×, cartas 2× | chefe 3×, deck vivo 3× | chefe 3×, deck 2× |
+| 8 | Fecho (3–8 s) | 3,13 s | 5,29 s | 4,49 s |
+| 9 | Conformidade (áudio, flashes, moldura, cenários, LUFS, sem coringa com rosto) | PASS: 1 flash/s, moldura 100 % | PASS: 1 flash/s, moldura 100 % | PASS: 1 flash/s, moldura 100 % |
+| 10 | Checklist Daniel | 11 ok, 2 parciais | 11 ok, 2 parciais | 12 ok, 1 parcial |
+| | **Resultado** | **9/9 medidos PASS** | **9/9 PASS** | **9/9 PASS** |
+
+Teste mudo com pessoas (parte do critério 4): pendente nos três. Gates de dinamismo do `finish.py` (quadros parados ≤ 40 %, movimento ≥ 2,5 px/quadro): FAIL nos três (72 a 78 % parados). Esses limites são calibrados para reel de tipografia; aqui a imagem é captura pixel-art com texto parado para ser lido. Os gates técnicos (quadros, < 1 GB, nível 5.2, loudness) passam nos três.
+
+Checklist do Daniel, itens parciais: tomadas regravadas no código da `steam-store-v2`, 2 commits de código atrás da `main` (A, B, C); escuta humana dos SFX (A, B, C). No C, porta audível e vista de fora, grifo e cauda da luta agora entram.
+
+### O que mudou em relação ao v8
+- **Trilha:** T4 (sem licença comprovada) sai; entra uma faixa ACE-Step contínua e séria, ligada ao chefe (Rei-Carniça em B e C, Tirano em A), cortada nos graves medidos.
+- **Som:** nenhum SFX do jogo (ElevenLabs free). TV, whooshes, golpes, porta, glitch e selo são sintetizados localmente, com ganhos medidos contra a música.
+- **TV:** de 3 s de TV sem música para 0,75 a 1,0 s, com **pôster de gameplay no quadro 0** (Steam mostra o 1º quadro antes do play).
+- **Texto:** os cartões viraram tipografia kinetic palavra a palavra no grave, em Grimoire Pixel inteira, sem blur nem brilho. Nomes de chefe e as 2 telas pretas de frase saíram.
+- **Moldura do CRT em 100 % dos quadros**, incluindo salões e logo (o v8 perdia a moldura no logo).
+- **Tomadas regravadas** (`card-game-trailer-v9`): grifo, anjo, serpente, porta vista de fora, 6 atos, recompensa rara, loja por fora, deck do ladino e luta do guerreiro com o golpe de 42 no pico e 1,5 s de número legível.
+- **Coringas com rosto** fora dos três: a faixa "JOKERS 3/3" do HUD de combate é tapada com os pixels do mesmo plano antes do HUD (câmera parada), com ganho casado e a faixa COMBO reconstruída; a loja aparece só por fora.
+- **Escuro clareado** por gamma adaptativo só na tela (salão do Rei antes dos olhos, anel do logo). Gamma mínimo: A 0,864, B 0,715, C 0,63. O salão continua escuro, com os olhos como luz principal.
+- Duração: A 32,3 s, B 65,3 s, C 64,5 s (v8: 62,0 s).
+
+### Recomendação (pelos números)
+- **B como 1º vídeo da página.** Gameplay em 0,33 s, o loop inteiro (jogar → recompensa → atos → criaturas → chefe) até 46 s, ritmo 3,25 s sem rajada, pico no drop (79,9 %), os dois ganchos 3× cada e cartão final de 5,3 s. É o único que mostra recompensa, atos e loja.
+- **A como 2º vídeo e corte de redes / Next Fest.** 32 s, plano médio 2,46 s e o gancho de cartas logo de cara (PLAY. / BREAK.). O cartão final de 3,1 s está no mínimo da faixa.
+- **C como substituto direto do v8**, se o Daniel quiser manter o desenho aprovado: mesma ordem do v8, agora com grifo, porta e cauda da luta. O pico em 81,4 % está no limite de cima, e o gameplay contínuo só começa em 0,77 s (a TV do v8).
+- A hipótese do Grimoire se confirma: nenhum número a contradiz.
+
+### Tomadas que seriam apagadas (só lista, nada apagado)
+Pasta `C:\Users\corte\AppData\Roaming\LOVE\card-game-trailer-v9\trailer\` (caminho conferido, 104,7 GB no total). Usadas por pelo menos uma EDL (A_edl, B_edl, C2_edl), e portanto mantidas inteiras: `boss8`, `deck8`, `entr_fallen_angel`, `entr_ice_wyrm`, `entr_storm_griffin`, `fork_a1`, `fork_a2`, `fork_a4`, `night_a1` a `night_a6`, `reward`, `shop`.
+
+| Pasta não usada | Tamanho | Quadros |
+|---|---|---|
+| `fork_a3` | 3.657 MB | 462 |
+| `fork_a5` | 3.657 MB | 462 |
+| `fork_a6` | 3.657 MB | 462 |
+| `poweron` | 3.427 MB | 433 |
+| **Total** | **14.398 MB (≈ 14,1 GB)** | |
+
+O save `run.tool.lua` (e `.bak`) fica fora dessa pasta e não entra na lista.
+
+### Suíte do merge (item à parte)
+O merge da `main` na `steam-store-v2` foi **abortado** antes da regravação (seção 7 do prep). Nada foi commitado nem enviado na `steam-store-v2`. Suíte completa (`test_all` via `suite_lock.sh`, `CARDGAME_HEADLESS=1`): **167 PASS / 4 FAIL / 1 CRASH em 172 suítes.**
+- **FAIL `test_landmark_fx`:** sombra do castelo na fila de contato. Já falha na `steam-store-v2` sem o merge.
+- **FAIL `test_immunities`:** retorno IMUNE. Falha só na suíte inteira; passa isolada, com e sem o merge (depende da ordem).
+- **FAIL `test_enemy_life`:** ember_imp. Mesmo padrão: só na suíte inteira.
+- **FAIL `test_cheat_mode`:** FORÇAR CORINGA. Mesmo padrão: só na suíte inteira.
+- **CRASH `test_scene_continuity`:** cai na suíte; isolada dá "1 cena com descontinuidade". Já falha na `steam-store-v2` sem o merge.
+
+As tomadas usadas nos três trailers foram gravadas nesse código, 2 commits de código atrás da `main` (`e40c1249` Mãe dos Esporos, `14d5eba5` estrada sem mato e sombra do obelisco).
+
+### Pendências
+1. **Escuta humana dos SFX** nos três. Os ganhos foram medidos contra a música, mas ninguém ouviu.
+2. **Teste mudo** com pessoas (critério 4).
+3. **Coringas com rosto:** conferido pela folha de contato e em recortes 1:1. Resta um artefato pequeno: durante a faixa COMBO da luta (~0,5 s em A, B e C), a parte reconstruída da faixa mostra listras horizontais leves. Se incomodar, a saída é regravar com a faixa de coringas desligada no HUD.
+4. **Merge da `main` / suíte:** os 4 FAIL e o CRASH acima. Depois de resolver, regravar se as 2 mudanças de estrada da `main` precisarem aparecer.
+5. **Melhorias opcionais:** nenhuma pendente no C (grifo, porta de fora e cauda já entraram). Opcionais: textos novos de A/B (PLAY., BREAK., EVERY CARD IS ALIVE., BEND EVERY HAND.) passarem pelo Daniel; abrir o cartão final do A para ~4 s; conferir o microtrailer da Steam depois do upload.
+6. **Licença da T4:** o v8 (todas as versões) continua **não publicável** até a licença de `trailer_T4.wav` aparecer. Nenhum dos três novos usa a T4.
+7. **IA declarada:** os salões `ai_4k/hall1..5` (Higgsfield) aparecem em A, B e C e precisam ser declarados na Steam.
+8. Apagar as 4 pastas listadas (14,1 GB) só com OK explícito.
+
+Fontes no repo: `docs/handoff/trailer-kinetic-{A,B}-film/`, `trailer-kinetic-v9-film/` (C), `trailer-kinetic-fx/` (patch dos coringas, clareamento, render dos três), EDLs `trailer-kinetic-{A,B,C2}-edl.json`, medidor `tools/trailer_kinetic_metrics.py`.

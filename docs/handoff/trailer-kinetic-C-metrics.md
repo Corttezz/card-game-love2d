@@ -1,5 +1,38 @@
 # Conceito C (v9 kinetic): render e métricas
 
+> **2º corte (30/10/2026, substitui o 1º no mesmo caminho).** A pedido do Grimoire, o C foi refeito com as tomadas regravadas, no mesmo desenho e nos mesmos graves. A seção "2º corte" logo abaixo é o estado atual; o resto do arquivo descreve o 1º corte (só clipes do v8).
+
+## 2º corte (atual)
+
+**Master 4K:** `E:\dev\projects\card-game-trailer\build\trailer\grimoire_trailer_v9_kinetic.mp4` (3840x2160, 60 fps, L5.2 + AAC, **64,50 s**, 3870 quadros, 0,77 GB, −14,4 LUFS); 1080p ao lado (`grimoire_trailer_v9_kinetic_1080p.mp4`). **Render 4K: 893 s (14 min 53 s).** EDL `build\trailer\kinetic\C2_edl.json` (cópia `docs/handoff/trailer-kinetic-C2-edl.json`), fonte em `docs/handoff/trailer-kinetic-v9-film/`, métricas `build\trailer\kinetic\v9_review\metrics.json` (cópia `docs/handoff/trailer-kinetic-C2-metrics.json`), folha de contato `build\trailer\kinetic\v9_review\contact_sheet.jpg`.
+
+O que mudou em relação ao 1º corte (t = p − 9,05, os mesmos textos nos mesmos tempos):
+- **Grifo de volta:** `entr_storm_griffin` 17,33–19,86, pouso no grave de DECIDE (18,59); anjo (pouso 20,49) e serpente encurtados para caber.
+- **Porta vista de fora:** `boss8` 399→564 de 39,01 a 41,76. O rangido começa no IS A PUZZLE. e o portão abre no baque (41,76); corte seco para os olhos no escuro. A entrada roda contínua até o cartão do nome no grave 46,21 e segue direto para a luta, sem corte.
+- **Fim da luta com número legível:** golpe de 42 (o maior) no pico 52,49 (81,4 %), 33 em 53,67, 27 + COMBO em 54,42 e **1,52 s** de tela até o glitch no grave 64,99 (55,94), parando antes do tooltip (1661). O logo passa a 1,0x, com o impacto no grave 67,79.
+- `fork_a1` novo no lugar do `fork_a4`; deck do ladino da tomada nova (golpes nos graves de BUILD / A LIVING / DECK.); estrada à noite = `fork_a2` novo a 1,0x (era o clipe do v8 a 0,56x).
+- **Coringas com rosto tapados** no deck e na luta (mesmo patch de A e B) e **escuro clareado** (298 quadros, gamma mínimo 0,63: salão do Rei antes dos olhos e anel do logo).
+- Continuam do v8: a TV ligando com a estrada (`poweron`), os salões 4K e o `logo_sting`.
+
+| # | Critério | Medido (2º corte) | Resultado |
+|---|---|---|---|
+| 1 | Gameplay até | quadro 0 = captura (pôster); contínua em **0,77 s** | PASS |
+| 2 | Sem preto | **0,0 %** (1º corte: 7,8 %) | PASS |
+| 3 | Sincronia | cortes: mediana **0,0**, máx **0,8** quadro (8 de 12 medidos; 4 dissolves pelo nominal); palavras: mediana **0,3**, máx **0,6** | PASS |
+| 4 | Legibilidade | 5 frases passam; glifo mín. 70 px; uma por vez; teste mudo pendente | PASS |
+| 5 | Ritmo | 19 planos, média **3,38 s**, 1 plano < 1 s | PASS |
+| 6 | Pico | golpe de 42 em **52,49 s = 81,4 %** | PASS |
+| 7 | Regra de 3 | chefe 3×, deck 2× | PASS |
+| 8 | Fecho | **4,49 s** de WISHLIST | PASS |
+| 9 | Conformidade | só Rei-Carniça + `sfx_synth`; 1 flash/s; moldura 100 %; cenários válidos; −14,4 LUFS, pico −0,8 dBFS; sem coringa com rosto | PASS |
+| 10 | Checklist Daniel | 12 ok, 1 parcial (escuta dos SFX); porta audível e vista de fora, cenas regravadas (2 commits atrás da `main`) | parcial |
+
+`finish.py`: técnicos PASS; dinamismo FAIL (72 % parados), como em A e B.
+
+---
+
+# 1º corte (só clipes do v8), mantido como registro
+
 _30/10/2026, frente trailer-kinetic. Render com a skill Kinetic Film neste PC, sem Scenario, 0 crédito. Nada publicado._
 
 ## Arquivos

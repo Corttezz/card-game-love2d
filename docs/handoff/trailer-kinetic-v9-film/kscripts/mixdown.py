@@ -4,9 +4,10 @@ import sys, os, json, subprocess, re
 import numpy as np
 R = r'E:\dev\projects\card-game-trailer'
 film = sys.argv[1]
-TRIM, DUR, SR = 0.5, 64.5, 48000
+TRIM, SR = 0.0, 48000
 ALLOWED = ('audio/music/boss-carrion_king.mp3', 'build/trailer/sfx_synth/')
-edl = json.load(open(os.path.join(R, 'build', 'trailer', 'kinetic', 'C_edl.json'), encoding='utf-8'))
+edl = json.load(open(os.path.join(R, 'build', 'trailer', 'kinetic', 'C2_edl.json'), encoding='utf-8'))
+DUR = edl['output']['duration']
 
 def load(rel):
     assert rel.startswith(ALLOWED), rel
@@ -28,8 +29,8 @@ env[f0:f1] = np.linspace(1, 0, f1 - f0, dtype=np.float32); env[f1:] = 0
 mix[a:a + len(seg)] += seg * env[:, None]
 sources.append({'file': m['path'], 'kind': 'music', 'license': m['license'], 'track_in': m['in'], 'track_out': m['out'], 't': round(t_in, 3)})
 cache = {}
-# gain trims after measuring each hit against the music under it (whooshes sat ~20 dB under the grave)
-TRIMDB = {'whoosh_2.wav': 11, 'whoosh_1.wav': 10, 'logo_seal.wav': 4, 'glitch.wav': 3, 'impact_1.wav': 2}
+# gains are set in the EDL already (levels measured on concept C)
+TRIMDB = {}
 for s in edl['sfx']:
     if s['file'] not in cache: cache[s['file']] = load(s['file'])
     g = s['gain_db'] + TRIMDB.get(os.path.basename(s['file']), 0)

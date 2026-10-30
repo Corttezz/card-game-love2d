@@ -1,12 +1,12 @@
 # Conceito B (grimoire_kinetic_new): render e métricas
 
-_30/10/2026, frente trailer-kinetic. Mesmo método do C (`trailer-kinetic-C-metrics.md`): camada de tipografia pelo motor Kinetic Film (Grimoire Pixel inteira, fundo transparente, 1 amostra por quadro) + composição e moldura do CRT por script. Sem Scenario, 0 crédito, nada publicado, nenhum `lovec` rodado, tomadas brutas intocadas (só lidas)._
+_30/10/2026, frente trailer-kinetic. **2ª versão (mesmo dia):** coringas com rosto tapados, loja só por fora e escuro clareado, a pedido do Grimoire; a tabela abaixo é do master novo, e a 1ª versão está no fim. Mesmo método do C (`trailer-kinetic-C-metrics.md`): camada de tipografia pelo motor Kinetic Film (Grimoire Pixel inteira, fundo transparente, 1 amostra por quadro) + composição e moldura do CRT por script. Sem Scenario, 0 crédito, nada publicado, nenhum `lovec` rodado, tomadas brutas intocadas (só lidas)._
 
 ## Arquivos
 
 | O quê | Caminho |
 |---|---|
-| **Master 4K** | `E:\dev\projects\card-game-trailer\build\trailer\grimoire_kinetic_new.mp4` (3840x2160, 60 fps, H.264 High L5.2 + AAC 320k, **65,30 s**, 3918 quadros, 0,94 GB, −14,3 LUFS) |
+| **Master 4K** | `E:\dev\projects\card-game-trailer\build\trailer\grimoire_kinetic_new.mp4` (3840x2160, 60 fps, H.264 High L5.2 + AAC 320k, **65,30 s**, 3918 quadros, 0,93 GB, −14,3 LUFS) |
 | Versão 1080p (do master) | `...\build\trailer\grimoire_kinetic_new_1080p.mp4` (0,17 GB, L4.2) |
 | Folha de contato (1 quadro/s, do master) | `...\build\trailer\kinetic\B_review\contact_sheet.jpg` |
 | Métricas brutas | `...\build\trailer\kinetic\B_review\metrics.json` (cópia: `docs/handoff/trailer-kinetic-B-metrics.json`) |
@@ -14,7 +14,7 @@ _30/10/2026, frente trailer-kinetic. Mesmo método do C (`trailer-kinetic-C-metr
 | Fonte do filme | `E:\dev\_orquestracao\skills-externas\kinetic-film\grimoire_b`; cópia de `spec.js`, `index.html` e `kscripts/` em `docs/handoff/trailer-kinetic-B-film/` |
 | Tomadas usadas (só leitura) | `%APPDATA%\LOVE\card-game-trailer-v9\trailer\` (TGA 1080p; proxies mp4 dos trechos usados em `grimoire_b\out\proxy`) |
 
-**Tempo do render 4K: 962 s (16 min 02 s)**: camada de tipografia (4 workers, ~40 s) + composição/encode x264 `slower` CRF 12,4 (922 s, ~4,2 quadros/s). As tomadas são 1080p e entram no 4K ampliadas 2x por vizinho mais próximo, como o v8. `finish.py` levou mais ~5 min.
+**Tempo do render 4K: 946 s (15 min 46 s)** na 2ª versão (camada + mixagem + composição/encode x264 `slower` CRF 12,4, 902 s de composição); a 1ª versão levou 962 s. As tomadas são 1080p e entram no 4K ampliadas 2x por vizinho mais próximo, como o v8. `finish.py` levou mais ~5 min.
 
 ## Corte (t = p − 17,86; graves medidos de `boss-carrion_king_beats.json`)
 
@@ -24,7 +24,7 @@ _30/10/2026, frente trailer-kinetic. Mesmo método do C (`trailer-kinetic-C-metr
 | 8,52–11,05 | `reward` 548→700, clarão da revelação rara (624) no grave 9,78 | graves | EVERY CARD (8,52) · IS ALIVE. (9,78) |
 | 11,05–20,40 | `night_a1`…`night_a6` do quadro 110 (sem o clarão do início), um ato por grave; ato VI segura até 20,40 | graves | SIX (11,05) · ACTS. (12,29); ONE ROAD / TO THE CASTLE. (17,33) |
 | 20,40–27,10 | `entr_storm_griffin` 540→678 (pouso 661 em 22,42), `entr_fallen_angel` 520→658 (pouso ~620 em 24,37), `entr_ice_wyrm` 470→596 | pad sem grave: pousos | YOUR CARDS (21,30) · DECIDE (pouso do grifo) · WHAT SURVIVES. (pouso do anjo) |
-| 27,10–29,29 | `shop` 90→221: chegada ao mercador e balcão até antes dos coringas de rosto dominarem | pad | BEND (27,10) · EVERY HAND. (27,80) |
+| 27,10–29,29 | `shop` 40→171: só a chegada ao mercador por fora (o balcão com a carta de caveira e os coringas de rosto entra em ~180 e ficou fora) | pad | BEND (27,10) · EVERY HAND. (27,80) |
 | 29,29–38,66 | `boss8` 497→1091: **porta vista de fora** (portão 564 em 30,41, baque da porta sintetizada), escuro comprimido (695→745 em 0,3 s), olhos, rasantes, pouso, cartão do nome no grave 37,40 | pad + grave | — |
 | 38,66–46,18 | salões 4K `hall2/3/4/5` + `hall1_carrion` (2 graves) | graves | EVERY BOSS (38,66) · IS A PUZZLE. (39,91) |
 | 46,18–54,99 | `boss8` 1160→1640: luta do guerreiro sem corte, já sem o cartão do nome (0,87x até o JOGAR 1422 no grave 51,20); **golpe de 42 (o maior número) no pico 52,15 = drop p 70,01**; golpes 33 e 27+COMBO em 53,13 e 53,72 (grave); cauda limpa até 1640, antes do tooltip (1661) | graves | — |
@@ -33,23 +33,27 @@ _30/10/2026, frente trailer-kinetic. Mesmo método do C (`trailer-kinetic-C-metr
 
 Pôster no quadro 0: o quadro de 6,60 s (combate do ladino com BUILD A LIVING DECK.).
 
-## Os 10 critérios (master 4K)
+## Coringas com rosto e escuro (2ª versão)
+- **Coringas com rosto:** a faixa "JOKERS 3/3" do HUD de combate (`deck8` e `boss8`) é trocada pelos pixels do mesmo plano antes de o HUD aparecer, com ganho casado e emenda suave; a faixa "COMBO!" é reconstruída por linha quando passa por cima (detalhes em `trailer-kinetic-A-metrics.md`). A loja ficou só por fora (quadros 40 a 171). Conferido na folha de contato do master e em recortes 1:1 do deck, da luta e do pôster.
+- **Escuro:** gamma adaptativo só na tela até a média de 6,2 %: 229 quadros (salão do Rei antes dos olhos e anel do logo), gamma mínimo **0,715**. O salão continua escuro, com os olhos como única luz forte; o fundo roxo do logo fica um pouco mais aberto.
+
+## Os 10 critérios (master 4K, 2ª versão)
 
 | # | Critério | Meta | Medido | Resultado |
 |---|---|---|---|---|
-| 1 | Gameplay até | ≤ 2 s (< 4 s obrigatório) | quadro 0 = captura (pôster); captura contínua a partir de **0,33 s** (a TV liga já com o combate) | PASS |
-| 2 | Sem preto | < 3 % (luminância < 5 %) fora da TV ligando e do glitch | **4,6 %**; preto puro (< 2 %): **0,1 %**. Trechos: 32,60–33,63 (salão do Rei no escuro antes dos olhos, já comprimido de 0,83 para 0,3 s de tomada) e 55,30–57,20 (abertura roxa escura do `logo_sting`, 1,9 s) | **FAIL** (escuro de conteúdo) |
-| 3 | Sincronia nos graves | mediana ≤ 1 quadro, máx ≤ 3 | cortes ancorados: mediana **0,2**, máx **0,8** quadro (12 de 13 medidos no vídeo; ato 3 pelo nominal); palavras no grave: mediana **0,4**, máx **0,8** | PASS |
-| 4 | Legibilidade | ≥ 1 s/13 car., glifo ≥ 64 px, ≤ 30 car./linha, 1 texto por vez | 8 frases passam (a mais justa: BEND EVERY HAND. 2,05 s para 1,23); glifo mín. **70 px**; maior linha 18 car.; nunca 2 frases juntas. Teste mudo com pessoas: pendente | PASS (teste mudo pendente) |
-| 5 | Ritmo | plano médio 2–4 s, ≤ 2 rajadas < 1 s | 20 planos, média **3,25 s**; nenhum plano < 1 s (os 6 atos têm 1,24–1,26 s) | PASS |
-| 6 | Pico | número de dano maior em 75–82 % | golpe de 42 em **52,15 s = 79,9 %**, no drop | PASS |
-| 7 | Regra de 3 | gancho 2–3 vezes | chefe-quebra-cabeça 3× (porta e entrada do Rei, salões + EVERY BOSS IS A PUZZLE, luta e golpe de 42); deck vivo 3× (cartas + BUILD A LIVING DECK, carta rara viva + EVERY CARD IS ALIVE, loja + BEND EVERY HAND) | PASS |
-| 8 | Fecho | cartão final 3–8 s, nada depois do CTA | WISHLIST ON STEAM. de 60,01 a 65,30 = **5,29 s**, CTA no último quadro | PASS |
-| 9 | Conformidade | 0 asset proibido, flashes ≤ 3/s, moldura 100 %, cenários válidos, −14 LUFS | áudio = só `boss-carrion_king.mp3` + 9 arquivos de `sfx_synth`; máx **1 flash/s**; moldura em **100 %** dos quadros após a TV ligar (diferença média 2,2/255); 19 fontes de imagem, todas válidas (tomadas novas + salões + logo); **−14,3 LUFS**, pico −0,8 dBFS | PASS |
-| 10 | Checklist Daniel | ver abaixo | 11 itens + sem cara de IA + música contínua | 11 ok, 2 parciais |
+| 1 | Gameplay até | ≤ 2 s | quadro 0 = captura (pôster); captura contínua em **0,33 s** | PASS |
+| 2 | Sem preto | < 3 % | **0,0 %** fora da TV/glitch (0,38 % no total, dentro da TV ligando); 1ª versão: 4,6 % | PASS |
+| 3 | Sincronia nos graves | mediana ≤ 1 quadro, máx ≤ 3 | cortes: mediana **0,2**, máx **0,8** quadro (12 de 13 medidos); palavras: mediana **0,4**, máx **0,8** | PASS |
+| 4 | Legibilidade | ≥ 1 s/13 car., glifo ≥ 64 px, ≤ 30 car./linha, 1 texto por vez | 8 frases passam (a mais justa: BEND EVERY HAND. 2,05 s para 1,23); glifo mín. **70 px**; maior linha 18 car. Teste mudo pendente | PASS |
+| 5 | Ritmo | plano médio 2–4 s, ≤ 2 rajadas < 1 s | 20 planos, média **3,25 s**; nenhum < 1 s | PASS |
+| 6 | Pico | 75–82 % | golpe de 42 em **52,15 s = 79,9 %**, no drop | PASS |
+| 7 | Regra de 3 | 2–3 vezes | chefe 3×; deck vivo 3× (cartas + BUILD A LIVING DECK, carta rara + EVERY CARD IS ALIVE, loja + BEND EVERY HAND) | PASS |
+| 8 | Fecho | 3–8 s | **5,29 s** de WISHLIST ON STEAM. até o último quadro | PASS |
+| 9 | Conformidade | 0 asset proibido, ≤ 3 flashes/s, moldura 100 %, cenários válidos, −14 LUFS | só Rei-Carniça + `sfx_synth`; **1 flash/s**; moldura **100 %**; 19 fontes válidas; **−14,3 LUFS**, pico −0,8 dBFS; nenhum coringa com rosto | PASS |
+| 10 | Checklist Daniel | ver abaixo | 11 ok, 2 parciais | parcial |
 
 ### Gates da skill (`finish.py`)
-Técnicos: quadros 3918/3918, 0,94 GB (< 1 GB), nível 5.2, −14,3 LUFS: **PASS** no 4K e no 1080p. Dinamismo: **FAIL** (77 % de quadros parados, parados > 0,6 s em 4,92 / 6,32 / 7,12 / 8,67 s, movimento mediano 0,47 px/quadro), pelo mesmo motivo do C: os limites são de reel de tipografia, a imagem é captura pixel-art e o texto fica parado para ser lido. Os quatro "parados" são a mão do ladino entre golpes e o Spoils of Battle antes da revelação.
+Técnicos: quadros 3918/3918, 0,93 GB (< 1 GB), nível 5.2, −14,3 LUFS: **PASS** no 4K e no 1080p. Dinamismo: **FAIL** (78 % de quadros parados, movimento mediano abaixo de 0,5 px/quadro), pelo mesmo motivo do C: os limites são de reel de tipografia, a imagem é captura pixel-art e o texto fica parado para ser lido. Os quatro "parados" são a mão do ladino entre golpes e o Spoils of Battle antes da revelação.
 
 ### Checklist Daniel (critério 10)
 
@@ -71,11 +75,12 @@ Técnicos: quadros 3918/3918, 0,94 GB (< 1 GB), nível 5.2, −14,3 LUFS: **PASS
 
 ### Ressalvas das tomadas, como foram tratadas
 - **Cauda da luta (1,5 s limpo):** a luta termina no quadro 1640, 20 quadros antes do tooltip "Twin Strike" (1661); o glitch entra no grave 54,99. Não precisou segurar quadro parado: o remapeamento põe 1564→1640 em 1,27 s (1,0x).
-- **Coringas com rosto na loja:** só a chegada ao mercador e o 1º segundo do balcão (até o quadro 221: uma carta de caveira pequena, o coringa-demônio ainda não aparece); o texto BEND EVERY HAND. fica por cima.
+- **Coringas com rosto:** loja só por fora (40 a 171) e faixa de coringas do HUD tapada no deck e na luta (2ª versão).
 - **Clarão no início das viagens:** cada ato começa no quadro 110.
 - **Mão sendo dada:** o deck começa no quadro 560 (inimigo surgindo, 1ª carta dada); o remapeamento até o JOGAR roda a ~1,3x.
 
 ## O que as tomadas novas melhorariam no C (não refeito)
+> Atualização: o C foi refeito no mesmo dia com grifo, porta vista de fora, cauda da luta e `fork_a1` (ver o "2º corte" em `trailer-kinetic-C-metrics.md`). A lista abaixo fica como registro do raciocínio.
 - **Grifo** (`entr_storm_griffin`, pouso limpo em 661): devolve ao C a entrada que saiu por ter texto queimado no v8; caberia antes do anjo no trecho YOUR CARDS DECIDE (17,8–22,9) e daria às três criaturas um pouso por grave.
 - **Porta vista de fora** (`boss8` 1–620, portão em 564): hoje o C só tem a porta no som (o rangido sobre o salão do pad); com ela o baque cai no quadro do portão, como pedido no v7.
 - **Cauda da luta** (`boss8` 1564–1650 limpo): o C corta 0,03 s depois do 3º golpe; com 1,3 s de cauda o número fica legível antes do glitch. O maior número da luta nova é o do 1º golpe (42), então o pico do C passaria para esse golpe.
@@ -101,3 +106,6 @@ cd E:\dev\_orquestracao\skills-externas\kinetic-film\grimoire_b
 ..\venv\Scripts\python.exe -I E:\dev\projects\card-game-love2d\tools\trailer_kinetic_metrics.py <mp4> --edl <B_edl.json> --trim 0 --spec spec.js --sources out\mix_sources.json --layer out\layer --json metrics.json --sheet contact_sheet.jpg
 ```
 O medidor agora lê da EDL, quando existem, `tv_on`, `peak`, `hooks` e `valid_scenes`. Rodado de novo sobre o C, os resultados se mantêm; só a média de plano foi de 3,57 para 3,60 s, porque o último plano passou a contar até o fim real.
+
+## 1ª versão (antes da correção do Grimoire)
+Mesmo corte, loja até o quadro 221 (carta de caveira no balcão) e faixa de coringas visível no deck e na luta, sem clareamento: critério 2 em **4,6 %** (FAIL), o resto igual. Substituída no mesmo caminho pelo master acima.

@@ -1,0 +1,996 @@
+{
+ "id": "grimoire_kinetic_hook30",
+ "concept": "A: gancho de 30 s (redes / 2o video), tomadas regravadas nos graves do Tirano (1o drop)",
+ "root": "E:/dev/projects/card-game-trailer",
+ "takes": "C:/Users/corte/AppData/Roaming/LOVE/card-game-trailer-v9/trailer",
+ "output": {
+  "size": [
+   3840,
+   2160
+  ],
+  "fps": 60,
+  "duration": 32.3,
+  "loudness_lufs": -14
+ },
+ "time_map": {
+  "rule": "t = p - 11.93",
+  "offset": 11.93
+ },
+ "music": {
+  "path": "audio/music/boss-abyss_tyrant.mp3",
+  "license": "ACE-Step 1.5 local, uso comercial",
+  "in": 13.38,
+  "out": 44.23,
+  "t": 1.45,
+  "fade_out": {
+   "t0": 31.78,
+   "t1": 32.3
+  },
+  "beats": "build/trailer/music/boss-abyss_tyrant_beats.json"
+ },
+ "tv_on": {
+  "t0": 0.0,
+  "t1": 1.0
+ },
+ "poster_frame_t": 3.9,
+ "peak": {
+  "t": 24.61,
+  "fraction": 0.762,
+  "what": "golpe de 42 no Rei-Carnica"
+ },
+ "hooks": {
+  "boss_puzzle_hook": [
+   "porta, olhos e pouso do Rei-Carnica (15,01 a 18,82)",
+   "3 saloes + EVERY BOSS IS A PUZZLE (18,82 a 22,31)",
+   "luta e golpe de 42 (22,31 a 26,89)"
+  ],
+  "cards_hook": [
+   "PLAY. no JOGAR",
+   "BREAK. no golpe com numero"
+  ]
+ },
+ "valid_scenes": [
+  "deck8",
+  "fork_a2",
+  "fork_a4",
+  "entr_storm_griffin",
+  "entr_ice_wyrm",
+  "boss8",
+  "hall1_carrion",
+  "hall2_lich",
+  "hall3_tyrant",
+  "logo_sting"
+ ],
+ "clips": [
+  {
+   "id": "cartas_ladino",
+   "src": "take:deck8",
+   "t0": 0.0,
+   "t1": 7.18,
+   "map": [
+    [
+     0.0,
+     780
+    ],
+    [
+     1.45,
+     830
+    ],
+    [
+     3.48,
+     946
+    ],
+    [
+     4.28,
+     989
+    ],
+    [
+     4.87,
+     1043
+    ],
+    [
+     7.18,
+     1138
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 11.93,
+    "nearest_grave": 12.02,
+    "delta": -0.09
+   },
+   "note": "TV liga sintetizada com a mao do ladino no vidro (0 a 1,0); musica entra seca no JOGAR (1,45); golpes 2 a 4 nos graves 3,48/4,28/4,87 (0,9x a 1,5x); termina em 1138, antes do tooltip Shadow Dance (1140)",
+   "events": [
+    {
+     "what": "JOGAR",
+     "frame": 830,
+     "t": 1.45,
+     "anchor": {
+      "type": "grave",
+      "p": 13.38,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 1",
+     "frame": 868,
+     "t": 2.11,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 14.04,
+      "nearest_grave": 13.38,
+      "delta": 0.66
+     }
+    },
+    {
+     "what": "golpe 2 + numero",
+     "frame": 946,
+     "t": 3.48,
+     "anchor": {
+      "type": "grave",
+      "p": 15.41,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 3 (COMBO)",
+     "frame": 989,
+     "t": 4.28,
+     "anchor": {
+      "type": "grave",
+      "p": 16.21,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 4",
+     "frame": 1043,
+     "t": 4.87,
+     "anchor": {
+      "type": "grave",
+      "p": 16.8,
+      "delta": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "encruzilhada_a2",
+   "src": "take:fork_a2",
+   "t0": 7.18,
+   "t1": 8.82,
+   "map": [
+    [
+     7.18,
+     100
+    ],
+    [
+     8.82,
+     198
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 19.11,
+    "delta": 0.0
+   },
+   "note": "encruzilhada do ato 2, castelo ao centro",
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   }
+  },
+  {
+   "id": "encruzilhada_a4",
+   "src": "take:fork_a4",
+   "t0": 8.82,
+   "t1": 10.51,
+   "map": [
+    [
+     8.82,
+     100
+    ],
+    [
+     10.51,
+     201
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 20.75,
+    "delta": 0.0
+   },
+   "note": "encruzilhada do ato 4",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "entrada_grifo",
+   "src": "take:entr_storm_griffin",
+   "t0": 10.51,
+   "t1": 13.55,
+   "map": [
+    [
+     10.51,
+     560
+    ],
+    [
+     13.55,
+     742
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 22.44,
+    "delta": 0.0
+   },
+   "note": "grifo ja no quadro desde o 1o quadro do plano, pouso 661",
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   },
+   "events": [
+    {
+     "what": "pouso",
+     "frame": 661,
+     "t": 12.19,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 24.12,
+      "nearest_grave": 23.34,
+      "delta": 0.78
+     }
+    }
+   ]
+  },
+  {
+   "id": "entrada_serpente",
+   "src": "take:entr_ice_wyrm",
+   "t0": 13.55,
+   "t1": 15.01,
+   "map": [
+    [
+     13.55,
+     470
+    ],
+    [
+     15.01,
+     558
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 25.48,
+    "delta": 0.0
+   },
+   "note": "serpente de gelo emergindo",
+   "tr": {
+    "type": "glitch_soft",
+    "d": 0.12
+   }
+  },
+  {
+   "id": "porta",
+   "src": "take:boss8",
+   "t0": 15.01,
+   "t1": 17.76,
+   "map": [
+    [
+     15.01,
+     399
+    ],
+    [
+     17.76,
+     564
+    ]
+   ],
+   "cut_anchor": {
+    "type": "sem_grave",
+    "p": 26.94,
+    "nearest_grave": 25.48,
+    "delta": 1.46
+   },
+   "note": "porta vista de fora; o portao abre no grave 17,76 (baque)",
+   "tr": {
+    "type": "dissolve",
+    "d": 0.3
+   },
+   "events": [
+    {
+     "what": "portao",
+     "frame": 564,
+     "t": 17.76,
+     "anchor": {
+      "type": "grave",
+      "p": 29.69,
+      "delta": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "olhos",
+   "src": "take:boss8",
+   "t0": 17.76,
+   "t1": 18.0,
+   "map": [
+    [
+     17.76,
+     745
+    ],
+    [
+     18.0,
+     759
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 29.69,
+    "delta": 0.0
+   },
+   "note": "corte seco para os olhos no escuro no baque"
+  },
+  {
+   "id": "pouso_nome",
+   "src": "take:boss8",
+   "t0": 18.0,
+   "t1": 18.82,
+   "map": [
+    [
+     18.0,
+     990
+    ],
+    [
+     18.82,
+     1039
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 29.93,
+    "delta": 0.0
+   },
+   "note": "drop p 29,93: Rei-Carnica pousa inteiro e o cartao do nome sobe",
+   "tr": {
+    "type": "flash",
+    "d": 0.16
+   },
+   "events": [
+    {
+     "what": "pouso",
+     "frame": 1000,
+     "t": 18.17,
+     "anchor": {
+      "type": "grave",
+      "p": 30.1,
+      "delta": 0.0
+     }
+    }
+   ]
+  },
+  {
+   "id": "salao_hall1_carrion",
+   "src": "build/trailer/kinetic/clips_v8/hall1_carrion.mp4",
+   "t0": 18.82,
+   "t1": 19.73,
+   "in": 2.0,
+   "out": 4.91,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 30.75,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_hall2_lich",
+   "src": "build/trailer/kinetic/clips_v8/hall2_lich.mp4",
+   "t0": 19.73,
+   "t1": 20.31,
+   "in": 1.33,
+   "out": 3.9099999999999984,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 31.66,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "salao_hall3_tyrant",
+   "src": "build/trailer/kinetic/clips_v8/hall3_tyrant.mp4",
+   "t0": 20.31,
+   "t1": 22.31,
+   "in": 1.0,
+   "out": 5.0,
+   "speed": 1.0,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 32.24,
+    "delta": 0.0
+   },
+   "note": "salao 4K Higgsfield (IA, declarar), um por grave",
+   "tr": {
+    "type": "zoom",
+    "d": 0.1
+   }
+  },
+  {
+   "id": "luta_guerreiro",
+   "src": "take:boss8",
+   "t0": 22.31,
+   "t1": 26.89,
+   "map": [
+    [
+     22.31,
+     1310
+    ],
+    [
+     24.61,
+     1448
+    ],
+    [
+     26.89,
+     1585
+    ]
+   ],
+   "cut_anchor": {
+    "type": "grave",
+    "p": 34.24,
+    "delta": 0.0
+   },
+   "note": "luta do guerreiro: JOGAR 1422 em 24,18, golpe de 42 (o maior numero) no grave 24,61 = pico; 33 e 27+COMBO depois; para em 1585, antes do tooltip (1661)",
+   "events": [
+    {
+     "what": "JOGAR",
+     "frame": 1422,
+     "t": 24.18,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 36.11,
+      "nearest_grave": 36.54,
+      "delta": -0.43
+     }
+    },
+    {
+     "what": "golpe 1: 42, numero maior (pico)",
+     "frame": 1448,
+     "t": 24.61,
+     "anchor": {
+      "type": "grave",
+      "p": 36.54,
+      "delta": 0.0
+     }
+    },
+    {
+     "what": "golpe 2: 33",
+     "frame": 1519,
+     "t": 25.79,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 37.72,
+      "nearest_grave": 38.82,
+      "delta": -1.1
+     }
+    },
+    {
+     "what": "golpe 3: 27 + COMBO",
+     "frame": 1564,
+     "t": 26.54,
+     "anchor": {
+      "type": "sem_grave",
+      "p": 38.47,
+      "nearest_grave": 38.82,
+      "delta": -0.35
+     }
+    }
+   ]
+  },
+  {
+   "id": "glitch",
+   "kind": "glitch",
+   "t0": 26.89,
+   "t1": 27.16,
+   "note": "glitch do editor sobre o ultimo quadro da luta, do grave 26,89 ao 27,16"
+  },
+  {
+   "id": "logo",
+   "src": "build/trailer/kinetic/clips_v8/logo_sting.mp4",
+   "t0": 27.16,
+   "t1": 32.3,
+   "in": 1.0,
+   "out": 6.5,
+   "speed": 1.373,
+   "cut_anchor": {
+    "type": "grave",
+    "p": 39.09,
+    "delta": 0.0
+   },
+   "note": "logo_sting a partir de 1,0 s a 1,373x: impacto da arte no grave 28,34 (1o pulso do selo)",
+   "hold_last_frame_until": 32.3,
+   "events": [
+    {
+     "what": "impacto/flash do logo",
+     "clip_t": 2.62,
+     "t": 28.34,
+     "anchor": {
+      "type": "grave",
+      "p": 40.27,
+      "delta": 0.0
+     }
+    }
+   ]
+  }
+ ],
+ "texts": [
+  {
+   "phrase": "PLAY.",
+   "words": [
+    {
+     "text": "PLAY.",
+     "t": 1.45,
+     "anchor": {
+      "type": "grave",
+      "p": 13.38,
+      "delta": 0.0
+     }
+    }
+   ],
+   "out": 3.3,
+   "chars": 5,
+   "hold_after_last_word": 1.85,
+   "hold_total": 1.85,
+   "min_by_rule_13cps": 0.38
+  },
+  {
+   "phrase": "BREAK.",
+   "words": [
+    {
+     "text": "BREAK.",
+     "t": 3.48,
+     "anchor": {
+      "type": "grave",
+      "p": 15.41,
+      "delta": 0.0
+     }
+    }
+   ],
+   "out": 6.95,
+   "chars": 6,
+   "hold_after_last_word": 3.47,
+   "hold_total": 3.47,
+   "min_by_rule_13cps": 0.46
+  },
+  {
+   "phrase": "SIX ACTS. ONE ROAD TO THE CASTLE.",
+   "words": [
+    {
+     "text": "SIX ACTS.",
+     "t": 7.18,
+     "anchor": {
+      "type": "grave",
+      "p": 19.11,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "ONE ROAD",
+     "t": 8.82,
+     "anchor": {
+      "type": "grave",
+      "p": 20.75,
+      "delta": 0.0
+     },
+     "line": 2
+    },
+    {
+     "text": "TO THE CASTLE.",
+     "t": 8.82,
+     "anchor": {
+      "type": "grave",
+      "p": 20.75,
+      "delta": 0.0
+     },
+     "line": 3
+    }
+   ],
+   "out": 10.4,
+   "chars": 33,
+   "hold_after_last_word": 1.58,
+   "hold_total": 3.22,
+   "min_by_rule_13cps": 2.54
+  },
+  {
+   "phrase": "YOUR CARDS DECIDE WHAT SURVIVES.",
+   "words": [
+    {
+     "text": "YOUR CARDS",
+     "t": 10.51,
+     "anchor": {
+      "type": "grave",
+      "p": 22.44,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "DECIDE",
+     "t": 10.81,
+     "anchor": {
+      "type": "grave",
+      "p": 22.74,
+      "delta": 0.0
+     },
+     "line": 2
+    },
+    {
+     "text": "WHAT SURVIVES.",
+     "t": 11.19,
+     "anchor": {
+      "type": "grave",
+      "p": 23.12,
+      "delta": 0.0
+     },
+     "line": 3
+    }
+   ],
+   "out": 13.4,
+   "chars": 32,
+   "hold_after_last_word": 2.21,
+   "hold_total": 2.89,
+   "min_by_rule_13cps": 2.46
+  },
+  {
+   "phrase": "EVERY BOSS IS A PUZZLE.",
+   "words": [
+    {
+     "text": "EVERY BOSS",
+     "t": 18.82,
+     "anchor": {
+      "type": "grave",
+      "p": 30.75,
+      "delta": 0.0
+     }
+    },
+    {
+     "text": "IS A PUZZLE.",
+     "t": 19.73,
+     "anchor": {
+      "type": "grave",
+      "p": 31.66,
+      "delta": 0.0
+     },
+     "line": 2
+    }
+   ],
+   "out": 22.2,
+   "chars": 23,
+   "hold_after_last_word": 2.47,
+   "hold_total": 3.38,
+   "min_by_rule_13cps": 1.77
+  },
+  {
+   "phrase": "WISHLIST ON STEAM.",
+   "words": [
+    {
+     "text": "WISHLIST ON STEAM.",
+     "t": 29.17,
+     "anchor": {
+      "type": "grave",
+      "p": 41.1,
+      "delta": 0.0
+     }
+    }
+   ],
+   "out": 32.3,
+   "chars": 18,
+   "hold_after_last_word": 3.13,
+   "hold_total": 3.13,
+   "min_by_rule_13cps": 1.38
+  }
+ ],
+ "sfx": [
+  {
+   "file": "build/trailer/sfx_synth/tv_on.wav",
+   "attack_offset": 0.0,
+   "event_t": 0.0,
+   "start_t": 0.0,
+   "gain_db": -8,
+   "what": "TV liga",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 11.93,
+    "nearest_grave": 12.02,
+    "delta": -0.09
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 2.11,
+   "start_t": 2.11,
+   "gain_db": -12,
+   "what": "golpe 1 das cartas",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 14.04,
+    "nearest_grave": 13.38,
+    "delta": 0.66
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 3.48,
+   "start_t": 3.48,
+   "gain_db": -6,
+   "what": "golpe 2 + BREAK.",
+   "anchor": {
+    "type": "grave",
+    "p": 15.41,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 4.28,
+   "start_t": 4.28,
+   "gain_db": -9,
+   "what": "golpe 3",
+   "anchor": {
+    "type": "grave",
+    "p": 16.21,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 4.87,
+   "start_t": 4.87,
+   "gain_db": -9,
+   "what": "golpe 4",
+   "anchor": {
+    "type": "grave",
+    "p": 16.8,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 7.18,
+   "start_t": 6.822,
+   "gain_db": -3,
+   "what": "encruzilhada a2",
+   "anchor": {
+    "type": "grave",
+    "p": 19.11,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 8.82,
+   "start_t": 8.462,
+   "gain_db": -3,
+   "what": "encruzilhada a4",
+   "anchor": {
+    "type": "grave",
+    "p": 20.75,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 10.51,
+   "start_t": 9.952,
+   "gain_db": -4,
+   "what": "entrada do grifo",
+   "anchor": {
+    "type": "grave",
+    "p": 22.44,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 12.19,
+   "start_t": 12.19,
+   "gain_db": -10,
+   "what": "pouso do grifo",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 24.12,
+    "nearest_grave": 23.34,
+    "delta": 0.78
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_1.wav",
+   "attack_offset": 0.558,
+   "event_t": 13.55,
+   "start_t": 12.992,
+   "gain_db": -4,
+   "what": "serpente",
+   "anchor": {
+    "type": "grave",
+    "p": 25.48,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/castle_door.wav",
+   "attack_offset": 2.75,
+   "event_t": 17.76,
+   "start_t": 15.01,
+   "gain_db": -4,
+   "what": "rangido sobre a porta, baque no portao (grave 17,76)",
+   "anchor": {
+    "type": "grave",
+    "p": 29.69,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_heavy.wav",
+   "attack_offset": 0.0,
+   "event_t": 18.0,
+   "start_t": 18.0,
+   "gain_db": -6,
+   "what": "drop: pouso do Rei-Carnica",
+   "anchor": {
+    "type": "grave",
+    "p": 29.93,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 18.82,
+   "start_t": 18.462,
+   "gain_db": -3,
+   "what": "salao 1",
+   "anchor": {
+    "type": "grave",
+    "p": 30.75,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 19.73,
+   "start_t": 19.372,
+   "gain_db": -3,
+   "what": "salao 2",
+   "anchor": {
+    "type": "grave",
+    "p": 31.66,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 20.31,
+   "start_t": 19.952,
+   "gain_db": -3,
+   "what": "salao 3",
+   "anchor": {
+    "type": "grave",
+    "p": 32.24,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/whoosh_2.wav",
+   "attack_offset": 0.358,
+   "event_t": 22.31,
+   "start_t": 21.952,
+   "gain_db": -6,
+   "what": "corte para a luta",
+   "anchor": {
+    "type": "grave",
+    "p": 34.24,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_heavy.wav",
+   "attack_offset": 0.0,
+   "event_t": 24.61,
+   "start_t": 24.61,
+   "gain_db": -4,
+   "what": "golpe 42, pico",
+   "anchor": {
+    "type": "grave",
+    "p": 36.54,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_2.wav",
+   "attack_offset": 0.0,
+   "event_t": 25.79,
+   "start_t": 25.79,
+   "gain_db": -9,
+   "what": "golpe 33",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 37.72,
+    "nearest_grave": 38.82,
+    "delta": -1.1
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 26.54,
+   "start_t": 26.54,
+   "gain_db": -8,
+   "what": "golpe 27 + COMBO",
+   "anchor": {
+    "type": "sem_grave",
+    "p": 38.47,
+    "nearest_grave": 38.82,
+    "delta": -0.35
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/glitch.wav",
+   "attack_offset": 0.0,
+   "event_t": 26.89,
+   "start_t": 26.89,
+   "gain_db": -9,
+   "what": "glitch",
+   "anchor": {
+    "type": "grave",
+    "p": 38.82,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/impact_1.wav",
+   "attack_offset": 0.0,
+   "event_t": 28.34,
+   "start_t": 28.34,
+   "gain_db": -6,
+   "what": "flash do logo",
+   "anchor": {
+    "type": "grave",
+    "p": 40.27,
+    "delta": 0.0
+   }
+  },
+  {
+   "file": "build/trailer/sfx_synth/logo_seal.wav",
+   "attack_offset": 0.0,
+   "event_t": 29.17,
+   "start_t": 29.17,
+   "gain_db": -2,
+   "what": "selo + WISHLIST",
+   "anchor": {
+    "type": "grave",
+    "p": 41.1,
+    "delta": 0.0
+   }
+  }
+ ]
+}

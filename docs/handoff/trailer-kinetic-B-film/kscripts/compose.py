@@ -3,6 +3,8 @@
 # a CRT power-on synthesized over the first shot, transitions, the type layer from layer.py, the bezel over every frame.
 import sys, os, json, math, argparse, subprocess, time
 import numpy as np, cv2
+sys.path.insert(0, r'E:\dev\_orquestracao\skills-externas\kinetic-film\patches')
+import fx
 R = r'E:\dev\projects\card-game-trailer'
 ap = argparse.ArgumentParser(); ap.add_argument('film'); ap.add_argument('--res', default='1080', choices=['1080', '4k'])
 ap.add_argument('--fast', action='store_true'); ap.add_argument('--from', dest='f0', type=int, default=0); ap.add_argument('--to', dest='f1', type=int)
@@ -20,6 +22,10 @@ if S == 2:
     ring = cv2.resize(ring, (W, H), interpolation=cv2.INTER_NEAREST)
     mask = cv2.resize(mask.astype(np.uint8), (W, H), interpolation=cv2.INTER_NEAREST).astype(bool)
 proxy = os.path.join(a.film, 'out', 'proxy')
+screen_small = cv2.resize((~mask).astype(np.uint8), (480, 270), interpolation=cv2.INTER_NEAREST) > 0
+PATCH_FROM = {'deck8': 585, 'boss8': 1200}
+patches = {k: fx.JokerPatch(k, W, H) for k in PATCH_FROM}
+lift_log = []
 os.makedirs(proxy, exist_ok=True)
 
 def take_proxy(shot, f0, f1):
@@ -80,7 +86,12 @@ def clip_frame(c, T):
             if T <= tb + 1e-9:
                 f = fa + (fb - fa) * (T - ta) / (tb - ta)
                 break
-        return s.get(int(math.floor(f + 1e-6)) - c['_base'])
+        fi = int(math.floor(f + 1e-6))
+        img = s.get(fi - c['_base'])
+        shot = c['src'][5:]
+        if shot in PATCH_FROM and fi >= PATCH_FROM[shot]:
+            img = patches[shot].apply(img)
+        return img
     ct = c['in'] + (T - c['t0']) * c['speed']
     ct = min(ct, c['out'] - 1 / s.fps, (s.n - 1) / s.fps)
     return s.get(int(math.floor(max(0.0, ct) * s.fps + 1e-6)))
@@ -149,7 +160,7 @@ def plate(T):
         elif tr['type'] == 'glitch_soft':
             v = 1 - step(u, d=tr['d'])
             f = bands(f, 24 * v, int(T * 60), 6 * v)
-    if edl['tv_on']['t0'] <= T < edl['tv_on']['t1']:
+    if edl['tv_on']['t0'] <= T < edl['tv_on']['t1'] and edl['tv_on'].get('synth', True):
         f = tv_on(f, T)
     return f
 
@@ -158,6 +169,9 @@ def compose(k):
     kk = POSTER if k == 0 else k
     T = kk / FPS
     f = plate(T).copy()
+    if not (edl['tv_on']['t0'] <= T < edl['tv_on']['t1'] and edl['tv_on'].get('synth', True)) and not (glitch['t0'] <= T < glitch['t1']):
+        f, gam, m0 = fx.lift(f, screen_small)
+        if gam < 1: lift_log.append((round(T, 3), round(m0, 4), gam))
     lp = os.path.join(layer_dir, f'f_{kk:05d}.png')
     if os.path.exists(lp):
         L = cv2.imread(lp, cv2.IMREAD_UNCHANGED)
@@ -187,4 +201,5 @@ for k in range(a.f0, f1):
     ff.stdin.write(compose(k).tobytes())
     if (k - a.f0) % 300 == 0: print(f'frame {k} {time.time() - st:.0f}s', flush=True)
 ff.stdin.close(); ff.wait()
-print(f'{out}: {f1 - a.f0} frames in {time.time() - st:.0f}s')
+json.dump(lift_log, open(os.path.join(a.film, 'out', f'lift_{a.res}.json'), 'w'))
+print(f'{out}: {f1 - a.f0} frames in {time.time() - st:.0f}s; lifted {len(lift_log)} frames, min gamma {min([g for _, _, g in lift_log], default=1)}')

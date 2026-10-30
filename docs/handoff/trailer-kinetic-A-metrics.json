@@ -1,0 +1,360 @@
+{
+ "frames": 1938,
+ "duration": 32.3,
+ "video": "E:/dev/projects/card-game-trailer/build/trailer/grimoire_kinetic_hook30.mp4",
+ "size": "3840,2160",
+ "fps": "60/1",
+ "c1_gameplay": {
+  "frame0_is_capture": true,
+  "first_continuous_s": 0.333,
+  "pass": true
+ },
+ "c2_black": {
+  "pct_pure_black_lt2": 0.0,
+  "pct_all": 0.77,
+  "pct_excl_tv_glitch": 0.0,
+  "dark_spans": [],
+  "pass": true
+ },
+ "detected_cuts_s": [
+  0.017,
+  0.267,
+  0.333,
+  0.4,
+  7.183,
+  8.833,
+  9.15,
+  10.333,
+  10.517,
+  13.55,
+  17.767,
+  18.0,
+  18.083,
+  18.167,
+  18.833,
+  19.733,
+  22.317,
+  26.967,
+  28.35
+ ],
+ "c3_sync": {
+  "cuts_on_grave": [
+   {
+    "clip": "encruzilhada_a2",
+    "nominal_s": 7.18,
+    "detected_s": 7.183,
+    "transition": "glitch_soft",
+    "delta_grave_frames": 0.2,
+    "measured": true
+   },
+   {
+    "clip": "encruzilhada_a4",
+    "nominal_s": 8.82,
+    "detected_s": 8.833,
+    "transition": "zoom",
+    "delta_grave_frames": 0.8,
+    "measured": true
+   },
+   {
+    "clip": "entrada_grifo",
+    "nominal_s": 10.51,
+    "detected_s": 10.517,
+    "transition": "glitch_soft",
+    "delta_grave_frames": 0.4,
+    "measured": true
+   },
+   {
+    "clip": "entrada_serpente",
+    "nominal_s": 13.55,
+    "detected_s": 13.55,
+    "transition": "glitch_soft",
+    "delta_grave_frames": 0.0,
+    "measured": true
+   },
+   {
+    "clip": "olhos",
+    "nominal_s": 17.76,
+    "detected_s": 17.767,
+    "transition": null,
+    "delta_grave_frames": 0.4,
+    "measured": true
+   },
+   {
+    "clip": "pouso_nome",
+    "nominal_s": 18.0,
+    "detected_s": 18.0,
+    "transition": "flash",
+    "delta_grave_frames": 0.0,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall1_carrion",
+    "nominal_s": 18.82,
+    "detected_s": 18.833,
+    "transition": "zoom",
+    "delta_grave_frames": 0.8,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall2_lich",
+    "nominal_s": 19.73,
+    "detected_s": 19.733,
+    "transition": "zoom",
+    "delta_grave_frames": 0.2,
+    "measured": true
+   },
+   {
+    "clip": "salao_hall3_tyrant",
+    "nominal_s": 20.31,
+    "detected_s": null,
+    "transition": "zoom",
+    "delta_grave_frames": -0.0,
+    "measured": false
+   },
+   {
+    "clip": "luta_guerreiro",
+    "nominal_s": 22.31,
+    "detected_s": 22.317,
+    "transition": null,
+    "delta_grave_frames": 0.4,
+    "measured": true
+   },
+   {
+    "clip": "logo",
+    "nominal_s": 27.16,
+    "detected_s": null,
+    "transition": null,
+    "delta_grave_frames": -0.0,
+    "measured": false
+   }
+  ],
+  "words": [
+   {
+    "text": "PLAY.",
+    "t": 1.45,
+    "frame": 87,
+    "anchor": "grave",
+    "layer_first_ink_frame": 87,
+    "delta_grave_frames": -0.0
+   },
+   {
+    "text": "BREAK.",
+    "t": 3.48,
+    "frame": 209,
+    "anchor": "grave",
+    "layer_first_ink_frame": 209,
+    "delta_grave_frames": 0.2
+   },
+   {
+    "text": "SIX ACTS.",
+    "t": 7.18,
+    "frame": 431,
+    "anchor": "grave",
+    "layer_first_ink_frame": 431,
+    "delta_grave_frames": 0.2
+   },
+   {
+    "text": "ONE ROAD",
+    "t": 8.82,
+    "frame": 530,
+    "anchor": "grave",
+    "layer_first_ink_frame": 530,
+    "delta_grave_frames": 0.8
+   },
+   {
+    "text": "TO THE CASTLE.",
+    "t": 8.82,
+    "frame": 530,
+    "anchor": "grave",
+    "layer_first_ink_frame": 530,
+    "delta_grave_frames": 0.8
+   },
+   {
+    "text": "YOUR CARDS",
+    "t": 10.51,
+    "frame": 631,
+    "anchor": "grave",
+    "layer_first_ink_frame": 631,
+    "delta_grave_frames": 0.4
+   },
+   {
+    "text": "DECIDE",
+    "t": 10.81,
+    "frame": 649,
+    "anchor": "grave",
+    "layer_first_ink_frame": 649,
+    "delta_grave_frames": 0.4
+   },
+   {
+    "text": "WHAT SURVIVES.",
+    "t": 11.19,
+    "frame": 672,
+    "anchor": "grave",
+    "layer_first_ink_frame": 672,
+    "delta_grave_frames": 0.6
+   },
+   {
+    "text": "EVERY BOSS",
+    "t": 18.82,
+    "frame": 1130,
+    "anchor": "grave",
+    "layer_first_ink_frame": 1130,
+    "delta_grave_frames": 0.8
+   },
+   {
+    "text": "IS A PUZZLE.",
+    "t": 19.73,
+    "frame": 1184,
+    "anchor": "grave",
+    "layer_first_ink_frame": 1184,
+    "delta_grave_frames": 0.2
+   },
+   {
+    "text": "WISHLIST ON STEAM.",
+    "t": 29.17,
+    "frame": 1751,
+    "anchor": "grave",
+    "layer_first_ink_frame": 1751,
+    "delta_grave_frames": 0.8
+   }
+  ],
+  "cuts_median_frames": 0.2,
+  "cuts_max_frames": 0.8,
+  "words_median_frames": 0.4,
+  "words_max_frames": 0.8,
+  "pass": true
+ },
+ "c4_legibility": {
+  "phrases": [
+   {
+    "phrase": "PLAY.",
+    "hold_after_last_s": 1.85,
+    "hold_total_s": 1.85,
+    "need_s": 0.38,
+    "min_glyph_px_1080": 140,
+    "max_chars_per_line": 5,
+    "pass": true
+   },
+   {
+    "phrase": "BREAK.",
+    "hold_after_last_s": 3.47,
+    "hold_total_s": 3.47,
+    "need_s": 0.46,
+    "min_glyph_px_1080": 140,
+    "max_chars_per_line": 6,
+    "pass": true
+   },
+   {
+    "phrase": "SIX ACTS. ONE ROAD TO THE CASTLE.",
+    "hold_after_last_s": 1.58,
+    "hold_total_s": 3.22,
+    "need_s": 2.54,
+    "min_glyph_px_1080": 84,
+    "max_chars_per_line": 14,
+    "pass": true
+   },
+   {
+    "phrase": "YOUR CARDS DECIDE WHAT SURVIVES.",
+    "hold_after_last_s": 2.21,
+    "hold_total_s": 2.89,
+    "need_s": 2.46,
+    "min_glyph_px_1080": 70,
+    "max_chars_per_line": 14,
+    "pass": true
+   },
+   {
+    "phrase": "EVERY BOSS IS A PUZZLE.",
+    "hold_after_last_s": 2.47,
+    "hold_total_s": 3.38,
+    "need_s": 1.77,
+    "min_glyph_px_1080": 84,
+    "max_chars_per_line": 12,
+    "pass": true
+   },
+   {
+    "phrase": "WISHLIST ON STEAM.",
+    "hold_after_last_s": 3.13,
+    "hold_total_s": 3.13,
+    "need_s": 1.38,
+    "min_glyph_px_1080": 70,
+    "max_chars_per_line": 18,
+    "pass": true
+   }
+  ],
+  "one_text_at_a_time": true,
+  "mute_test": "pendente (pessoas)",
+  "pass": true
+ },
+ "c5_rhythm": {
+  "shots_edl": 13,
+  "mean_shot_s_edl": 2.46,
+  "shots_under_1s_edl": 4,
+  "bursts_under_1s_edl": 1,
+  "mean_shot_s_detected_hard_cuts": 1.61,
+  "pass": true
+ },
+ "c6_peak": {
+  "event_s": 24.61,
+  "fraction": 0.762,
+  "audio_loudest_onset_in_fight_s": 25.01,
+  "pass": true
+ },
+ "c7_rule_of_three": {
+  "boss_puzzle_hook": [
+   "porta, olhos e pouso do Rei-Carnica (15,01 a 18,82)",
+   "3 saloes + EVERY BOSS IS A PUZZLE (18,82 a 22,31)",
+   "luta e golpe de 42 (22,31 a 26,89)"
+  ],
+  "cards_hook": [
+   "PLAY. no JOGAR",
+   "BREAK. no golpe com numero"
+  ],
+  "pass": true
+ },
+ "c8_end_card": {
+  "cta_on_s": 29.17,
+  "end_card_s": 3.13,
+  "cta_on_last_frame": true,
+  "pass": true
+ },
+ "c9_conformity": {
+  "audio_files": [
+   "audio/music/boss-abyss_tyrant.mp3",
+   "build/trailer/sfx_synth/castle_door.wav",
+   "build/trailer/sfx_synth/glitch.wav",
+   "build/trailer/sfx_synth/impact_1.wav",
+   "build/trailer/sfx_synth/impact_2.wav",
+   "build/trailer/sfx_synth/impact_heavy.wav",
+   "build/trailer/sfx_synth/logo_seal.wav",
+   "build/trailer/sfx_synth/tv_on.wav",
+   "build/trailer/sfx_synth/whoosh_1.wav",
+   "build/trailer/sfx_synth/whoosh_2.wav"
+  ],
+  "audio_only_allowed": true,
+  "flash_events": [
+   8.83,
+   18.0
+  ],
+  "max_flashes_per_s": 1,
+  "bezel_present_pct": 100.0,
+  "bezel_mean_diff": 2.16,
+  "clips": [
+   "boss8",
+   "deck8",
+   "entr_ice_wyrm",
+   "entr_storm_griffin",
+   "fork_a2",
+   "fork_a4",
+   "hall1_carrion",
+   "hall2_lich",
+   "hall3_tyrant",
+   "logo_sting"
+  ],
+  "only_valid_scenes": true,
+  "lufs": -13.9,
+  "true_peak_dbfs": -0.9,
+  "pass": true
+ },
+ "c10_daniel": "manual (tabela no doc)",
+ "contact_sheet": "E:/dev/projects/card-game-trailer/build/trailer/kinetic/A_review/contact_sheet.jpg"
+}

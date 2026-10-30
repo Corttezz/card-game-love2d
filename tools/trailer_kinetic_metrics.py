@@ -82,7 +82,7 @@ anch = []
 for c in edl['clips']:
     if 'src' not in c or c['t0'] <= 0 or 'cut_anchor' not in c: continue
     nom = c['t0'] - a.trim
-    det = [d for d in cuts if abs(d - nom) <= 0.25]
+    det = [d for d in cuts if abs(d - nom) <= 0.15]
     if c['cut_anchor']['type'] != 'grave': continue
     tr = (c.get('tr') or {}).get('type')
     meas = min(det, key=lambda d: abs(d - nom)) if det else None
@@ -174,7 +174,7 @@ fl = [k / FPS for k in range(n) if up[k]]
 maxps = max((sum(1 for x in fl if s <= x < s + 1) for s in np.arange(0, dur, 1 / FPS)), default=0)
 bz = bez[t >= tv_on]
 src = json.load(open(a.sources, encoding='utf-8')) if a.sources else []
-okfiles = all(s['file'] == 'audio/music/boss-carrion_king.mp3' or s['file'].startswith('build/trailer/sfx_synth/') for s in src)
+okfiles = all(s['file'] in ('audio/music/boss-carrion_king.mp3', 'audio/music/boss-abyss_tyrant.mp3') or s['file'].startswith('build/trailer/sfx_synth/') for s in src)
 r = subprocess.run(['ffmpeg', '-i', a.video, '-vn', '-af', 'ebur128=peak=true', '-f', 'null', '-'], capture_output=True, text=True).stderr
 lufs = float(re.findall(r'I:\s+(-?[\d.]+) LUFS', r)[-1])
 tp = float(re.findall(r'Peak:\s+(-?[\d.]+) dBFS', r)[-1])

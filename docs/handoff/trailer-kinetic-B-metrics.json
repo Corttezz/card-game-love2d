@@ -10,32 +10,11 @@
   "pass": true
  },
  "c2_black": {
-  "pct_pure_black_lt2": 0.1,
-  "pct_all": 4.85,
-  "pct_excl_tv_glitch": 4.56,
-  "dark_spans": [
-   [
-    32.6,
-    33.55
-   ],
-   [
-    33.57,
-    33.58
-   ],
-   [
-    33.6,
-    33.63
-   ],
-   [
-    55.3,
-    57.2
-   ],
-   [
-    57.45,
-    57.47
-   ]
-  ],
-  "pass": false
+  "pct_pure_black_lt2": 0.0,
+  "pct_all": 0.38,
+  "pct_excl_tv_glitch": 0.0,
+  "dark_spans": [],
+  "pass": true
  },
  "detected_cuts_s": [
   0.017,
@@ -65,7 +44,7 @@
   43.683,
   46.183,
   55.067,
-  55.3
+  57.2
  ],
  "c3_sync": {
   "cuts_on_grave": [

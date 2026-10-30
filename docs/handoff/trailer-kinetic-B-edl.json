@@ -477,11 +477,11 @@
    "map": [
     [
      27.1,
-     90
+     40
     ],
     [
      29.29,
-     221
+     171
     ]
    ],
    "cut_anchor": {
@@ -490,7 +490,7 @@
     "nearest_grave": 35.19,
     "delta": 9.77
    },
-   "note": "chegada ao mercador e balcao antes dos coringas de rosto dominarem (para em 221)",
+   "note": "so a chegada ao mercador por fora (40 a 171): o balcao com a carta de caveira e os coringas de rosto entra em ~180 e fica fora",
    "tr": {
     "type": "dissolve",
     "d": 0.3
