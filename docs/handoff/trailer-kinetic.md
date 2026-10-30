@@ -58,3 +58,11 @@ _Escrita pelo grimoire em 29/10/2026. Pedido do Daniel (via chefe): "olhe as con
 4. Sem feedback registrado do Daniel sobre o v8.
 
 Referências: docs/handoff/trailer-kinetic-referencias.md
+
+## Entrega
+
+### Conceito C (v9 kinetic), 30/10/2026
+- **Master 4K:** `E:\dev\projects\card-game-trailer\build\trailer\grimoire_trailer_v9_kinetic.mp4` (3840x2160, 60 fps, H.264 L5.2 + AAC, 64,5 s, 0,52 GB, −14,4 LUFS); 1080p ao lado (`grimoire_trailer_v9_kinetic_1080p.mp4`). Render 4K em 1141 s.
+- Métricas dos 10 critérios, folha de contato, o que mudou em relação ao v8 e a origem de cada áudio: `docs/handoff/trailer-kinetic-C-metrics.md`. Resumo: 8 PASS, critério 2 FAIL (escuro de conteúdo: salão do Rei no escuro e abertura do logo; 0 % de preto puro), checklist do Daniel com 3 itens parciais (regravação, porta vista de fora, escuta humana dos SFX).
+- Áudio publicável: só `boss-carrion_king.mp3` (ACE-Step) + `sfx_synth` (síntese local). Salões Higgsfield = IA, declarar na Steam.
+- Conceitos A e B: ainda não renderizados (B aguarda as tomadas regravadas).
