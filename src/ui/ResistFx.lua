@@ -14,6 +14,11 @@ local last = { t = -1, level = nil, n = 0 }
 ResistFx._last = last
 ResistFx.log = {}
 
+function ResistFx.reset()
+    last.t, last.level, last.n = -1, nil, 0
+    ResistFx.log = {}
+end
+
 local function now()
     return (love.timer and love.timer.getTime()) or 0
 end

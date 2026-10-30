@@ -158,7 +158,20 @@ local function checkFullFlow(t, CheatMode)
     CheatMode.forceRareJoker()
     CheatMode.kill()
     local cash = pump(20, function() return state() == "roundEval" end)
-    t:truthy("MATAR: a morte passa pelo fluxo real e abre o cash out", cash)
+    local function diag()
+        local g, EM = game(), _G.EventManager
+        local qs = {}
+        for name, q in pairs((EM and EM.queues) or {}) do
+            if #q > 0 then qs[#qs + 1] = name .. "=" .. #q end
+        end
+        local IF = require("src.ui.InputFocus")
+        return string.format(" [estado=%s turno=%s vida=%s staged=%s pend=%s filas=%s foco=%s quieto=%s]",
+            tostring(state()), tostring(g and g.turn), tostring(g and g.enemy and g.enemy.health),
+            tostring(g and g._deathStaged), tostring(g and g.enemy and g.enemy._pendingDeath),
+            table.concat(qs, ","), tostring(IF.activeName and IF.activeName()),
+            tostring(require("src.scenes.GameplayScene").isQuiet()))
+    end
+    t:truthy("MATAR: a morte passa pelo fluxo real e abre o cash out" .. (cash and "" or diag()), cash)
     t:truthy("MATAR: o inimigo morreu de verdade", game().enemy.health <= 0)
     t:truthy("MATAR: a morte foi tratada pelo jogo (pontos, conquistas)", game()._deathHandled)
 

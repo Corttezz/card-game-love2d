@@ -156,6 +156,7 @@ local function checkCombat(t, db)
     g.hand = { c }
     g:selectCard(c)
     local hp = g.enemy.health
+    ResistFx.reset()
     local n0 = #ResistFx.log
     g:playSelectedCards()
     settle(g)
@@ -172,6 +173,7 @@ local function checkCombat(t, db)
     gr.enemy = spawn("grave_thrall", 300, 4, 6)
     gr.enemy.spriteId = "grave_thrall"
     gr.enemy:addStatusEffect({ name = "poison", stacks = 6, duration = 6 })
+    ResistFx.reset()
     local n1 = #ResistFx.log
     local hp1 = gr.enemy.health
     gr.turn = "enemy"

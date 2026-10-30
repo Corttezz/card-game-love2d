@@ -222,6 +222,12 @@ O que diz "estou voando" agora é o próprio corpo:
   (`EnemyRenderer.poseOffsetY(..., flapPh)`), então o corpo sobe na batida da
   arte em vez de flutuar fora de ritmo. Fora do idle (ataque, fidget,
   estado) volta ao relógio. `reducedMotion`: sem bob, como antes.
+  **Troca sem degrau (30/Out/2026):** a entrada na estrada (`WorldRoad`) usa o
+  relógio; quando a fase da batida começa (handoff, troca de inimigo) o bob
+  cruza do relógio para a batida em `EnemyRenderer.FLAP_BLEND` = 0,6 s
+  (`_flap.k`, 6º arg de `poseOffsetY`). Antes a troca era instantânea e a
+  sombra do `dusk_shade` saltava 6 a 12 px no fim da chegada
+  (`test_scene_continuity` a6).
 - **Sopro no chão** (`downdraft`, tipo de fx do `EnemyLife`, ver
   `memory/enemy_life.md`): em cada quadro de batida declarado em `strokes`
   sai uma rajada de motas de pixel ao longo do chão sob a criatura (poeira no

@@ -66,7 +66,7 @@ function EnemyRenderer._debugFrameCount()
 end
 
 local ambientParticles = {}
-local ambientSpawnTimer = 0
+local ambientAt = {}
 
 local IDLE_FPS = 7
 local HURT_FPS = 12
@@ -171,15 +171,18 @@ local function ensureAnim(enemyId, animName)
     return anim
 end
 
-function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK, flapPh)
+function EnemyRenderer.poseOffsetY(spriteId, spriteH, now, sinkK, flapPh, flapK)
     local pose = EnemyPoses.get(spriteId)
     if pose.pose ~= "floating" then return 0, pose end
     local k = pose.hover
     if not reducedMotion() then
+        local free = math.sin((now or 0) * pose.bobSpeed)
         if flapPh and pose.flapPeak then
-            k = k + math.cos((flapPh - pose.flapPeak) * 6.2832) * pose.bob
+            local b = math.max(0, math.min(1, flapK or 1))
+            local flap = math.cos((flapPh - pose.flapPeak) * 6.2832)
+            k = k + (free + (flap - free) * b) * pose.bob
         else
-            k = k + math.sin((now or 0) * pose.bobSpeed) * pose.bob
+            k = k + free * pose.bob
         end
     end
     k = k * (1 - math.max(0, math.min(1, sinkK or 0)))
@@ -196,8 +199,9 @@ function EnemyRenderer.poseOffsetX(spriteId, spriteH, now, sinkK)
     return k * (spriteH or 0)
 end
 
-EnemyRenderer._flap = { ph = 0, n = 0, fps = 0, id = nil }
+EnemyRenderer._flap = { ph = 0, n = 0, fps = 0, id = nil, k = 0 }
 EnemyRenderer.FLAP_SYNC = 0.5
+EnemyRenderer.FLAP_BLEND = 0.6
 
 function EnemyRenderer._tickFlap(dt)
     local F = EnemyRenderer._flap
@@ -207,7 +211,9 @@ function EnemyRenderer._tickFlap(dt)
         local target = ((a.currentFrame - 1) + math.min(1, a.elapsed * a.fps)) / n
         if F.n == 0 or F.id ~= currentEnemyId then
             F.ph = target
+            F.k = 0
         else
+            F.k = math.min(1, (F.k or 0) + dt / EnemyRenderer.FLAP_BLEND)
             local d = ((target - F.ph + 0.5) % 1) - 0.5
             local lim = EnemyRenderer.FLAP_SYNC * dt
             if d > lim then d = lim elseif d < -lim then d = -lim end
@@ -316,7 +322,7 @@ function EnemyRenderer.resetRun()
     dust = {}
     arrivalT = 0
     ambientParticles = {}
-    ambientSpawnTimer = 0
+    ambientAt.x, ambientAt.y = nil, nil
     auraId = nil
     BossAura.reset()
     BossTokens.reset()
@@ -564,9 +570,9 @@ function EnemyRenderer.update(dt)
         if attackFx.t >= at then attackFx = nil end
     end
 
-    ambientSpawnTimer = ambientSpawnTimer - dt
-    if ambientSpawnTimer <= 0 and currentEnemyId then
-        ambientSpawnTimer = 0.28 + love.math.random() * 0.20
+    if currentEnemyId and ambientAt.x and #ambientParticles <= 18
+       and love.math.random() < 1 - 0.92 ^ (dt * 60) then
+        spawnAmbientParticle(ambientAt.x, ambientAt.y, AMBIENT_TINTS[currentEnemyId])
     end
 
     for i = #ambientParticles, 1, -1 do
@@ -800,12 +806,8 @@ function EnemyRenderer.debugClipMetrics(id, animName)
     return clipMetrics(id, animName)
 end
 
-local function tickAmbientSpawn(cx, cy, dt_hint)
-    if not currentEnemyId then return end
-    if #ambientParticles > 18 then return end
-    if love.math.random() < 0.08 then
-        spawnAmbientParticle(cx, cy, AMBIENT_TINTS[currentEnemyId])
-    end
+local function markAmbientOrigin(cx, cy)
+    ambientAt.x, ambientAt.y = cx, cy
 end
 
 EnemyRenderer.SHADOW_LEN = 0.75
@@ -922,7 +924,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     local flapPh = (EnemyRenderer._flap.n > 0 and EnemyRenderer._flap.id == id) and EnemyRenderer._flap.ph or nil
     local hoverY, pose = EnemyRenderer.poseOffsetY(id, ih * scale,
-        love.timer.getTime(), poseSink, flapPh)
+        love.timer.getTime(), poseSink, flapPh, EnemyRenderer._flap.k)
     local floating = pose.pose == "floating"
     local driftX = EnemyRenderer.poseOffsetX(id, ih * scale,
         love.timer.getTime(), poseSink)
@@ -958,7 +960,7 @@ function EnemyRenderer.draw(game, cx, cy, opts)
 
     local t = love.timer.getTime()
 
-    tickAmbientSpawn(bodyCx, cy, 0)
+    markAmbientOrigin(bodyCx, cy)
     for _, p in ipairs(ambientParticles) do
         local alpha = math.max(0, math.min(1, p.life / (p.maxLife * 2)))
         love.graphics.setColor(p.tint[1], p.tint[2], p.tint[3], alpha * 0.55)

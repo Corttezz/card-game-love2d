@@ -61,6 +61,8 @@ function M.capture(act, seed, scenario, saveDir, creature)
 
     local game = Game:new()
     game:startNewRun("warrior")
+    local Rng = require("src.systems.Rng")
+    Rng.setActive(Rng.new(seed))
     game:startGame()
     local run = game.runManager.currentRun
     run.actNumber = act
@@ -184,7 +186,11 @@ function M.capture(act, seed, scenario, saveDir, creature)
     local EE = require("src.ui.EnemyEntrance")
     EE._trace = function(p, px, py, t, s, a)
         local A = log.anchor[p.uid]
-        if not A then A = { name = p.name, f = {} }; log.anchor[p.uid] = A end
+        if not A then
+            local src = p.front and p.ref or p
+            A = { name = (src and src.name or "?") .. (p.front and "_frente" or ""), f = {} }
+            log.anchor[p.uid] = A
+        end
         A.f[frame] = { x = px, y = py, t = t, s = s, a = a, phase = phase }
     end
     local origSil = ShadowEngine.silhouette
@@ -501,7 +507,9 @@ function M.analyze(log)
                 local d = dist(c, p)
                 local pp = A.f[k - 2]
                 local ref = pp and pp.a > 0.02 and dist(p, pp) or 0
-                if d > 4 and d > 2.5 * ref + 4 then
+                local nx = A.f[k + 1]
+                local refN = nx and nx.a > 0.02 and dist(nx, c) or 0
+                if d > 4 and d > 2.5 * math.max(ref, refN) + 4 then
                     jumps[#jumps + 1] = { uid = uid, kind = "ancora_" .. A.name, frame = k, d = d, ref = ref,
                         phase = c.phase, from = { x = p.x, y = p.y, z = 0, lane = 0, src = "front", t = p.t },
                         to = { x = c.x, y = c.y, z = 0, lane = 0, src = "front", t = c.t } }
