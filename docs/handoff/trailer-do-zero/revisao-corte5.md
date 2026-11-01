@@ -152,3 +152,40 @@ O resto se mantém: zero quadros pretos, −14,1 LUFS, −1,0 dBTP, a virada 5b 
 | demais | ≥ 9 |
 
 **Status da Tirano 5c: NÃO APROVADO, só por dois ajustes de mixagem** (margem do pico ≥ 2 dB; coringa 4 a 6 dB abaixo do SFX e no quadro da face). A imagem está aprovada. A variante do Rei segue com os itens da rodada anterior (golpe dessincronizado e coringa sem som); a queda dela já passou.
+
+## Versão Tirano 5d (`grimoire_zero_corte5_1080p.mp4` 19:47 / `_720p` 19:48), rodada 4: **APROVADO**
+
+_Conferido de forma independente: medidas quadro a quadro (`...\scratchpad\rev\h5d_tirano\`); mixagem nos stems `build\trailer\zero5\zero5_tirano\` (`mix5d_tirano.json`); folha a 6 quadros/s de 52,6 a 57,6 s (`...\rev\g5b\tir_d.png`); loudness do 720p. Não ouvi: a escuta humana (fone e caixa) continua pendente com o Daniel/Grimoire._
+
+Os dois ajustes de mixagem da rodada 3 chegaram:
+- **Margem do pico:** curto prazo do golpe/queda a **−9,2**, contra −12,0 no melhor trecho fora do clímax: **+2,8 dB** (meta ≥ 2). LRA de volta a **8,9**.
+- **Coringa:** música −17,2 e SFX −12,1 no plano: **5,1 dB abaixo** (meta 4 a 6). A revelação e a assinatura do coringa tocam a **57,00 s**, no quadro da face (o plano começa a 56,98 s).
+- **Golpe:** música, voz de morte, penas e baque a 52,83 s, no quadro do hit-stop (o mix sobe +22,6 dB no corte).
+- **Queda:** a mesma do 5c (×2 com 48 → ×3 no mesmo centro → ajoelhada segurada → corpo no chão com tremor e poeira → "BREAK THEM BACK." depois do impacto → coringa nascendo do corpo).
+- **Zero quadros pretos;** −14,2 LUFS, −1,1 dBTP no 1080p e no 720p.
+
+Cortes com ataque fraco restantes: `e6_anjo` 11,4 dB e `logo` 11,1 dB (ataque a ≤ 2 quadros, aceitáveis); `k_porta` 11,9 dB, guiado pelo evento do portão (`castleGateOpen` +9 dB). Nenhum fora da regra.
+
+### Notas por critério (Tirano 5d)
+
+| critério | nota | | ponto | nota |
+|---|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | | G1 nenhum quadro preto | 10 |
+| C2 Sem preto | 10 | | G2 caminhada ≤ 3 s | 9 |
+| C3 Sincronia | 9 | | G3 salões legíveis e marcantes | 9 |
+| C4 Legibilidade | 9 | | G4 luta do Rei sem interrupção | 10 |
+| C5 Ritmo | 9 | | G5 golpe final forte | 9 |
+| C6 Pico | 9 | | G6 LETAL do gancho | 10 |
+| C7 Regra de 3 | 9 | | G7 textos exatos | 10 |
+| C8 Fecho | 9 | | N1 virada legível | 9 |
+| C9 Conformidade | 9 | | N2 portão / caminhada | 9 |
+| C10 Checklist do Daniel | 9 | | N3 salões na grade nativa | 10 |
+| C11 Continuidade | 9 | | N4 zoom em degraus progressivos | 9 |
+| C12 Está bom / legal de assistir | 9 | | N5 mixagem | 9 |
+| C13 Prende do início ao fim | 9 | | correções 1 a 7 do corte 4 | 9 em todas |
+| C14 Som | 9 | | pontos 1 a 6 do Grimoire (corte 4) | 10 · 9 · 10 · 9 · 10 · 9 |
+| **Q queda do Rei** | **9** | | | |
+
+**Veredito da versão Tirano (corte 5d): APROVADO**, com ≥ 9 em todos os critérios. Ressalvas que não bloqueiam e vão na Entrega: escuta humana pendente; "NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX"; declaração de IA (salões Higgsfield) com o Daniel.
+
+**Variante Rei:** aguardando o arquivo novo (a diretora está regravando com a gárgula no ataque de 12,50 s). Reviso depois do commit dela. `===CORTE5_PRONTO===` só com as duas aprovadas.
