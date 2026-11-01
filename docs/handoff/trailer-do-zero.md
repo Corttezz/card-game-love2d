@@ -54,7 +54,7 @@ Responda e relate sempre em português. Decisão do Daniel: MANTER os salões do
 5. Melhorias anotadas para um corte 2: número de dano grande no quadro do hit-stop; cabeça do Espantalho dentro do quadro 0.
 
 ## Textos aprovados (01/11 16:39)
-Decisão do Daniel (01/11 16:39), recebida pelo Grimoire (`E:\dev\_orquestracao	dz_c2.txt`): os textos novos estão aprovados e os antigos deixam de ser reserva. Os textos na tela têm de ser **exatamente**:
+Decisão do Daniel (01/11 16:39), recebida pelo Grimoire (`E:\dev\_orquestracao\tdz_c2.txt`): os textos novos estão aprovados e os antigos deixam de ser reserva. Os textos na tela têm de ser **exatamente**:
 1. "145 LIVING CARDS."
 2. "6 ACTS."
 3. "42 CREATURES."
