@@ -29,6 +29,10 @@ def render_take(c, out):
     n = nframes(c)
     hold = c.get('hold', 0)
     vf = []
+    if c['z'] == 3:
+        x, y = c['crop']
+        vf.append(f'crop=640:360:{x}:{y}')
+        vf.append('scale=1920:1080:flags=neighbor')
     if c['z'] == 2:
         x, y = c['crop']
         if c.get('pan'):
@@ -70,7 +74,7 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
     emis0 = ls0[..., 0] > thr
     pal_src = np.concatenate([real.reshape(-1, 3), first[emis0].reshape(-1, 3)]).astype(np.float32)
     crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.5)
-    _, _, pal = cv2.kmeans(pal_src, 64, None, crit, 3, cv2.KMEANS_PP_CENTERS)
+    _, _, pal = cv2.kmeans(pal_src, getattr(E, 'HALL_COLORS', 64), None, crit, 3, cv2.KMEANS_PP_CENTERS)
     out = []
     for f in frames:
         small = cv2.resize(f, (GW, GH), interpolation=cv2.INTER_AREA)
@@ -112,7 +116,7 @@ def apply_fx_from(c, src, out):
             d = ImageDraw.Draw(lay); d.fontmode = '1'
             bb = d.textbbox((0, 0), txt, font=font)
             x = (W - (bb[2] - bb[0])) // 2 // 8 * 8
-            y = (96 - (i // 4) * 4) // 8 * 8
+            y = (getattr(E, 'NUMBER_Y', 96) - (i // 4) * 4) // 8 * 8
             for dx in (-16, 0, 16):
                 for dy in (-16, 0, 16):
                     if dx or dy:
@@ -123,6 +127,28 @@ def apply_fx_from(c, src, out):
                 arr = np.array(lay); arr[..., 3] = (arr[..., 3] * a).astype(np.uint8); lay = Image.fromarray(arr)
             im.alpha_composite(lay)
             frames[k0 + i] = cv2.cvtColor(np.array(im.convert('RGB')), cv2.COLOR_RGB2BGR)
+    if 'zoom' in fx:
+        z0, z1 = fx['zoom']
+        n = len(frames)
+        for i in range(n):
+            z = z0 + (z1 - z0) * (i / max(1, n - 1))
+            if z <= 1.0001:
+                continue
+            cw, ch = W / z, H / z
+            x0, y0 = (W - cw) / 2, (H - ch) / 2
+            big = cv2.resize(frames[i], (W * 4, H * 4), interpolation=cv2.INTER_NEAREST)
+            sub = big[int(round(y0 * 4)):int(round((y0 + ch) * 4)), int(round(x0 * 4)):int(round((x0 + cw) * 4))]
+            frames[i] = cv2.resize(sub, (W, H), interpolation=cv2.INTER_AREA)
+    if 'lift' in fx:
+        t, n, amt = fx['lift']
+        k0 = idx(t)
+        for i in range(n):
+            k = k0 + i
+            if not 0 <= k < len(frames):
+                continue
+            a = amt * (1 - i / n)
+            f = frames[k].astype(np.float32)
+            frames[k] = np.clip(f + a * (1 - f / 255.0), 0, 255).astype(np.uint8)
     if 'shake' in fx:
         t, n, amp = fx['shake']
         k0 = idx(t)
@@ -155,7 +181,7 @@ def write_frames(frames, out):
     p.stdin.close(); p.wait()
 
 
-def text_layer(lines, y, gold, size=64):
+def text_layer(lines, y, gold, size=64, xc=None):
     font = ImageFont.truetype(FONT, size)
     img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img); d.fontmode = '1'
@@ -164,7 +190,7 @@ def text_layer(lines, y, gold, size=64):
     for i, line in enumerate(lines):
         bb = d.textbbox((0, 0), line, font=font)
         tw = bb[2] - bb[0]
-        x = (W - tw) // 2 // px * px
+        x = ((W - tw) // 2 if xc is None else int(xc - tw / 2)) // px * px
         col = GOLD if i in gold else PARCH
         for dx in (-px, 0, px):
             for dy in (-px, 0, px):
@@ -281,7 +307,7 @@ def main():
             chain.append(f"[{last}][{ia}:v]overlay=enable='between(t,{tx['t0']},{tx['t0'] + st})'[v{i}a]")
             chain.append(f"[v{i}a][{ib}:v]overlay=enable='between(t,{tx['t0'] + st},{tx['t1']})'[v{i}]")
         else:
-            text_layer(tx['lines'], tx['y'], tx['gold'], tx.get('size', 64)).save(p)
+            text_layer(tx['lines'], tx['y'], tx['gold'], tx.get('size', 64), tx.get('xc')).save(p)
             inputs += ['-i', p]
             ia = len(inputs) // 2 - 1
             chain.append(f"[{last}][{ia}:v]overlay=enable='between(t,{tx['t0']},{tx['t1']})'[v{i}]")

@@ -180,5 +180,5 @@ if __name__ == '__main__':
               f"[0:a]atrim=start={REI['jB']}:end={REI['jB'] + DUR - s1},asetpts=PTS-STARTPTS,adelay={int(s1*1000)}|{int(s1*1000)}[b];"
               f"[a][b]amix=inputs=2:normalize=0,apad=whole_dur={DUR}")
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', os.path.join(R, MUSIC), '-filter_complex', fc, '-ar', '48000', '-ac', '2', '-t', str(DUR), w], check=True)
-    json.dump(audio_edl(), open(os.path.join(OUT, f'zero2_{VARIANT}_edl.json'), 'w', encoding='utf-8'), indent=1)
+    json.dump(audio_edl(), open(os.path.join(OUT, f'{os.path.basename(OUT)}_{VARIANT}_edl.json'), 'w', encoding='utf-8'), indent=1)
     print('ok', VARIANT, len(CLIPS), 'clipes', prev, 's')
