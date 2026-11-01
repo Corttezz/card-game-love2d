@@ -92,3 +92,38 @@ Ou seja: a queda real dura 0,2 s, no rodapé do quadro e dessaturada. O olho vê
 | G5 golpe final forte | 9 | 9 (o golpe é forte; a falha está depois dele) |
 
 As demais notas são as da rodada 1, todas ≥ 9. **Status da Tirano 5b: NÃO APROVADO por um único item, a queda (Q 6, C6 8).** A variante do Rei (`grimoire_zero_corte5_rei_720p.mp4`, 19:14) é anterior à virada 5b; reviso a que sair com a virada e a queda novas.
+
+## Variante Rei 5b (`grimoire_zero_corte5_rei_720p.mp4`, 19:24), rodada 1: NÃO APROVADO
+
+_Medidas: `...\scratchpad\rev\h5rei\`; mixagem nos stems `build\trailer\zero5_rei\zero5_rei_rei\` (`mix5_rei.json`), com a curva da música em janelas de 20 ms; quadros da queda (`...\rev\g5b\rei_queda6.png`, `rei_fim.png`); movimento quadro a quadro de 53,6 a 56,9 s. Não ouvi._
+
+Esta variante já traz a virada 5b e **uma queda nova**, que é a que a Tirano precisa.
+
+### Q, queda do Rei na variante: **9/10**
+EDL: `k_golpe` ×2 com hit-stop e o "48" (52,83 s, 0,9 s) → `k_queda` **×3 no mesmo centro** (53,73 s) → `k_ajoelha` ×3 com **a ajoelhada segurada** (54,13–56,88 s, `hold 30`). Na tela:
+- **tremor forte** no golpe (diferença entre quadros de 12 a 31 de 53,62 a 54,07 s, passos inteiros);
+- o degrau ×2 → ×3 deixa o Rei grande, ocupando o meio do quadro; ele cede (54,1 a 54,3 s), cai de joelhos e **fica ajoelhado**, legível, com faíscas no chão (`r_55.5`);
+- do fim do hit-stop até a ajoelhada assentar: ~2,0 s (dentro de ≤ 2,5 s);
+- "BREAK THEM BACK." no alto, sem cobrir a coroa;
+- a ponte para o coringa nasce da ajoelhada.
+Não dou 10 porque o corpo nunca toca o chão (fica de joelhos até o coringa) e o "corpo do Rei no chão" do plano de som (55,46 s) não tem imagem correspondente. Como "segurar na ajoelhada" foi uma das opções do Grimoire, aceito.
+
+**A Tirano tem de receber exatamente esta queda** (golpe ×2 → queda ×3 → ajoelhada segurada).
+
+### O que segura a variante
+1. **O pico ficou fora de sincronia (regressão).** Na variante o golpe passou para 52,83 s (como na Tirano), mas o som do golpe ficou no tempo antigo. A música está em **−∞ de 52,66 a 53,24 s** (o respiro) e só volta a 53,24 s, junto com `bossDeathThud`, `bossFeatherBurst`, `enemyVoice_carrion_king_death2` e o `comboTrigger`. Resultado: o flash, o tremor e o "48" (52,83 s) acontecem **dentro do respiro**, com só o `swordSound` (52,91 s), e o impacto sonoro grande chega **0,41 s depois** da imagem. No golpe, que é o ponto mais importante do filme, o som e a imagem estão desencontrados. **Exijo** o respiro terminando e o impacto (música + baque + pena + voz) no **quadro do hit-stop** (52,83 s), como na Tirano (onde a música sobe +12,9 dB nesse quadro).
+2. **Coringa sem som e com a música por cima (M4, terceira vez nesta variante).** A carta do coringa aparece a 56,07 s (dentro do `k_ajoelha`) e não há nenhum evento de revelação no `mix_sources.json` (a Tirano tem `bossRevealSting` e `jokerSig_joker_boss_carrion`). No plano `k_coringa` a música está a −16,1 e o SFX a −32,5: a música fica **16 dB acima** do som da revelação. **Exijo** o som de revelação do coringa no quadro em que a carta aparece e a música 4 a 6 dB abaixo dele.
+3. **Gárgula / "6 ACTS." (11,82 s):** a maior subida em ±30 ms é de 10,1 dB, melhor que antes (5,9), mas ainda fraca. Com os itens 1 e 2 resolvidos, aceito 9 se cair num ataque de ≥ 15 dB ou num evento do jogo escrito.
+
+Zero quadros pretos; −14,1 LUFS, −1,2 dBTP, LRA 8,2; fecho 3,3 dB abaixo do pico (−8,8 contra −12,1).
+
+| nota (variante Rei 5b) | valor |
+|---|---|
+| Q queda do Rei | **9** |
+| C3 Sincronia | **7** (o impacto do golpe 0,41 s depois da imagem) |
+| C6 Pico | **8** (pelo mesmo motivo) |
+| C14 Som / N5 | **7** (golpe desencontrado; coringa sem som) |
+| G5 golpe final forte | **8** |
+| demais (C1, C2, C4, C5, C7 a C13, G1 a G4, G6, G7, N1 a N4) | ≥ 9, iguais à Tirano 5b |
+
+**Status da variante Rei 5b: NÃO APROVADO** (itens 1 e 2). **Status da Tirano 5b: continua NÃO APROVADO** pela queda; a correção é usar a queda desta variante. `===CORTE5_PRONTO===` só quando as duas passarem.
