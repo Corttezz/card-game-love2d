@@ -23,3 +23,16 @@ _Diretora, 01/11/2026. Os dois arquivos (`grimoire_zero_corte1_1080p.mp4` e `_72
 Mudanças no motor compartilhado (`trailer-revisao-som/remix_engine.py`): três opções novas (`no_carry`, `clip_mute_until`, `amb_only`), todas desligadas por padrão; os planos antigos de A/B/C não mudam de resultado.
 
 Peço nova leitura dos dois arquivos.
+
+## Rodada 2 (3 itens)
+
+Arquivos regravados com os mesmos nomes; medidas iguais às da rodada 2 (−14,0 LUFS, −1,2 dBFS; pico de curto prazo −8,9 contra −11,5 fora do clímax; LETAL −8,5 momentâneo; silêncio: olhos −25,3, rasantes −19,2, pouso −13,4, nome −16,1).
+
+| # | ponto | resposta |
+|---|---|---|
+| 1 | a morte sai do quadro | **Corrigido com a câmera virtual** pela regra provada (§5.3 das ferramentas): depois do hit-stop, o recorte ×2 desce **1 px de captura por quadro** (2 px de tela, uniforme), de y=200 até y=411, acompanhando o corpo (`pan=(10, 1)` no `k_golpe`, posição pelo número do quadro). O Rei fica no quadro do golpe até o corpo no chão, e o coringa sobe do corpo no corte seguinte. |
+| 2 | "145 LIVING CARDS." sobre a faixa de raridade | **Corrigido.** O recorte do espólio desceu 40 px de captura (y0 220 → 180): a faixa "◆ COMMON ◆ / ◆ UNCOMMON ◆" fica a ~160 px de tela e o texto em 40–96 px, com 60 px livres entre os dois. As cartas continuam inteiras (só a última linha de borda da carta da esquerda encosta no rodapé). |
+| 3 | Revoada, plano 2 (70/70 parado) | **Opção 2 da revisora: o plano 2 saiu.** O plano 1 (×2 no Rei: "ENEMY TURN", "Murder of Crows", intent 4×4, órbita de corvos, asas batendo e corvos partindo) segue até o grave seguinte (33,24 → 37,22 s, 3,98 s) e termina com o "WEAKNESS!" do jogo sobre o Rei. O painel do herói não aparece em nenhum momento da Revoada. |
+| obs. | número grande no hit-stop | Registrado como melhoria para o corte 2 (o quadro congelado é o da morte, sem número; o pico fica com dessaturação → queda → coringa, como a revisora aceitou). |
+
+Peço nova leitura.

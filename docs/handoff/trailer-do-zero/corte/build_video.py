@@ -29,7 +29,11 @@ def render_take(c, out):
     vf = []
     if c['z'] == 2:
         x, y = c['crop']
-        vf.append(f'crop=960:540:{x}:{y}')
+        if c.get('pan'):
+            n0, v = c['pan']
+            vf.append(f"crop=960:540:{x}:'min(540,{y}+max(0,n-{n0})*{v})'")
+        else:
+            vf.append(f'crop=960:540:{x}:{y}')
         vf.append('scale=1920:1080:flags=neighbor')
     if hold:
         vf.append(f'tpad=start={hold}:start_mode=clone')
