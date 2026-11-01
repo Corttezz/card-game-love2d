@@ -51,7 +51,8 @@ Pico: golpe e morte a −8,3/−8,4 LUFS de curto prazo, **+3,5 dB** sobre qualq
 
 ## Variante do Rei (`grimoire_zero_corte4_rei_720p.mp4`, 18:49), rodada 1: NÃO APROVADO
 
-_Revisão focada no que é próprio da variante, porque a imagem é a mesma montagem da versão Tirano. Medidas: `...\scratchpadev4_rei\`; mixagem sobre os stems `build	railer\zero4_rei\zero4_rei_rei\` (`mix4_rei.json`). Não ouvi._
+_Revisão focada no que é próprio da variante, porque a imagem é a mesma montagem da versão Tirano. Medidas: `...\scratchpad\rev\f4_rei\`; mixagem sobre os stems `build\trailer\zero4_rei\zero4_rei_rei\` (`mix4_rei.json`). Não ouvi._
+ev4_rei\`; mixagem sobre os stems `build	railer\zero4_rei\zero4_rei_rei\` (`mix4_rei.json`). Não ouvi._
 
 - **Quadros pretos:** os mesmos **15 quadros de 32,30 a 32,53 s** da versão Tirano (fade pelo preto entre o portão e o salão IA). Vale a mesma exigência.
 - **Pico × fecho:** resolvido. Golpe e morte a −8,7 LUFS de curto prazo, contra −11,4 no melhor trecho fora do clímax (**+2,7 dB**). O logo caiu para −18,2 no mix.
