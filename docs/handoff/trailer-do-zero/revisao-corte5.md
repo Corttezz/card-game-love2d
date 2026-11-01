@@ -127,3 +127,28 @@ Zero quadros pretos; −14,1 LUFS, −1,2 dBTP, LRA 8,2; fecho 3,3 dB abaixo do 
 | demais (C1, C2, C4, C5, C7 a C13, G1 a G4, G6, G7, N1 a N4) | ≥ 9, iguais à Tirano 5b |
 
 **Status da variante Rei 5b: NÃO APROVADO** (itens 1 e 2). **Status da Tirano 5b: continua NÃO APROVADO** pela queda; a correção é usar a queda desta variante. `===CORTE5_PRONTO===` só quando as duas passarem.
+
+## Versão Tirano 5c (`grimoire_zero_corte5_1080p.mp4` 19:37 / `_720p` 19:38), rodada 3: NÃO APROVADO (só mixagem)
+
+_Medidas: `...\scratchpad\rev\h5c\`; mixagem nos stems `build\trailer\zero5\zero5_tirano\` (`mix5c.json`) e curva da música em 20 ms; folha a 6 quadros/s de 52,6 a 57,6 s (`...\rev\g5b\tir_c.png`). Não ouvi._
+
+### Q, queda do Rei na Tirano: **9/10, resolvida**
+Golpe ×2 com flash, tremor e o "48" (52,83–53,85 s) → **degrau ×3 no mesmo centro** (53,85 s): o Rei grande cede, cai de joelhos e **o corpo toca o chão** (~55,2 s), com faíscas. "BREAK THEM BACK." entra **depois** do impacto (55,32 s). O coringa sobe do corpo caído. Do fim do hit-stop até o corpo no chão são ~1,4 s, dentro de ≤ 2,5 s, só com degraus inteiros. É a melhor queda até agora: legível, com peso e contínua.
+
+**Sincronia do golpe:** a música volta a 52,82 s, junto com `bossDeathThud`, `bossFeatherBurst` e a voz de morte, no quadro do hit-stop. Correto.
+
+### O que segura (regressões de mixagem)
+1. **O pico perdeu a margem.** O curto prazo do clímax ficou em **−9,7** (era −8,4 no 5b); o melhor trecho fora do clímax é **−11,4** (28 s, a montagem de estradas). Margem de **1,7 dB**, abaixo dos ≥ 2 dB fixados no roteiro. O LRA caiu de 9,3 para **6,7**. Parece que o ganho de pós-golpe foi aliviado ou o limitador passou a apertar o impacto (o momentâneo chega a −6,9 em 54 s). **Exijo** o pico de volta a ≥ 2 dB acima de qualquer outro trecho (o mais simples: baixar a montagem de 25 a 29 s em 1 a 2 dB, ou devolver o ganho da queda).
+2. **Coringa: a meta escorregou e o som chega atrasado.** No plano `k_coringa` a música está a −22,9 e o SFX a −23,6, empatados, quando a meta é a música 4 a 6 dB **abaixo**. E a revelação (`bossRevealSting` + `jokerSig_joker_boss_carrion`) toca a **57,62 s**, ~0,6 s **depois** de a face da carta aparecer (no corte de 56,98 s). Exijo o som da revelação no quadro da face e a música 4 a 6 dB abaixo dele.
+
+O resto se mantém: zero quadros pretos, −14,1 LUFS, −1,0 dBTP, a virada 5b aprovada e os demais pontos ≥ 9.
+
+| nota (Tirano 5c) | valor |
+|---|---|
+| Q queda do Rei | **9** |
+| G5 golpe final forte | 9 |
+| C6 Pico | **8** (margem 1,7 dB) |
+| C14 Som / N5 | **8** (pico achatado, LRA 6,7, coringa empatado e atrasado) |
+| demais | ≥ 9 |
+
+**Status da Tirano 5c: NÃO APROVADO, só por dois ajustes de mixagem** (margem do pico ≥ 2 dB; coringa 4 a 6 dB abaixo do SFX e no quadro da face). A imagem está aprovada. A variante do Rei segue com os itens da rodada anterior (golpe dessincronizado e coringa sem som); a queda dela já passou.
