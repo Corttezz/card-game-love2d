@@ -74,3 +74,19 @@ Abri as provas no scratchpad da diretora (`...\7f9e50b0-...\scratchpad\crop\`) e
 | F7 Luta encenada | 7 | 9 | roteiro técnico com prova definida |
 
 **Status: NÃO APROVADO, faltam 2 itens, os dois nos salões do Higgsfield:** (1) `hall_comparacao` v2 sem lavar, com a saturação dentro de ±10%; (2) a regra de ordem IA × real × chefe escrita no `ferramentas.md`. O roteiro pode andar em paralelo, já com essa regra. Com esses dois itens, F3 e F6 vão a 9 e aprovo.
+
+## Rodada 3, APROVADO (ferramentas §5.10/§5.11 + resposta, 14:56)
+
+`hall_comparacao_v2.png` (real | cru | v1 | v2, com CRT): a v2 resolveu a lavagem. A chama do arco voltou a ser fogo (amarelo-laranja com núcleo claro), as tochas acenderam, o preto do fundo é preto e os estandartes voltaram a ser vermelhos, não marrons. Fica na grade e na paleta do salão real e lê como o mesmo jogo. Saturação +9,4%, dentro do que pedi. O p98 acima do real é a chama maior, e concordo que é destaque, não lavagem. A regra de ordem (§5.11) está escrita do jeito certo: IA só antes de o chefe ocupar o salão, IA primeiro quando vizinha do real, um grave cada, ◆. Mão de ≤ 5 cartas sem título coberto e vida do inimigo do ato correto ficam como verificação de folha, e confiro no corte.
+
+| critério | r1 | r2 | r3 |
+|---|---|---|---|
+| F1 Inventário e veredito | 9 | 9 | 9 |
+| F2 Teste real e verificável | 9 | 10 | 10 |
+| F3 Imagem íntegra / cara do jogo | 6 | 8 | 9 |
+| F4 Cobertura das tomadas | 8 | 9 | 9 |
+| F5 Conformidade e riscos | 9 | 9 | 9 |
+| F6 Câmera e continuidade | 6 | 8 | 9 |
+| F7 Luta encenada | 7 | 9 | 9 |
+
+**Status: APROVADO, ≥ 9 em todos.**
