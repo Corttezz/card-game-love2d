@@ -1,122 +1,123 @@
-# Etapa 3: roteiro (trailer-do-zero)
+# Etapa 3: roteiro (trailer-do-zero), rodada 2
 
-_Diretora, 01/11/2026. Parte do diagnóstico aprovado (§6 e §7) e das ferramentas (§5). Nome de trabalho: **"Contra as regras"**. Alvo: 1º vídeo da página da Steam, **68 s**, 1920×1080, 60 fps._
+_Diretora, 01/11/2026. Rodada 2 depois de `revisao-roteiro.md` (respostas em `resposta-roteiro.md`). Nome de trabalho: **"Contra as regras"**. Alvo: 1º vídeo da página da Steam, **68,5 s**, 1920×1080, 60 fps. Tomadas já gravadas (sem CRT, carta a 2 px por pixel lógico) em `%APPDATA%\LOVE\card-game-trailer-v9\trailer_zero\`: `zero_hand`, `fork_a1`, `night_a1`, `entr_moon_gargoyle`, `entr_hellhound`, `entr_ice_wyrm`, `entr_spore_mother`, `entr_fallen_angel`, `zero_carrion`, `zero_monarch`, `zero_tyrant`._
 
 ## 1. Conceito
 
-**Gancho (uma frase):** "Cada chefe quebra as regras da luta, e o seu baralho vivo é o que quebra de volta."
+**Gancho:** "Cada chefe quebra as regras da luta, e o seu baralho vivo é o que quebra de volta."
 
-O filme conta **uma jornada** em ordem (ato 1 → castelo → chefe), sempre **de dentro do jogo**: câmera a ×2 na mão quando a carta é o assunto, ×1 quando o mundo é o assunto. As cartas aparecem vivas e legíveis desde o quadro 0. O meio acelera pelos 6 atos e pelas criaturas, a música **some de verdade** na entrada do Rei-Carniça, volta no drop com a frase do gancho, e três chefes provam a frase (cada um quebrando uma regra, visível na imagem). O pico é uma **jogada LETAL** de vida baixa contra o chefe, a 80% do filme, seguida do coringa do chefe subindo do corpo, que vira a ponte para o logo.
+O filme segue **uma run em ordem**: luta do ladino no ato 1 → espólio → estrada do ato 1 → **porta do castelo do ato 1** (aqui troca a classe, uma vez: entra o guerreiro) → o Rei-Carniça entra no silêncio → drop → a luta com o Rei começa e ele quebra a regra dele (a Revoada de corvos) → **montagem para a frente** do que a run ainda vai encontrar (atos 2 → 3 com o Tirano rompendo as correntes → 4 com o Monarca congelando a mão → 5 → 6) → volta à **mesma luta** com o Rei, já no fim (9 de vida, corvos ainda em órbita) → **LETAL** a 81% → morte → coringa do chefe sobe → logo.
 
-Arco de energia (alvo, loudness de curto prazo 3 s): gancho alto (−14) → jornada média (−16) → descida (−20) → **silêncio** (≤ −32, entrada do chefe) → drop (−13) → provas (−15) → **respiro** de 0,6 s (≤ −30) → **pico** (−11, golpe LETAL a 54,5 s = 80%) → fim (−16 → fade).
+A montagem do meio é explicitamente "o que vem pela frente": ela sai da luta com o Rei e volta para ela no mesmo enquadramento, com o mesmo estado (chefe no trono, órbita de corvos, mão do guerreiro). Nada anda para trás.
 
 ## 2. Música
 
-**Uma faixa, contínua, sem emenda** (regra do Daniel): `audio/music/boss-carrion_king.mp3` (ACE-Step, 95,1 s), ligada ao chefe que o filme mostra. Deslocamento fixo: **tempo do filme = tempo da faixa − 15,50 s**. A música entra num grave da faixa e segue sem cortes; nos silêncios ela é **abaixada a −∞** (mute com rampa curta) e volta onde naturalmente estaria (como o v4 que o Daniel aprovou: "música que para e volta sincronizada").
+**Uma faixa, contínua, sem emenda:** `audio/music/boss-abyss_tyrant.mp3` (ACE-Step, 81,1 s). **Tempo do filme = tempo da faixa − 1,60 s.** Troquei a faixa do Rei-Carniça pela do Tirano porque a do Rei tem 20 s sem nenhum grave bem no centro do filme (item 2 da revisão); o Tirano tem graves densos do começo ao fim, segunda metade mais forte e um fim em fade. Risco declarado: é a faixa do chefe do ato 3 e o chefe-herói do filme é o do ato 1; o Tirano aparece na 1ª prova da montagem, então a faixa tem dono na imagem. Decisão de escuta do Daniel.
 
-Marcos medidos (`build/trailer/music/boss-carrion_king_beats.json`):
+A música entra no grave de 2,49 s da faixa (**0,89 s do filme**), depois do liga-TV. Nos silêncios ela vai a −∞ (rampa de 0,3 s) e volta onde naturalmente estaria. 68,5 s do filme = 70,1 s da faixa: o fim é um fade de 2,5 s (66,0 → 68,5).
 
-| faixa (s) | filme (s) | o que é na faixa | uso |
-|---|---|---|---|
-| 16,35 | **0,85** | grave (entra a música) | TV terminou de abrir; carta selecionada |
-| 16,35 → 35,19 | 0,85 → 19,69 | groove, grave a cada ~1,25 s, −15 a −17 | gancho, luta, espólio |
-| 35,19 → 55,07 | 19,69 → 39,57 | trecho calmo (−21/−22), sem graves | atos e criaturas (corte no som do jogo), castelo, **silêncio** do chefe |
-| **55,07 / 55,26** | **39,57 / 39,76** | volta do groove (drop) | música volta com o nome do chefe e a frase do gancho |
-| 55,26 → 70,01 | 39,76 → 54,51 | groove (−18 a −22) | provas: corvos, Geada, Correntes |
-| **70,01** | **54,51** | entrada do clímax (−12/−13) | **golpe LETAL** (pico, 80%) |
-| 70,01 → 81,0 | 54,51 → 65,5 | clímax | morte do chefe, coringa sobe, logo |
-| 79,12 / 80,07 | 63,62 / 64,57 | graves | WISHLIST / selo |
-| 81 → | 65,5 → 68,0 | queda da faixa (−20) | fade de 2,5 s, último som = carta |
+### Curva de energia medida (curto prazo 3 s, EBU R128, faixa já deslocada)
+Medida salva em `scratchpad\tyr_st.txt` (`ffmpeg ebur128`). Máximo por segundo do filme:
 
-Risco declarado: o trecho calmo da faixa (19,7 a 39,6 s do filme) não tem graves. Os cortes dali caem em **sons do jogo** (passo, chegada da criatura, trovão, porta), não na música; e a música fica atrás do som do jogo. Se na escuta ficar morno, a alternativa é a faixa do Tirano (`boss-abyss_tyrant.mp3`, frases de ~9,2 s com graves fortes); decisão de escuta no corte 1.
+| filme (s) | 1–9 | 10–13 | 14–18 | 19–22 | 23–27 | 28–31 | 32–36 | 37–40 | 41–55 | 56–58 | 59–73 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| faixa (LUFS) | −17 a −20 | −15 a −16 | −18 a −21 | −15 | −18 a −20 | −15 a −16 | −17 a −18 | **−13 a −14** | −14 a −15 | **−13** | −13 a −15 |
+| bloco | gancho | espólio (rara no grave) | estrada / encruzilhada | porta | **silêncio** (música −∞) | drop + nome | luta com o Rei + Revoada | montagem começa | provas + volta ao Rei | **LETAL** | morte, coringa, logo, fade |
+
+A faixa sozinha é plana (−13 a −21): **o contraste e o pico são feitos na mixagem**, como plano escrito:
+- **Silêncio do Rei (22,6 → 28,3 s):** música −∞, depois do groove de 19–22 s (−15). Meta reescrita (item 3 da revisão): **leito** (ambiente do salão, curto prazo, sem os transientes) ≥ 15 dB abaixo do groove anterior, ou seja **≤ −30 LUFS**; **eventos** do jogo isolados, com o pico de curto prazo (janela 0,4 s) escrito: porta −16, olhos acendendo −24, cada rasante de corvo −20, pouso −14, revelação do nome −15; **zero música**.
+- **Pico (LETAL, 55,76 s = 81%):** de 49,8 a 55,2 s a música desce **5 dB** (rampa de 1 s) sob a mão e o painel; **respiro de 0,6 s em −∞** (55,16 → 55,76) só com o clique do JOGAR e o voo; no grave de 57,36 s da faixa (**55,76 do filme**) o impacto do jogo entra a 0 dB relativo, a música volta a +1 dB e há **hit-stop de 3 quadros**. Alvo: maior curto prazo do filme entre 55 e 58 s, ≥ 2 dB acima de qualquer outro trecho.
 
 ## 3. Regras do corte (herdadas e verificáveis)
 
-- Captura sem CRT, carta a 2 px/pixel (`TRAILER_CARD_PX=2`), CRT do jogo aplicado no fim (`trailer_crt_post`), liga-TV do jogo.
-- Escalas só ×1 e ×2; troca de escala só por corte seco no grave; pan só a 60 ou 120 px/s por número de quadro.
-- Quadro 0 nunca preto; entre 30% e 90% (20,4 a 61,2 s) todo segundo tem carta grande ou criatura em ação; logo só depois de 61,2 s.
-- Continuidade (§7 do diagnóstico): castelo centrado e horizonte na mesma altura entre atos (conferido nas tomadas `night_a1..6`: mesma linha do horizonte, lampião sempre à esquerda); jornada só para a frente; criatura entra sempre pelo mesmo lado numa sequência; chefe que pousou fica; luta que começa termina. **Saltos de luz intencionais** (não reprovar pela regra 2) marcados com ◆ no storyboard.
-- Texto: inglês (página da Steam), Grimoire Pixel em escala inteira, contorno, **nunca sobre a carta que é o assunto** (zona de texto = terço superior quando a mão está embaixo); ≥ 1 s parado a cada 13 caracteres; ≤ 4 palavras por tela.
-- Números na tela só os contados (§6.1 do diagnóstico): 145 cartas, 42 criaturas, 6 atos, 6 chefes.
-- Som: SFX reais do jogo pelo `audio.jsonl` das tomadas novas (`remix_engine.py`); silêncio ≥ 15 dB abaixo do trecho anterior; marca "**não publicável até trocar ou licenciar os SFX**".
-- Salões do Higgsfield nos acentos (decisão do Daniel), tratados (§5.10 das ferramentas), na ordem do §5.11: sempre **antes** de o chefe ocupar o salão, IA primeiro quando vizinha do real, um grave cada, ◆.
+- Captura sem CRT, carta a 2 px; CRT e liga-TV do jogo aplicados no fim (`trailer_crt_post`).
+- Só ×1 e ×2; troca de escala por corte seco no grave; pan só a 60/120 px/s por quadro.
+- Quadro 0 nunca preto; de 30% a 90% (20,6 a 61,7 s) todo segundo com carta grande, criatura ou chefe em ação (o silêncio no escuro tem os olhos e os corvos); logo só depois de 61,7 s.
+- **Continuidade:** jornada só para a frente (§1); **troca de classe uma vez**, na porta do ato 1 (o ladino não reaparece depois); a montagem sai e volta à luta do Rei no mesmo enquadramento e estado; criatura e chefe entram pela direita; saltos de luz intencionais marcados ◆.
+- **Ritmo:** no máximo **2 rajadas** de planos < 1 s no filme todo; cada prova do gancho com **≥ 2,5 s contínuos** no plano em que a regra se lê.
+- Texto: inglês, Grimoire Pixel em escala inteira, contorno; nunca sobre o assunto do plano; ≥ 1 s parado a cada 13 caracteres; ≤ 4 palavras por tela. **⚠️ = texto novo, pendente do Daniel**, com a versão aprovada (ou "sem texto") de reserva.
+- Salões do Higgsfield: tratados (§5.10 das ferramentas) e na ordem do §5.11 (antes de o chefe ocupar o salão, IA primeiro, 1 grave, ◆).
+- Números na tela só os contados: 145 cartas, 42 criaturas, 6 atos, 6 chefes.
+- Som: SFX reais do jogo pelo `audio.jsonl` de `trailer_zero` (`remix_engine.py`); marca "**não publicável até trocar ou licenciar os SFX**".
 
 ## 4. Storyboard
 
-Legenda das tomadas novas (gravador `card-game-trailer-zero`, `TRAILER_OUT=trailer_zero`): **H** = `zero_hand` (ladino, ato 1, Espantalho Amaldiçoado `cursed_scarecrow`, mão fixa; o Bruto do Fosso das tomadas antigas é do ato 3 e quebraria a ordem da jornada); **R** = `zero_reward` (espólio com carta rara + coringa); **N1..N6** = estrada de cada ato com a criatura do ato chegando (enquadramento fixo); **K** = `zero_carrion` (porta, olhos, corvos, pouso, nome); **M** = `zero_monarch`; **T** = `zero_tyrant`; **F** = `zero_fight` (guerreiro × Rei-Carniça, vida baixa, LETAL, morte, coringa do chefe). IA = salão Higgsfield tratado.
+Tomadas: **H** `zero_hand` (ladino × Espantalho, ato 1, até o espólio com o coringa raro); **F1** `fork_a1`/`night_a1` (estrada e encruzilhada do ato 1); **E2..E6** `entr_*` (estrada de cada ato com a criatura chegando, mesmo enquadramento); **K** `zero_carrion` (estrada do ato 1 até o castelo, porta, entrada do Rei, luta, LETAL, morte, coringa); **T** `zero_tyrant`; **M** `zero_monarch`. IA = salão Higgsfield tratado.
 
-### Ato I: gancho (0 a 8 s)
-
-| t (s) | imagem | escala | texto | som |
-|---|---|---|---|---|
-| 0,00 | TV do jogo **já 60% aberta** sobre a mão do ladino: 5 cartas vivas (animadas), em repouso | ×2 | — | `boot-tv-power-on` sozinho; brasas do ato 1 |
-| 0,85 | TV assentada; cursor para numa carta de ataque, que sobe | ×2 | — | **música entra** (grave); hover do jogo |
-| 2,10 | corte seco: plano inteiro com HUD (vida, mana, Espantalho e a barra); JOGAR; 3 cartas voam | ×1 | — | grave; `button-click` + `combo-trigger` |
-| 3,36 | impacto no Espantalho: número de dano grande, **COMBO! Volley** | ×2 (no inimigo) | — | grave; `sword-sound`, voz do Espantalho |
-| 4,67 | cartas voltam à mão; a mão dada de novo, uma a uma | ×2 | **145 LIVING CARDS.** (terço superior, entra no grave de 4,67, parado até 6,9) | `card-deal` do jogo |
-| 5,85 → 8,0 | 2ª jogada rápida (2 golpes), o Espantalho cai | ×1 → ×2 no golpe final | — | graves 5,85 / 7,12; morte do Espantalho |
-
-### Ato II: a jornada (8 a 31 s)
+### Gancho (0 a 9 s)
 
 | t (s) | imagem | escala | texto | som |
 |---|---|---|---|---|
-| 8,4 | espólio: 2 cartas viram, a 3ª entra por último com o **brilho de achado raro** (coringa) | ×2 | — | grave; `pack-seal-break`, `card-discovered` |
-| 11,0 | escolha: a carta rara sobe para o baralho | ×2 | **BUILD A LIVING DECK.** (aprovado no v8) | grave; assinatura do coringa |
-| 13,4 | corte seco para a estrada do ato 1, câmera do jogo andando, castelo ao centro | ×1 | — | grave; vento e grilos |
-| 15,9 → 19,7 | encruzilhada do ato 1: as placas surgem; escolha; a viagem gira o domo | ×1 | — | graves 15,9 / 17,1 / 18,4; som da encruzilhada |
-| 19,7 ◆ | **Montagem dos atos, corte de correspondência** (mesmo enquadramento, só a luz e o bioma mudam): N2 crepúsculo roxo, a gárgula surge pela curva | ×1 | **6 ACTS.** (entra em 19,7, até 22,0) | trecho calmo da faixa; ambiente de cada ato em 1º plano; cada corte no som de chegada da criatura |
-| 21,0 ◆ | N3 vermelho: cão do inferno | ×1 | | brasas |
-| 22,3 ◆ | N4 neve: serpente de gelo emergindo | ×1 | **42 CREATURES.** (22,3 a 24,6) | vento, sopro de gelo |
-| 23,6 ◆ | N5 pântano: mãe-esporo | ×1 | | chuva, trovão |
-| 24,9 ◆ | N6 crepúsculo: anjo caído pousa | ×1 | | pouso do anjo |
-| 26,2 | o anjo ataca: cartas na mão ×2 respondem (uma defesa sobe e incha) | ×2 | — | `armor`, impacto |
-| 28,0 | estrada do ato 6 escurece; o castelo cresce; **porta do castelo** vista de fora | ×1 | — | música desce (−8 dB, abafada); noite; `castle-gate-open` começa |
+| 0,00 | **H**: TV do jogo já 60% aberta sobre a mão do ladino, cartas vivas em repouso | ×2 | — | `boot-tv-power-on` sozinho |
+| 0,89 | TV assentada; uma carta de ataque sobe | ×2 | — | **música entra** no grave |
+| 2,1 | plano inteiro com HUD (vida, mana, Espantalho e a barra); 3 cartas selecionadas; JOGAR | ×1 | — | grave; clique do jogo |
+| 3,3 → 6,0 | **cascata** (item 7): as cartas resolvem uma a uma no Espantalho, cada número sobe, o banner **COMBO! Volley +15** soma, os coringas ticam, a barra cai em degraus | ×2 no inimigo | — | um grave por carta; impacto, `combo-trigger`, `jokerTick` com tom subindo |
+| 6,0 | a mão é dada de novo, uma a uma | ×2 | ⚠️ **145 LIVING CARDS.** (reserva aprovada: **BUILD A LIVING DECK.**) no terço superior, 6,0 → 8,4 | `card-deal` |
+| 8,4 | 2º golpe derruba o Espantalho | ×1 | — | grave; morte do Espantalho |
 
-### Ato III: as regras (31 a 54,5 s)
+### Espólio e caminho (9 a 22,6 s)
 
 | t (s) | imagem | escala | texto | som |
 |---|---|---|---|---|
-| 31,0 ◆ | a porta abre: **IA hall1 tratado**, o trono vazio no fogo (1 grave de 1,0 s, apresentação: o Rei ainda não chegou) | ×1 | — | baque do portão no corte; música **some** (rampa de 0,4 s) |
-| 32,0 ◆ | as luzes caem: o **salão real, vazio e escuro** do Rei-Carniça (cinemática do jogo) | ×1 | — | só o salão |
-| 32,0 → 37,0 | **silêncio**: dois olhos acendem; piscam; três rasantes de corvo; o Rei pousa no trono (entra pela **direita**, como no B) | ×1 → ×2 no pouso | — | só o salão: `boss-room`, olhos, asas, corvos, pouso; nada de música (≤ −32 LUFS de curto prazo) |
-| 37,0 → 39,5 | cartão de nome do jogo: **CARRION KING / Sovereign of Crows**; corvos circulam o trono | ×1 | (o cartão do jogo é o texto) | `boss_reveal_sting`; respiração do salão |
-| **39,76** | **drop**: o Rei ordena a **Revoada**: cada golpe é um corvo da órbita mergulhando no painel do herói (a contagem de corvos ao redor dele é o status `swarm`, visível) | ×2 | **EVERY BOSS / BREAKS THE RULES.** (2 telas: 39,76 e 41,0; até 43,2) | **música volta no grave** com o corvo do jogo |
-| 41,0 | o Rei no salão real, a órbita de corvos refeita (contagem `swarm` visível) | ×1 | (2ª tela do texto) | grave |
-| 42,3 ◆ | **IA hall4 tratado**: o trono de gelo vazio (apresentação do Monarca) | ×1 | — | grave; vento |
-| 43,0 | **Monarca do Inverno** no salão real; a Geada sobe | ×1 | — | vento do salão |
-| 43,5 | a mão: **duas cartas congelam** (as mais caras); o jogador joga um ataque e uma derrete | ×2 | **FROST.** (uma palavra, no grave de 43,5; até 45,0) | gelo do jogo, derretimento |
-| 46,0 ◆ | **IA hall3 tratado**: o trono de lava vazio (apresentação do Tirano) | ×1 | — | grave |
-| 47,3 | **Tirano do Abismo** no salão real, com as 3 marcas douradas na barra | ×1 | — | grave; corrente |
-| 48,5 | um golpe cruza 75%: **a corrente rompe**, o golpe anunciado cai pela metade | ×2 (na barra e no intent) | **CHAINS.** (48,5 a 50,0) | rompimento da corrente, ganho de força |
-| 50,8 | o Tirano, mais forte, anuncia o golpe já cortado pela metade | ×2 (intent) | — | grave |
-| 52,0 ◆ | volta ao salão do **Rei-Carniça**, o guerreiro com **9 de vida** (barra vermelha); mão dada | ×1 | — | grave; batimento de vida baixa do jogo |
-| 53,1 | hover nas cartas: o painel da prévia acende **LETHAL** | ×2 (painel + mão) | (o LETHAL do jogo é o texto) | hover; música −6 dB |
-| 53,9 → 54,5 | JOGAR; as cartas sobem | ×2 | — | **respiro**: música fora 0,6 s (≤ −30), só o clique e o voo |
+| 9,4 | **H**: espólio: duas cartas viram | ×2 | — | grave |
+| 10,4 | a 3ª entra por último com o **brilho de achado raro** (coringa) | ×2 | — | grave forte (−15); `card-discovered`, assinatura do coringa |
+| 12,4 ◆ | **F1**: estrada do ato 1, castelo ao centro, câmera do jogo andando | ×1 | — | grave; vento e grilos |
+| 14,0 | encruzilhada do ato 1 em **um plano** (1,2 s): as placas, a escolha | ×1 | — | grave; som da encruzilhada |
+| 15,2 → 19,4 | **K**: a estrada do ato 1 até o castelo (mesma estrada, o castelo cresce); **troca de classe aqui**: o HUD passa a ser o do guerreiro | ×1 | — | groove; estrada |
+| 19,4 → 22,6 | a porta do castelo do ato 1 se abre | ×1 | — | grave (−15) no início da porta; `castle-gate-open`; música −8 dB a partir de 21,0 |
 
-### Ato IV: o pico e o fim (54,5 a 68 s)
+### Silêncio e drop (22,6 a 38,4 s)
 
 | t (s) | imagem | escala | texto | som |
 |---|---|---|---|---|
-| **54,51** | **golpe LETAL**: hit-stop de 3 quadros, número enorme, a barra zera | ×2 → ×1 | — | **clímax da faixa entra** com o impacto do jogo + voz do Rei + `boss_land_impact` |
-| 55,8 → 59,0 | morte do chefe em câmera lenta (cinemática do jogo): dessaturação, rajada, corpo no salão | ×1 | **BREAK THEM BACK.** (56,5 a 58,8) | morte do chefe, corvos fugindo |
-| 59,0 → 61,2 | o **coringa do Rei-Carniça sobe do corpo girando** com o brilho de conquista | ×2 (carta grande, parada no fim) | — | revelação do coringa |
-| 61,2 → 63,6 | a carta gira e a face vira o selo; o fundo escurece; **GRIMOIRE** em letras de pixel | ×1 | GRIMOIRE / **A ROGUELIKE DECKBUILDER** | grave; `forge-reveal`, letras com `pack-card-reveal` |
-| 63,62 | WISHLIST | ×1 | **WISHLIST ON STEAM** | grave; selo sintetizado |
-| 65,5 → 68,0 | a moldura fica; o salão reaparece atrás do logo, escuro, com um corvo pousado | ×1 | (fica) | fade da música 65,5 → 68,0; **último som: carta puxada** |
+| 22,6 ◆ | **IA hall1**: o trono vazio no fogo (apresentação; o Rei ainda não chegou), 1 grave | ×1 | — | baque do portão no corte; **música a −∞** |
+| 23,6 ◆ | **K**: as luzes caem, o salão real vazio e escuro | ×1 | — | leito ≤ −30 |
+| 24,2 → 27,0 | dois olhos acendem; três rasantes de corvo; o Rei entra **pela direita** e pousa no trono | ×1 (×2 no pouso) | — | olhos −24, rasantes −20 cada, pouso −14 |
+| 27,0 → 28,3 | os corvos assentam na órbita | ×1 | — | só o salão |
+| **28,33** | **drop**: cartão de nome do jogo **CARRION KING / Sovereign of Crows** | ×1 | (o cartão do jogo é o texto) | **música volta no grave** (29,93 s da faixa); `boss_reveal_sting` |
+| 30,0 → 32,3 | a mão do guerreiro é dada; o Rei ergue os corvos (contagem `swarm` ao redor dele) | ×1 | ⚠️ **EVERY BOSS / BREAKS THE RULES.** (reserva aprovada: **EVERY BOSS / IS A PUZZLE.**) 30,0 → 33,2, terço superior, fora do Rei e da órbita | grave |
+| 32,3 → 35,6 | **prova 1 (3,3 s contínuos):** a **Revoada**: cada golpe do Rei é um corvo da órbita mergulhando no painel do herói (embaixo à esquerda); a vida do herói cai | ×1 (Rei e painel no mesmo quadro) | — | corvos do jogo em 1º plano (`CrowSfx`), música −6 dB |
+| 35,6 → 38,4 | o guerreiro responde: 2 cartas, combo, o Rei sente o golpe | ×2 | — | grave; impacto |
+
+### O que vem pela frente: provas 2 e 3 (38,4 a 51,6 s)
+
+| t (s) | imagem | escala | texto | som |
+|---|---|---|---|---|
+| 38,4 ◆ | **E2**: estrada do ato 2 (crepúsculo roxo), a gárgula surge pela curva | ×1 | ⚠️ **6 ACTS.** (reserva aprovada: **SIX ACTS.**) 38,4 → 40,4 | grave; ambiente do ato 2 |
+| 39,6 ◆ | **E3**: estrada do ato 3 (vermelho), o cão do inferno | ×1 | | grave; brasas |
+| 40,8 ◆ | **IA hall3**: o trono de lava vazio (apresentação do Tirano), 1 grave | ×1 | — | grave |
+| 41,8 → 44,8 | **prova 2 (3,0 s contínuos):** **T**: o Tirano com as 3 marcas douradas na barra; um golpe cruza 75%, **a corrente rompe** e o golpe anunciado cai pela metade | ×2 (barra + intent + chefe) | ⚠️ **BREAK HIS CHAINS.** (reserva: sem texto) 42,6 → 44,6 | rompimento da corrente, impacto |
+| 44,8 ◆ | **E4**: estrada do ato 4 (neve), a serpente de gelo emerge | ×1 | ⚠️ **42 CREATURES.** (reserva: sem texto) 44,8 → 46,6 | grave; sopro de gelo |
+| 46,0 ◆ | **IA hall4**: o trono de gelo vazio (apresentação do Monarca), 1 grave | ×1 | — | grave; vento |
+| 47,0 → 49,8 | **prova 3 (2,8 s contínuos):** **M**: a mão do guerreiro, **duas cartas congelam** (as mais caras, com o "frozen!" do jogo); um ataque derrete uma | ×2 (mão + carta) | ⚠️ **FROST LOCKS YOUR HAND.** (reserva: sem texto) 47,0 → 49,4 | gelo do jogo, derretimento |
+| 49,8 ◆ | **E5 + E6**: estrada do ato 5 (mãe-esporo) 0,9 s → estrada do ato 6 (anjo caído pousando) 0,9 s (**a única rajada**) | ×1 | — | graves; chuva; pouso do anjo |
+
+### Volta à luta, pico e fim (51,6 a 68,5 s)
+
+| t (s) | imagem | escala | texto | som |
+|---|---|---|---|---|
+| 51,6 ◆ | **K**: de volta ao salão do Rei, **mesmo enquadramento**, órbita de corvos no ar; o guerreiro com **9 de vida** | ×1 | — | música −5 dB; batimento de vida baixa do jogo |
+| 52,8 → 55,16 | duas cartas sobem; o painel da prévia acende **LETHAL** | ×2 (mão + painel) | (o LETHAL do jogo é o texto) | hover; clique |
+| 55,16 → 55,76 | JOGAR; as cartas sobem | ×2 | — | **respiro: música −∞** 0,6 s, só o clique e o voo |
+| **55,76** | **golpe LETAL**, hit-stop de 3 quadros, número enorme, a barra zera | ×2 → ×1 | — | **pico**: impacto do jogo + voz do Rei + música de volta (+1 dB) |
+| 56,8 → 59,6 | morte em câmera lenta: dessaturação, o corpo cai | ×1 | ⚠️ **BREAK THEM BACK.** (reserva: sem texto) 57,2 → 59,4 | morte, corvos fugindo |
+| 59,6 → 61,8 | o **coringa "Carrion Crown" sobe do corpo girando** com o brilho de conquista e para | ×2 (carta parada no fim) | — | revelação do coringa |
+| 61,8 → 64,0 | a carta **continua o giro no mesmo sentido** da subida (sentido do `BossTrophy`) e a face vira o selo; GRIMOIRE em letras de pixel | ×1 | GRIMOIRE / ⚠️ **A ROGUELIKE DECKBUILDER** (reserva: sem a linha de gênero) | `forge-reveal`, letras com `pack-card-reveal` |
+| 64,0 | WISHLIST | ×1 | **WISHLIST ON STEAM** (aprovado) | grave; selo sintetizado |
+| 66,0 → 68,5 | a moldura fica; o salão escuro atrás do logo, um corvo pousado | ×1 | (fica) | fade da música; **último som: carta puxada** |
+
+Rajadas < 1 s no filme: só E5/E6 (49,8 s). IA = 1,0 s; encruzilhada = 1,2 s. O respiro de 0,6 s é de som, não de plano.
 
 ## 5. Verificações programadas no corte 1
 
-| critério | como vou medir |
+| critério | medida |
 |---|---|
-| gameplay ≤ 2 s, quadro 0 não preto | quadro 0 e 2,1 s |
-| microtrailer (0,33..0,87 × 68 = 22,4 / 29,2 / 36,0 / 45,6 / 52,2 / 59,0 s) | as 6 fatias: serpente na neve, porta, rasante de corvo, carta derretendo, LETAL/vida baixa, coringa subindo. Nenhuma preta, nenhum logo |
-| silêncio | curto prazo (3 s) em 31,5 a 37 s ≥ 15 dB abaixo de 25 a 28 s; respiro de 54 s |
-| pico | maior curto prazo do filme entre 54 e 57 s (75 a 84%) |
-| continuidade | luma média por plano; saltos > 25% só nos ◆; folha de quadros a 4/s nos cortes |
-| leitura | toda carta-assunto ≥ 30% da altura; texto ≥ 1 s/13 caracteres parado; nenhum texto sobre a carta-assunto |
-| mudo | assistir a folha sem som: entende-se cartas → jornada → chefe que quebra regra → LETAL → logo |
+| quadro 0 / gameplay ≤ 2 s / HUD ≤ 5 s | quadro 0 (carta viva), 2,1 s (HUD) |
+| microtrailer (0,33..0,87 × 68,5 = 22,6 / 29,5 / 36,3 / 45,7 / 52,6 / 59,6 s) | trono IA na porta, nome do Rei, guerreiro golpeando, serpente / trono de gelo, LETHAL no painel, coringa subindo |
+| silêncio | leito ≤ −30 LUFS (curto prazo, sem transientes) em 23,6 a 28,3 s; eventos nos níveis do §2; zero música |
+| pico | maior curto prazo do filme entre 55 e 58 s, ≥ 2 dB acima de qualquer outro trecho |
+| sincronia | cada corte a ≤ 2 quadros de um grave medido (exceto os do silêncio, que caem em som do jogo) |
+| continuidade | jornada para a frente; uma troca de classe; luma por plano, saltos > 25% só nos ◆ |
+| leitura | carta-assunto ≥ 30% da altura; provas ≥ 2,5 s contínuos; texto ≥ 1 s/13 caracteres parado, nunca sobre o assunto |
+| ritmo | ≤ 2 rajadas < 1 s |
 | loudness | −14 LUFS integrado, ≤ −1 dBTP |
-
-## 6. Tomadas a gravar para o corte 1
-
-H, R (ladino); N1..N6 (estrada + criatura de cada ato no mesmo enquadramento); K (Rei-Carniça, entrada inteira, sem CRT); M (Monarca, Geada na mão); T (Tirano, corrente rompendo); F (guerreiro × Rei-Carniça, 9 de vida, LETAL, morte, coringa subindo). Todas com `TRAILER_CRT=0 TRAILER_NOBEZEL=1 TRAILER_PIPE=1 TRAILER_CARD_PX=2 TRAILER_OUT=trailer_zero`, 60 fps, uma por vez, folha de quadros revista antes da montagem.
