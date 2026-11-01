@@ -1,0 +1,426 @@
+{
+ "sfx": [
+  {
+   "t": 0.0,
+   "what": "TV liga (ponto, linha, imagem 0,75)",
+   "file": "audio/sfx/boot-tv-power-on.mp3; a EDL diz tv_on synth:false, mas o mixdown pos tv_on.wav",
+   "priority": "alta"
+  },
+  {
+   "t": 3.79,
+   "what": "encruzilhada a1: bandeira",
+   "file": "audio/sfx/fork-hover-flag.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 5.38,
+   "what": "encruzilhada a1: tenda",
+   "file": "audio/sfx/fork-hover-tent.mp3",
+   "priority": "baixa"
+  },
+  {
+   "t": 6.67,
+   "what": "JOGAR",
+   "file": "audio/sfx/button-click.mp3 + audio/sfx/combo-trigger.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 6.7,
+   "what": "cartas voam (6,70 a 6,95)",
+   "file": "audio/sfx/card-play-attack.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 7.3,
+   "what": "golpe 1 (BUILD)",
+   "file": "audio/sword-sound-260274.mp3 + audio/sfx/enemies/pit_brute/hurt_3.mp3 + audio/sfx/card-exhaust.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 8.55,
+   "what": "golpe 2 (A LIVING)",
+   "file": "audio/sword-sound-260274.mp3 + audio/sfx/enemies/pit_brute/hurt_1.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 9.11,
+   "what": "golpe 3 (veneno)",
+   "file": "audio/sfx/impact-poison.mp3 + audio/sfx/enemies/pit_brute/hurt_3.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 9.81,
+   "what": "golpe 4 (DECK.)",
+   "file": "audio/sfx/impact-poison.mp3 + audio/sfx/enemies/pit_brute/hurt_1.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 10.75,
+   "what": "salao IA da Carnica: corvos (11,1 a 12,1)",
+   "file": "audio/sfx/boss/crow/appear_1.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 12.3,
+   "what": "salao IA do Lich: runas",
+   "file": "audio/sfx/boss/boss_rune_ignite.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 13.57,
+   "what": "salao IA do Tirano: lava",
+   "file": "audio/sfx/boss/boss_hellfire_wall.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 14.83,
+   "what": "salao IA de gelo",
+   "file": "audio/sfx/boss/boss_frost_storm.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 15.77,
+   "what": "salao IA do coracao: pulso",
+   "file": "audio/sfx/boss/boss_heartbeat.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 17.12,
+   "what": "coracao explode em raizes",
+   "file": "audio/sfx/boss/boss_roots_crawl.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 17.33,
+   "what": "entrada do grifo",
+   "file": "audio/sfx/stingers/miniboss_entrance.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 17.89,
+   "what": "grifo para no ar",
+   "file": "audio/sfx/entrances/storm_griffin_stop.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 18.59,
+   "what": "pouso do grifo (DECIDE) + cartas dadas (18,57 a 19,01)",
+   "file": "audio/sfx/card-draw.mp3 x5",
+   "priority": "baixa"
+  },
+  {
+   "t": 19.86,
+   "what": "anjo caido",
+   "file": "audio/sfx/entrances/fallen_angel_start.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 20.98,
+   "what": "anjo para",
+   "file": "audio/sfx/entrances/fallen_angel_stop.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 21.1,
+   "what": "serpente emerge (arquivo ja em 0,38 s)",
+   "file": "audio/sfx/entrances/ice_wyrm_rise.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 24.36,
+   "what": "trovao na estrada a noite",
+   "file": "audio/sfx/weather/thunder-roll.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 26.6,
+   "what": "salao lento do Lich: runas acendem uma a uma (26,6 a 29,9)",
+   "file": "audio/sfx/boss/boss_rune_ignite.mp3 (2 a 3 vezes)",
+   "priority": "media"
+  },
+  {
+   "t": 32.85,
+   "what": "salao do Tirano: coluna de fogo sobe",
+   "file": "audio/sfx/boss/boss_hellfire_wall.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 34.6,
+   "what": "salao de gelo: rajada e flocos",
+   "file": "audio/sfx/boss/boss_frost_storm.mp3 + audio/sfx/weather/ice-tinkle-1.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 38.2,
+   "what": "salao da Carnica: corvos",
+   "file": "audio/sfx/boss/crow/flock_2.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 41.26,
+   "what": "portao abre: o jogo toca em 41,76, no quadro do corte; adiantar 0,5 s",
+   "file": "audio/sfx/castle-gate-open.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 41.76,
+   "what": "olhos acendem (jogo em f730, antes do trecho)",
+   "file": "audio/sfx/boss/boss_eyes_ignite.mp3 + audio/sfx/boss/boss_eyes_rumble.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 42.49,
+   "what": "piscada (tambem 43,24)",
+   "file": "audio/sfx/boss/boss_blink_click.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 44.08,
+   "what": "rasante 1 + corvos",
+   "file": "audio/sfx/boss/boss_wing_pass.mp3 + audio/sfx/boss/crow/cine_3.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 44.53,
+   "what": "rasantes 2 e 3 (44,53 / 44,91)",
+   "file": "audio/sfx/boss/boss_wing_pass.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 45.62,
+   "what": "pouso (clarao 45,88)",
+   "file": "audio/sfx/boss/boss_land_impact.mp3 + audio/sfx/boss/crow/flock_1.mp3 (45,77)",
+   "priority": "alta"
+  },
+  {
+   "t": 46.21,
+   "what": "cartao do nome (musica volta)",
+   "file": "audio/sfx/boss/boss_reveal_sting.mp3 + impact_heavy.wav existente",
+   "priority": "alta"
+  },
+  {
+   "t": 48.3,
+   "what": "mao dada (48,30 a 48,68)",
+   "file": "audio/sfx/card-draw.mp3 x5",
+   "priority": "media"
+  },
+  {
+   "t": 49.95,
+   "what": "selecao (49,95 / 50,58 / 51,20) e hovers",
+   "file": "audio/clickselect2-92097.mp3 + audio/hoverCard.wav",
+   "priority": "media"
+  },
+  {
+   "t": 52.11,
+   "what": "JOGAR",
+   "file": "audio/sfx/button-click.mp3 + audio/sfx/combo-trigger.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 52.14,
+   "what": "cartas voam (52,14 / 52,21 / 52,29)",
+   "file": "audio/sfx/card-play-attack.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 52.49,
+   "what": "golpe de 42 (pico)",
+   "file": "audio/sfx/impact-fire.mp3 + audio/sfx/enemies/carrion_king/hurt_2.mp3 + audio/sfx/card-exhaust.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 53.67,
+   "what": "golpe de 33",
+   "file": "audio/sword-sound-260274.mp3 + audio/sfx/enemies/carrion_king/hurt_1.mp3",
+   "priority": "alta"
+  },
+  {
+   "t": 53.88,
+   "what": "faixa COMBO! aparece",
+   "file": "audio/sfx/combo-trigger.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 54.42,
+   "what": "golpe de 27",
+   "file": "audio/sword-sound-260274.mp3 + audio/sfx/enemies/carrion_king/hurt_2.mp3 + audio/sfx/joker-sig/joker_001.mp3 (54,60)",
+   "priority": "alta"
+  },
+  {
+   "t": 56.62,
+   "what": "bussola surge e gira (56,4 a 58,7)",
+   "file": "sem som no jogo: audio/sfx/boot-card-whoosh.mp3 ou sintetizar",
+   "priority": "media"
+  },
+  {
+   "t": 58.74,
+   "what": "clarao do logo (musica volta)",
+   "file": "impact_1.wav existente + audio/sfx/forge-reveal.mp3",
+   "priority": "media"
+  },
+  {
+   "t": 59.38,
+   "what": "letras GRIMOIRE",
+   "file": "audio/sfx/pack-card-reveal.mp3",
+   "priority": "baixa"
+  }
+ ],
+ "ambience": [
+  {
+   "t0": 0.88,
+   "t1": 5.78,
+   "what": "estrada e encruzilhada do ato 1: noite",
+   "file": "audio/sfx/weather/night-crickets-1.mp3, audio/sfx/weather/night-crickets-2.mp3, audio/sfx/weather/wind-1.mp3, audio/sfx/weather/wind-3.mp3, audio/sfx/weather/firefly-1.mp3"
+  },
+  {
+   "t0": 5.78,
+   "t1": 10.75,
+   "what": "luta do ladino: brasas e vento",
+   "file": "audio/sfx/weather/ember-crackle-1.mp3, audio/sfx/weather/wind-2.mp3, audio/sfx/weather/ember-pop-1.mp3"
+  },
+  {
+   "t0": 10.75,
+   "t1": 17.33,
+   "what": "saloes IA no groove: um leito por salao",
+   "file": "audio/sfx/weather/ember-crackle-1.mp3 (Carnica e Tirano), audio/sfx/boss/boss_hold_ambience.mp3 (Lich), audio/sfx/weather/blizzard-2.mp3 (gelo), audio/sfx/boss/boss_roots_crawl.mp3 (coracao)"
+  },
+  {
+   "t0": 17.33,
+   "t1": 19.86,
+   "what": "grifo: chuva forte",
+   "file": "audio/sfx/weather/rain-heavy-1.mp3, audio/sfx/weather/rain-heavy-2.mp3, audio/sfx/weather/rain-light-1.mp3, audio/sfx/weather/rain-light-2.mp3, audio/sfx/weather/wind-1.mp3, audio/sfx/weather/wind-2.mp3, audio/sfx/weather/drip-2.mp3"
+  },
+  {
+   "t0": 19.86,
+   "t1": 21.1,
+   "what": "anjo: vento e grilos",
+   "file": "audio/sfx/weather/wind-1.mp3, audio/sfx/weather/wind-3.mp3, audio/sfx/weather/night-crickets-2.mp3"
+  },
+  {
+   "t0": 21.1,
+   "t1": 22.36,
+   "what": "serpente: nevasca",
+   "file": "audio/sfx/weather/blizzard-1.mp3"
+  },
+  {
+   "t0": 22.36,
+   "t1": 26.14,
+   "what": "estrada a noite: chuva e trovao",
+   "file": "audio/sfx/weather/rain-heavy-1.mp3, audio/sfx/weather/rain-heavy-2.mp3, audio/sfx/weather/rain-light-1.mp3, audio/sfx/weather/rain-light-2.mp3, audio/sfx/weather/rain-light-3.mp3, audio/sfx/weather/wind-1.mp3, audio/sfx/weather/wind-2.mp3, audio/sfx/weather/drip-1.mp3, audio/sfx/weather/thunder-roll.mp3"
+  },
+  {
+   "t0": 26.14,
+   "t1": 30.05,
+   "what": "salao lento do Lich",
+   "file": "audio/sfx/boss/boss_hold_ambience.mp3"
+  },
+  {
+   "t0": 30.05,
+   "t1": 33.95,
+   "what": "salao lento do Tirano",
+   "file": "audio/sfx/weather/ember-crackle-1.mp3, audio/sfx/boss/tyrant_chain_drag.mp3"
+  },
+  {
+   "t0": 33.95,
+   "t1": 37.86,
+   "what": "salao lento de gelo",
+   "file": "audio/sfx/weather/blizzard-2.mp3, audio/sfx/weather/wind-3.mp3"
+  },
+  {
+   "t0": 37.86,
+   "t1": 39.01,
+   "what": "salao lento da Carnica",
+   "file": "audio/sfx/weather/ember-crackle-1.mp3 (lareira)"
+  },
+  {
+   "t0": 39.01,
+   "t1": 41.76,
+   "what": "porta vista de fora: noite",
+   "file": "audio/sfx/weather/night-crickets-1.mp3, audio/sfx/weather/night-crickets-2.mp3, audio/sfx/weather/wind-1.mp3, audio/sfx/weather/wind-3.mp3, audio/sfx/weather/firefly-2.mp3"
+  },
+  {
+   "t0": 41.76,
+   "t1": 55.94,
+   "what": "salao do Rei",
+   "file": "audio/sfx/place/boss-room-1.mp3"
+  }
+ ],
+ "music": [
+  {
+   "t0": 17.33,
+   "t1": 22.36,
+   "action": "duck",
+   "db": -5,
+   "why": "entradas de mini-chefe em primeiro plano",
+   "return_t": null
+  },
+  {
+   "t0": 22.36,
+   "t1": 26.14,
+   "action": "duck",
+   "db": -8,
+   "why": "estrada a noite: chuva e trovao (24,36) sem graves na faixa",
+   "return_t": 26.14
+  },
+  {
+   "t0": 26.14,
+   "t1": 39.01,
+   "action": "duck",
+   "db": -6,
+   "why": "saloes lentos sobre pad sem grave: o som de cada salao conta a mecanica",
+   "return_t": null
+  },
+  {
+   "t0": 39.01,
+   "t1": 41.26,
+   "action": "duck",
+   "db": -14,
+   "why": "porta vista de fora: noite e rangido",
+   "return_t": null
+  },
+  {
+   "t0": 41.26,
+   "t1": 46.21,
+   "action": "silence",
+   "db": null,
+   "why": "portao, olhos, rasantes e pouso so com som do jogo",
+   "return_t": 46.21
+  },
+  {
+   "t0": 48.3,
+   "t1": 52.15,
+   "action": "duck",
+   "db": -6,
+   "why": "mao dada e escolha das cartas",
+   "return_t": null
+  },
+  {
+   "t0": 52.15,
+   "t1": 52.49,
+   "action": "cut",
+   "db": null,
+   "why": "respiro depois do JOGAR",
+   "return_t": 52.49
+  },
+  {
+   "t0": 55.94,
+   "t1": 58.74,
+   "action": "silence",
+   "db": null,
+   "why": "glitch e bussola antes do clarao do logo",
+   "return_t": 58.74
+  }
+ ],
+ "issues": [
+  "Nenhum som do jogo na mixagem: mixdown.py so aceita a faixa ACE-Step e build/trailer/sfx_synth (ALLOWED); todos os SFX do mix_sources.json sao sinteticos (tv_on, impact_1/2, impact_heavy, whoosh_1/2, castle_door, glitch, logo_seal).",
+  "A musica nunca sai: o stem de musica esta presente em todas as janelas de 100 ms do t da entrada ate o fim; nenhum duck, nenhuma pausa.",
+  "loudnorm de dois passos agiu de forma dinamica (ou limitou): os trechos mais baixos ficaram ~2 dB mais altos em relacao aos altos do que no premix. Com ducking/silencio isso vai devolver parte do contraste; usar ganho linear fixo + limitador de pico, e medir o LUFS no fim.",
+  "TRIM = 0,0 nos tres mixdown.py: tempo da EDL = tempo do filme; nenhum deslocamento a corrigir.",
+  "Saloes lentos de 26,2 a 38,9: 12,7 s sem nenhum SFX (stem vazio), so o pad da faixa em ~-23 dB, sem grave. A coluna de fogo (32,9) e as runas (27 a 30) nao tem som.",
+  "Porta mascarada: castle_door.wav ~-29 dB contra musica ~-23 dB de 39,0 a 41,7.",
+  "Olhos, rasantes e pouso (41,8 a 46,1): stem de SFX em ~-72 dB, ou seja, praticamente mudo; so a cauda do castle_door.",
+  "tv_on.wav entra em 0,0 apesar de tv_on.synth = false na EDL (o clipe poweron do v8 ja tem a TV ligando).",
+  "Hovers do jogo em 55,77 a 55,91 caem logo antes do glitch: nao colocar (ruido depois do climax).",
+  "LRA 6,6 LU; fade final de 63,90 a 64,50 (0,6 s), soa como corte."
+ ]
+}
