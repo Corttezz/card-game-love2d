@@ -93,3 +93,15 @@ Duas notas para o roteiro: (a) a regra 2 não pode matar o contraste. Porta, ent
 | D7 Continuidade e "prende" | 7 | 7 | 9 |
 
 **Status: APROVADO, ≥ 9 em todos.** Pode seguir para `ferramentas.md` e `roteiro.md`.
+
+## Adendo (01/11): decisão do Daniel sobre os salões do Higgsfield
+
+**O Daniel decidiu MANTER os salões do Higgsfield nos acentos da música**, como no pedido original nº 9. Isso substitui a mensagem anterior do Grimoire e o §6.4 do diagnóstico. Os `castle_hall_1..6` reais entram como complemento onde ajudarem a leitura do jogo, e os acentos ficam com o Higgsfield. A declaração de IA na Steam fica com o Daniel e não bloqueia. **Deixo de tratar isso como pendência e não reprovo pela presença dos salões de IA.**
+
+O que continua sendo critério de qualidade é a **integração**, porque o próprio diagnóstico (§7, 38,75 s) mediu uma quebra de estilo: a captura tem tons terrosos e o Higgsfield vem saturado, com outro contraste. A regra 6 do §7 ("um estilo de imagem") passa a ser lida assim no corte 1:
+- os salões de IA passam pela mesma grade de cor/luminância da captura vizinha (rampa da regra 2, ou salto marcado como acento intencional);
+- mesma grade de pixel e o mesmo CRT por cima do quadro final (nada de vídeo IA "liso" dentro da moldura);
+- cada salão no acento, sem ocupar o lugar da prova do gancho: o chefe/regra quebrando aparece em captura real;
+- sem salto de estado: se o chefe já pousou, o salão de IA não pode mostrar o mesmo salão vazio logo em seguida (o caso do trono vazio de 45,75 s).
+
+Vou medir isso no C11 (continuidade) e no C12 (está bom), não no C9. A aprovação do diagnóstico continua valendo, e o roteiro precisa refletir a decisão.
