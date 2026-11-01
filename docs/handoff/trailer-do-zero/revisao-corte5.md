@@ -189,3 +189,48 @@ Cortes com ataque fraco restantes: `e6_anjo` 11,4 dB e `logo` 11,1 dB (ataque a 
 **Veredito da versão Tirano (corte 5d): APROVADO**, com ≥ 9 em todos os critérios. Ressalvas que não bloqueiam e vão na Entrega: escuta humana pendente; "NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX"; declaração de IA (salões Higgsfield) com o Daniel.
 
 **Variante Rei:** aguardando o arquivo novo (a diretora está regravando com a gárgula no ataque de 12,50 s). Reviso depois do commit dela. `===CORTE5_PRONTO===` só com as duas aprovadas.
+
+## Variante Rei 5d (`grimoire_zero_corte5_rei_720p.mp4` 19:55, commit `dd2de397`), rodada 2: **APROVADO**
+
+_Conferido de forma independente: medidas quadro a quadro (`...\scratchpad\rev\h5e_rei\`); mixagem nos stems `build\trailer\zero5_rei\zero5_rei_rei\` (19:55, `mix5e_rei.json`); EDL `edl5.py` com `TDZ_MUSIC=rei`; folha a 3 quadros/s de 44 a 57,6 s (`...\rev\g5b\rei_e.png`). Não ouvi._
+
+- **Golpe:** música, voz de morte, penas e baque a **52,83 s**, no quadro do hit-stop (o mix sobe +24 dB no corte). O desencontro de 0,41 s da rodada 1 sumiu.
+- **Coringa:** música −18,6 e SFX −13,0: **5,6 dB abaixo**. Revelação e assinatura a 57,00 s, no quadro da face.
+- **Gárgula / "6 ACTS." (12,50 s):** agora no ataque, a 0 ms (subida ≥ 15 dB em ±30 ms). Todos os cortes estão num ataque real, menos o salão IA do Rei e o escuro, que são o silêncio intencional.
+- **Pico:** −8,9 contra −12,3 fora do clímax: **+3,4 dB**. LRA 8,8. Volta do drop no nome do Rei: +50 dB de grave no quadro.
+- **Imagem:** a mesma da Tirano 5d. Virada ×1 → ×2 vida (25 → 9, "Weak") → ×1 mão → ×2 "48 LETHAL" → golpe 48 → ×3 queda → corpo no chão → "BREAK THEM BACK." → coringa.
+- **Zero quadros pretos;** −14,1 LUFS, −1,2 dBTP; textos exatos e dentro dos planos ("6 ACTS." 1,20 s para 7 caracteres).
+- O salto interno da faixa (escondido no silêncio) segue registrado como ponto de escuta para o Daniel.
+
+### Notas por critério (variante Rei 5d)
+
+| critério | nota | | ponto | nota |
+|---|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | | G1 nenhum quadro preto | 10 |
+| C2 Sem preto | 10 | | G2 caminhada ≤ 3 s | 9 |
+| C3 Sincronia | 9 | | G3 salões legíveis e marcantes | 9 |
+| C4 Legibilidade | 9 | | G4 luta do Rei sem interrupção | 10 |
+| C5 Ritmo | 9 | | G5 golpe final forte | 9 |
+| C6 Pico | 9 | | G6 LETAL do gancho | 10 |
+| C7 Regra de 3 | 9 | | G7 textos exatos | 10 |
+| C8 Fecho | 9 | | N1 virada legível | 9 |
+| C9 Conformidade | 9 | | N2 portão / caminhada | 9 |
+| C10 Checklist do Daniel | 9 | | N3 salões na grade nativa | 10 |
+| C11 Continuidade | 9 | | N4 zoom em degraus progressivos | 9 |
+| C12 Está bom / legal de assistir | 9 | | N5 mixagem | 9 |
+| C13 Prende do início ao fim | 9 | | correções 1 a 7 do corte 4 | 9 em todas |
+| C14 Som | 9 | | pontos 1 a 6 do Grimoire (corte 4) | 10 · 9 · 10 · 9 · 10 · 9 |
+| **Q queda do Rei** | **9** | | | |
+
+**Veredito da variante Rei (corte 5d): APROVADO.**
+
+## Resultado do corte 5
+
+| versão | arquivo | veredito |
+|---|---|---|
+| Tirano (principal) | `grimoire_zero_corte5_1080p.mp4` (19:47) e `_720p.mp4` (19:48) | **APROVADO** |
+| Rei-Carniça (variante) | `grimoire_zero_corte5_rei_720p.mp4` (19:55) | **APROVADO** |
+
+Ressalvas que não bloqueiam e vão na Entrega: escuta humana da mixagem (fone e caixa) ainda não feita; **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free); declaração de IA na Steam pelos salões do Higgsfield; na variante, o salto interno da faixa do Rei como decisão de escuta do Daniel. Próximo passo: revisão do Grimoire, que pode devolver.
+
+===CORTE5_PRONTO===
