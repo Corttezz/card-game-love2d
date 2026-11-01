@@ -52,3 +52,16 @@ Responda e relate sempre em português. Decisão do Daniel: MANTER os salões do
 3. **Faixa do Tirano** sob o Rei-Carniça (a do Rei tem 20 s sem grave no centro do filme).
 4. Licença dos SFX e declaração de IA na Steam (salões do Higgsfield, decisão do Daniel de mantê-los).
 5. Melhorias anotadas para um corte 2: número de dano grande no quadro do hit-stop; cabeça do Espantalho dentro do quadro 0.
+
+## Textos aprovados (01/11 16:39)
+Decisão do Daniel (01/11 16:39), recebida pelo Grimoire (`E:\dev\_orquestracao	dz_c2.txt`): os textos novos estão aprovados e os antigos deixam de ser reserva. Os textos na tela têm de ser **exatamente**:
+1. "145 LIVING CARDS."
+2. "6 ACTS."
+3. "42 CREATURES."
+4. "EVERY BOSS / BREAKS THE RULES."
+5. "FROST."
+6. "CHAINS."
+7. "BREAK THEM BACK."
+8. "A ROGUELIKE DECKBUILDER"
+
+"FROST LOCKS YOUR HAND." sai; "CHAINS." entra. As reservas antigas (BUILD A LIVING DECK., SIX ACTS., EVERY BOSS IS A PUZZLE.) deixam de valer. O corte 2 também traz o número de dano grande no quadro congelado do golpe final e a cabeça do Espantalho dentro do quadro 0 (pôster); os pontos da revisão do Grimoire entram na mesma rodada.
