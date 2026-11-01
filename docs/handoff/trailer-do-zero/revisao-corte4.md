@@ -49,5 +49,20 @@ Pico: golpe e morte a −8,3/−8,4 LUFS de curto prazo, **+3,5 dB** sobre qualq
 
 **Status da versão Tirano: NÃO APROVADO, por um único item:** os 15 quadros pretos de 32,30 a 32,53 s (C2 e G1 em 8). Com eles fora, sem outra mudança, a versão Tirano fica com ≥ 9 em tudo. `===CORTE4_PRONTO===` só depois disso e da aprovação da variante do Rei.
 
-## Variante do Rei
-Pendente: `grimoire_zero_corte4_rei_720p.mp4` ainda não saiu. Vou conferir os mesmos itens, mais os pedidos da rodada do corte 3 (fecho ≥ 2 dB abaixo do pico, música do coringa 4 a 6 dB abaixo do SFX, gárgula e salão do Tirano no ataque real, LRA) e os quadros pretos na mesma passagem.
+## Variante do Rei (`grimoire_zero_corte4_rei_720p.mp4`, 18:49), rodada 1: NÃO APROVADO
+
+_Revisão focada no que é próprio da variante, porque a imagem é a mesma montagem da versão Tirano. Medidas: `...\scratchpadev4_rei\`; mixagem sobre os stems `build	railer\zero4_rei\zero4_rei_rei\` (`mix4_rei.json`). Não ouvi._
+
+- **Quadros pretos:** os mesmos **15 quadros de 32,30 a 32,53 s** da versão Tirano (fade pelo preto entre o portão e o salão IA). Vale a mesma exigência.
+- **Pico × fecho:** resolvido. Golpe e morte a −8,7 LUFS de curto prazo, contra −11,4 no melhor trecho fora do clímax (**+2,7 dB**). O logo caiu para −18,2 no mix.
+- **LRA 9,0** (era 7,4): resolvido.
+- **Salão do Tirano no grave real:** resolvido (`ia_hall3` cai no ataque, com a música 15,8 dB acima do efeito e subindo no corte).
+- **Coringa: piorou.** Música −10,5, SFX −28,6: a música fica **18 dB acima** do som da revelação. A meta (4 a 6 dB abaixo do SFX) entrou na versão Tirano, não na variante. O som do coringa some.
+- **Gárgula / "6 ACTS." (11,77 s): ainda sem grave real** (subida máxima de 5,9 dB em ±30 ms). `ia_hall4` (20,95 s) está fraco, com 11 dB.
+
+| critério | nota | | critério | nota |
+|---|---|---|---|---|
+| C2 Sem preto / G1 | **8** | | C6 Pico | 9 |
+| C3 Sincronia | **8** (gárgula) | | C14 Som / N5 | **8** (coringa) |
+
+As demais notas são iguais às da versão Tirano. **Status da variante Rei do corte 4: NÃO APROVADO.** Para o corte 5: tirar os quadros pretos, pôr a música do coringa 4 a 6 dB abaixo do SFX também nesta variante e levar a gárgula a um ataque real da faixa do Rei.
