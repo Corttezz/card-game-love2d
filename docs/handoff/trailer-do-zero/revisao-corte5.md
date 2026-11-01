@@ -57,3 +57,38 @@ Em tela cheia a 1080p, lê quem procura. No player da página da Steam (~600 px 
 | C14 Som | 9 | | Q queda do Rei | pendente (refazendo) |
 
 **Status: NÃO APROVADO, por um item:** a virada precisa de um degrau ×2 no LETHAL (com o Rei inteiro) e do "9" grande uma vez. Os pontos menores (portão +3 dB, um baque no pouso do anjo) entram na mesma rodada se não atrasarem. A queda refeita (Q) e a variante do Rei vêm a seguir.
+
+## Versão Tirano 5b (`grimoire_zero_corte5_1080p.mp4` 19:19 / `_720p` 19:20), rodada 2: NÃO APROVADO, falta a queda (Q)
+
+_Medidas: `...\scratchpad\rev\h5b\`; folhas da virada a 4 quadros/s e da queda a 8 quadros/s; comparação da queda do corte 4 com a do 5b no mesmo instante (`...\rev\g5b\c4c5.png`); movimento quadro a quadro de 53,4 a 56 s. Não ouvi._
+
+**Virada: resolvida.** Sequência: ×1 com o Rei anunciando "Murder of Crows" → **×2 no painel de vida** (45,48–48,27 s), com **25 → 21 → 17 → 13 → 9** e "Weak", grandes → ×1 com a mão dada e o Rei → **×2 com "48 LETHAL" ao lado da mão** (50,19–52,83 s, 2,64 s) → Play Cards apertado → golpe. O "9" aparece grande e o LETHAL fica legível com pelo menos 1,2 s de ×2 antes do JOGAR. O Rei sai cortado pela borda esquerda no ×2 do LETHAL, mas o assunto do plano é o painel, que acende e prende o olho. Aceito. N1, N4 e C4 vão a 9.
+
+Zero quadros pretos; −14,2 LUFS, −1,1 dBTP, LRA 9,3; pico +3,0 dB (−8,4 contra −11,9 fora do clímax). O resto continua como na rodada 1.
+
+### Q, queda do Rei: **6/10**
+Comparei a queda do 5b com a do corte 4 no mesmo instante (54,3 e 55,0 s): **é praticamente a mesma** (`g5b/c4c5.png`). Mudou o enquadramento por poucos pixels e só. O que está na tela:
+- 53,4–53,8 s: hit-stop com flash, tremor e o "48" (bom);
+- 53,8–54,9 s: o Rei de pé, quase parado (o movimento médio da imagem fica em ~2,7 por quadro, só a câmera descendo 2 px por quadro), já pequeno no quadro ×2 e dessaturado, com "BREAK THEM BACK." em cima;
+- 55,0–55,2 s: a queda propriamente dita acontece em **~0,2 s** (o pico de movimento é 55,05–55,17 s);
+- 55,2–55,96 s: o corpo no chão, na base do quadro, até o coringa.
+
+Ou seja: a queda real dura 0,2 s, no rodapé do quadro e dessaturada. O olho vê "Rei parado → Rei no chão". Nenhum dos recursos pedidos pelo Grimoire às 18:57 entrou: nem mais perto, nem tremor ou poeira no impacto do corpo, nem a ajoelhada segurada.
+
+**Exijo**, dentro de ≤ 2,5 s do 48 ao corpo no chão e só com degraus inteiros:
+1. **um degrau ×2 → ×3 no mesmo centro** no instante em que o Rei começa a ceder (cerca de 54,6 s), com o corpo ocupando a metade de baixo do quadro;
+2. **a ajoelhada segurada** de 0,4 a 0,6 s (congelar ou desacelerar em passo inteiro de quadro: repetir quadros, nunca interpolar), para o espectador ler "ele caiu de joelhos";
+3. **o impacto do corpo** com tremor curto (6 a 8 quadros, passos pares, como no golpe) e poeira ou faíscas (as partículas do próprio jogo servem) no quadro em que ele toca o chão, junto com o baque no som (o `bossDeathThud` / `swordSound` já existem; confira que ele cai **no** quadro do toque);
+4. o "BREAK THEM BACK." entrando **depois** do impacto, ou acima do Rei sem cobrir a coroa no ×3.
+
+| nota | antes (rodada 1) | 5b |
+|---|---|---|
+| C4 Legibilidade | 8 | 9 |
+| N1 virada | 8 | 9 |
+| N4 zoom no miolo | 7 | 9 |
+| ponto 4 do Grimoire (corte 4) | 8 | 9 |
+| **Q queda do Rei** | — | **6** |
+| C6 Pico | 10 | **8** (o pagamento visual da queda não se lê) |
+| G5 golpe final forte | 9 | 9 (o golpe é forte; a falha está depois dele) |
+
+As demais notas são as da rodada 1, todas ≥ 9. **Status da Tirano 5b: NÃO APROVADO por um único item, a queda (Q 6, C6 8).** A variante do Rei (`grimoire_zero_corte5_rei_720p.mp4`, 19:14) é anterior à virada 5b; reviso a que sair com a virada e a queda novas.
