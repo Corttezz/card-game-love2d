@@ -127,6 +127,40 @@ def apply_fx_from(c, src, out):
                 arr = np.array(lay); arr[..., 3] = (arr[..., 3] * a).astype(np.uint8); lay = Image.fromarray(arr)
             im.alpha_composite(lay)
             frames[k0 + i] = cv2.cvtColor(np.array(im.convert('RGB')), cv2.COLOR_RGB2BGR)
+    if 'freeze' in fx:
+        t, n = fx['freeze']
+        k = idx(t)
+        if 0 <= k < len(frames):
+            L0 = len(frames)
+            frames = frames[:k] + [frames[k]] * n + frames[k:]
+            frames = frames[:L0]
+    if 'shake2' in fx:
+        t, n, amp = fx['shake2']
+        k0 = idx(t)
+        for i in range(n):
+            k = k0 + i
+            if not 0 <= k < len(frames):
+                continue
+            a = amp * (1 - i / n)
+            dy = int(round(a * (1 if i % 2 == 0 else -1) / 2)) * 2
+            frames[k] = cv2.warpAffine(frames[k], np.float32([[1, 0, 0], [0, 1, dy]]), (W, H), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REPLICATE)
+    if 'dust' in fx:
+        t, n = fx['dust']
+        k0 = idx(t)
+        rng = np.random.default_rng(5)
+        P = [(rng.uniform(760, 1780), rng.uniform(960, 1010), rng.uniform(-2.5, 2.5), rng.uniform(-3.2, -0.8), rng.integers(2, 4)) for _ in range(46)]
+        for i in range(n):
+            k = k0 + i
+            if not 0 <= k < len(frames):
+                continue
+            a = 1 - i / n
+            f = frames[k]
+            for (x, y, vx, vy, sz) in P:
+                px = int((x + vx * i) // 6 * 6); py = int((y + vy * i + 0.03 * i * i) // 6 * 6)
+                s = int(sz) * 6
+                if 0 <= px < W - s and 0 <= py < H - s:
+                    roi = f[py:py + s, px:px + s].astype(np.float32)
+                    f[py:py + s, px:px + s] = (roi * (1 - 0.7 * a) + np.array([150, 160, 170], np.float32) * 0.7 * a).astype(np.uint8)
     if 'zoom' in fx:
         z0, z1 = fx['zoom']
         n = len(frames)

@@ -151,7 +151,7 @@ def _snap_real(ids):
     for cid in ids:
         i = [k for k, c in enumerate(CLIPS) if c['id'] == cid][0]
         a, b = CLIPS[i - 1], CLIPS[i]
-        lo, hi = a['t0'] + 1.0, b['t1'] - 1.0
+        lo, hi = a['t0'] + 1.3, b['t1'] - 1.3
         nt, _ = O.best(t, fl, b['t0'], WIN.get(cid, 0.45))
         nt = min(max(nt, lo), hi)
         d0 = nt - b['t0']
@@ -161,7 +161,7 @@ def _snap_real(ids):
     for tx in TEXTS:
         host = [c for c in CLIPS if c['id'] == tx['host']][0]
         need = max(1.2, len(' '.join(tx['lines'])) / 13.0 + 0.4)
-        t0 = min(max(tx['t0'], host['t0']), host['t1'] - need)
+        t0 = max(host['t0'], min(max(tx['t0'], host['t0']), host['t1'] - need))
         tx['t0'], tx['t1'] = round(t0, 3), round(min(host['t1'], max(tx['t1'], t0 + need)), 3)
 
 
