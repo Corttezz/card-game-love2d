@@ -65,3 +65,12 @@ Decisão do Daniel (01/11 16:39), recebida pelo Grimoire (`E:\dev\_orquestracao\
 8. "A ROGUELIKE DECKBUILDER"
 
 "FROST LOCKS YOUR HAND." sai; "CHAINS." entra. As reservas antigas (BUILD A LIVING DECK., SIX ACTS., EVERY BOSS IS A PUZZLE.) deixam de valer. O corte 2 também traz o número de dano grande no quadro congelado do golpe final e a cabeça do Espantalho dentro do quadro 0 (pôster); os pontos da revisão do Grimoire entram na mesma rodada.
+
+## Música, trocas e ciclo (01/11 16:42-16:43)
+Decisões do Grimoire (16:42 e 16:43), recebidas por `tdz_c2b.txt` na pasta de orquestração:
+1. A versão principal do corte 2 fica com a faixa do Tirano (`boss-abyss_tyrant.mp3`).
+2. Gerar também uma variante 720p do **mesmo** corte com a faixa do Rei-Carniça (`boss-carrion_king.mp3`), com o buraco de grave **corrigido pela montagem e pelo sound design**, não só trocando a faixa. Nomes: `grimoire_zero_corte2_1080p.mp4`, `grimoire_zero_corte2_720p.mp4` e `grimoire_zero_corte2_rei_720p.mp4`.
+3. A revisora revisa as duas versões, com ≥ 9 nos 14 critérios e nos 7 pontos de `revisao-grimoire-corte1.md`.
+4. Daqui em diante, nenhuma troca de faixa, texto ou salão sem aprovação. Para propor troca: escrever **PERGUNTA** no relato e esperar.
+5. Ciclo contínuo e automático: corte → revisora → Grimoire → refino, até ficar muito bom, sem ninguém parado. Enquanto o Grimoire revisa, a diretora adianta refinos que não troquem faixa, texto ou salão.
+6. Nada de 4K, Steam, push ou save real.
