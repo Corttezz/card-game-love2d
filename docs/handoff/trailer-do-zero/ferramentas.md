@@ -115,3 +115,18 @@ Chamadas disponíveis no gravador (`_G.__cheatApi`, `CheatMode`, helpers do `tra
 | `zero_fight` (LETAL) | `goToAct(1, true)` → `combatReady` → `game.player.health = 9` → `enemy.health` ajustado para a mão fixa matar → hover na carta | a prévia mostra **LETAL** e a vida baixa do jogador; JOGAR; o chefe morre (cinemática de morte) | quadro com "LETAL" no painel; quadro do golpe com o número; quadros da morte |
 | `zero_monarch` (Geada) | `goToAct(4, true)` → `combatReady` → `game.player.frost = threshold` (`BossMechanics.frostSpec(game).threshold`) → fim de turno → compra | `BM.onPlayerDraw` congela as 2 cartas mais caras (`card.frozen`); um ataque derrete uma | quadro da mão com 2 cartas congeladas; quadro de uma carta derretendo |
 | `zero_tyrant` (Correntes) | `goToAct(3, true)` → `combatReady` → `enemy.health = ceil(0,76·maxHealth)` → jogar ataque ≥ 2% | `BM.onDamaged` cruza 75% e enfileira `chain_break`: a corrente rompe e o golpe anunciado cai pela metade | quadro antes (3 marcas), quadro do rompimento, intent reduzido |
+
+### 5.10 Salões do Higgsfield, v2 (rodada 2 da revisão)
+Script versionado: `docs/handoff/trailer-do-zero/integra_salao.py` (`python -I integra_salao.py <castle_hall_N.png> <quadro_IA.png> <prefixo> 0.30 0.80`). Mudanças contra a v1, que lavava o salão:
+1. **Luminância por percentis** (0,5/2/10/25/50/75/90/98/99,5) do canal L do LAB, interpolada por trechos, em vez de média e desvio: o preto profundo e os meios-tons seguem o salão real.
+2. **Camada emissiva protegida**: os pixels acima do p97 de luma no quadro cru (chama, tochas) não são comprimidos (mapeados para o topo da faixa) e mantêm o croma; a paleta de quantização (k-means, 64 cores) é tirada do salão real **mais** esses pixels emissivos, para a chama ter cor própria.
+3. **Croma por matiz**: vermelhos (a* > 14: estandartes, tapete) ×0,80; o resto ×0,30. A v1 com fator único deixava os vermelhos marrons.
+
+Medidas (sem CRT, 1920×1080) real | IA cru | v1 | **v2**: luma 42,5 | 66,8 | 43,1 | **43,9**; desvio 30,9 | 42,1 | 28,9 | **36,5**; p2 1 | 1 | 6 | **1**; saturação 97,7 | 138,1 | 119,2 | **106,9 (+9,4%, dentro de ±10%)**. O p98 fica em 171 (real 120) porque a chama do Higgsfield ocupa mais quadro que a do real; é destaque emissivo, não lavagem. Imagem com CRT: `scratchpad\crop\hall_comparacao_v2.png` (real | cru | v1 | v2).
+
+### 5.11 Regra de ordem: salão de IA × salão real × chefe
+O salão de IA é um plano **fechado do trono vazio**; o salão real do jogo é o plano **aberto**, sem trono no arco (castle_hall_1) e, na luta, com o chefe dentro. Para não aparecer nem sumir objeto, nem esvaziar um salão já ocupado (regra 4 do §7 do diagnóstico):
+1. O salão de IA de um chefe só entra **antes** de esse chefe aparecer no salão (apresentação do chefe seguinte, ou acento antes da porta). Nunca depois de um plano em que o chefe já está no salão.
+2. Quando IA e real do mesmo chefe forem vizinhos, **a IA vem primeiro** (o trono esperando → o salão aberto com o chefe). Real → IA do mesmo salão só se houver um plano de outra coisa entre os dois.
+3. Cada salão de IA ocupa **um grave** (1,0 a 1,3 s) e é marcado ◆ (salto de luz intencional) no storyboard.
+O `roteiro.md` (§4) foi ajustado para cumprir as três.

@@ -39,7 +39,7 @@ Risco declarado: o trecho calmo da faixa (19,7 a 39,6 s do filme) não tem grave
 - Texto: inglês (página da Steam), Grimoire Pixel em escala inteira, contorno, **nunca sobre a carta que é o assunto** (zona de texto = terço superior quando a mão está embaixo); ≥ 1 s parado a cada 13 caracteres; ≤ 4 palavras por tela.
 - Números na tela só os contados (§6.1 do diagnóstico): 145 cartas, 42 criaturas, 6 atos, 6 chefes.
 - Som: SFX reais do jogo pelo `audio.jsonl` das tomadas novas (`remix_engine.py`); silêncio ≥ 15 dB abaixo do trecho anterior; marca "**não publicável até trocar ou licenciar os SFX**".
-- Salões do Higgsfield nos acentos (decisão do Daniel), tratados (§5.6 das ferramentas), sempre como plano fechado **depois** do salão real do mesmo chefe.
+- Salões do Higgsfield nos acentos (decisão do Daniel), tratados (§5.10 das ferramentas), na ordem do §5.11: sempre **antes** de o chefe ocupar o salão, IA primeiro quando vizinha do real, um grave cada, ◆.
 
 ## 4. Storyboard
 
@@ -76,17 +76,19 @@ Legenda das tomadas novas (gravador `card-game-trailer-zero`, `TRAILER_OUT=trail
 
 | t (s) | imagem | escala | texto | som |
 |---|---|---|---|---|
-| 31,0 ◆ | a porta abre; corte para o **salão vazio e escuro** do Rei-Carniça | ×1 | — | baque do portão no corte; música **some** (rampa de 0,4 s) |
-| 31,5 → 37,0 | **silêncio**: dois olhos acendem; piscam; três rasantes de corvo; o Rei pousa no trono (entra pela **direita**, como no B) | ×1 → ×2 no pouso | — | só o salão: `boss-room`, olhos, asas, corvos, pouso; nada de música (≤ −32 LUFS de curto prazo) |
+| 31,0 ◆ | a porta abre: **IA hall1 tratado**, o trono vazio no fogo (1 grave de 1,0 s, apresentação: o Rei ainda não chegou) | ×1 | — | baque do portão no corte; música **some** (rampa de 0,4 s) |
+| 32,0 ◆ | as luzes caem: o **salão real, vazio e escuro** do Rei-Carniça (cinemática do jogo) | ×1 | — | só o salão |
+| 32,0 → 37,0 | **silêncio**: dois olhos acendem; piscam; três rasantes de corvo; o Rei pousa no trono (entra pela **direita**, como no B) | ×1 → ×2 no pouso | — | só o salão: `boss-room`, olhos, asas, corvos, pouso; nada de música (≤ −32 LUFS de curto prazo) |
 | 37,0 → 39,5 | cartão de nome do jogo: **CARRION KING / Sovereign of Crows**; corvos circulam o trono | ×1 | (o cartão do jogo é o texto) | `boss_reveal_sting`; respiração do salão |
 | **39,76** | **drop**: o Rei ordena a **Revoada**: cada golpe é um corvo da órbita mergulhando no painel do herói (a contagem de corvos ao redor dele é o status `swarm`, visível) | ×2 | **EVERY BOSS / BREAKS THE RULES.** (2 telas: 39,76 e 41,0; até 43,2) | **música volta no grave** com o corvo do jogo |
-| 41,0 | IA: plano fechado do trono do Rei (hall1 tratado), corvos | ×1 | (2ª tela do texto) | grave |
-| 42,3 ◆ | **Monarca do Inverno**: salão real com o chefe; geada sobe na barra | ×1 | — | grave; vento do salão |
+| 41,0 | o Rei no salão real, a órbita de corvos refeita (contagem `swarm` visível) | ×1 | (2ª tela do texto) | grave |
+| 42,3 ◆ | **IA hall4 tratado**: o trono de gelo vazio (apresentação do Monarca) | ×1 | — | grave; vento |
+| 43,0 | **Monarca do Inverno** no salão real; a Geada sobe | ×1 | — | vento do salão |
 | 43,5 | a mão: **duas cartas congelam** (as mais caras); o jogador joga um ataque e uma derrete | ×2 | **FROST.** (uma palavra, no grave de 43,5; até 45,0) | gelo do jogo, derretimento |
-| 46,0 | IA: plano fechado do salão de gelo (hall4 tratado) | ×1 | — | grave |
-| 47,3 ◆ | **Tirano do Abismo**: salão real com o chefe e as 3 marcas douradas na barra | ×1 | — | grave; corrente |
+| 46,0 ◆ | **IA hall3 tratado**: o trono de lava vazio (apresentação do Tirano) | ×1 | — | grave |
+| 47,3 | **Tirano do Abismo** no salão real, com as 3 marcas douradas na barra | ×1 | — | grave; corrente |
 | 48,5 | um golpe cruza 75%: **a corrente rompe**, o golpe anunciado cai pela metade | ×2 (na barra e no intent) | **CHAINS.** (48,5 a 50,0) | rompimento da corrente, ganho de força |
-| 50,8 | IA: plano fechado do trono de lava (hall3 tratado) | ×1 | — | grave |
+| 50,8 | o Tirano, mais forte, anuncia o golpe já cortado pela metade | ×2 (intent) | — | grave |
 | 52,0 ◆ | volta ao salão do **Rei-Carniça**, o guerreiro com **9 de vida** (barra vermelha); mão dada | ×1 | — | grave; batimento de vida baixa do jogo |
 | 53,1 | hover nas cartas: o painel da prévia acende **LETHAL** | ×2 (painel + mão) | (o LETHAL do jogo é o texto) | hover; música −6 dB |
 | 53,9 → 54,5 | JOGAR; as cartas sobem | ×2 | — | **respiro**: música fora 0,6 s (≤ −30), só o clique e o voo |
