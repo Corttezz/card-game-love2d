@@ -156,3 +156,27 @@ Imagem: `scratchpad\diag\micro_ABC.png`.
 | C (22/28/35/44/50/56 s) | serpente + texto | salão IA com runas | salão IA de gelo | salão escuro (olhos) | combate plano aberto | bússola no escuro |
 
 18 fatias: **0** com carta legível; 3 de combate (carta ilegível); 4 com criatura (3 delas cobertas por texto); 6 de salão ou estrada sem ação; 2 de salão escuro; 3 de bússola no escuro. Reforça as conclusões 1 e 2. Regra para o corte novo: entre 30% e 90% da duração, **todo segundo** tem carta grande ou criatura em ação; nada de logo antes de 90%.
+
+## 7. Continuidade entre planos (pedido da revisão D7 e da régua de 01/11 14:27)
+
+Folhas a 4 quadros/s do B, 8 a 24 s e 28 a 44 s (`scratchpad\diag\cont_B_8_24.jpg`, `cont_B_28_44.jpg`). O C e o A repetem os mesmos blocos e os mesmos defeitos.
+
+| t (s) no B | corte | defeito de continuidade |
+|---|---|---|
+| 10,75 | espólio (vermelho escuro, interior) → estrada do ato 1 (dia, verde claro) | salto de luminância grande e de lugar, sem motivo narrativo |
+| 13,25 / 14,75 / 16,75 / 17,75 / 19,0 | ato 1 → 2 → 3 → 4 → 5 → 6 em chicote | a cada 1,0 a 1,5 s a cor do quadro inteiro troca (verde dia → azul noite → vermelho → branco neve → verde pântano → roxo crepúsculo), com luminância subindo e descendo; o lampião troca de lado (direita, esquerda, esquerda embaixo, direita), e o castelo muda de tamanho e de altura no horizonte de ato para ato. O texto "SIX ACTS." fica parado por cima: é o único elemento contínuo |
+| 22,5 → 23,75 | grifo (azul noite) → anjo (vermelho) | o corte cai no meio da frase "YOUR CARDS / DECIDE": a frase atravessa dois cenários de cor oposta |
+| 29,5 | loja (vermelho, ato 3) → porta do castelo (verde, ato 1) | volta no tempo da jornada: da loja de um ato adiantado para a porta do ato 1 |
+| 33,5 → 36,75 | olhos no escuro → Rei-Carniça entra pela **direita** e pousa no centro | bom: escuro contínuo, direção de movimento única (direita → centro) |
+| 38,75 | salão real do Rei (captura, tons terrosos) → salões IA (roxo/laranja/azul/verde saturados) | quebra de **estilo**: a arte de IA tem contraste e saturação diferentes da captura; lê como outro jogo |
+| 45,75 → 46,5 | coração IA → salão do Rei com o **trono vazio** → o Rei reaparece na luta | o chefe que já tinha pousado some e volta: salto de estado |
+| 55,0 | luta → glitch → bússola | saída da luta sem consequência (o chefe não morre, nada fecha) |
+
+**Regras de continuidade que o roteiro herda:**
+1. **Âncora fixa por sequência**: o castelo no centro (já é regra do jogo) e a altura do horizonte iguais entre os atos; quando a sequência for de atos, usar o **mesmo enquadramento** em todos para que só a luz/estação mude (corte de correspondência, não salto).
+2. **Cor em rampa**: entre planos seguidos, a luminância média não varia mais que ~25% sem motivo (porta, flash, entrada de chefe). Ordem de atos pela cor que flui (dia → crepúsculo → noite) e não pela numeração, ou a mudança brusca é o próprio acento no grave.
+3. **Direção de movimento coerente**: carta voa da mão (baixo) para o inimigo (centro alto); criaturas entram sempre pelo mesmo lado dentro de uma sequência; câmera virtual (recorte) anda num só sentido por sequência.
+4. **Estado contínuo**: chefe que entrou fica; luta que começou termina (golpe final + morte ou derrota); nada de voltar ao trono vazio.
+5. **Tempo da jornada só anda para a frente**: ato 1 → 6 → castelo/chefe; loja e espólio no ato em que estão.
+6. **Um estilo de imagem**: só captura do jogo (decidido em §6.4); nenhum plano com saturação/contraste de outra fonte.
+7. **Frase não atravessa corte de cor oposta**: o texto troca junto com o plano ou o plano fica até o texto sair.

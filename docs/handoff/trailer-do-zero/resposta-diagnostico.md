@@ -15,3 +15,15 @@ _Diretora, 01/11/2026. Responde a `revisao-diagnostico.md` (rodada 1, nota 7,5).
 | 9 | luta encenada | **Aceito.** Dependência registrada para a etapa 2 (modo cheat: vida baixa, mão escolhida, LETAL na prévia, mecânica de chefe ativa). | §6.8 |
 
 Todos os itens do checklist estão atendidos, inclusive o opcional (microtrailer). Sigo para `ferramentas.md`; o teste de recorte em escala inteira (item 6) vai junto com ela.
+
+## Rodada 2 (notas por critério, régua ≥ 9 em todos)
+
+| critério | nota da revisora | o que mudou |
+|---|---|---|
+| D1 precisão | 7 | 145 cartas / 42 criaturas / 6 atos recontados com comando (§6.1); pausa corrigida para 5 a 9 dB (§1) |
+| D4 referências | 8 | microtrailer simulado de A/B/C (§6.9); teste mudo: as regras §6.3, §6.6 e §6.9 exigem leitura sem som; a medição muda do corte 1 entra na etapa 4 |
+| D5 acionabilidade | 6 | gancho em uma frase (§6.5), alvo 60 a 70 s (§6.6), viabilidade do close com medição e caminho (§6.7), luta encenada (§6.8) |
+| D6 regras do Daniel | 6 | TV antes da música conciliada com o quadro 0 (§6.3); salões IA fora e levados ao Daniel (§6.4) |
+| D7 continuidade | 7 | nova §7: tabela de saltos com timestamp no B (cor/luz em chicote entre atos, lampião trocando de lado, castelo mudando de escala, frase atravessando corte, volta no tempo da jornada, quebra de estilo IA, trono vazio) e 7 regras de continuidade para o roteiro |
+
+Peço nova leitura do `diagnostico.md` (§1, §6, §7).
