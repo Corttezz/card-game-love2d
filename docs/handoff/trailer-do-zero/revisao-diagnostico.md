@@ -29,3 +29,23 @@ O diagnóstico é bom e honesto. Ele acerta no defeito nº 1 (ninguém consegue 
 - [ ] Tabela do microtrailer simulado de A/B/C (opcional para aprovar, recomendada).
 
 Os itens 1, 2, 5 e 8 bastam para eu dar 9. Os itens 3, 4 e 6 podem ser resolvidos no roteiro ou nas ferramentas, desde que estejam escritos lá.
+
+## Régua nova (regra do Daniel, 01/11): nota por critério, aprovação só com ≥ 9 em TODOS
+
+A partir desta etapa cada revisão traz uma nota por critério. Só aprovo quando **todos** os critérios tiverem nota ≥ 9. Se um critério ficar em 8 ou menos, há outra rodada antes de liberar. `===CORTE1_PRONTO===` só pode ser marcado depois de eu aprovar o corte 1. Depois disso o Grimoire ainda revisa e pode devolver o corte.
+
+**Critérios que vou usar no corte 1** (os 10 de `trailer-kinetic-referencias.md` mais os da regra nova): C1 gameplay até 2 s · C2 sem preto · C3 sincronia corte/texto ↔ grave · C4 legibilidade (carta e texto) · C5 ritmo · C6 pico em 75 a 82% · C7 regra de 3 do gancho · C8 fecho · C9 conformidade (cenários válidos, moldura, flashes, −14 LUFS, marca "não publicável" nos SFX) · C10 checklist do Daniel · C11 **continuidade entre planos** (posição, luz, cor, direção do movimento, nada pulando) · C12 **está bom / é legal de assistir** · C13 **prende do início ao fim** (sem trecho morto; curva de energia) · C14 som (contraste: pausa ≥ 15 dB, som do jogo solo nos momentos certos, ponto final sonoro).
+
+### Notas por critério do diagnóstico (rodada 1)
+
+| critério da etapa | nota | por quê |
+|---|---|---|
+| D1 Precisão das medições | 7 | "137" desatualizado (são 145); pausa medida como 3 a 5 dB quando é 5 a 9 |
+| D2 Cobertura (todas as versões, imagem + som) | 9 | v3 a C e os `_som`, por quadro, onda, R128 e cortes |
+| D3 Causa raiz (por que está ruim) | 9 | cartas ilegíveis, paisagem com legenda, parede de som, sem história, chefes viraram cenário: concordo com tudo e cheguei às mesmas conclusões sozinha |
+| D4 Uso das referências do gênero | 8 | boa tabela "o que nos falta"; não mede o microtrailer simulado nem o teste mudo |
+| D5 Acionabilidade (o roteiro sai daqui?) | 6 | o gancho não foi escolhido, faltam alvo/duração e a viabilidade do close |
+| D6 Respeito às regras e pedidos do Daniel | 6 | o quadro 0 com carta choca com "TV antes da música" sem conciliação; os salões de IA ficaram sem posição |
+| D7 Continuidade e "prende" (o diagnóstico enxerga isso?) | 7 | aponta imagem parada e falta de curva de emoção, mas não analisa a continuidade entre planos (direção de movimento, salto de luz/cor entre ato e ato no chicote, ex.: B 13→14 s azul-noite → vermelho) |
+
+**Status: NÃO APROVADO** (D1, D4, D5, D6 e D7 abaixo de 9). Para D7, peço uma linha sobre continuidade nas versões atuais (saltos de cor/luz entre os atos em chicote, inimigo que muda de lado, a moldura que "respira" no corte) para o roteiro já nascer com essa regra.
