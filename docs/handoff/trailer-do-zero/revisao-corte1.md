@@ -59,3 +59,45 @@ O que impede o ≥ 9 é que **as três coisas que o filme existe para provar fic
 | C14 Som | 7 | contraste e pico medidos certos; duplicações, empilhamento e clima externo no salão |
 
 **Status: NÃO APROVADO.** Para a rodada 2 exijo os itens 1, 2, 5, 6, 7, 9, 10, 11 e 14. Os itens 3, 4, 8, 12, 13 e 15 também devem ser resolvidos ou respondidos com motivo. Quase tudo é de montagem/mixagem (recorte, posição de legenda, filtro de eventos por clipe). Só os itens 5 e 7 podem pedir uma regravação curta da tomada `zero_carrion`, se o recorte da tomada atual não der. `===CORTE1_PRONTO===` não pode ser marcado.
+
+## Rodada 2 (vídeos regravados às 16:14/16:15 + resposta-corte1.md), NÃO APROVADO
+
+Refiz todas as medidas no 1080p novo (`...\scratchpad\rev\c2_1080\`, quadros em `...\rev\fr2\`) e conferi o som no 720p. Ambos: 68,50 s, −14,0 LUFS, LRA 9,4, −1,2 dBTP. Os 28 clipes e os 6 textos continuam a 0,0 quadro do grave, menos os do silêncio, como declarado. No `mix_sources.json`: o portão só a 20,35 s, o pouso só a 27,77 s, nenhum clima externo nos clipes do castelo e de 0 a 0,89 s só o liga-TV.
+
+### Resolvidos (conferidos)
+- **1 quadro 0:** vidro inteiro aberto, as 5 cartas com nome legível e o Espantalho acima (`fr2/q0.png`). Leve ruído e dessaturação do liga-TV, aceitável. Detalhe: a cabeça do Espantalho sai pelo topo do recorte. Se der para descer o recorte uns 40 px de captura, o pôster ganha um rosto.
+- **2 cascata:** aceito o argumento (o jogo mantém as cartas na frente do inimigo enquanto resolvem). O ×2 agora pega o "−13" subindo, o banner Volley +18, o Espantalho "Enraged" e a morte num ×2 próprio. A escalada se vê.
+- **5 Revoada, plano 1** (Rei anunciando "Murder of Crows", intent 4×4, órbita): ótimo.
+- **6 correntes:** excelente. Rosto do Tirano, as correntes, o intent **20 → 10** e o "Half strike / Chain snapped! +1 damage" do jogo, no mesmo enquadramento antes e depois. É a melhor prova do filme junto com a Geada.
+- **8, 9, 10, 11, 12, 13, 14:** resolvidos. O ato 5 voltou; nada de som duplicado, empilhado ou de fora dentro do salão.
+- **4 LETHAL na abertura:** aceito o argumento de preparação e pagamento. O `k_volta` (52,7 s) mostra a 1 s de distância **HERO 9/70** e **47 LETHAL** legíveis a ×1, e a palavra já foi ensinada na abertura.
+- **15 silêncio:** −24,5 / −25,7 de curto prazo em 25–26 s contra −13,3 do groove (12 dB), com o leito só de ambiente e zero música. Fica abaixo da meta escrita de ≥ 15 dB no mix porque os olhos, os rasantes e o pouso fazem parte do trecho, o que é a meta reescrita (leito ≤ −30, eventos com nível). Aceito.
+
+### O que ainda segura
+1. **57,5–59,5 s, a morte do Rei sai do quadro e o clímax vira um arco vazio.** No ×2 (480,200) o corpo afunda e sai pela borda de baixo. Por cerca de 2 s o quadro é o arco vazio do salão com "BREAK THEM BACK." e só a ponta das asas no rodapé (`fr2/x_58.3.png`). É o momento de pagamento do filme (81 a 87%) e a imagem é um corredor sem ninguém. **Exijo** que o recorte acompanhe o corpo (descer o recorte ao longo da queda, a 60 ou 120 px/s pela regra de câmera, ou ×1 a partir do meio da queda), para que a morte termine com o corpo no quadro até o coringa subir dele, que é o que a ponte para o logo pede.
+2. **9,99–11,78 s, "145 LIVING CARDS." encavalado com a faixa de raridade do próprio jogo.** O texto fica na mesma linha do "◆ COMMON ◆" do espólio: aparece "145 ·MOI· LIVING CARDS·OMMON ◆" (`fr2/espolio_topo.png`). Dois textos se cortando, o que lê como erro. **Exijo** o texto numa linha livre (abaixo da faixa ou acima, deslocando o recorte) ou a faixa do jogo fora do recorte.
+3. **34,94–37,22 s, Revoada, plano 2: ainda fraco.** O recorte (0,540) mostra o chão do corredor com os corvos como manchas roxas de poucos pixels perto do painel, um "Weak" pequeno, e **HERO 70/70 parado** enquanto os corvos chegam (`fr2/x_35.8.png`). O modo deus do gravador é visível: o golpe chega e a vida não mexe, o que diz "o ataque não fez nada", o contrário da prova. **Exijo** uma de duas: regravar só a Revoada sem modo deus (vida 70 → caindo a cada corvo, o que também prepara os 9 de vida do LETAL), **ou** cortar o plano 2 e ficar com o plano 1 (que já prova a regra: intent 4×4 "Murder of Crows" + órbita) até o grave seguinte. A 2ª é só montagem.
+
+### Observação menor (não segura)
+- 55,84 s, hit-stop: o quadro congelado mostra o Rei já dessaturado e o banner "Volley +18", sem número de dano grande. Com o item 1 resolvido, a sequência dessaturação → queda → coringa carrega o pico; o número enorme fica como melhoria, não como exigência.
+
+## Notas por critério (rodada 2)
+
+| critério | r1 | r2 | por quê |
+|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 7 | 9 | quadro 0 legível e sem preto |
+| C2 Sem preto | 8 | 9 | 0,61% de quadros escuros (silêncio e fade) |
+| C3 Sincronia | 10 | 10 | — |
+| C4 Legibilidade | 6 | **8** | cascata, correntes e Geada ok; texto encavalado no espólio (2); Revoada plano 2 ilegível (3) |
+| C5 Ritmo | 8 | 9 | — |
+| C6 Pico | 7 | **8** | som +2,4 dB no lugar; a imagem do pagamento é um arco vazio por 2 s (1) |
+| C7 Regra de 3 | 7 | **8** | correntes e Geada provam; Revoada só no plano 1, e o plano 2 desmente com 70/70 |
+| C8 Fecho | 9 | 9 | — |
+| C9 Conformidade | 9 | 9 | — |
+| C10 Checklist do Daniel | 8 | 9 | sem duplicações; porta, chefe inteiro, salões IA, música contínua |
+| C11 Continuidade | 7 | 9 | ordem, estado e som coerentes; o 70/70 → 9/70 se explica pela montagem do meio |
+| C12 Está bom / legal de assistir | 8 | **8** | ganhou muito; ainda perde no pagamento (1) |
+| C13 Prende do início ao fim | 8 | **8** | o arco vazio no clímax e o corredor da Revoada são os dois pontos mortos que restam |
+| C14 Som | 7 | 9 | sem duplicação nem empilhamento; silêncio e pico medidos |
+
+**Status: NÃO APROVADO, faltam 3 itens:** (1) a morte acompanhando o corpo, (2) o texto do espólio fora da faixa de raridade e (3) a Revoada plano 2 regravada sem modo deus ou cortada. Os itens 2 e 3 (na opção de cortar) são só montagem; o 1 é recorte. Com os três resolvidos, C4, C6, C7, C12 e C13 vão a 9 e o corte 1 sai aprovado.
