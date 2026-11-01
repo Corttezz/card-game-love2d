@@ -7,7 +7,7 @@ _Diretora, 01/11/2026. Base: inventário de 01/11 da frente de som (`docs/handof
 | ferramenta | onde | o que acrescenta a ESTE trailer | veredito |
 |---|---|---|---|
 | **Gravador headless** `tools/trailer_record.lua` | worktree novo `E:\dev\projects\card-game-trailer-zero`, branch `trailer-do-zero` (a partir de `steam-store-v2` 9a00d164) | jogo real quadro a quadro, relógio simulado, 60 fps, áudio do jogo logado em `audio.jsonl`; 39 tomadas prontas (`poweron`, `night`, `entrances`, `deck8`, `boss8`, `bosses`, `eclipse`, `inspect`, `collection2`, `pack`, `reward`, `shop`, `victory`, `fork`...); chaves `TRAILER_CRT=0`, `TRAILER_NOBEZEL=1`, `TRAILER_SIZE`, `TRAILER_PIPE=1` (grava mkv direto, sem TGA) | **USAR: base de toda imagem.** Mudança feita: `TRAILER_OUT=<pasta>` (antes a saída era fixa em `trailer/` e regravar apagava as tomadas dos trailers antigos) |
-| **Recorte em escala inteira** (ffmpeg `crop` + `scale=flags=neighbor`) | — | a carta legível (ver §2) e a câmera virtual dentro do jogo | **USAR** |
+| **Recorte em escala inteira** (ffmpeg `crop` + `scale=flags=neighbor`) | — | a carta legível (§2, §5.1) e a câmera virtual dentro do jogo (§5.3) | **USAR** (×1 e ×2; ×3 sai, §5.2) |
 | **Modo cheat** (`src/systems/CheatMode.lua`, via `_G.__cheatApi` no gravador) | jogo | luta encenada: ir ao ato/chefe, vida, mana, mão, matar/vencer; `forceEnemy` | **USAR** para a luta roteirizada (§3) |
 | **Pipeline Kinetic Film local** | `E:\dev\_orquestracao\skills-externas\kinetic-film\` (`grimoire_b` como molde: `make_edl.py`, `compose.py` com OpenCV, `layer.py`/`render_layer.mjs` para o texto, `mixdown.py`; `patches/fx.py` com `JokerPatch` e o `lift` de luminância) | montagem por EDL na grade de beats; tipografia pixel renderizada como camada; moldura `bezel_ring/mask` | **USAR**, num filme novo `grimoire_zero` (cópia do `grimoire_b`, sem tocar nos outros) |
 | **Motor de remix de som** | `docs/handoff/trailer-revisao-som/remix_engine.py` + `plan_*.py` | coloca cada SFX real do jogo no quadro certo a partir do `audio.jsonl` e da EDL; automação/ducking da música; ganho linear até −14 LUFS + limitador | **USAR** com um `plan_zero.py`; a automação da música passa a ser de silêncio real (meta §6.2 do diagnóstico) |
@@ -69,3 +69,49 @@ Toda tomada nova: `TRAILER_CRT=0 TRAILER_NOBEZEL=1 TRAILER_PIPE=1 TRAILER_OUT=tr
 - **Luta encenada pode não sair no 1º take** (o piloto do gravador escolhe cartas por regra): por isso a luta é escrita com mão fixa via cheat, e cada take é revisto em folha antes de ir para o EDL.
 - **Salões de IA saturados** (§7 do diagnóstico): a grade de cor de integração é feita no compositor e medida pela luma (regra 2).
 - **Licença**: tudo o que usa SFX do jogo sai com a marca "não publicável até trocar ou licenciar os SFX"; a música ACE-Step e a síntese local são limpas.
+
+## 5. Provas da rodada 2 (resposta a `revisao-ferramentas.md`)
+
+Worktree `card-game-trailer-zero`, commit `7997aaed` (`test_no_comments_no_prints` 9/0). Imagens e vídeos em `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\7f9e50b0-2a53-4549-9447-d15442060f00\scratchpad\crop\`.
+
+### 5.1 Carta em escala inteira no gravador (item 1)
+Novo `TRAILER_CARD_PX=N`: a carta da mão é desenhada com exatamente N px de tela por pixel lógico (`BASE_SCALE = N / (1 + (k-1)·HAND_GROWTH)`, k = `UiScale.k()`; a 1080p o fator do jogo é 1,25, e por isso a carta normal sai a 1,667 px, irregular), o hover não amplia (`HOVER_SCALE_MULT = 1`) e o `Card.hoverTilt` é envolvido para zerar inclinação, rotação e deslocamento. Só no gravador; o jogo não muda.
+- Medida: corridas horizontais de cor (limiar 20/255, acima do ruído do mkv) dentro da arte de uma carta **em repouso**. Antes (`full_13.png`, escala do jogo): **55% das corridas com largura ímpar**. Com `TRAILER_CARD_PX=2` (`full2_13.png`, carta Backstab): **0,1%** (4 de 2.828); as corridas são 2, 4, 6, 8... Ampliação 5× em `zoom2.png`: blocos 2×2 uniformes.
+- Limite: a carta **selecionada ou em movimento** (Poison Dart levantada, ou durante o `juice_up`) ainda mede 10% ímpares, porque o pulo de escala do juice não é inteiro. Regra do roteiro: close de carta só de carta parada; carta em voo só em ×1 ou num ×2 rápido.
+- Layout: a 2 px/pixel a carta tem 192×288 px; a mão de 6 cartas se sobrepõe um pouco mais que no jogo (`full2_13.png`), sem quebrar nem sair da tela. Os coringas do topo crescem junto e continuam no quadro.
+
+### 5.2 ×3 (item 2)
+Com a carta a 2 px/pixel, o recorte ×2 já dá 4 px por pixel lógico (carta a 576 px, 53% da altura). **Decisão: o ×3 sai do roteiro.** Planos: ×1 (situar, HUD), ×2 (gameplay, carta legível); close máximo = ×2 centrado numa carta parada, ou Coleção/`inspect`.
+
+### 5.3 Câmera virtual (item 3)
+`teste_camera.mp4` (5 s, 1080p): 1 s fixo ×2, 1 s pan a 15 px/s, 1 s a 60 px/s, 1 s a 120 px/s, corte seco ×1 → ×2. Deslocamento medido quadro a quadro (correlação horizontal):
+- 15 px/s (de captura): 2 px de tela a cada 4 quadros → **pula** (7,5 degraus/s visíveis);
+- 60 px/s (1 px de captura por quadro): **2 px de tela em todos os quadros**, uniforme;
+- 120 px/s (2 px/quadro): **4 px em todos os quadros**, uniforme.
+- Achado: com `floor(60*t)` no ffmpeg dava 2, 0, 4, 2, 0, 4 (arredondamento do relógio). A posição tem de vir do **número do quadro** (`x = x0 + n*v`).
+
+**Regra**: pan só com 1 ou 2 px de captura por quadro (60 ou 120 px/s), posição por número de quadro; abaixo disso, enquadramento fixo; mudança de escala só por corte seco, no grave.
+
+### 5.4 CRT do jogo aplicado depois (item 4)
+`tools/trailer_crt_post.lua` roda **o próprio `shaders/crt.glsl` pelo `CRTShader` do jogo** (mesmo `beginScene/endScene`, força 0,75, mesma moldura, relógio simulado por quadro, semente fixa) sobre uma sequência de PNG e grava mkv. Comparação no mesmo quadro (790) da mesma tomada gravada duas vezes, uma com o CRT do jogo e outra sem CRT + pós (`lado_a_lado.png`, `diff_x8.png`): onde o conteúdo é igual nas duas gravações, a diferença média é **2,4/255** no céu e no chão (p99 = 10), **0,14/255** na moldura e 2,9/255 no inimigo, ou seja, ruído de compressão e do grão do shader. O que difere no `diff_x8.png` é conteúdo (as duas gravações deram coringas e mão diferentes), não CRT. Uso: o filme é composto sem CRT a 1920×1080 e o `trailer_crt_post` passa por cima de tudo no fim (scanline na escala do filme).
+
+### 5.5 Liga-TV (item 5)
+`tv_comparacao.png`: em cima, 10 quadros (um a cada 0,2 s) da tomada `poweron` gravada agora com o CRT do jogo; embaixo, o `trailer_crt_post` com `CRT_POWERON=1.8` (o mesmo `CRTShader.powerOn(1.8)` da tomada). As fases coincidem quadro a quadro: preto, ponto, linha, linha cheia, faixa abrindo, imagem rolando, assentada. É a TV do jogo, não uma transição de editor. Para o gancho (§6.3 do diagnóstico) o filme começa no quadro em que a faixa já abriu ~60% (cerca de 1,0 s depois do `powerOn`), via `CRT_SKIP`.
+
+### 5.6 Salões do Higgsfield integrados (item 6)
+Método (`integra.py`): (1) recortar o `castle_hall_N.png` real (400×256) para 16:9 (400×225); (2) reduzir o quadro de IA a 400×225 por área; (3) igualar média e desvio de cada canal LAB ao salão real; (4) quantizar na paleta do salão real (k-means, 48 cores); (5) ampliar por vizinho mais próximo a 1920×1080; (6) CRT do jogo por cima. Teste `hall_comparacao.png` (real | IA cru | IA tratado, os três com CRT): luma média 42,5 | 66,8 | **43,1**; saturação 97,7 | 138,1 | **119,2**. O tratado fica na grade e na paleta do jogo e lê como um **plano fechado do trono do mesmo salão** (a câmera do Higgsfield é mais próxima): no roteiro ele entra como corte para dentro (real aberto → IA fechado), nunca no lugar do plano aberto. Ajuste para o corte: a saturação ainda está 22% acima; baixar no passo 3 até ±10%.
+
+### 5.7 HUD no 1º vídeo (item 7)
+O roteiro terá, antes de 5 s, um plano ×1 de combate com vida, mana, barra do inimigo e mão (como `full2_13.png`). Sai da mesma tomada do ×2, sem tomada extra.
+
+### 5.8 Tooltip (item 8)
+Novo `TRAILER_TOOLTIP=0` (anula `CardInfoDisplay.draw`): mão inteira visível. Quando o texto da carta for a prova, grava-se a mesma ação com o tooltip ligado (padrão) e escolhe-se por plano.
+
+### 5.9 Luta encenada: roteiro técnico (item 9)
+Chamadas disponíveis no gravador (`_G.__cheatApi`, `CheatMode`, helpers do `trailer_record`): `freshRun(classe)`, `BUILDS` (deck e coringas fixos), `CheatMode.goToAct(ato, boss)`, `CheatMode.combatReady`, `CheatMode.newHand`, `CheatMode.kill/winInstant`, `playTurn`/`fastTurns`, `moveToContent`/`click`, `forceEnemy`, `closeBattle`. Faltam três funções de tomada, todas no gravador (dono: diretora, etapa 4, antes da montagem):
+
+| tomada | chamadas | estado esperado | prova na folha de quadros |
+|---|---|---|---|
+| `zero_fight` (LETAL) | `goToAct(1, true)` → `combatReady` → `game.player.health = 9` → `enemy.health` ajustado para a mão fixa matar → hover na carta | a prévia mostra **LETAL** e a vida baixa do jogador; JOGAR; o chefe morre (cinemática de morte) | quadro com "LETAL" no painel; quadro do golpe com o número; quadros da morte |
+| `zero_monarch` (Geada) | `goToAct(4, true)` → `combatReady` → `game.player.frost = threshold` (`BossMechanics.frostSpec(game).threshold`) → fim de turno → compra | `BM.onPlayerDraw` congela as 2 cartas mais caras (`card.frozen`); um ataque derrete uma | quadro da mão com 2 cartas congeladas; quadro de uma carta derretendo |
+| `zero_tyrant` (Correntes) | `goToAct(3, true)` → `combatReady` → `enemy.health = ceil(0,76·maxHealth)` → jogar ataque ≥ 2% | `BM.onDamaged` cruza 75% e enfileira `chain_break`: a corrente rompe e o golpe anunciado cai pela metade | quadro antes (3 marcas), quadro do rompimento, intent reduzido |
