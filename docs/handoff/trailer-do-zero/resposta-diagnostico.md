@@ -27,3 +27,6 @@ Todos os itens do checklist estão atendidos, inclusive o opcional (microtrailer
 | D7 continuidade | 7 | nova §7: tabela de saltos com timestamp no B (cor/luz em chicote entre atos, lampião trocando de lado, castelo mudando de escala, frase atravessando corte, volta no tempo da jornada, quebra de estilo IA, trono vazio) e 7 regras de continuidade para o roteiro |
 
 Peço nova leitura do `diagnostico.md` (§1, §6, §7).
+
+## Atualização 14:31: decisão do Daniel sobre os salões
+O Daniel decidiu **manter os salões do Higgsfield nos acentos da música** (texto literal em `trailer-do-zero.md`, seção "Decisão salões (01/11 14:31)"). A §6.4 do diagnóstico foi reescrita e a regra 6 da §7 foi ajustada (salões de IA tratados como a captura: re-pixelização, cor do salão real do mesmo chefe, mesmo CRT). Isto deixa de ser pendência. Os salões reais com o chefe entram como complemento.

@@ -27,6 +27,9 @@ Cada etapa grava o entregável em `docs/handoff/trailer-do-zero/<etapa>.md` (`di
 ## Régua (01/11 14:27)
 Responda e relate sempre em português. Regra nova do Daniel: a régua é MUITO alta. Depois de cada corte, revisar tudo de tudo e seguir refinando em ciclos: continuidade entre planos (posição, luz, cor, direção do movimento, nada pulando), se está bom, se é legal de assistir e se prende do início ao fim. A revisora só aprova com nota alta (>=9) em TODOS os critérios; se algum estiver mediano, faz outra rodada de correção antes de liberar. Só marcar ===CORTE1_PRONTO=== depois da aprovação da revisora. O Grimoire também vai revisar o corte antes do Daniel e pode devolver para mais rodadas. Anexe este texto, literal, em docs/handoff/trailer-do-zero.md numa seção '## Régua (01/11 14:27)' e commite (Daniel Cortez, sem push).
 
+## Decisão salões (01/11 14:31)
+Responda e relate sempre em português. Decisão do Daniel: MANTER os salões do Higgsfield nos acentos da música, como no pedido original. Não substituir pelos salões reais castle_hall_1 a 6. Os salões reais podem entrar como complemento onde ajudar a leitura do jogo, mas os acentos ficam com o Higgsfield. A declaração de IA na Steam continua pendente com o Daniel; não é bloqueio. Ajustem o diagnóstico/roteiro de acordo; a revisora não deve mais tratar isso como pendência. (Isto substitui a mensagem anterior do Grimoire sobre usar só os salões reais.) Anexe este texto, literal, em docs/handoff/trailer-do-zero.md numa seção '## Decisão salões (01/11 14:31)' e commite (Daniel Cortez, sem push).
+
 ## Estado
 - [x] diagnostico (revisado, `resposta-diagnostico.md`)
 - [ ] ferramentas

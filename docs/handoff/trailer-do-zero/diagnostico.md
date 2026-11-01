@@ -126,8 +126,8 @@ Pausa de música = **≥ 15 dB abaixo do trecho anterior**, medida em loudness d
 ### 6.3 TV antes da música (pedido 1 do Daniel) e carta viva no quadro 0
 O filme começa **no meio** do liga-TV do CRT: o quadro 0 já mostra o vidro aberto ~60% com a carta viva dentro (nunca preto, nunca só a linha). A TV termina de abrir em ≤ 0,8 s com o som de ligar do jogo (`boot-tv-power-on`) sozinho; a música entra depois, no 1º grave após a TV abrir. Os dois pedidos ficam atendidos: a TV liga antes da música e o pôster/microtrailer nunca pega preto.
 
-### 6.4 Salões de IA (Higgsfield): fora do corte 1, decisão do Daniel
-O corte 1 usa só os `castle_hall_*` **reais do jogo, com o chefe dentro** (captura headless). Os salões de IA (`ai_4k/hall1..5`) não entram; se o Daniel quiser manter o pedido 9 do v7 ("salões nos acentos"), eles voltam só como ponte de ≤ 1 s, re-pixelizada e declarada. **Pendência registrada para o Daniel** na Entrega.
+### 6.4 Salões de IA (Higgsfield): FICAM nos acentos (decisão do Daniel, 01/11 14:31)
+_Substitui a proposta anterior desta seção e a mensagem do Grimoire de 14:29 (só salões reais)._ Os salões do Higgsfield (`ai_4k/hall1..5`) ficam **nos acentos da música**, como no pedido 9 do v7. Os `castle_hall_*` reais, com o chefe dentro, entram como complemento onde ajudarem a leitura do jogo (a luta, a mecânica do chefe). A declaração de IA na Steam segue com o Daniel e **não é bloqueio**. Para cumprir a regra de continuidade (§7, regra 6), os salões de IA passam pelo mesmo tratamento da captura antes de entrar: re-pixelização na grade da arte, paleta/saturação aproximadas do salão real correspondente e o mesmo CRT por cima de tudo; e cada acento de IA fica ligado ao chefe daquele salão (vem antes ou depois do chefe real no mesmo bioma), nunca solto.
 
 ### 6.5 Gancho, em uma frase
 **"Cada chefe quebra as regras da luta, e o seu baralho vivo é o que quebra de volta."**
@@ -178,5 +178,5 @@ Folhas a 4 quadros/s do B, 8 a 24 s e 28 a 44 s (`scratchpad\diag\cont_B_8_24.jp
 3. **Direção de movimento coerente**: carta voa da mão (baixo) para o inimigo (centro alto); criaturas entram sempre pelo mesmo lado dentro de uma sequência; câmera virtual (recorte) anda num só sentido por sequência.
 4. **Estado contínuo**: chefe que entrou fica; luta que começou termina (golpe final + morte ou derrota); nada de voltar ao trono vazio.
 5. **Tempo da jornada só anda para a frente**: ato 1 → 6 → castelo/chefe; loja e espólio no ato em que estão.
-6. **Um estilo de imagem**: só captura do jogo (decidido em §6.4); nenhum plano com saturação/contraste de outra fonte.
+6. **Um estilo de imagem**: os salões do Higgsfield (decisão do Daniel, §6.4) entram tratados como a captura: re-pixelização, saturação/contraste aproximados do salão real do mesmo chefe e o mesmo CRT por cima; nenhum plano com cara de outra fonte.
 7. **Frase não atravessa corte de cor oposta**: o texto troca junto com o plano ou o plano fica até o texto sair.
