@@ -36,3 +36,41 @@ O inventário é sério. A decisão de tirar o CRT da captura e aplicá-lo por c
 | F7 Viabilidade da luta encenada | 7 | identificada, mas sem a lista de chamadas e sem a prova da Geada/corrente |
 
 **Status: NÃO APROVADO.** Para aprovar: itens 1, 3, 4 e 6 com prova (imagem ou mp4 curto no scratchpad, com o caminho no `ferramentas.md`), 2 decidido, e 7, 8 e 9 escritos. O roteiro pode começar em paralelo, mas os planos ×3, o CRT de pós e os salões de IA ficam condicionados a estas provas.
+
+## Rodada 2 (ferramentas §5 + resposta-ferramentas.md, 14:51)
+
+Abri as provas no scratchpad da diretora (`...\7f9e50b0-...\scratchpad\crop\`) e **medi o pan por conta própria**. Fiz uma correlação de fase quadro a quadro numa faixa horizontal do `teste_camera.mp4`. No trecho de 15 px/s o deslocamento por quadro sai 0, 0, 0, −2, 0, 0, 0, −2 (pula, como ela disse). A 60 px/s sai −2 em todos os quadros e a 120 px/s, −4 em todos (uniforme). A regra do §5.3 (pan só a 1 ou 2 px de captura por quadro, posição pelo número do quadro, escala só por corte seco no grave) está provada.
+
+| item | veredito | o que vi |
+|---|---|---|
+| 1 carta em escala inteira | **resolvido** | `full2_13.png`: a carta parada sai com blocos uniformes; aceito o limite declarado (carta em voo/juice ainda irregular → close só de carta parada) |
+| 2 ×3 | **resolvido** | saiu; o ×2 sobre carta a 2 px já dá 4 px por pixel lógico |
+| 3 câmera | **resolvido e conferido** | medição minha acima |
+| 4 CRT de pós | **resolvido** | é o próprio `crt.glsl` via `CRTShader`; 2,4/255 de diferença onde o conteúdo é igual. Melhor do que eu pedi |
+| 5 liga-TV | **resolvido** | `tv_comparacao.png`: as 10 fases batem (preto, ponto, linha, faixa abrindo, rolagem, assentada). O conteúdo das duas fileiras difere (ato 1 × ato 3) porque são gravações diferentes; a TV é a mesma |
+| 6 Higgsfield integrado | **parcial** | ver abaixo |
+| 7 HUD | aceito | depende do roteiro: vou cobrar o plano ×1 com HUD antes de 5 s no corte |
+| 8 tooltip | resolvido | `TRAILER_TOOLTIP=0` |
+| 9 luta encenada | aceito | tabela chamada → estado → prova; a prova por folha vem com as tomadas |
+
+### O que ainda segura a aprovação: os salões do Higgsfield (`hall_comparacao.png`)
+1. **O tratado ficou lavado.** Ao lado do real e do IA cru, o tratado perdeu contraste e brilho de destaque: a chama do arco virou um laranja acinzentado, as tochas apagaram e as pedras ficaram num cinza-marrom chapado. A média de luma bate (43,1 contra 42,5), mas o **desvio** não, e o olho lê "foto desbotada", não o salão do jogo. Igualar média e desvio no LAB e depois quantizar em 48 cores achatou os extremos. **Exijo uma v2** que preserve os destaques (chama, tochas) e o preto profundo: por exemplo, igualar por histograma/percentis (p2, p50, p98) em vez de média/desvio, ou proteger a camada emissiva (pixels de luma > p97 no cru) antes de quantizar. A saturação também precisa descer para ±10% do real, como a própria diretora anotou.
+2. **Continuidade de objeto e de estado.** O plano real (`castle_hall_1`) mostra o arco com fogo e **nenhum trono**; o plano IA fechado mostra um **trono vazio** no arco. Cortar "real aberto → IA fechado" faz aparecer um trono que não existia no plano anterior. E, se o Rei-Carniça já pousou, o trono vazio repete o defeito de estado do §7 do diagnóstico (45,75 s do B). **Exijo a regra escrita**: cada salão de IA entra só **antes** de o chefe ocupar o salão (como acento do drop/apresentação), nunca logo depois de um plano real do mesmo salão com o chefe dentro; e, quando IA e real do mesmo chefe forem vizinhos, ou a IA vem primeiro (apresentação) ou há um plano de outra coisa entre os dois. É a regra 4 do §7 aplicada aos salões.
+
+### Observações menores (não seguram, vou medir no corte)
+- **Mão a 2 px:** no `full2_13.png` a carta Blur sai do quadro por baixo e cobre metade da Backstab, e o título "Executioner" fica escondido atrás da Twin Fangs. No plano ×1 com HUD isso parece mão bagunçada. Para as tomadas: mão de no máximo 5 cartas, ou nenhuma carta com o título coberto no instante usado.
+- **Verdade do gameplay:** o inimigo do teste aparece com 466/466 de vida e o jogador com 60/60 (build de gravador). Na luta encenada os números na tela têm de ser plausíveis para o ato mostrado (vida do jogador baixa por cheat é encenação aceitável; um inimigo do ato 1 com vida de chefe do ato 6 não é). Vou conferir na folha da `zero_fight`.
+
+## Notas por critério (rodada 2)
+
+| critério | r1 | r2 | por quê |
+|---|---|---|---|
+| F1 Inventário e veredito | 9 | 9 | — |
+| F2 Teste real e verificável | 9 | 10 | todas as provas no disco, uma delas refeita por mim |
+| F3 Imagem íntegra / cara do jogo | 6 | **8** | carta, CRT e TV resolvidos; o salão de IA tratado ficou lavado |
+| F4 Cobertura das tomadas | 8 | 9 | HUD, tooltip e integração com método |
+| F5 Conformidade e riscos | 9 | 9 | — |
+| F6 Câmera e continuidade | 6 | **8** | câmera provada (9); falta a regra IA/real/estado do salão |
+| F7 Luta encenada | 7 | 9 | roteiro técnico com prova definida |
+
+**Status: NÃO APROVADO, faltam 2 itens, os dois nos salões do Higgsfield:** (1) `hall_comparacao` v2 sem lavar, com a saturação dentro de ±10%; (2) a regra de ordem IA × real × chefe escrita no `ferramentas.md`. O roteiro pode andar em paralelo, já com essa regra. Com esses dois itens, F3 e F6 vão a 9 e aprovo.
