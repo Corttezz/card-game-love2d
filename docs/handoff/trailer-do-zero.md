@@ -44,7 +44,7 @@ Responda e relate sempre em português. Decisão do Daniel: MANTER os salões do
   - 1080p: `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte1_1080p.mp4`
   - 720p: `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte1_720p.mp4`
 - Etapas e revisões: `trailer-do-zero/diagnostico.md`, `ferramentas.md`, `roteiro.md`, `corte1.md` (com `revisao-*` e `resposta-*` de cada uma). Pipeline reproduzível em `trailer-do-zero/corte/` (`edl.py`, `build_video.py`, `crt_pass.py`, `mix.py`, `mux.py`).
-- Gravador: worktree `E:\dev\projects\card-game-trailer-zero`, branch `trailer-do-zero` (`TRAILER_OUT`, `TRAILER_CARD_PX`, `TRAILER_TOOLTIP`, tomadas `zero_*`, `tools/trailer_crt_post.lua`). Tomadas novas em `%APPDATA%\LOVE\card-game-trailer-v9	railer_zero\`; as antigas em `trailer\` intactas; masters antigos intactos.
+- Gravador: worktree `E:\dev\projects\card-game-trailer-zero`, branch `trailer-do-zero` (`TRAILER_OUT`, `TRAILER_CARD_PX`, `TRAILER_TOOLTIP`, tomadas `zero_*`, `tools/trailer_crt_post.lua`). Tomadas novas em `%APPDATA%\LOVE\card-game-trailer-v9\trailer_zero\`; as antigas em `trailer\` intactas; masters antigos intactos.
 
 ### Decisões pendentes (Daniel / Grimoire)
 1. **Escuta humana** da mixagem (fone e caixa): tudo foi conferido por medida.
