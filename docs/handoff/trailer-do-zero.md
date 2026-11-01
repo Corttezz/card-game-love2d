@@ -74,3 +74,6 @@ Decisões do Grimoire (16:42 e 16:43), recebidas por `tdz_c2b.txt` na pasta de o
 4. Daqui em diante, nenhuma troca de faixa, texto ou salão sem aprovação. Para propor troca: escrever **PERGUNTA** no relato e esperar.
 5. Ciclo contínuo e automático: corte → revisora → Grimoire → refino, até ficar muito bom, sem ninguém parado. Enquanto o Grimoire revisa, a diretora adianta refinos que não troquem faixa, texto ou salão.
 6. Nada de 4K, Steam, push ou save real.
+
+## Estado do corte 2
+- [ ] corte2 (principal 1080p/720p com a faixa do Tirano + variante 720p com a do Rei-Carniça, em revisão; `trailer-do-zero/corte2.md`)

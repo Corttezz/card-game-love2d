@@ -1,6 +1,7 @@
 import os, sys, subprocess, shutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import edl as E
+import importlib
+E = importlib.import_module(os.environ.get('TDZ_EDL', 'edl'))
 
 WT = r'E:\dev\projects\card-game-trailer-zero'
 LOVEC = r'C:\Program Files\LOVE\lovec.exe'
@@ -8,7 +9,7 @@ WORK = os.path.join(E.OUT, 'work', 'crt')
 SRC = os.path.join(E.OUT, 'zero_semcrt.mp4')
 DST = os.path.join(E.OUT, 'zero_crt.mkv')
 CHUNK = 600
-TV_SKIP = 66
+TV_SKIP = getattr(E, 'TV_SKIP', 66)
 
 
 def main():

@@ -2,10 +2,12 @@ import os, sys, subprocess, json, math
 import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import edl as E
+import importlib
+E = importlib.import_module(os.environ.get('TDZ_EDL', 'edl'))
 
 W, H, FPS = 1920, 1080, E.FPS
 WORK = os.path.join(E.OUT, 'work')
+RED = (226, 52, 44, 255)
 FONT = r'E:\dev\projects\card-game-trailer-zero\assets\fonts\pixel.ttf'
 LOGO = os.path.join(E.R, 'build', 'trailer', 'brand', 'logo_final.png')
 ENC = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10', '-pix_fmt', 'yuv444p', '-r', str(FPS)]
@@ -58,10 +60,11 @@ def hall_frames(spec, s0, n):
 
 def treat_halls(frames, real, kr=0.80, k=0.30):
     Hh, Ww = real.shape[:2]; gh = round(Ww * 9 / 16); y0 = (Hh - gh) // 2
+    GW, GH = getattr(E, 'HALL_GRID', (Ww, gh))
     lr = cv2.cvtColor(real[y0:y0 + gh], cv2.COLOR_BGR2LAB).astype(np.float32)
     P = [0.5, 2, 10, 25, 50, 75, 90, 98, 99.5]
     dst = np.percentile(lr[..., 0], P)
-    first = cv2.resize(frames[0], (Ww, gh), interpolation=cv2.INTER_AREA)
+    first = cv2.resize(frames[0], (GW, GH), interpolation=cv2.INTER_AREA)
     ls0 = cv2.cvtColor(first, cv2.COLOR_BGR2LAB).astype(np.float32)
     src = np.percentile(ls0[..., 0], P); thr = np.percentile(ls0[..., 0], 97)
     emis0 = ls0[..., 0] > thr
@@ -70,7 +73,7 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
     _, _, pal = cv2.kmeans(pal_src, 64, None, crit, 3, cv2.KMEANS_PP_CENTERS)
     out = []
     for f in frames:
-        small = cv2.resize(f, (Ww, gh), interpolation=cv2.INTER_AREA)
+        small = cv2.resize(f, (GW, GH), interpolation=cv2.INTER_AREA)
         ls = cv2.cvtColor(small, cv2.COLOR_BGR2LAB).astype(np.float32)
         emis = ls[..., 0] > thr
         L = np.interp(ls[..., 0], src, dst)
@@ -83,6 +86,65 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
         q = pal[d.argmin(-1)].astype(np.uint8)
         out.append(cv2.resize(q, (W, H), interpolation=cv2.INTER_NEAREST))
     return out
+
+
+def apply_fx_from(c, src, out):
+    fx = c['fx']
+    cap = cv2.VideoCapture(src)
+    frames = []
+    while True:
+        ok, f = cap.read()
+        if not ok:
+            break
+        frames.append(f)
+    cap.release()
+    def idx(t):
+        return int(round((t - c['t0']) * FPS))
+    if 'number' in fx:
+        txt, t, dur = fx['number']
+        font = ImageFont.truetype(FONT, 192)
+        k0, n = idx(t), int(round(dur * FPS))
+        for i in range(n):
+            if not 0 <= k0 + i < len(frames):
+                continue
+            im = Image.fromarray(cv2.cvtColor(frames[k0 + i], cv2.COLOR_BGR2RGB)).convert('RGBA')
+            lay = Image.new('RGBA', im.size, (0, 0, 0, 0))
+            d = ImageDraw.Draw(lay); d.fontmode = '1'
+            bb = d.textbbox((0, 0), txt, font=font)
+            x = (W - (bb[2] - bb[0])) // 2 // 8 * 8
+            y = (96 - (i // 4) * 4) // 8 * 8
+            for dx in (-16, 0, 16):
+                for dy in (-16, 0, 16):
+                    if dx or dy:
+                        d.text((x + dx, y + dy + 8), txt, font=font, fill=INK)
+            d.text((x, y), txt, font=font, fill=RED)
+            a = 1.0 if i < n - 12 else max(0.0, (n - i) / 12)
+            if a < 1:
+                arr = np.array(lay); arr[..., 3] = (arr[..., 3] * a).astype(np.uint8); lay = Image.fromarray(arr)
+            im.alpha_composite(lay)
+            frames[k0 + i] = cv2.cvtColor(np.array(im.convert('RGB')), cv2.COLOR_RGB2BGR)
+    if 'shake' in fx:
+        t, n, amp = fx['shake']
+        k0 = idx(t)
+        for i in range(n):
+            k = k0 + i
+            if not 0 <= k < len(frames):
+                continue
+            a = amp * (1 - i / n)
+            dx = int(round(a * (1 if i % 2 == 0 else -1) / 2)) * 2
+            dy = int(round(a * 0.6 * (1 if i % 4 < 2 else -1) / 2)) * 2
+            f = frames[k]
+            frames[k] = cv2.warpAffine(f, np.float32([[1, 0, dx], [0, 1, dy]]), (W, H), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REPLICATE)
+    if 'flash' in fx:
+        t, n, alpha = fx['flash']
+        k0 = idx(t)
+        for i in range(n):
+            k = k0 + i
+            if not 0 <= k < len(frames):
+                continue
+            a = alpha * (1 - i / n)
+            frames[k] = cv2.addWeighted(frames[k], 1 - a, np.full_like(frames[k], 255), a, 0)
+    write_frames(frames, out)
 
 
 def write_frames(frames, out):
@@ -127,7 +189,7 @@ def logo_segment(c, last_frame, out):
     cx, cy = (CARD_BOX[0] + CARD_BOX[2]) // 2, (CARD_BOX[1] + CARD_BOX[3]) // 2
     bgp = os.path.join(WORK, 'logo_bg.png')
     x0, y0 = 475, 165
-    run(['ffmpeg', '-v', 'error', '-y', '-ss', '63.20', '-i', E.take_path('zero_carrion'), '-vf',
+    run(['ffmpeg', '-v', 'error', '-y', '-ss', f"{getattr(E, 'CARD_BG_T', 63.20):.2f}", '-i', E.take_path('zero_carrion'), '-vf',
          f'crop=960:540:{x0}:{y0},scale=1920:1080:flags=neighbor', '-frames:v', '1', bgp])
     bg = cv2.cvtColor(cv2.imread(bgp), cv2.COLOR_BGR2RGB)
     gray = (bg.astype(np.float32) * 0.28).astype(np.uint8)
@@ -196,6 +258,11 @@ def main():
             logo_segment(c, lf, out)
         else:
             render_take(c, out)
+            if c.get('fx'):
+                tmp = out.replace('.mp4', '_fx.mp4')
+                os.replace(out, tmp)
+                cap = None
+                apply_fx_from(c, tmp, out)
         print('[ok] clip', c['id'], nframes(c))
     lst = os.path.join(WORK, 'lista.txt')
     open(lst, 'w').write(''.join(f"file '{p}'\n" for p in parts))
