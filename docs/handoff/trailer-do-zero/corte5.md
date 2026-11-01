@@ -57,3 +57,13 @@ Provas em `docs/handoff/trailer-do-zero/corte5_provas/` (nome = o que mostra + t
 | tom de sala no trono vazio | −46 a −51 dBFS | −46 a −51 dBFS |
 
 Provas: `corte5_provas/corte5b/` e `corte5_provas/corte5c/queda_corte5c_52.80-57.30s.png`.
+
+## Rodada 5d: gárgula da variante Rei
+
+Só a variante do Rei foi regravada (`grimoire_zero_corte5_rei_720p.mp4`); a principal não mudou. Faixa, textos e salões iguais.
+
+- **Antes:** o corte para a gárgula estava em 11,82 s, com subida da música de **1,6 dB** no stem (±30 ms), ou seja, sem batida.
+- **Busca:** maior ataque da faixa do Rei entre 10,0 e 12,6 s, pela mesma métrica do `medir2.py`: 10,00 s (18,4 dB, deixaria o espólio com 1,2 s) e **12,50 s (16,4 dB)**.
+- **Escolha:** o corte foi fixado em **12,50 s** (`REI_FIX` em `corte/edl5.py`). O espólio passou a durar 3,74 s ("145 LIVING CARDS." continua de 8,76 a 11,69 s, dentro do plano). A gárgula dura 1,27 s, acima do mínimo de 1,25 s, e "6 ACTS." fica de 12,50 a 13,70 s, dentro do plano.
+- **Medida depois** (`medir2.py`, stem de música): `e2_gargula` **16,4 dB ok**. Os vizinhos também ficaram ok: `espolio` 16,7 dB e `ia_hall3` 25,9 dB. Prova da imagem: `corte5_provas/corte5d/gargula_corte_rei_12.50s.png`.
+- **Resto da variante** (conferido de novo): −14,1 LUFS, −1,2 dBFS, LRA 8,8; pico +3,4 dB; coringa com a música 5,6 dB abaixo do SFX e a revelação a 57,00 s; 0 quadros < 5% de luma.

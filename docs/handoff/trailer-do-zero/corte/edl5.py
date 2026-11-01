@@ -188,6 +188,21 @@ if os.environ.get('TDZ_NO_SNAP') != '1' and (VARIANT == 'tirano' or os.path.exis
     _snap_real(['ia_hall4'] if VARIANT == 'tirano' else ['e2_gargula', 'ia_hall3', 'ia_hall4', 'k_revoada_rei'])
 
 
+REI_FIX = {'e2_gargula': 12.50}
+if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1' and os.path.exists(os.path.join(OUT, 'music_rei.wav')):
+    for _cid, _t in REI_FIX.items():
+        _i = [k for k, c in enumerate(CLIPS) if c['id'] == _cid][0]
+        _a, _b = CLIPS[_i - 1], CLIPS[_i]
+        _d = _t - _b['t0']
+        _b['s0'] = round(_b['s0'] + _d, 3)
+        _a['t1'] = _b['t0'] = _t
+    for _tx in TEXTS:
+        _h = [c for c in CLIPS if c['id'] == _tx['host']][0]
+        _need = max(1.2, len(' '.join(_tx['lines'])) / 13.0 + 0.4)
+        _t0 = max(_h['t0'], min(_tx['t0'], _h['t1'] - _need))
+        _tx['t0'], _tx['t1'] = round(_t0, 3), round(min(_h['t1'], max(_tx['t1'], _t0 + _need)), 3)
+
+
 def take_path(shot):
     return os.path.join(TAKES, shot + '.mkv')
 
