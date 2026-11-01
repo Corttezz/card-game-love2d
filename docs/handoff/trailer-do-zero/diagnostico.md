@@ -1,6 +1,6 @@
 # Etapa 1: diagnóstico (trailer-do-zero)
 
-_Diretora, 01/11/2026. Todas as versões vistas por folha de quadros (1 quadro/s; v3 a v5 a cada 2 s; A a cada 0,5 s), forma de onda, loudness EBU R128 (integrado, LRA e curva de curto prazo por segundo) e contagem de cortes (`select='gt(scene,0.3)'`, aproximada: não pega chicote com desfoque). Script e imagens: `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\7f9e50b0-2a53-4549-9447-d15442060f00\scratchpad\diag\` (`analyze.py`, `sheet_*.jpg`, `wave_*.png`, `metrics.json`)._
+_Diretora, 01/11/2026. **Revisado após `revisao-diagnostico.md` (ver `resposta-diagnostico.md` e a seção 6).** Todas as versões vistas por folha de quadros (1 quadro/s; v3 a v5 a cada 2 s; A a cada 0,5 s), forma de onda, loudness EBU R128 (integrado, LRA e curva de curto prazo por segundo) e contagem de cortes (`select='gt(scene,0.3)'`, aproximada: não pega chicote com desfoque). Script e imagens: `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\7f9e50b0-2a53-4549-9447-d15442060f00\scratchpad\diag\` (`analyze.py`, `sheet_*.jpg`, `wave_*.png`, `metrics.json`)._
 
 ## 1. Medições
 
@@ -19,7 +19,7 @@ _Diretora, 01/11/2026. Todas as versões vistas por folha de quadros (1 quadro/s
 | B_som | `..._new_som_720p.mp4` | 65,3 s | −14,1 | 7,9 | (= B) | (= B) |
 | C_som | `..._v9_kinetic_som_720p.mp4` | 64,5 s | −14,1 | 7,1 | (= C) | (= C) |
 
-**O número que explica o "muito ruim" no som:** no B_som, o trecho "sem música" da entrada do chefe (32,6 a 37,4 s) mede −16 a −18 LUFS de curto prazo; o resto do filme fica entre −12 e −15. A "pausa" é só **3 a 5 dB** mais baixa que o resto, porque o ronco, os corvos e o salão a preenchem quase no nível da música. O "drop" que vem depois (37,4 s) chega a −12, igual ao começo do filme. Não existe pico: o ponto mais alto de B_som (−10 LUFS a 42 s) fica só 2 dB acima da média. LRA de 4 a 8 LU em todas as versões = parede de som do começo ao fim. No C_som o padrão é igual (pausa a −19/−20 em 29 a 30 s; resto −9 a −16).
+**O número que explica o "muito ruim" no som:** no B_som, o trecho "sem música" da entrada do chefe (32,6 a 37,4 s) mede −16 a −18 LUFS de curto prazo; o resto do filme fica entre −12 e −15. A "pausa" (30 a 37 s: −15 a −19 LUFS) fica só **5 a 9 dB** abaixo do trecho anterior (28 a 29 s: −11 a −12), porque o ronco, os corvos e o salão a preenchem quase no nível da música. O "drop" que vem depois (37,4 s) chega a −12, igual ao começo do filme. Não existe pico: o ponto mais alto de B_som (−10 LUFS a 42 s) fica só 2 dB acima da média. LRA de 4 a 8 LU em todas as versões = parede de som do começo ao fim. No C_som o padrão é igual (pausa a −19/−20 em 29 a 30 s; resto −9 a −16).
 
 ## 2. O que não funciona (por critério)
 
@@ -67,7 +67,7 @@ _Diretora, 01/11/2026. Todas as versões vistas por folha de quadros (1 quadro/s
 |---|---|---|
 | Entrada do Rei-Carniça (olhos no escuro → corvos → pouso → cartão do nome) | todas; melhor tomada em `boss_carrion`/`boss8` | é a única sequência com suspense; som do jogo forte (corvos, pouso, revelação) |
 | Cartões de nome de chefe com epíteto | v3, v4 | mostram elenco e escala do jogo em 1 s cada |
-| Coleção em close (carta grande, animada, com texto) | v4, v6 ("137 LIVING CARDS") | é onde a carta viva se lê; "137 cartas vivas" é afirmação concreta |
+| Coleção em close (carta grande, animada, com texto) | v4, v6 ("137 LIVING CARDS", número **desatualizado**) | é onde a carta viva se lê; o número concreto hoje é 145 (seção 6.1) |
 | Escolha do pacote / espólio com cartas grandes | v3, v4, B (9 a 10 s) | carta grande + raridade + brilho de achado raro |
 | Bestiário: criatura surgindo no ato dela, com nome | v3 (A BESTIARY OF THE CURSED), v4 | variedade de inimigos e biomas com propósito, em vez de estrada vazia |
 | Fileira de coringas / COMBO! | v3, v8, B | aparece o "número sobe" do gênero |
@@ -87,7 +87,7 @@ Medições de 29/10 em `docs/handoff/trailer-kinetic-referencias.md` (8 trailers
 | **Balatro** (launch, 68 s) | personagem com voz (Jimbo fala em balões); o **número sobe** em cascata (fichas × mult, cada passo visível, ref. [UX de Balatro](https://blakecrosley.com/es/guides/design/balatro)); rajadas de corte só nos picos | escalada visível; uma "voz" (temos o corvo Pena, narrador do tutorial) |
 | **Inscryption** (launch, 60 s) | clima: escuro, olhos, um texto curto; mistério antes do jogo | já temos o escuro + olhos do Rei-Carniça: é a nossa cena mais próxima; usar como tal |
 | **Monster Train** (release, 59 s) | gameplay com explosão em 1,6 s; citação real de imprensa | algo grande acontecendo antes de 2 s |
-| **Vampire Survivors** (launch, 63 s) | **números enormes** (120.000 / 0 VAMPIRES) sobre o jogo borrado, com humor | um número enorme verdadeiro: 137 cartas, 6 chefes, 42 de dano |
+| **Vampire Survivors** (launch, 63 s) | **números enormes** (120.000 / 0 VAMPIRES) sobre o jogo borrado, com humor | um número enorme verdadeiro, recontado no código (seção 6.1): 145 cartas, 42 criaturas, 6 chefes |
 | **Cobalt Core / Dicey Dungeons** | o texto **é** a UI do jogo (carta FIREBALL); arte-chave + gênero no fim | o nosso texto deveria sair das próprias cartas/UI |
 | **Luck be a Landlord** | humor na UI; logo pixel gigante | — |
 
@@ -108,3 +108,51 @@ Padrões que se repetem (somados às regras da Steam já levantadas: gameplay em
 5. **Os chefes, o melhor do jogo, viraram cenário.**
 
 **Direção para o roteiro (a validar na etapa 3):** câmera **dentro** do jogo (closes por recorte de captura 4K ou captura headless com zoom), carta em primeiro plano, uma luta contada do começo ao golpe letal, chefes com corpo e nome, a música saindo de verdade (−20 dB ou silêncio) nos 2 momentos certos, texto saindo da UI do jogo ou de números verdadeiros, e quadro 0 já com uma carta viva.
+
+## 6. Decisões tomadas depois da revisão (entram no roteiro como regra)
+
+### 6.1 Número na tela = número contado no código
+Nenhum número vai para a tela sem a contagem registrada aqui e refeita antes do corte final.
+
+| número | valor | comando (raiz do repo) |
+|---|---|---|
+| cartas | **145** (139 sem os 6 coringas de chefe) | `for f in src/data/cards/*.lua; do grep -cE '^\s*id\s*=' $f; done` → basic 27, boss 6, mage 42, rogue 37, warrior 33 |
+| criaturas | **42** (roster único; 43 kits contam um kit genérico) | `lua -e 'local E=dofile("src/data/enemies.lua") ...'` (contagem de ids únicos em `E.ROSTER`); bate com as 42 pastas de `audio/sfx/enemies/` |
+| atos / chefes | **6 / 6** | `Config.TotalActs = 6` (`src/core/Config.lua:141`) |
+
+### 6.2 Meta de silêncio
+Pausa de música = **≥ 15 dB abaixo do trecho anterior**, medida em loudness de curto prazo (janela de 3 s, EBU R128), e o impacto seguinte volta ao nível do trecho anterior ou acima. No B_som a pausa ficou 5 a 9 dB abaixo: reprovada por essa régua.
+
+### 6.3 TV antes da música (pedido 1 do Daniel) e carta viva no quadro 0
+O filme começa **no meio** do liga-TV do CRT: o quadro 0 já mostra o vidro aberto ~60% com a carta viva dentro (nunca preto, nunca só a linha). A TV termina de abrir em ≤ 0,8 s com o som de ligar do jogo (`boot-tv-power-on`) sozinho; a música entra depois, no 1º grave após a TV abrir. Os dois pedidos ficam atendidos: a TV liga antes da música e o pôster/microtrailer nunca pega preto.
+
+### 6.4 Salões de IA (Higgsfield): fora do corte 1, decisão do Daniel
+O corte 1 usa só os `castle_hall_*` **reais do jogo, com o chefe dentro** (captura headless). Os salões de IA (`ai_4k/hall1..5`) não entram; se o Daniel quiser manter o pedido 9 do v7 ("salões nos acentos"), eles voltam só como ponte de ≤ 1 s, re-pixelizada e declarada. **Pendência registrada para o Daniel** na Entrega.
+
+### 6.5 Gancho, em uma frase
+**"Cada chefe quebra as regras da luta, e o seu baralho vivo é o que quebra de volta."**
+Mostrado 3 vezes, sempre com a regra visível na imagem: (1) corvos do Rei-Carniça; (2) Geada do Monarca congelando as cartas na mão (a mecânica aparece **na própria carta**, que liga chefe e carta viva); (3) correntes do Tirano rompendo, ou runas do Lich. Carta viva é a textura do filme inteiro, não um segundo gancho.
+
+### 6.6 Alvo do corte 1
+**1º vídeo da página da Steam, 60 a 70 s**, gameplay com HUD antes de 2 s, legível mudo. O de 30 s sai depois como recorte deste.
+
+### 6.7 Como sai uma carta legível em escala inteira (dependência para `ferramentas.md`)
+Medido: as tomadas atuais são **1920×1080** (`boss8/00001.tga`), com o CRT **embutido**; a carta na mão tem ~128×192 px (96×144 lógicos × 1,333), e a mão e o HUD ainda não escalam com a resolução (`UiScale` só cobre telas de UI), então **capturar em 4K não aumenta a carta**. O gravador (`tools/trailer_record.lua` do worktree) já aceita `TRAILER_SIZE=WxH`, `TRAILER_CRT=0` e `TRAILER_NOBEZEL=1`. Caminho escolhido, a validar na etapa 2:
+- capturar **sem CRT** (`TRAILER_CRT=0`) a 1920×1080, recortar uma janela de **960×540** (×2) ou **640×360** (×3) em volta da mão / do inimigo / do chefe e ampliar por **vizinho mais próximo** em fator inteiro → carta com 384 px (×2, 36% da altura) ou 576 px (×3, 53%); o recorte pode andar entre quadros (câmera virtual) em passos de pixel inteiro da captura;
+- aplicar o CRT **depois**, por cima do quadro final (scanline na escala do filme, não ampliado);
+- Coleção / inspeção de carta para o close máximo da carta parada.
+Dono: diretora, etapa 2 (`ferramentas.md`), com teste de recorte em 1 tomada antes do roteiro.
+
+### 6.8 Luta encenada (dependência para `ferramentas.md`)
+"A história de uma luta" (perigo, virada, golpe LETAL) exige captura roteirizada no modo cheat (vida baixa, mão escolhida, LETAL na prévia, chefe com a mecânica ativa). Entra como item da etapa 2, com o que o `trailer_record.lua` já oferece e o que falta.
+
+### 6.9 Microtrailer simulado (6 fatias de 1 s, frações 0,33/0,43/0,53/0,67/0,77/0,87 do relato do r/gamedev)
+Imagem: `scratchpad\diag\micro_ABC.png`.
+
+| | fatia 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| A (11/14/18/22/25/28 s) | grifo + texto | serpente na neve | estrada vazia | salão IA + texto dissolvendo | combate plano aberto | bússola no escuro |
+| B (22/29/35/44/51/57 s) | grifo + texto | BEND EVERY HAND (estrada) | salão escuro | salão IA vazio | combate plano aberto | bússola no escuro |
+| C (22/28/35/44/50/56 s) | serpente + texto | salão IA com runas | salão IA de gelo | salão escuro (olhos) | combate plano aberto | bússola no escuro |
+
+18 fatias: **0** com carta legível; 3 de combate (carta ilegível); 4 com criatura (3 delas cobertas por texto); 6 de salão ou estrada sem ação; 2 de salão escuro; 3 de bússola no escuro. Reforça as conclusões 1 e 2. Regra para o corte novo: entre 30% e 90% da duração, **todo segundo** tem carta grande ou criatura em ação; nada de logo antes de 90%.
