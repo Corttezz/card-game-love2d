@@ -101,3 +101,43 @@ Refiz todas as medidas no 1080p novo (`...\scratchpad\rev\c2_1080\`, quadros em 
 | C14 Som | 7 | 9 | sem duplicação nem empilhamento; silêncio e pico medidos |
 
 **Status: NÃO APROVADO, faltam 3 itens:** (1) a morte acompanhando o corpo, (2) o texto do espólio fora da faixa de raridade e (3) a Revoada plano 2 regravada sem modo deus ou cortada. Os itens 2 e 3 (na opção de cortar) são só montagem; o 1 é recorte. Com os três resolvidos, C4, C6, C7, C12 e C13 vão a 9 e o corte 1 sai aprovado.
+
+## Rodada 3 (vídeos regravados às 16:27/16:28 + resposta-corte1.md 16:29), APROVADO
+
+Medi de novo o 1080p (`...\scratchpad\rev\c3_1080\`, quadros em `...\rev\fr3\`) e o som do 720p. Ambos: 68,50 s, −14,0 LUFS, LRA 9,4, −1,2 dBTP; pico de curto prazo −8,9 (59–60 s) contra −11,3 fora do clímax (+2,4 dB). 27 clipes; só os 3 declarados (quadro 0, salão IA e escuro do silêncio) fora do grave; o menor plano tem 1,00 s e não há rajadas.
+
+- **1, a morte:** resolvido. Depois do hit-stop o recorte ×2 desce acompanhando o corpo (`fr3/morte.png`), e o Rei fica no quadro do golpe até cair no chão. Medi a descida por correlação do perfil vertical, quadro a quadro: **2 px de tela em todos os quadros** de 56,7 a 58,5 s (as primeiras amostras oscilam no clarão do hit-stop). O movimento é uniforme, sem degrau, pela regra do §5.3. O coringa nasce do corpo no corte seguinte. O pagamento agora tem o chefe no quadro do começo ao fim.
+- **2, o espólio:** resolvido. "145 LIVING CARDS." fica numa linha livre acima de "◆ COMMON ◆" e "◆ UNCOMMON ◆", sem tocar em nada; Poison Dart e Rain of Blades inteiras e legíveis (`fr3/espolio.png`).
+- **3, a Revoada:** resolvido pela opção de montagem. O plano único ×2 (3,98 s) mostra ENEMY TURN → "Murder of Crows" → intent **4×4** → asas abrindo e corvos partindo → "WEAKNESS!" (`fr3/revoada.png`). A regra se lê, e o 70/70 do modo deus sumiu da tela.
+
+Pendências que **não** pertencem à minha régua e vão na Entrega, como decisão do Daniel ou do Grimoire:
+- escuta humana da mixagem (fone e caixa): tudo foi conferido por medida;
+- textos ⚠️ novos (145 LIVING CARDS., EVERY BOSS / BREAKS THE RULES., 6 ACTS., 42 CREATURES., FROST LOCKS YOUR HAND., BREAK THEM BACK., A ROGUELIKE DECKBUILDER), com as reservas aprovadas descritas no roteiro;
+- faixa do Tirano sob o Rei-Carniça (reserva: faixa do Rei, com o meio sem grave);
+- **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free); declaração de IA na Steam pelos salões do Higgsfield;
+- melhoria para o corte 2: número de dano grande no quadro do hit-stop; Espantalho com a cabeça dentro do quadro 0 (pôster).
+
+## Notas por critério (rodada 3)
+
+| critério | r1 | r2 | r3 |
+|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 7 | 9 | 9 |
+| C2 Sem preto | 8 | 9 | 9 |
+| C3 Sincronia | 10 | 10 | 10 |
+| C4 Legibilidade | 6 | 8 | 9 |
+| C5 Ritmo | 8 | 9 | 9 |
+| C6 Pico | 7 | 8 | 9 |
+| C7 Regra de 3 | 7 | 8 | 9 |
+| C8 Fecho | 9 | 9 | 9 |
+| C9 Conformidade | 9 | 9 | 9 |
+| C10 Checklist do Daniel | 8 | 9 | 9 |
+| C11 Continuidade | 7 | 9 | 9 |
+| C12 Está bom / legal de assistir | 8 | 8 | 9 |
+| C13 Prende do início ao fim | 8 | 8 | 9 |
+| C14 Som | 7 | 9 | 9 |
+
+**Status: APROVADO pela revisora, ≥ 9 nos 14 critérios** (1080p e 720p). Próximo passo: revisão do Grimoire antes do Daniel, que pode devolver para mais rodadas.
+
+===CORTE1_PRONTO===
+
+Notas: C1 9 · C2 9 · C3 10 · C4 9 · C5 9 · C6 9 · C7 9 · C8 9 · C9 9 · C10 9 · C11 9 · C12 9 · C13 9 · C14 9.
