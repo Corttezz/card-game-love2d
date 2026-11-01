@@ -12,6 +12,7 @@ ENC = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10', '-pix_fmt', 'yuv4
 PARCH = (244, 230, 200, 255)
 GOLD = (232, 184, 80, 255)
 INK = (22, 14, 20, 255)
+CARD_BOX = (730, 175, 1210, 905)
 
 
 def nframes(c):
@@ -117,15 +118,22 @@ def logo_segment(c, last_frame, out):
     word = logo.crop((440, 570, 1485, 775))
     font = ImageFont.truetype(FONT, 40)
     font2 = ImageFont.truetype(FONT, 48)
-    bg = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
+    lf = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
+    card = Image.fromarray(lf).crop(CARD_BOX).convert('RGBA')
+    cx, cy = (CARD_BOX[0] + CARD_BOX[2]) // 2, (CARD_BOX[1] + CARD_BOX[3]) // 2
+    bgp = os.path.join(WORK, 'logo_bg.png')
+    x0, y0 = 475, 165
+    run(['ffmpeg', '-v', 'error', '-y', '-ss', '63.20', '-i', E.take_path('zero_carrion'), '-vf',
+         f'crop=960:540:{x0}:{y0},scale=1920:1080:flags=neighbor', '-frames:v', '1', bgp])
+    bg = cv2.cvtColor(cv2.imread(bgp), cv2.COLOR_BGR2RGB)
     gray = (bg.astype(np.float32) * 0.28).astype(np.uint8)
-    cx, cy = 960, 435
-    card = Image.fromarray(bg).crop((cx - 290, cy - 400, cx + 290, cy + 400))
     frames = []
     for i in range(n):
         t = c['t0'] + i / FPS
         a = min(1.0, max(0.0, (t - c['t0']) / 0.35))
         base = (bg.astype(np.float32) * (1 - a) + gray.astype(np.float32) * a).astype(np.uint8)
+        if t < c['t0'] + 1.0 / FPS:
+            base = lf
         im = Image.fromarray(base).convert('RGBA')
         if t < L['seal_at']:
             k = (t - c['t0']) / (L['seal_at'] - c['t0'])
@@ -202,7 +210,7 @@ def main():
             chain.append(f"[{last}][{ia}:v]overlay=enable='between(t,{tx['t0']},{tx['t0'] + st})'[v{i}a]")
             chain.append(f"[v{i}a][{ib}:v]overlay=enable='between(t,{tx['t0'] + st},{tx['t1']})'[v{i}]")
         else:
-            text_layer(tx['lines'], tx['y'], tx['gold']).save(p)
+            text_layer(tx['lines'], tx['y'], tx['gold'], tx.get('size', 64)).save(p)
             inputs += ['-i', p]
             ia = len(inputs) // 2 - 1
             chain.append(f"[{last}][{ia}:v]overlay=enable='between(t,{tx['t0']},{tx['t1']})'[v{i}]")

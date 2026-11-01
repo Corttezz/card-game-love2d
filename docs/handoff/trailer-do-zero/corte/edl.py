@@ -18,7 +18,7 @@ CLIPS = [
     dict(id='h_hud', src='zero_hand', t0=2.07, t1=3.07, s0=13.07, z=1),
     dict(id='h_cascata', src='zero_hand', t0=3.07, t1=6.62, s0=14.07, z=2, crop=(480, 120)),
     dict(id='h_morte', src='zero_hand', t0=6.62, t1=9.99, s0=17.62, z=1),
-    dict(id='espolio', src='zero_hand', t0=9.99, t1=11.78, s0=28.80, z=2, crop=(480, 220)),
+    dict(id='espolio', src='zero_hand', t0=9.99, t1=11.78, s0=28.80, z=2, crop=(640, 220)),
     dict(id='estrada_a1', src='night_a1', t0=11.78, t1=13.81, s0=2.50, z=1),
     dict(id='encruzilhada_a1', src='fork_a1', t0=13.81, t1=15.20, s0=2.00, z=1),
     dict(id='k_estrada', src='zero_carrion', t0=15.20, t1=19.15, s0=4.25, z=1),
@@ -44,7 +44,7 @@ CLIPS = [
 ]
 
 TEXTS = [
-    dict(id='cartas', lines=['145 LIVING CARDS.'], t0=6.62, t1=8.95, y=110, gold=[0]),
+    dict(id='cartas', lines=['145 LIVING CARDS.'], t0=6.62, t1=8.95, y=300, gold=[0], size=56),
     dict(id='regras', lines=['EVERY BOSS', 'BREAKS THE RULES.'], t0=30.64, t1=33.24, y=90, gold=[1], stagger=0.62),
     dict(id='atos', lines=['6 ACTS.'], t0=37.49, t1=38.67, y=110, gold=[0]),
     dict(id='correntes', lines=['BREAK HIS CHAINS.'], t0=42.11, t1=44.39, y=870, gold=[0]),
@@ -64,7 +64,7 @@ def clip_map(c):
     f0 = c['s0'] * FPS
     hold = c.get('hold', 0) / FPS
     if hold:
-        return [(c['t0'], f0), (c['t0'] + hold, f0), (c['t1'], f0 + (c['t1'] - c['t0'] - hold) * FPS)]
+        return [(c['t0'] + hold, f0), (c['t1'], f0 + (c['t1'] - c['t0'] - hold) * FPS)]
     return [(c['t0'], f0), (c['t1'], f0 + (c['t1'] - c['t0']) * FPS)]
 
 

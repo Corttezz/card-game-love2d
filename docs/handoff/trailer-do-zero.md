@@ -32,6 +32,6 @@ Responda e relate sempre em português. Decisão do Daniel: MANTER os salões do
 
 ## Estado
 - [x] diagnostico (revisado, `resposta-diagnostico.md`)
-- [ ] ferramentas (entregue, em revisão)
-- [ ] roteiro
-- [ ] corte1
+- [x] ferramentas (aprovada na rodada 3)
+- [x] roteiro (rodada 2; continuidade corrigida)
+- [ ] corte1 (1080p + 720p entregues, em revisão)
