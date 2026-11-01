@@ -22,7 +22,7 @@ print([l.strip() for l in out.splitlines() if re.match(r'\s+(I|LRA|Peak):', l)][
 L = json.load(open(os.path.join(ED.OUT, os.path.basename(ED.OUT) + '_' + ED.VARIANT, 'mix_sources.json'), encoding='utf-8'))
 for code in ['castleGateOpen', 'bossLandImpact', 'bossRevealSting']:
     print(code, [x['t'] for x in L if x['code'].startswith(code)])
-inside = [(c['t0'], c['t1']) for c in ED.CLIPS if c['id'] in ('k_escuro', 'k_nome', 'k_guerreiro', 'k_revoada_rei', 'k_revoada_vida', 'k_volta', 'k_letal_mao', 'k_letal', 'k_golpe', 'k_coringa')]
+inside = [(c['t0'], c['t1']) for c in ED.CLIPS if c['id'] in ('k_escuro', 'k_nome', 'k_guerreiro', 'k_revoada_rei', 'k_revoada_vida', 'k_vida3', 'k_volta', 'k_letal_mao', 'k_letal', 'k_golpe', 'k_coringa')]
 print('clima externo no castelo:', [x['code'] for x in L if x['group'] == 'ambient' and not x['code'].startswith('pl:boss') and any(a <= x['t'] < b for a, b in inside)])
 print('antes da musica:', [x['code'] for x in L if x['t'] < ED.MUSIC_IN_FILM])
 import numpy as np
