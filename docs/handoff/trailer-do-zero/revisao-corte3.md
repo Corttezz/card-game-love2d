@@ -73,4 +73,46 @@ A diretora trocou o zoom suave por **degraus inteiros ×3** e deixou a PERGUNTA 
 **Status da versão Tirano: NÃO APROVADO.** Para o corte 4: o ponto 4 refeito como aproximação progressiva (ou a decisão explícita do Grimoire sobre a PERGUNTA), o golpe da mesma jogada da virada (número = LETHAL), o portão com som, os planos de criatura ≤ 1,5 s ou em ação, o espólio com as cartas inteiras e o texto livre, a música do coringa a 4–6 dB do SFX e o acento do salão do Tirano liderado pela música.
 
 ## Variante do Rei
-Pendente: `grimoire_zero_corte3_rei_720p.mp4` ainda não saiu. Será revisada aqui, numa seção própria, com a mesma régua e a mesma análise de mixagem.
+Revisada na seção "Variante Rei do corte 3", no fim deste arquivo.
+
+
+## Variante Rei do corte 3 (`grimoire_zero_corte3_rei_720p.mp4`, 18:09), rodada 1: NÃO APROVADO
+
+_Mesma régua e mesmo método da versão Tirano: medidas quadro a quadro (`...\scratchpad\rev\e3_rei\`); mixagem nos stems reais `build\trailer\zero3_rei\zero3_rei_rei\` (`mix3_rei.json`); EDL `edl3.py` com `TDZ_MUSIC=rei`; quadros do LETAL e do golpe (`...\rev\g3\rei_lg.png`). Não ouvi._
+
+A variante usa a mesma montagem da versão Tirano, então herda os mesmos defeitos de imagem, que **valem igual aqui**: o ponto 4 reprovado (degraus ×3 com recuo ×1 no meio e o foco atravessando a tela, 44,47–53,24 s), o espólio a ×3 com as duas cartas cortadas e o texto encostado nos selos NEW (9,99–11,87 s) e os 5,3 s de criatura parada (`e5_esporo` 2,51 s + `e6_anjo` 2,83 s, 25,07–30,41 s). E também o golpe de outra jogada: o painel diz **48 LETHAL** e o golpe mostra **"47"** com o banner **"Volley +18"** e um "20" solto do jogo ao lado do número (`rei_lg.png`).
+
+**O que a variante tem de melhor:**
+- **O portão soa:** `castleGateOpen` a 30,93 s (−4,2 dB), audível no plano ×2 da porta.
+- **A volta do drop** no nome do Rei (39,44 s) ficou forte: a música passou de −25,3 para **−19,2**, no nível da principal (M2 resolvido), com a maior subida de grave do filme no quadro exato.
+- **Silêncio:** fade de ~1,5 s da porta para o trono IA, até o zero digital por ~0,4 s, e depois −25 a −37 no escuro com os olhos. O contraste é ótimo.
+- **Zero quadros abaixo de 5%;** −14,1 LUFS, −1,2 dBTP.
+
+**O que é só desta variante (mixagem medida):**
+1. **O pico não é o maior trecho do filme.** Curto prazo por segundo: golpe e morte a −9,2/−9,1 (55–56 s), mas o **logo chega a −9,9 (62 s) e −10,3/−10,4** (61 e 63 s). A margem do pico sobre o fecho é de cerca de **0,8 dB**, abaixo dos ≥ 2 dB que o roteiro fixou. A tabela do `corte3.md` dá +3,8 dB, mas, medindo o mp4 por segundo, o fecho praticamente empata. No plano do logo a música está a −14,7 e no coringa a −14,2, os trechos mais altos de música do filme depois do golpe. **Exijo** o fecho pelo menos 2 dB abaixo do pico (a música do logo uns 3 a 4 dB abaixo).
+2. **Coringa invertido (M4 ao contrário):** na variante a música fica **12,8 dB acima** do SFX na revelação (música −14,2, SFX −27,0). A meta é a música 4 a 6 dB **abaixo** do SFX; aqui o som da revelação do coringa some.
+3. **LRA 7,4** contra 9,3 da principal: a segunda metade é mais chapada (curto prazo de −13 a −15 do nome ao fim, com o logo no topo). É consequência dos itens 1 e 2.
+4. **Cortes ainda fora do grave real** (subida no próprio quadro / maior subida em ±30 ms): `e2_gargula` 11,87 s (0,3 / 14,8 dB), `ia_hall3` 13,15 s (−16,7 / 10,0 dB), `k_revoada_rei` 44,47 s (−1,7 / 18,4), `k_porta` 30,41 s (−2,3 / 17,2) e `logo` 58,41 s (−7,7 / 17,2). Os dois primeiros continuam sem ataque perto (a própria tabela da diretora mostra 4,5 e 7,4 dB). O salão do Tirano, que é o acento, não bate em grave nesta faixa. Os outros três têm o ataque a ≤ 2 quadros, o que é aceitável.
+
+### Notas da variante Rei (rodada 1)
+
+| critério | nota | por quê |
+|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | — |
+| C2 Sem preto | 10 | — |
+| C3 Sincronia | **8** | gárgula e salão do Tirano sem grave real |
+| C4 Legibilidade | **8** | mesmo da Tirano (espólio e mão ×3 cortados) |
+| C5 Ritmo | **8** | 5,3 s de criatura parada |
+| C6 Pico | **7** | o fecho praticamente empata com o golpe (margem ~0,8 dB) |
+| C7 Regra de 3 | 9 | — |
+| C8 Fecho | 9 | imagem ok; o volume é o item 1 |
+| C9 Conformidade | 9 | — |
+| C10 Checklist do Daniel | 9 | portão audível; salto interno da faixa anotado para ele |
+| C11 Continuidade | **7** | 48 LETHAL → "47" + "Volley +18"; vai e volta ×3/×1/×3 |
+| C12 Está bom / legal de assistir | **8** | — |
+| C13 Prende do início ao fim | **8** | criaturas paradas antes da porta |
+| C14 Som | **8** | coringa invertido, LRA 7,4, fecho alto |
+| G1 a G7 | 10 · 9 · 9 · 9 · **8** · 10 · 10 | G5: número do golpe ≠ LETHAL |
+| N1 a N5 | **8** · 9 · 9 · **6** · **8** | iguais à Tirano; N5 pelos itens 1, 2 e 4 |
+
+**Status da variante Rei do corte 3: NÃO APROVADO.** Tudo entra no corte 4, junto com as 7 correções da `instrucao-grimoire-corte4.md`. Na versão Rei do corte 4 confiro em especial: fecho ≥ 2 dB abaixo do pico, música do coringa 4 a 6 dB abaixo do SFX, e gárgula e salão do Tirano num ataque real da faixa do Rei.
