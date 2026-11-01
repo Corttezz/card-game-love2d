@@ -107,9 +107,17 @@ def game_stem(edl, plan, n, log):
         cut_ext = plan.get('clip_tail', {}).get(clip['id'], 0.0)
         for e in ev.get(shot, []):
             code = e['code']
+            group = e.get('group')
             if any(code.startswith(m) for m in mute):
                 continue
             t = frame_to_t(clip['map'], e['f'])
+            if plan.get('no_carry') and group != 'ambient' and t < t0 - 0.02:
+                continue
+            if t < plan.get('clip_mute_until', {}).get(clip['id'], -1e9):
+                continue
+            only = plan.get('amb_only', {}).get(clip['id'])
+            if only is not None and group == 'ambient' and not any(code.startswith(k) for k in only):
+                continue
             cw = [w for k, w in plan.get('code_window', {}).get(clip['id'], {}).items() if code.startswith(k)]
             ct1 = min([w[1] for w in cw] + [t1])
             if t >= ct1:

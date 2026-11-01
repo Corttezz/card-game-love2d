@@ -40,6 +40,20 @@ Tudo em `docs/handoff/trailer-do-zero/corte/`:
 | provas do gancho | ≥ 2,5 s contínuos | Revoada 4,25 s; correntes 2,86 s; Geada 3,50 s |
 | textos | dentro do próprio plano | os 7 dentro do intervalo do clipe (conferido em `edl.py`) |
 
+## Rodada 2 (depois de `revisao-corte1.md`)
+
+Os arquivos têm os mesmos nomes e foram regravados. Mudanças (detalhe em `resposta-corte1.md`):
+- **Quadro 0**: o liga-TV começa no quadro 66 da animação: o vidro inteiro já aberto, com a mão do ladino legível (Backstab, Storm of Steel 10, Dirty Blade, Shadow Dance, Poison Dart) e o Espantalho acima.
+- **Cascata** (3,07–7,24 s): recorte ×2 (340,200) com as cartas jogadas, o Espantalho e o **painel somando 0 → 8 → 21 → 31 → 40/40**; o Espantalho morre num ×2 próprio (7,24–9,99 s).
+- **"145 LIVING CARDS."** sobre o espólio a ×2 (as cartas grandes), no alto, sem tocar carta.
+- **Revoada** em dois planos ×2: o Rei anunciando "Murder of Crows" com a órbita (33,24–34,94 s) e os corvos chegando ao painel do herói com o "Weak" (34,94–37,22 s).
+- **Correntes**: sem legenda nossa; o recorte (480,240) pega o rosto do Tirano, o intent 20 → 10 e o texto do jogo "Half strike / Chain snapped!", no mesmo enquadramento antes e depois.
+- **LETAL**: o ×2 do painel passou a (480,150), com o Rei inteiro; o hit-stop é no quadro da morte (60,80 s da tomada), a ×2 no Rei, sem as cartas na frente; a morte segue a ×2.
+- **Montagem**: o ato 5 voltou (E5, 49,50–50,95 s); o ato 3 é representado pelo salão e pelo Tirano. Atos na tela: 1 (abertura), 2, 3, 4, 5, 6.
+- **Som**: um evento por código por instante; nenhum som "herdado" de antes do corte (portão, pouso e revelação tocam uma vez); dentro do castelo só o ambiente do salão (`pl:boss*`); de 0 a 0,89 s só o liga-TV.
+
+Medidas da rodada 2: −14,0 LUFS, −1,2 dBFS, LRA 9,4; pico de curto prazo −8,9 (janelas 56–61 s) contra −11,5 no maior trecho fora do clímax (**+2,6 dB**); golpe LETAL −8,5 momentâneo, o evento mais alto do filme até a morte; silêncio: olhos −25,3, rasantes −19,2, pouso −13,4, nome −16,1; curto prazo do silêncio −19,5 / −24,5 / −25,7 / −21,1 em 24–27 s contra −13,2 do groove em 22 s; clima de fora dentro do castelo: nenhum evento (`mix_sources.json`).
+
 ## Pontos fracos que eu mesma vejo (para a revisão)
 
 1. **Quadro 0**: a TV está ~35% aberta (faixa central), não os 60% do roteiro; as cartas se leem, mas a imagem ainda tem o ruído do liga-TV. Ajuste simples: começar 6 quadros depois (`TV_SKIP` 60).

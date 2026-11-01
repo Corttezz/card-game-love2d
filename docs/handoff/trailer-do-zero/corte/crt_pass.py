@@ -8,7 +8,7 @@ WORK = os.path.join(E.OUT, 'work', 'crt')
 SRC = os.path.join(E.OUT, 'zero_semcrt.mp4')
 DST = os.path.join(E.OUT, 'zero_crt.mkv')
 CHUNK = 600
-TV_SKIP = 54
+TV_SKIP = 66
 
 
 def main():

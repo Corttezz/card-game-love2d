@@ -12,7 +12,7 @@ ENC = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10', '-pix_fmt', 'yuv4
 PARCH = (244, 230, 200, 255)
 GOLD = (232, 184, 80, 255)
 INK = (22, 14, 20, 255)
-CARD_BOX = (730, 175, 1210, 905)
+CARD_BOX = (728, 178, 1216, 912)
 
 
 def nframes(c):
