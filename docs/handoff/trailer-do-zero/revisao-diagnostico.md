@@ -49,3 +49,27 @@ A partir desta etapa cada revisão traz uma nota por critério. Só aprovo quand
 | D7 Continuidade e "prende" (o diagnóstico enxerga isso?) | 7 | aponta imagem parada e falta de curva de emoção, mas não analisa a continuidade entre planos (direção de movimento, salto de luz/cor entre ato e ato no chicote, ex.: B 13→14 s azul-noite → vermelho) |
 
 **Status: NÃO APROVADO** (D1, D4, D5, D6 e D7 abaixo de 9). Para D7, peço uma linha sobre continuidade nas versões atuais (saltos de cor/luz entre os atos em chicote, inimigo que muda de lado, a moldura que "respira" no corte) para o roteiro já nascer com essa regra.
+
+## Rodada 2, nota 8,8/10 (resposta-diagnostico.md + §6 do diagnóstico, 14:3x)
+
+Conferi as afirmações novas no código e no worktree. `audio/sfx/boot-tv-power-on.mp3` existe (`main.lua:1074`, `bootTvPowerOn`). `tools/trailer_record.lua` lê `TRAILER_SIZE` (l. 1418), `TRAILER_NOBEZEL` (l. 1430) e `TRAILER_CRT` (l. 1466). A contagem de 145 / 139 bate com a minha. Os itens 1 a 9 foram aceitos e escritos como regra, e a regra do microtrailer ("entre 30% e 90%, todo segundo tem carta grande ou criatura em ação") é melhor do que eu pedi.
+
+### Ressalvas que seguem para o roteiro (não bloqueiam, vou medir no corte 1)
+- **A frase do gancho é interna, não texto de tela.** "Cada chefe quebra as regras da luta, e o seu baralho vivo é o que quebra de volta." tem cerca de 80 caracteres e, pela regra de 1 s a cada 13 caracteres, ficaria mais de 6 s parada. Na tela, no máximo 3 palavras por cartão (ex.: "BOSSES BREAK RULES." / "YOUR DECK BREAKS BACK."). Os textos novos dependem de OK do Daniel, porque os aprovados são outros cinco.
+- **Câmera virtual em recorte ×3:** um passo de 1 px da captura vira um salto de 3 px no filme. Num pan lento a 60 fps isso aparece como degrau, e é justamente o "nada pulando" da regra nova. Peço que o teste da etapa 2 inclua **um pan e um zoom-in de 2 s** em ×2 e em ×3, olhados em recorte 1:1, e que a decisão (passo inteiro com movimento rápido/easing curto ou corte seco entre enquadramentos fixos) fique escrita em `ferramentas.md`.
+- **Geada na mão:** ela só aparece em ato 4 com 4+ acúmulos na compra. A captura encenada tem de garantir as 2 cartas congeladas **visíveis e grandes** (é o elo chefe ↔ carta do gancho). Se só ficar legível no recorte ×3, esse plano é obrigatoriamente ×3.
+- **Teste mudo** continua pendente; aceito que seja feito no corte 1 (eu faço a leitura muda por quadros e registro).
+
+### Notas por critério (rodada 2)
+
+| critério | r1 | r2 | por quê |
+|---|---|---|---|
+| D1 Precisão das medições | 7 | 9 | números recontados com comando; dB corrigido |
+| D2 Cobertura | 9 | 9 | — |
+| D3 Causa raiz | 9 | 9 | — |
+| D4 Referências do gênero | 8 | 9 | microtrailer simulado medido e virou regra |
+| D5 Acionabilidade | 6 | 9 | gancho, alvo (60 a 70 s, 1º vídeo) e caminho do close definidos |
+| D6 Regras do Daniel | 6 | 9 | TV liga antes da música conciliada (§6.3); IA fora e levada ao Daniel (§6.4) |
+| D7 Continuidade e "prende" | 7 | **7** | ainda sem a análise de continuidade entre planos que pedi na régua nova (a resposta foi escrita antes dela) |
+
+**Status: NÃO APROVADO, falta um item.** Para fechar o D7, peço um §7 curto no diagnóstico listando os saltos de continuidade das versões atuais, com timestamp, e a regra que o roteiro herda. Exemplos que vi no B: 13→14 s céu azul-noite → vermelho no chicote entre atos, sem ponte de luz; 20→21 s o grifo entra num plano e no seguinte a câmera está em outro ato com o mesmo texto ainda na tela; 31→32 s castelo noturno → escuro total sem o movimento continuar; 53→54 s luta → bússola sem nenhum gesto ligando os dois. Basta a lista e uma regra de 3 linhas (direção do movimento mantida no corte, luz/cor com ponte ou contraste intencional, objeto em foco na mesma região do quadro de um plano para o outro). Com isso dou 9 em todos e o diagnóstico fica aprovado. A etapa de ferramentas pode andar em paralelo.
