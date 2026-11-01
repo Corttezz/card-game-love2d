@@ -41,8 +41,8 @@ Responda e relate sempre em português. Decisão do Daniel: MANTER os salões do
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (SFX do jogo gerados no ElevenLabs free, usados com a liberação do Daniel de 01/11 13:00 só para ver). Música ACE-Step local (uso comercial). Sem 4K, nada para Steam ou depot, sem push.
 
 - **Corte 1 "Contra as regras"** (68,5 s, 60 fps, −14,0 LUFS, −1,2 dBTP):
-  - 1080p: `E:\dev\projects\card-game-traileruild	railer\grimoire_zero_corte1_1080p.mp4`
-  - 720p: `E:\dev\projects\card-game-traileruild	railer\grimoire_zero_corte1_720p.mp4`
+  - 1080p: `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte1_1080p.mp4`
+  - 720p: `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte1_720p.mp4`
 - Etapas e revisões: `trailer-do-zero/diagnostico.md`, `ferramentas.md`, `roteiro.md`, `corte1.md` (com `revisao-*` e `resposta-*` de cada uma). Pipeline reproduzível em `trailer-do-zero/corte/` (`edl.py`, `build_video.py`, `crt_pass.py`, `mix.py`, `mux.py`).
 - Gravador: worktree `E:\dev\projects\card-game-trailer-zero`, branch `trailer-do-zero` (`TRAILER_OUT`, `TRAILER_CARD_PX`, `TRAILER_TOOLTIP`, tomadas `zero_*`, `tools/trailer_crt_post.lua`). Tomadas novas em `%APPDATA%\LOVE\card-game-trailer-v9	railer_zero\`; as antigas em `trailer\` intactas; masters antigos intactos.
 
