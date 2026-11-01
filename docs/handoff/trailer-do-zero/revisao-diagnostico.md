@@ -73,3 +73,23 @@ Conferi as afirmações novas no código e no worktree. `audio/sfx/boot-tv-power
 | D7 Continuidade e "prende" | 7 | **7** | ainda sem a análise de continuidade entre planos que pedi na régua nova (a resposta foi escrita antes dela) |
 
 **Status: NÃO APROVADO, falta um item.** Para fechar o D7, peço um §7 curto no diagnóstico listando os saltos de continuidade das versões atuais, com timestamp, e a regra que o roteiro herda. Exemplos que vi no B: 13→14 s céu azul-noite → vermelho no chicote entre atos, sem ponte de luz; 20→21 s o grifo entra num plano e no seguinte a câmera está em outro ato com o mesmo texto ainda na tela; 31→32 s castelo noturno → escuro total sem o movimento continuar; 53→54 s luta → bússola sem nenhum gesto ligando os dois. Basta a lista e uma regra de 3 linhas (direção do movimento mantida no corte, luz/cor com ponte ou contraste intencional, objeto em foco na mesma região do quadro de um plano para o outro). Com isso dou 9 em todos e o diagnóstico fica aprovado. A etapa de ferramentas pode andar em paralelo.
+
+## Rodada 3, APROVADO (diagnóstico §7 + resposta, 14:29)
+
+O §7 é exatamente o que faltava. Os timestamps batem com a minha folha do B: 10,75 s (espólio → estrada), o chicote entre atos de 13 a 19 s, 22,5 → 23,75 s (frase atravessando grifo/anjo), 38,75 s (captura → IA) e 45,75 → 46,5 s (trono vazio). O trono vazio e a volta no tempo da jornada (loja do ato 3 → porta do ato 1, 29,5 s) eu não tinha visto, e são defeitos reais. As 7 regras são verificáveis e vão virar o critério C11 do corte 1. Vou medir a regra 2 (luminância ≤ 25% entre planos sem motivo) com a curva de luma da `trailer_kinetic_metrics.py` e as regras 3 e 4 por quadros.
+
+Duas notas para o roteiro: (a) a regra 2 não pode matar o contraste. Porta, entrada do chefe e golpe letal **devem** saltar, e o roteiro tem de marcar quais cortes são "salto intencional" para eu não reprovar um acento. (b) A regra 1 (mesmo enquadramento entre atos) depende de a câmera do WorldRoad parar no mesmo `rel` em todos os atos. Confirmem nas tomadas que o horizonte fica na mesma altura; se não ficar, o recorte compensa.
+
+**Decisão do Grimoire registrada (01/11):** só salões REAIS (`castle_hall_1..6`) com o chefe dentro, nada de b-roll Higgsfield/IA até o Daniel decidir, e **parar antes de qualquer 4K**. Isso confirma o §6.4. Vou reprovar automaticamente (C9) qualquer quadro de IA no corte 1 e qualquer render 4K feito sem liberação.
+
+| critério | r1 | r2 | r3 |
+|---|---|---|---|
+| D1 Precisão | 7 | 9 | 9 |
+| D2 Cobertura | 9 | 9 | 9 |
+| D3 Causa raiz | 9 | 9 | 9 |
+| D4 Referências | 8 | 9 | 9 |
+| D5 Acionabilidade | 6 | 9 | 9 |
+| D6 Regras do Daniel | 6 | 9 | 9 |
+| D7 Continuidade e "prende" | 7 | 7 | 9 |
+
+**Status: APROVADO, ≥ 9 em todos.** Pode seguir para `ferramentas.md` e `roteiro.md`.
