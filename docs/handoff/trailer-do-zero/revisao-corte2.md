@@ -61,3 +61,66 @@ Tudo dos itens 1 a 5 vale igual (mesmos planos). E mais:
 | G7 Textos exatos | 10 | 10 |
 
 **Status: NÃO APROVADO (nenhuma das duas).** Para a rodada 2: itens 1, 2, 3, 4 e 5 nas duas versões; 6 na principal; 7 e 8 na variante. São de montagem, recorte e lift; nada pede regravação nem troca de faixa, texto ou salão. `===CORTE2_PRONTO===` não pode ser marcado.
+
+
+## Rodada 1b: análise de mixagem de verdade + os 5 pontos do Grimoire do corte 2 (01/11, depois de `revisao-grimoire-corte2.md`)
+
+_Feita sobre os stems reais do corte 2 (`build\trailer\zero2\zero2_tirano\` e `zero2_rei\zero2_rei\`: `stem_music/game_sfx/game_amb/synth.wav` + `mix.wav`), com a EDL de cada variante. Script: `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\f967decd-bccd-487a-92fd-ff59f9b0ee6d\scratchpad\rev\mixagem.py`; saídas `mix_tirano.json` e `mix_rei.json` na mesma pasta (nível por plano de cada stem, perfil de 100 ms do filme inteiro, onsets).
+
+Método dos onsets: envelope da faixa de graves (30 a 160 Hz) do **stem de música já automatizado**, em janelas de 2 ms. Para cada corte medi a subida do envelope em ±40 ms ("subida no corte") e a maior subida a ±30 ms (≈ 2 quadros). Como referência, uma subida em ponto aleatório fica em −0,4 dB de mediana e 10 dB no p90. Calibração: o `boss-abyss_tyrant_beats.json` cai, em mediana, 33 ms antes do ataque real do grave (p10 a p90 de −107 a +93 ms), ou seja, a grade usada na montagem está certa dentro de ~2 quadros. Ainda não ouvi; isto é medida._
+
+### 1. A música bate nos cortes?
+
+**Principal (Tirano):** sim, na maioria. Os cortes de 11,69 / 16,24 / 18,54 / 26,53 / 27,99 s e o do golpe (52,83 s) caem em cima do ataque (subida de 13 a 71 dB no próprio quadro). Outros nove têm o ataque a ≤ 2 quadros (subida máxima de 18 a 27 dB em ±30 ms), o que é aceitável. **Fora do grave de verdade:** `ia_hall4` (20,82 s: nenhum ataque em ±30 ms, máximo 6,5 dB), `espolio` (9,60 s: 12 dB, fraco, no buraco de grave da faixa) e `k_porta` (29,95 s: 11,6 dB, fraco).
+
+**Variante (Rei):** nos cortes do meio, melhor que a principal: 16 dos 24 têm subida de 33 a 55 dB no próprio quadro (corte num ataque depois de um decaimento). **Fora do grave de verdade:** `e2_gargula` (11,69 s, máximo 8,2 dB), `ia_hall3` (13,07 s, 6,1 dB) e `ia_hall4` (20,82 s, 4,2 dB): os primeiros acentos de salão e o "6 ACTS." não batem em grave nesta faixa. `h_cascata` (4,18 s) e `k_coringa` (55,96 s) ficam fracos (10 a 14 dB).
+
+**Correção da minha rodada 1:** o item 7 (volta da música 0,28 s depois do drop) **está errado e o retiro**. No áudio real, o retorno a 39,44 s tem a maior subida do filme no quadro exato (de silêncio para o drop). A diferença vinha do `_beats.json` da faixa do Rei, que não lista esse ataque. Do item 8 ficam valendo só os 3 cortes acima (`e2_gargula`, `ia_hall3`, `ia_hall4`); os outros quatro estão no grave real.
+
+### 2. O silêncio da entrada do Rei funciona?
+
+**Sim, e é a melhor parte da mixagem.** Perfil de 100 ms (principal; a variante é igual a ±1 dB):
+- 30,0 a 32,6 s (porta, groove): mix de −17 a −22 dBFS RMS;
+- 32,7 a 33,9 s (salão IA do Rei): a música cai a −∞ em ~0,5 s e o mix vai a **−56 a −75**, quase silêncio digital, por cerca de 1 s;
+- 34,0 a 37,2 s (escuro, olhos): **−24 a −36**, só o leito e os olhos/cliques;
+- 37,3 a 38,2 s: rasantes a −16/−19; 38,9 s: pouso a −6; 39,44 s: o drop volta, com a música subindo 15,7 dB num quadro (variante: cerca de 35 dB).
+
+O contraste com o groove anterior vai de 15 a 50 dB conforme o trecho: o ouvido percebe a música **sair** e **voltar**. Cumpre a meta. Uma observação: o salão IA do Rei, que na imagem é um acento, fica sem som nenhum. O "leito −14" declarado no `mix_sources` não aparece no mix (−56 a −75). Como silêncio funciona, mas se a ideia era o salão ter um leito, ele sumiu.
+
+### 3. Níveis por trecho: o que mascara o quê
+
+| trecho | música | SFX do jogo | leitura |
+|---|---|---|---|
+| gancho, LETHAL (2,55 s) | −14 | −18 | música na frente, ok |
+| cascata / morte do Espantalho / espólio | −25 a −28 | −21 a −27 | equilibrado |
+| **salão do Tirano (13,03 s, acento + EVERY BOSS)** | **−25,7** | **−13,8** | o efeito "parede de fogo" (sintetizado, ganho −4 dB) fica **12 dB acima da música**, e a música **cai 4,8 dB** no corte: o acento do salão é carregado por um ruído, não pela música |
+| **salão do Monarca (20,82 s)** | −17,8 | −17,2 | a "tempestade de gelo" (−2 dB) empata com a música, e a música cai 3,5 dB no corte |
+| montagem de estradas (atos 2, 4, 5, 6) | −13 a −21 | −38 a −54 | música sozinha, ótimo |
+| luta do Rei (guerreiro, Revoada, volta) | −19 a −25 | −15 a −21 | música 2 a 7 dB abaixo dos SFX; aceitável numa luta |
+| respiro antes do LETAL (52,3–52,8 s) | **−97** | — | respiro limpo de 0,5 s |
+| golpe (52,83 s) | −24 → −14 | **−3 / −1** | impacto forte, mix a −6/−7 RMS; o baque da queda (54,7 s) bate com o corpo no chão |
+| coringa (55,96 s) | −27 | −15 | música 12 dB abaixo: a revelação do coringa fica só no SFX |
+| variante: nome do Rei | **−25,3** | −29,6 | o drop do Rei entra **8 dB mais baixo** que o do Tirano (−17,4) no mesmo ponto: a volta "com impacto" é mais fraca na variante |
+
+**Achados de mixagem para o corte 3:**
+- **M1 (salões):** nos dois acentos de salão a música tem de liderar. O corte deve cair no ataque mais forte da faixa (hoje `ia_hall4` nem cai em grave), e os efeitos "parede de fogo"/"tempestade de gelo" ficam 8 a 10 dB abaixo do nível atual, entrando **depois** do ataque (≥ 60 ms), não junto. Hoje a música chega a cair nesses cortes.
+- **M2 (variante, volta do drop):** subir a música da variante 5 a 8 dB a partir de 39,44 s (ou baixar o que está por cima), para a volta bater como na principal.
+- **M3 (sincronia):** principal: `ia_hall4`, `espolio` e `k_porta` num ataque real (ou o espólio num evento do jogo, escrito). Variante: `e2_gargula`, `ia_hall3` e `ia_hall4` num ataque real da faixa do Rei.
+- **M4 (coringa):** a música está 12 dB abaixo do SFX na revelação; entre 4 e 6 dB abaixo, ela carrega a ponte para o logo.
+- **M5 (leito do salão IA do Rei):** decidir se o salão tem leito (hoje inaudível) ou se o silêncio digital é intencional, e escrever.
+
+### 4. Os 5 pontos do Grimoire do corte 2 (nota no corte 2 atual, para guiar o corte 3)
+
+| ponto | nota no corte 2 | o que vi e medi |
+|---|---|---|
+| N1 virada da luta do Rei legível (9 de vida, Revoada, LETHAL antes do 47) | **5** | é o meu item 5: no ×2 do LETAL (49,1–52,83 s) não aparecem nem o painel LETHAL nem o HERO 9/70, que só ficam no `k_volta` a ×1 por 1,13 s. A Revoada é o plano 44,08–47,97 s, mas nada liga o "Murder of Crows" à vida do herói caindo (o modo deus a segura em 70) |
+| N2 caminhada ≤ 1,5–2 s, ou a porta abrindo | **5** | 4,56 s (27,99–32,55 s), com quadros quase idênticos (meu item 2) |
+| N3 salões pixelizados na resolução nativa antes do CRT | **6** | concordo com o Grimoire e revejo o meu 9 no G3: o tratamento a 960×540 (pixel de 2 px na tela) tem grão muito mais fino que o salão real (`castle_hall_*`, 400×256 nativos, com pixel de ~4,2 px na tela). Lado a lado, a densidade de pixel denuncia outra fonte. O certo é reduzir à **mesma grade do salão real**, limitar a paleta e ampliar por vizinho mais próximo, mantendo o que a v2 a 960 ganhou em legibilidade (contraste e silhueta do trono) |
+| N4 zoom no miolo onde a carta importa (145 LIVING CARDS, luta do Rei) | **6** | no espólio a ×2 as cartas já são grandes, mas a moldura do CRT toma uns 6% de cada lado; na luta do Rei (`k_guerreiro`, `k_letal`) as cartas e o painel ficam pequenos dentro da moldura. **Atenção à regra de câmera** (§5.3 das ferramentas): zoom contínuo com escala não inteira é "cara de IA". O zoom tem de ser um degrau inteiro (×2 → ×3 da captura) por corte seco no grave, ou um recorte ×2 mais fechado, nunca um zoom digital suave |
+| N5 mixagem avaliada de verdade | **feito acima** | M1 a M5 são os achados |
+
+### Notas revisadas do corte 2 (com os 5 pontos e a mixagem)
+
+As notas da rodada 1 ficam, com três ajustes: **G3 de 9 para 6** (ponto N3); **C14 Som de 9 para 8** (M1: acentos de salão afogados por efeito, com a música caindo); e, na variante, **C3 de 7 para 8** (retirei o item 7; ficam 3 cortes fora do grave real). Pontos do Grimoire do corte 2: N1 5 · N2 5 · N3 6 · N4 6.
+
+**Status do corte 2: NÃO APROVADO (as duas versões).** O corte 3 tem de trazer N1, N2, N3, N4 e os achados M1 a M5, além dos itens 1, 3, 4 e 6 da rodada 1 (quadros pretos, 47 sob o banner, FROST no rosto, espólio fora do grave), que continuam valendo.
