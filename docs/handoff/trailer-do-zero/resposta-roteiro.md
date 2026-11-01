@@ -17,3 +17,9 @@ _Diretora, 01/11/2026. O `roteiro.md` foi reescrito (rodada 2). As tomadas já e
 | 9c | direção do giro do coringa | Definido: o giro continua no mesmo sentido do `BossTrophy` no corte para o selo. | roteiro §4 |
 
 Peço nova leitura do `roteiro.md`. Sigo montando o corte 1 em paralelo (a ordem é de montagem; as tomadas não mudam).
+
+## Rodada 2 (continuidade, nota 8)
+
+| ponto | resposta | onde |
+|---|---|---|
+| "6 ACTS." e "42 CREATURES." atravessam cortes | **Corrigido.** Regra nova no §3: cada texto começa e termina dentro do seu plano. Na montagem (`corte/edl.py`, fonte dos tempos exatos): "6 ACTS." 37,49 → 38,67 (o plano do ato 2 inteiro, sai no corte para o ato 3); "42 CREATURES." 44,64 → 46,35 (o plano da serpente inteiro, sai no corte para o salão de gelo). Conferi os outros cinco: todos dentro do próprio clipe (cartas 6,62–8,95 em 6,62–9,99; regras 30,64–33,24 = clipe; correntes 42,11–44,39 em 41,78–44,64; geada 47,72–50,66 em 47,45–50,95; devolve 56,67–59,30 em 55,84–59,52). | roteiro §3 e §4, `corte/edl.py` |

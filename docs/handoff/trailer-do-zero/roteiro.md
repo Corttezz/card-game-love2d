@@ -35,12 +35,14 @@ A faixa sozinha é plana (−13 a −21): **o contraste e o pico são feitos na 
 - Quadro 0 nunca preto; de 30% a 90% (20,6 a 61,7 s) todo segundo com carta grande, criatura ou chefe em ação (o silêncio no escuro tem os olhos e os corvos); logo só depois de 61,7 s.
 - **Continuidade:** jornada só para a frente (§1); **troca de classe uma vez**, na porta do ato 1 (o ladino não reaparece depois); a montagem sai e volta à luta do Rei no mesmo enquadramento e estado; criatura e chefe entram pela direita; saltos de luz intencionais marcados ◆.
 - **Ritmo:** no máximo **2 rajadas** de planos < 1 s no filme todo; cada prova do gancho com **≥ 2,5 s contínuos** no plano em que a regra se lê.
-- Texto: inglês, Grimoire Pixel em escala inteira, contorno; nunca sobre o assunto do plano; ≥ 1 s parado a cada 13 caracteres; ≤ 4 palavras por tela. **⚠️ = texto novo, pendente do Daniel**, com a versão aprovada (ou "sem texto") de reserva.
+- Texto: inglês, Grimoire Pixel em escala inteira, contorno; **cada texto começa e termina dentro do seu plano (nunca atravessa corte)**; nunca sobre o assunto do plano; ≥ 1 s parado a cada 13 caracteres; ≤ 4 palavras por tela. **⚠️ = texto novo, pendente do Daniel**, com a versão aprovada (ou "sem texto") de reserva.
 - Salões do Higgsfield: tratados (§5.10 das ferramentas) e na ordem do §5.11 (antes de o chefe ocupar o salão, IA primeiro, 1 grave, ◆).
 - Números na tela só os contados: 145 cartas, 42 criaturas, 6 atos, 6 chefes.
 - Som: SFX reais do jogo pelo `audio.jsonl` de `trailer_zero` (`remix_engine.py`); marca "**não publicável até trocar ou licenciar os SFX**".
 
 ## 4. Storyboard
+
+_Os tempos abaixo são os nominais; os exatos (encaixados nos graves medidos da faixa) estão em `corte/edl.py` (`CLIPS` e `TEXTS`), que é a fonte da montagem. Todo texto do `TEXTS` fica dentro do intervalo do seu clipe._
 
 Tomadas: **H** `zero_hand` (ladino × Espantalho, ato 1, até o espólio com o coringa raro); **F1** `fork_a1`/`night_a1` (estrada e encruzilhada do ato 1); **E2..E6** `entr_*` (estrada de cada ato com a criatura chegando, mesmo enquadramento); **K** `zero_carrion` (estrada do ato 1 até o castelo, porta, entrada do Rei, luta, LETAL, morte, coringa); **T** `zero_tyrant`; **M** `zero_monarch`. IA = salão Higgsfield tratado.
 
@@ -83,11 +85,11 @@ Tomadas: **H** `zero_hand` (ladino × Espantalho, ato 1, até o espólio com o c
 
 | t (s) | imagem | escala | texto | som |
 |---|---|---|---|---|
-| 38,4 ◆ | **E2**: estrada do ato 2 (crepúsculo roxo), a gárgula surge pela curva | ×1 | ⚠️ **6 ACTS.** (reserva aprovada: **SIX ACTS.**) 38,4 → 40,4 | grave; ambiente do ato 2 |
+| 38,4 ◆ | **E2**: estrada do ato 2 (crepúsculo roxo), a gárgula surge pela curva | ×1 | ⚠️ **6 ACTS.** (reserva aprovada: **SIX ACTS.**) do início ao **fim deste plano** (sai no corte para o ato 3) | grave; ambiente do ato 2 |
 | 39,6 ◆ | **E3**: estrada do ato 3 (vermelho), o cão do inferno | ×1 | | grave; brasas |
 | 40,8 ◆ | **IA hall3**: o trono de lava vazio (apresentação do Tirano), 1 grave | ×1 | — | grave |
 | 41,8 → 44,8 | **prova 2 (3,0 s contínuos):** **T**: o Tirano com as 3 marcas douradas na barra; um golpe cruza 75%, **a corrente rompe** e o golpe anunciado cai pela metade | ×2 (barra + intent + chefe) | ⚠️ **BREAK HIS CHAINS.** (reserva: sem texto) 42,6 → 44,6 | rompimento da corrente, impacto |
-| 44,8 ◆ | **E4**: estrada do ato 4 (neve), a serpente de gelo emerge | ×1 | ⚠️ **42 CREATURES.** (reserva: sem texto) 44,8 → 46,6 | grave; sopro de gelo |
+| 44,8 ◆ | **E4**: estrada do ato 4 (neve), a serpente de gelo emerge | ×1 | ⚠️ **42 CREATURES.** (reserva: sem texto) do início ao **fim deste plano** (sai no corte para o salão de gelo) | grave; sopro de gelo |
 | 46,0 ◆ | **IA hall4**: o trono de gelo vazio (apresentação do Monarca), 1 grave | ×1 | — | grave; vento |
 | 47,0 → 49,8 | **prova 3 (2,8 s contínuos):** **M**: a mão do guerreiro, **duas cartas congelam** (as mais caras, com o "frozen!" do jogo); um ataque derrete uma | ×2 (mão + carta) | ⚠️ **FROST LOCKS YOUR HAND.** (reserva: sem texto) 47,0 → 49,4 | gelo do jogo, derretimento |
 | 49,8 ◆ | **E5 + E6**: estrada do ato 5 (mãe-esporo) 0,9 s → estrada do ato 6 (anjo caído pousando) 0,9 s (**a única rajada**) | ×1 | — | graves; chuva; pouso do anjo |
