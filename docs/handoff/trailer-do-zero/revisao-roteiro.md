@@ -104,3 +104,28 @@ Li o roteiro novo inteiro e as folhas das tomadas já gravadas (`scratchpad\tk\`
 | C14 Som | 7 | 9 | silêncio depois do groove; metas por evento |
 
 **Status: NÃO APROVADO, falta só o item 1** (C11 em 8). É uma linha em cada um dos dois textos. Com isso aprovo o roteiro. O corte 1 pode seguir montando já com essa correção.
+
+## Rodada 3, APROVADO (roteiro rodada 3 + resposta, 15:22)
+
+O item 1 foi resolvido com regra (§3: cada texto começa e termina dentro do seu plano) e com os tempos exatos tirados da EDL (`corte/edl.py`). "6 ACTS." fica de 37,49 a 38,67 s: 1,18 s para 7 caracteres, acima do mínimo de 0,54 s, e sai no corte para o ato 3. "42 CREATURES." fica de 44,64 a 46,35 s: 1,71 s para 13 caracteres, acima de 1,0 s, e sai no corte para o salão de gelo. Os outros cinco textos estão dentro dos clipes. A EDL passa a ser a fonte dos tempos; os segundos do storyboard são nominais, e no corte 1 vou medir contra a EDL e contra os graves.
+
+Ficam registrados, sem bloquear: a fatia 1 do microtrailer cai no salão IA (22,6 s), aceito pela decisão do Daniel; a faixa do Tirano é decisão de escuta dele, com a reserva da faixa do Rei descrita na Entrega; e o limite de mão com ≤ 5 cartas é conferido no corte.
+
+| critério | r1 | r2 | r3 |
+|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | 10 | 10 |
+| C2 Sem preto | 9 | 9 | 9 |
+| C3 Sincronia | 7 | 9 | 9 |
+| C4 Legibilidade | 8 | 9 | 9 |
+| C5 Ritmo | 7 | 9 | 9 |
+| C6 Pico | 7 | 9 | 9 |
+| C7 Regra de 3 | 9 | 9 | 9 |
+| C8 Fecho | 9 | 9 | 9 |
+| C9 Conformidade | 9 | 9 | 9 |
+| C10 Checklist do Daniel | 9 | 9 | 9 |
+| C11 Continuidade | 5 | 8 | 9 |
+| C12 Está bom / legal de assistir | 8 | 9 | 9 |
+| C13 Prende do início ao fim | 7 | 9 | 9 |
+| C14 Som | 7 | 9 | 9 |
+
+**Status: roteiro APROVADO, ≥ 9 em todos.** As notas são previstas para o filme que o roteiro descreve. O corte 1 é avaliado de novo, do zero, pelo que está no vídeo, com os mesmos 14 critérios.
