@@ -67,3 +67,40 @@ _Revisora independente, 01/11/2026. Base: `roteiro.md` (13.201 bytes, 14:56). Co
 | C14 Som | 7 | silêncio depois de trecho calmo; meta de −32 incompatível com os SFX pedidos |
 
 **Status: NÃO APROVADO.** Para a rodada 2 exijo: itens 1, 2, 3 e 4 resolvidos no storyboard (com a curva de energia medida), 5 e 8 decididos, 6 marcado, 7 e 9 respondidos. As tomadas que não dependem da ordem (H, R, N1..N6, K, M, T, F) podem ser gravadas já, porque a reordenação é de montagem.
+
+## Rodada 2 (roteiro rodada 2 + resposta-roteiro.md, 15:13)
+
+Li o roteiro novo inteiro e as folhas das tomadas já gravadas (`scratchpad\tk\`: `zero_monarch.jpg`, `zero_tyrant.jpg`). Nas duas o HUD é do guerreiro (70 de vida), coerente com a troca única de classe. Na do Monarca leem-se "frozen!" e as cartas congeladas na mão; na do Tirano, o COMBO! Volley +15 / Pair +4 e os números grandes. A rodada 2 resolveu o essencial:
+- **Ordem:** ato 1 → porta do ato 1 → Rei → "o que vem pela frente" em ordem crescente (2 → 3/Tirano → 4/Monarca → 5 → 6) → volta à **mesma luta** no mesmo enquadramento e estado. A progressão de vida bate: a Revoada derruba a vida a 32 a 35 s, e ela volta com 9 a 51,6 s. Troca de classe uma vez, na estrada do ato 1. Nada anda para trás.
+- **Música:** a troca para o Tirano põe a montagem sobre a parte mais forte da faixa e o silêncio depois de um groove. O plano de mixagem do pico está escrito (−5 dB, respiro de 0,6 s, impacto 0 dB, +1 dB, hit-stop) com a meta medível "≥ 2 dB acima de qualquer outro trecho".
+- **Silêncio:** meta reescrita do jeito certo (leito ≤ −30 sem transientes; cada evento com nível).
+- **Provas:** 3,3 / 3,0 / 2,8 s contínuas, no plano em que a regra se lê; uma rajada só.
+- **Textos:** todos os novos marcados ⚠️ com reserva; "BREAK HIS CHAINS." e "FROST LOCKS YOUR HAND." agora dizem a regra. Tempos de leitura conferidos: todos acima de 1 s/13 caracteres.
+- **Gancho** com a cascata e **estrada** enxuta (1,6 + 1,2 s).
+
+### O que ainda falta (pequeno, mas é continuidade)
+1. **Dois textos atravessam corte, contra a regra 7 do §7.** (a) ⚠️ "6 ACTS." vai de 38,4 a 40,4 s e atravessa o corte ◆ de 39,6 s (ato 2 roxo → ato 3 vermelho): é a frase atravessando cor oposta, o mesmo defeito que o diagnóstico mediu no B a 22,5 → 23,75 s. (b) ⚠️ "42 CREATURES." vai de 44,8 a 46,6 s e atravessa o corte de 46,0 para o **salão IA do Monarca**: o texto que fala de criaturas termina sobre um trono vazio. **Exijo**: ou o texto acaba no corte (6 ACTS. 38,4 → 39,6 tem 1,2 s para 7 caracteres, o que basta; 42 CREATURES. 44,8 → 46,0 tem 1,2 s para 13 caracteres, também basta, no limite), ou a frase fica fixa e a imagem acompanha com o mesmo enquadramento (corte de correspondência), escolhido de propósito e escrito como tal. Prefiro acabar no corte.
+2. **Microtrailer, fatia 1 (22,6 s) = salão IA.** A 1ª das 6 fatias do microtrailer da Steam cai exatamente no plano do Higgsfield. É permitido (decisão do Daniel), mas desperdiça a fatia com o único plano que não é o jogo. Recomendo empurrar o salão IA meio grave (a fatia passaria a pegar a porta abrindo ou os olhos) ou aceitar e registrar. Não bloqueia.
+3. **Faixa do Tirano sob o Rei-Carniça:** registrado como decisão de escuta do Daniel, ok. Na Entrega, deixem explícito que existe a versão de reserva com a faixa do Rei e o que ela custa (o meio sem grave).
+4. **Mão ≤ 5 cartas:** na folha `zero_tyrant` o primeiro turno mostra 6 cartas. Confiram no instante usado (regra da rodada 2 das ferramentas).
+
+## Notas por critério (rodada 2, previstas)
+
+| critério | r1 | r2 | por quê |
+|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | 10 | — |
+| C2 Sem preto | 9 | 9 | — |
+| C3 Sincronia | 7 | 9 | faixa com graves no filme inteiro; cortes do silêncio em som do jogo, declarados |
+| C4 Legibilidade | 8 | 9 | provas ≥ 2,8 s; textos dizem a regra |
+| C5 Ritmo | 7 | 9 | 1 rajada; estrada enxuta |
+| C6 Pico | 7 | 9 | plano de mixagem escrito, com meta medível; a prova é no corte |
+| C7 Regra de 3 | 9 | 9 | — |
+| C8 Fecho | 9 | 9 | — |
+| C9 Conformidade | 9 | 9 | — |
+| C10 Checklist do Daniel | 9 | 9 | música contínua e séria; troca da faixa marcada como decisão dele |
+| C11 Continuidade | 5 | **8** | ordem e estado resolvidos; dois textos atravessam corte (item 1) |
+| C12 Está bom / legal de assistir | 8 | 9 | a cascata no 3º segundo, a porta, o silêncio e o LETAL formam um arco de verdade |
+| C13 Prende do início ao fim | 7 | 9 | centro com pulso; ato III legível |
+| C14 Som | 7 | 9 | silêncio depois do groove; metas por evento |
+
+**Status: NÃO APROVADO, falta só o item 1** (C11 em 8). É uma linha em cada um dos dois textos. Com isso aprovo o roteiro. O corte 1 pode seguir montando já com essa correção.
