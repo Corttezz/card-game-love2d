@@ -141,3 +141,15 @@ Pendências que **não** pertencem à minha régua e vão na Entrega, como decis
 ===CORTE1_PRONTO===
 
 Notas: C1 9 · C2 9 · C3 10 · C4 9 · C5 9 · C6 9 · C7 9 · C8 9 · C9 9 · C10 9 · C11 9 · C12 9 · C13 9 · C14 9.
+
+## Adendo (01/11): o Grimoire reprovou o corte 1 (4,5/10). O que eu deixei passar
+
+Li `revisao-grimoire-corte1.md`. Registro aqui, sem atenuar, onde a minha régua foi frouxa, para não repetir no corte 2:
+- **Caminhada de 0:12 a 0:22 (ponto 2):** eu tinha apontado 15,2 a 22,6 s como longo (C5 e C13 na rodada 1), mas aceitei 9 nas rodadas 2 e 3 sem que nada tivesse mudado ali. Erro meu.
+- **Luta do Rei interrompida pela montagem (ponto 4):** a intercalação foi sugestão minha na revisão do roteiro (saída "a"). O Grimoire tem razão: no filme ela vira salada. A luta precisa de começo, virada e fim contínuos.
+- **Golpe final (ponto 5):** eu rebaixei o número de dano grande a "melhoria". Era exigência.
+- **LETAL (ponto 6):** aceitei a palavra na UI a ×1 como legível. Para o público geral não basta.
+- **Salões do Higgsfield (ponto 3):** cobrei integração e aprovei salões que, de tão integrados, deixaram de ser lidos como salões.
+- **Quadro preto (ponto 1):** no arquivo final o quadro 0 não é preto (luma média 88/255 no 1080p e no 720p). Mas, medindo quadro a quadro, achei **27 quadros quase pretos (média < 5%)** em 22,57 s e de 23,60 a 24,00 s (a passagem da porta para o salão escuro). Também deixei passar isso. Do corte 2 em diante, "sem preto" passa a ser **zero quadros abaixo de 5% de luma média dentro do vidro**, medido em todos os quadros.
+
+A partir do corte 2, avalio também os 7 pontos do Grimoire (G1 a G7), com nota de 0 a 10 cada, e só aprovo com ≥ 9 neles e nos 14 critérios.
