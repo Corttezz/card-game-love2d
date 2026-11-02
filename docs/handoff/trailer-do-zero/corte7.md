@@ -72,3 +72,14 @@ Só `grimoire_zero_corte7_rei_720p.mp4` foi regravado; a principal (Tirano) não
 - **Coringa:** música **5,2 dB abaixo** do SFX (−18,3 / −13,1).
 - **Arquivo:** −14,1 LUFS, −1,1 dBFS de pico, LRA 8,6; margem do pico +3,2 dB; 0 quadros < 5% de luma.
 - **Provas:** `corte7_provas/rei/coringa_7b_20qps_54.50-56.00s.png` (folha a 20 quadros/s: verso → giro → face, uma vez só) e `corte7_provas/rei/face_e_revelacao_54.92s.png`.
+
+## Rodada 7c: carta se dissolvendo antes do logo na variante do Rei
+
+Só `grimoire_zero_corte7_rei_720p.mp4` foi regravado; a principal (Tirano) não mudou (data do arquivo conferida).
+
+- **Defeito** (`revisao-corte7.md`, 22:10): com a tomada atrasada na 7b, a tomada passava do ponto em que a carta se dissolve no jogo (~57,4 s do filme). O quadro segurado na 7b (57,70 s) já era o salão sem carta, e de 57,67 a 58,32 s o plano ficava cinza lavado (luma 66, 104, 34).
+- **Medida:** o dourado da carta começa a cair a 57,23 s (de 26.676 para 24.067 px dourados) e some a 57,57 s. O último quadro com a face cheia é **~57,15 s**.
+- **Correção:** o quadro de **57,15 s** fica segurado (**69 quadros repetidos**, sem interpolar) até o corte do logo a **58,30 s**. O giro (verso → giro → face) e o corte a 54,555 s não mudaram. A revelação continua a 54,92 s, no quadro da face.
+- **Luma de 55 s ao fim:** **nenhum salto maior que 8** entre quadros vizinhos; de 57,0 a 58,2 s o plano fica estável em 54,5 a 55,0. Menor luma depois de 55 s: 19,5 (0 quadros abaixo de 5%).
+- **Coringa:** música 5,2 dB abaixo do SFX; −14,1 LUFS, LRA 8,6; margem do pico +3,2 dB.
+- **Prova:** `corte7_provas/rei/coringa_7c_face_segurada_56.80-58.60s.png` (face com o nome até o corte; depois o logo).

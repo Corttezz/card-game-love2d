@@ -265,7 +265,7 @@ if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1':
     _C['k_coringa']['t0'] = _gc
     _C['k_coringa']['s0'] = round(_C['k_coringa']['s0'] + _dc, 3)
     _C['k_coringa']['s0'] = round(_C['k_coringa']['s0'] + 0.37, 3)
-    _C['k_coringa']['fx'] = dict(freeze=(57.70, 52))
+    _C['k_coringa']['fx'] = dict(freeze=(57.15, 69))
 
 
 if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1':
