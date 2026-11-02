@@ -90,9 +90,9 @@ def _c6():
                         fx=dict(flash=(g0, 5, 0.75), shake=(g0 + 0.05, 12, 12), number=('48', g0, 0.6)))
     q0 = C['k_golpe']['t1']
     tf = round(q0 + 0.80, 3); imp = round(tf + 0.5 + 0.60, 3)
-    C['k_queda'].update(t0=q0, t1=54.88, s0=53.45, fx=dict(freeze=(tf, 30), shake2=(imp, 9, 9), dust=(imp, 50), freeze2=(round(imp + 0.9, 3), 36)))
+    C['k_queda'].update(t0=q0, t1=(55.22 if VARIANT == 'tirano' else 54.88), s0=53.45, fx=dict(freeze=(tf, 30), shake2=(imp, 9, 9), dust=(imp, 50), freeze2=(round(imp + 0.9, 3), 80 if VARIANT == 'tirano' else 50)))
     cr0 = C['k_queda']['t1']
-    C['k_coringa'].update(t0=cr0, t1=58.30, s0=56.93, fx=dict(freeze=(57.70, 30)))
+    C['k_coringa'].update(t0=cr0, t1=(58.35 if VARIANT == 'tirano' else 58.30), s0=56.93, fx=dict(freeze=(57.70, 30)))
     C['logo']['t0'] = C['k_coringa']['t1']; C['logo']['t1'] = DUR
     for tx in TEXTS:
         if tx['t0'] >= 32.55 - 1e-6:
@@ -233,6 +233,7 @@ if os.environ.get('TDZ_NO_SNAP') != '1' and (VARIANT == 'tirano' or os.path.exis
 
 REI_FIX = {'e2_gargula': 12.50}
 TIR_B = 39.44 + 18.0
+TIR_R = 65.97
 if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1' and os.path.exists(os.path.join(OUT, 'music_rei.wav')):
     for _cid, _t in REI_FIX.items():
         _i = [k for k, c in enumerate(CLIPS) if c['id'] == _cid][0]
@@ -267,7 +268,7 @@ if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1':
 if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1':
     _C = {c['id']: c for c in CLIPS}
     _e5 = _C['e5_esporo']['t0']
-    for _cid, _t in (('e6_pouso', round(_e5 + 1.0, 3)), ('k_porta', round(_e5 + 2.0, 3))):
+    for _cid, _t in (('e6_pouso', 26.31), ('k_porta', 27.31)):
         _i = [k for k, c in enumerate(CLIPS) if c['id'] == _cid][0]
         _a, _b = CLIPS[_i - 1], CLIPS[_i]
         _b['s0'] = round(_b['s0'] + (_t - _b['t0']), 3)
@@ -363,9 +364,11 @@ if __name__ == '__main__':
         s0, s1 = SIL6
         a0 = MUSIC_IN_FILM
         w = os.path.join(OUT, 'music_tirano.wav')
+        g = [c for c in CLIPS if c['id'] == 'k_golpe'][0]['t0']
         fc = (f"[0:a]atrim=start={a0 + OFF}:end={s0 + OFF},asetpts=PTS-STARTPTS,adelay={int(a0*1000)}|{int(a0*1000)}[a];"
-              f"[0:a]atrim=start={TIR_B},asetpts=PTS-STARTPTS,adelay={int(s1*1000)}|{int(s1*1000)}[b];"
-              f"[a][b]amix=inputs=2:normalize=0,apad=whole_dur={DUR}")
+              f"[0:a]atrim=start={TIR_B}:end={TIR_B + g - s1},asetpts=PTS-STARTPTS,adelay={int(s1*1000)}|{int(s1*1000)}[b];"
+              f"[0:a]atrim=start={TIR_R},asetpts=PTS-STARTPTS,adelay={int(round(g*1000))}|{int(round(g*1000))}[c];"
+              f"[a][b][c]amix=inputs=3:normalize=0,apad=whole_dur={DUR}")
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', os.path.join(R, MUSIC), '-filter_complex', fc, '-ar', '48000', '-ac', '2', '-t', str(DUR), w], check=True)
     json.dump(audio_edl(), open(os.path.join(OUT, f'{os.path.basename(OUT)}_{VARIANT}_edl.json'), 'w', encoding='utf-8'), indent=1)
     print('ok', VARIANT, len(CLIPS), 'clipes', prev, 's')

@@ -5,10 +5,10 @@ import librosa
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import importlib
-ED = importlib.import_module(os.environ.get('TDZ_EDL', 'edl6'))
+ED = importlib.import_module(os.environ.get('TDZ_EDL', 'edl7'))
 
 FPS = 60
-CUTS = {'h_letal': 'LETHAL do gancho', 'k_revoada_rei': 'Revoada', 'k_queda': 'queda', 'k_coringa': 'coringa', 'logo': 'logo'}
+CUTS = {'h_letal': 'LETHAL do gancho', 'e6_pouso': 'pouso do anjo', 'k_porta': 'portao', 'k_revoada_rei': 'Revoada', 'k_golpe': 'golpe', 'k_queda': 'queda', 'k_coringa': 'coringa', 'logo': 'logo'}
 src = os.path.join(ED.OUT, 'music_rei.wav' if ED.VARIANT == 'rei' else 'music_tirano.wav')
 y, sr = librosa.load(src, sr=22050, mono=True)
 hop = 256
