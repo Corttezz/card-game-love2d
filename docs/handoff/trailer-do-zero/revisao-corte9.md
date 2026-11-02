@@ -75,3 +75,24 @@ O corte para o anjo a **26,819 s** tem só 11,8 dB de subida no grave; o ataque 
 - **Variante (Rei): NÃO APROVADO**, por um item: o anúncio "Murder of Crows" não aparece (o quadro segurado é o do "ENEMY TURN").
 
 As duas correções são de EDL, sem render de salão. Com elas, as duas versões ficam com 9 ou mais em tudo. Fica para o Daniel a dúvida sobre o "final exatamente igual" (bloco do logo igual ao do corte 2, fundo e áudio não). `===CORTE9_PRONTO===` não marcado.
+
+## Rodada 9b (commit c12dea9b; vídeos de 01:47, 01:48 e 01:51): APROVADO nas duas versões
+
+_Mesmos nomes de arquivo do corte 9, regravados. Medidas em `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\f967decd-bccd-487a-92fd-ff59f9b0ee6d\scratchpad\rev\c9b\` (`q\mc_r.png` a 10 quadros/s, `q\mrei.png` com quadros cheios a 42,2, 42,7, 43,2 e 43,35 s)._
+
+- **Rei, "Murder of Crows": resolvido.** O nome cheio aparece a partir de ~42,1 s e fica parado até 43,2 s (**~1,1 s**), no mesmo quadro da principal (Rei de asas fechadas, intent 4×4, "Murder of Crows" sobre ele). No corte de 43,25 s os corvos partem (vida 25 → 23). As duas versões agora mostram o mesmo anúncio (ponto 2 do corte 8 e item 00:06-7).
+- **Tirano, anjo: resolvido.** Corte a **26,55 s**, exatamente no ataque de grave de 19,7 dB (0,0 quadro). O esporo fica com 1,17 s e o anjo com 1,42 s; o portão continua a 27,968 s (+1,2 quadro de 16,3 dB). O "corte" que o detector acusa a 27,08 s é o pouso do anjo dentro do plano (antes a 27,35 s), não um corte de plano.
+- **Nada mais mudou:** no Rei, os cortes são idênticos aos do corte 9; na Tirano só mudaram esses dois pontos. Zero quadros < 5% nos três arquivos. Tirano −14,1 LUFS, −0,9 dBTP, LRA 8,1, margem do pico **+2,5 dB**; Rei −14,1, −1,2, 8,5, **+3,1 dB**. Coringa com a música 4,7 dB (Tirano) e 5,2 dB (Rei) abaixo do SFX. Golpe, respiro, queda, carta, salões e logo como medidos acima.
+
+### Notas (9b)
+Iguais às do corte 9, com as mudanças abaixo: **Tirano C3 Sincronia 9**, item 00:07-6 **9**; **Rei C4 Legibilidade 9**, **C11 Continuidade 9**, item 00:06-7 **9**. Todos os critérios ficam com 9 ou mais nas duas versões, inclusive **Q = 9**, os 16 itens do Grimoire e os dois pontos do Daniel (sem zoom: 10; final do logo: 9).
+
+Fica registrada a dúvida para o Daniel: o bloco do logo é igual ao do corte 2 (tempos e texto), mas o fundo e o áudio do final não são idênticos ao corte 2.
+
+## Status final do corte 9
+- Principal (Tirano) 1080p e 720p (9b): **APROVADO**.
+- Variante (Rei-Carniça) 720p (9b): **APROVADO**.
+
+Continuam valendo: **não publicável até trocar ou licenciar os SFX**; ninguém ouviu as mixagens.
+
+===CORTE9_PRONTO===
