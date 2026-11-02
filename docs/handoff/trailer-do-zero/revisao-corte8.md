@@ -56,3 +56,47 @@ As notas são iguais às da principal, menos: **C6 Pico 10** (+3,1 dB). **G3, N3
 - Variante (Rei): **NÃO APROVADO**, pelo mesmo item.
 
 Os pontos 1, 2, 4 e 6 estão resolvidos, e os pontos 3 e 5 eram falsos, com prova conferida. Com o contorno restrito às silhuetas sólidas, sem outra mudança, as duas versões ficam com 9 ou mais em tudo. `===CORTE8_PRONTO===` não marcado.
+
+## Rodada 8b (commit ab47cfdd; vídeos de 23:43, 23:44 e 23:53): APROVADO nas duas versões
+
+_Saídas `grimoire_zero_corte8b_1080p.mp4`, `_720p.mp4` e `_rei_720p.mp4`. Medidas em `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\f967decd-bccd-487a-92fd-ff59f9b0ee6d\scratchpad\rev\c8b\` (recortes 1:1 `q\trono_8_8b.png` e `q\hall_8_8b.png`, quadros a 50% `q\f_14.5.png`, `q\f_21.3.png`, `q\f_31.0.png`, máscaras dos pixels escurecidos contra o corte 7 `q\mask_8b_14.5.png` e `q\mask_8b_31.0.png`)._
+
+### Ponto 7: resolvido
+- **Onde está o contorno.** Os pixels que o 8b escurece em relação ao corte 7 (sem contorno) ficam nas bordas dos **pilares, arcos, estandartes, paredes e estátua**, as silhuetas sólidas (máscaras em vermelho). Nenhum cai em chama, tocha, lava, mancha de luz das velas, poça de luz do chão ou neve. Em 1:1, as manchas de luz do trono e as estrias da lava, que no corte 8 tinham borda preta, voltaram limpas, e a borda dos pilares contra o fundo claro ganhou o traço escuro da grade.
+- **Discreto, mas presente.** Pixels escurecidos mais de 15 níveis contra o corte 7: 0,30% (lava), 0,49% (trono) e 0,06% (gelo, que tem poucas silhuetas contra o claro). No corte 8 eram ~1% com mais de 40 níveis, quase todos na luz. O contorno é discreto porque a borda escura já era escura; casa com os sprites sem sujar o salão.
+- **Mesmos salões, mesma grade de 5 px, mesma paleta.**
+
+### Nada mais mudou (conferido)
+- **Imagem:** comparei o corte 8 com o 8b em um quadro a cada 0,5 s no filme inteiro. As únicas diferenças (média > 0,6 nível) estão nos três trechos dos salões IA (12,75 a 16,25 s, 20,25 a 22,25 s e 29,75 a 32,0 s, nas duas versões). Golpe, queda, Revoada, carta e logo são os mesmos quadros do corte 8, então os pontos 1, 2 e 6 continuam como aprovados acima.
+- **EDL:** os clipes são idênticos aos do corte 8; na música só mudou o caminho da pasta (`zero8` → `zero8b`).
+- **Áudio:** idêntico bit a bit ao do corte 8 nas duas versões (MD5 do fluxo de áudio igual: `8b519e01…` na principal, `a258604f…` no Rei). Margens, coringa, sincronia e tom de sala ficam como medidos no corte 8.
+- **Medidas:** zero quadros < 5% nos 3870 quadros dos três arquivos; −14,1 LUFS, −1,1 dBTP, LRA 8,4 (principal 1080p = 720p) e 8,6 (Rei); mesmos cortes depois de 40 s.
+- **Ponto 4:** a prova extra `p4_esporo_rei_25.07-26.31s_8q.png` (commit 5576133c) bate com o que medi (esporo de 25,07 a 26,31 s, castelo só no horizonte do bioma).
+
+### Notas (8b)
+
+| critério | Tirano | Rei | | ponto | Tirano | Rei |
+|---|---|---|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | 10 | | G1 nenhum quadro preto | 10 | 10 |
+| C2 Sem preto | 10 | 10 | | G2 caminhada | 10 | 9 |
+| C3 Sincronia | 9 | 9 | | G3 salões legíveis e marcantes | 9 | 9 |
+| C4 Legibilidade | 9 | 9 | | G4 luta do Rei sem interrupção | 10 | 10 |
+| C5 Ritmo | 9 | 9 | | G5 golpe final forte | 10 | 10 |
+| C6 Pico | 9 (+2,5 dB) | 10 (+3,1 dB) | | G6 LETAL do gancho | 10 | 10 |
+| C7 Regra de 3 | 9 | 9 | | G7 textos exatos | 10 | 10 |
+| C8 Fecho | 9 | 9 | | N1 virada legível | 9 | 9 |
+| C9 Conformidade | 9 | 9 | | N2 caminhada / porta | 10 | 9 |
+| C10 Checklist do Daniel | 9 | 9 | | N3 salões na grade nativa | 9 | 9 |
+| C11 Continuidade | 9 | 9 | | N4 zoom em degraus progressivos | 10 | 10 |
+| C12 Está bom / legal de assistir | 9 | 9 | | N5 mixagem | 9 | 9 |
+| C13 Prende do início ao fim | 9 | 9 | | pontos 1 a 7 do corte 7 | 9 ou mais em todos | 9 ou mais em todos |
+| C14 Som | 9 | 9 | | 10 pontos do corte 5 e correções dos cortes 6 e 7 | 9 ou mais em todos | 9 ou mais em todos |
+| **Q queda do Rei** | **9** | **9** | | | | |
+
+## Status final do corte 8
+- Principal (Tirano) 1080p e 720p (8b): **APROVADO**.
+- Variante (Rei-Carniça) 720p (8b): **APROVADO**.
+
+Continuam valendo: **não publicável até trocar ou licenciar os SFX**; ninguém ouviu as mixagens (as passagens escondidas nos silêncios ficam para o Daniel ouvir).
+
+===CORTE8_PRONTO===
