@@ -1,28 +1,24 @@
-# Revisão do Grimoire: corte 8 (02/11/2026 00:06)
+# Revisão do Grimoire: corte 8b (02/11/2026 00:07)
 
-**Veredito: REPROVADO.** Tirano 8,0 / Rei 7,8. Elogios: a luta (começo e fim), o golpe do 48 e o espólio. Abrir o corte 9 nas duas versões (saídas `grimoire_zero_corte9_*`, sem sobrescrever masters).
+**Veredito: REPROVADO.** Tirano 8,0 / Rei 7,0 (revisão independente por vídeo). Abrir o corte 9 nas duas versões (saídas `grimoire_zero_corte9_*`, sem sobrescrever masters). Aprovado e mantido: quadro 0, textos exatos, "Murder of Crows" legível, impacto visual do 48 (hit-stop, flash, tremor), contorno nos pilares e arcos.
 
 ## Antes de mexer
 A diretora confere cada ponto quadro a quadro com o `medir2.py`, com PNG em `corte9_provas/`, e contesta com prova o que for falso (não mexe no que for falso).
 
-## Nas duas versões
-1. **Salões de IA ainda destoam dos sprites.** No salão do FROST (~0:21 no Rei), a névoa do chão e o fogo azul das piras parecem ter contorno escuro serrilhado: confirmar se o 8b ainda contorna partículas e, se sim, tirar. Fogo e lava (0:13 e trono 0:30) parecem borrados, com blocos de compressão: requantizar só essas regiões na grade de 5 px e 32 cores, com bordas duras, sem trocar os salões.
-2. **Brilho da Carrion Crown (~0:56):** os quadrados translúcidos grandes parecem artefato. Usar brilho menor, com 2–3 tons da paleta, pixel de 5 px e opaco.
-3. **Escuro de 0:31 a 0:34** (fumaça/corvo, cinemática do jogo, não trocar): encurtar para ≤ 1,5 s se a música deixar.
-4. **Virada (0:43–0:46):** três enquadramentos em ~3 s quebram a geografia. Leitura única: dano no herói, vida em 9 (ainda visível) e depois a mão com o LETHAL. No máximo uma mudança de plano, sempre avançando.
+## Pontos
+1. **Recuo na queda do Rei (as duas):** depois do close apertado do golpe (~0:50-0:51), o plano da queda (~0:51-0:52) aparece mais aberto, mostrando o corpo inteiro. Os dois revisores viram isso como recuo. Manter o enquadramento do golpe ou mais fechado durante a queda (seguir o corpo sem abrir), até "BREAK THEM BACK.".
+2. **Contorno ainda nas chamas e na lava (as duas):** pixels escuros ao redor e dentro do fogo da lareira do trono (~0:30-0:31) e na lava do salão (~0:14). Tirar o contorno de toda região de chama, lava e tocha (máscara por cor quente/saturação, além da luminância) e conferir 1:1.
+3. **Carrion Crown chapada (as duas):** o sobe e desce no eixo Y com brilho ainda lê como PNG colado. Dar profundidade: inclinação sutil (tilt/escala horizontal leve) e uma sombra projetada na grade de pixel, sem perder a leitura da face.
+4. **Coringa (Tirano):** o revisor não viu face de coringa em ~0:55, só o verso girando para revelar o Rei. Conferir se a face do coringa está visível e legível pelo tempo combinado; se não estiver, corrigir.
+5. **Respiro esporo/anjo/portão (Rei, ~0:24-0:30):** esporo e anjo com menos de 1 s cada parecem recortes; o portão leva ~2,8 s. Rebalancear (ex.: esporo e anjo ~1,3 s cada, portão mais curto) sem mudar o ataque do portão.
+6. **Ritmo antes do castelo (Tirano, ~0:24-0:27):** caminhada de 3-4 s sem ação ainda lida como trecho morto. Encurtar ou cobrir com ação.
+7. **Golpe do Rei e o respiro (Rei, ~0:50):** um revisor achou que a música atropela o golpe, sem respiro audível. Medir no `mix.wav` se o respiro de -8 é perceptível; se não for, aprofundar ou alongar o respiro para a volta forte cair no 48. (Ponto a conferir com prova; não mexer se for falso.)
+8. **Luta do Rei fragmentada (Rei, ~0:41-0:46):** ataque, herói apanhando e revide parecem mecânicos. Conferir se dá para encadear com cortes na batida sem trocar tomadas.
 
-## Só no Rei
-5. **Entre 25 e 28 s** há três planos em 3 s (esporo, figura alada escura em ~0:26, portão). Confirmar se a figura existe (deve ser o pouso do anjo); se existir, tirar ou dar respiro para a sequência respirar.
-6. **~0:51:** depois do impacto em ×3, um corte seco volta para o plano aberto com o Rei caído. Se for verdade, manter a queda em ×3 até os ossos, ou justificar com prova.
-7. **Anúncio Murder of Crows** em ~0,85 s: subir para ~1,1 s se a música deixar.
-
-## Nas duas, gancho
-8. **0:00–0:02** mostra só o espantalho respirando: avaliar entrar com a interface ou a ação ~1 s antes (o quadro 0 continua não preto, com a cabeça do Espantalho).
-
-Manter tudo o que já está confirmado.
+Manter tudo já confirmado (cortes 5 a 8b).
 
 ## Avaliação
-A revisora avalia o corte 9 contra estes 8 pontos (real/falso com PNG), além dos critérios de sempre (≥ 9 em tudo, inclusive Q), em `revisao-corte9.md`, com `===CORTE9_PRONTO===` só com as duas aprovadas.
+A revisora avalia o corte 9 contra esses 8 pontos (real/falso com PNG), além dos critérios de sempre (≥ 9 em todos), em `revisao-corte9.md`, com `===CORTE9_PRONTO===` só com as duas aprovadas. Copiar os 720p para a box como `/workspace/trailers/corte9_720p.mp4` e `corte9_rei_720p.mp4`.
 
 ## Regras
-Um lovec, headless, sem 4K, Steam ou push, sem sobrescrever masters, sem trocar faixa, texto ou salão (se surgir, parar e reportar), sem criar conteúdo que não existe no jogo. Commits como Daniel Cortez, sem Co-Authored-By.
+Um lovec, headless, sem 4K, Steam ou push, sem sobrescrever masters, sem trocar faixa, texto ou salão (se surgir, parar e reportar). Commits como Daniel Cortez, sem Co-Authored-By.
