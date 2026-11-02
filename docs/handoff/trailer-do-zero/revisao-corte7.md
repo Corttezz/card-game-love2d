@@ -85,3 +85,40 @@ Iguais às da principal, menos:
 
 ## Status geral
 Principal (Tirano): **APROVADO**. Variante (Rei): **NÃO APROVADO** (giro duplo). `===CORTE7_PRONTO===` só depois da variante.
+
+## Variante do Rei, rodada 7b (commit d9f23cea, 22:03): NÃO APROVADO (falta 1 item, novo)
+
+_Só o `grimoire_zero_corte7_rei_720p.mp4` mudou (a principal ficou com a data de 21:44 e continua aprovada). Medidas: `...\scratchpad\rev\c7b\` (`rei.txt`, `mixr.txt`, `q\cr.png` a 20 quadros/s, `q\tail.png` a 10 quadros/s, `q\c576.png`)._
+
+### O giro duplo: resolvido
+Folha a 20 quadros/s a partir do corte de 54,555 s (`q\cr.png`): verso de 54,57 a 54,72 s, quina de 54,77 a 54,82 s, face a partir de 54,87 s, assentada a ~55,07 s. **Um giro só**, sem a face piscando antes. A revelação a 54,92 s está no quadro da face, e a música do coringa ficou **5,1 dB abaixo do SFX** no plano (−22,0 / −16,9; a diretora mediu 5,2). O resto não mudou: zero quadros < 5%, −14,1 LUFS, −1,1 dBTP, LRA 8,6, pico +3,1 dB, e os cortes de 0 a 54,55 s e os níveis por plano estão iguais aos do corte 7.
+
+### O que segura agora: a carta some e a tela lava antes do logo (C11, C8, C12)
+O `corte7.md` diz que "a face segue até o logo a 58,30 s". **Não segue.** Com a tomada atrasada 0,37 s, o fim do plano passou do ponto em que a carta sai na tomada:
+- a carta e o nome começam a dissolver a ~57,4 s;
+- de **57,67 a 58,32 s** (39 quadros, 0,65 s) a tela é um **cinza lavado, sem carta**, só o salão desbotado (`q\c576.png`, `q\tail.png`);
+- luma de 66 → **104** a 57,67 s (+57%) e de 104 → 34 no logo (−67%).
+
+No corte 7 anterior a variante não tinha nenhum salto de luma depois de 55 s. É o mesmo tipo de defeito dos quadros pretos de passagem (G1), só que para o branco: a última imagem antes do logo deixa de ser a carta e vira uma transição do jogo. Os 52 quadros repetidos de que a diretora fala não chegam ao fim do plano: a repetição tem que cobrir até 58,30 s.
+
+**Exijo** a face da Carrion Crown parada e com o nome até o corte do logo a 58,30 s, sem dissolver e sem o cinza: segurar o último quadro de face cheia (por volta de 57,3 s da tela) até 58,30 s, ou recuar o ponto de saída da tomada. O giro e o corte de 54,555 s continuam como estão.
+
+### Notas da variante do Rei (7b)
+
+| critério | nota | | critério | nota |
+|---|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | | C11 Continuidade | **8** (carta some, 0,65 s de cinza lavado antes do logo) |
+| C2 Sem preto | 10 (não há preto; o defeito é de lavagem, contado em C11/C8) | | C12 Está bom / legal de assistir | **8** (o fecho tropeça) |
+| C3 Sincronia | 9 | | C13 Prende do início ao fim | 9 |
+| C4 Legibilidade | 9 (face legível de 54,9 a ~57,4 s, ~2,5 s) | | C14 Som | 9 |
+| C5 Ritmo | 9 | | Q queda do Rei | 9 |
+| C6 Pico | 10 (+3,1 dB) | | G1 a G7 | 9 ou mais |
+| C7 Regra de 3 | 9 | | N1 a N5 | 9 ou mais |
+| C8 Fecho | **8** (entra no logo vindo de um quadro lavado) | | pontos 6 e 7 do Grimoire | 9 (face ~2,5 s, ≥ 0,5 s antes do logo) |
+| C9 Conformidade | 9 | | pontos 1 a 5 e 8 a 10 | 9 ou mais |
+| C10 Checklist do Daniel | 9 | | correções do corte 6 (portão, carta fora do texto) | 9 |
+
+**Status da variante do Rei (7b): NÃO APROVADO**, por um único item: a carta some e a tela lava de 57,4 a 58,32 s. Com a face segurada até 58,30 s, sem outra mudança, fica com 9 ou mais em tudo.
+
+## Status geral (após 7b)
+Principal (Tirano): **APROVADO** (inalterada). Variante (Rei): **NÃO APROVADO** (fim do plano do coringa lavado). `===CORTE7_PRONTO===` ainda não.
