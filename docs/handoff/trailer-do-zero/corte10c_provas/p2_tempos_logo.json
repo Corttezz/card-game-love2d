@@ -1,0 +1,38 @@
+{
+ "t2": {
+  "grimoire": 58.85,
+  "genero": 59.4,
+  "wishlist": 61.983,
+  "wishlist_na_tela": 2.517
+ },
+ "t": {
+  "grimoire": 58.85,
+  "genero": 59.4,
+  "wishlist": 61.983,
+  "wishlist_na_tela": 2.517
+ },
+ "r2": {
+  "grimoire": 59.217,
+  "genero": 59.767,
+  "wishlist": 62.35,
+  "wishlist_na_tela": 2.15
+ },
+ "r": {
+  "grimoire": 58.85,
+  "genero": 59.4,
+  "wishlist": 61.983,
+  "wishlist_na_tela": 2.517
+ },
+ "mascara_dourada_vs_corte2_depois_59s": {
+  "t": {
+   "media": 0.974,
+   "minimo": 0.941,
+   "quadros": 330
+  },
+  "r": {
+   "media": 0.923,
+   "minimo": 0.077,
+   "quadros": 330
+  }
+ }
+}

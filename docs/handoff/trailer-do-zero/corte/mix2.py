@@ -7,14 +7,14 @@ ED = importlib.import_module(os.environ.get('TDZ_EDL', 'edl2'))
 import remix_engine as E
 import mix as M0
 
-E.LOG = os.path.join(ED.TAKES, 'audio.jsonl')
+E.LOG = getattr(ED, 'AUDIO_LOG', None) or os.path.join(ED.TAKES, 'audio.jsonl')
 E.OUT = ED.OUT
 E.events = M0.events_last
 C = {c['id']: c for c in ED.CLIPS}
 SIL = -70
 ROOM_DB = float(os.environ.get('TDZ_ROOM_DB', '-26'))
 GATE = [json.loads(l)['path'] for l in open(E.LOG, encoding='utf-8') if '"castleGateOpen"' in l][-1]
-INSIDE = ['k_escuro', 'k_escuro_b', 'k_nome', 'k_guerreiro', 'k_revoada_rei', 'k_vida', 'k_mao', 'k_queda', 'k_ajoelha', 'k_revoada_vida', 'k_vida3', 'k_volta', 'k_letal_mao', 'k_letal', 'k_golpe', 'k_coringa', 'k_dreno', 'k_inimigo', 'k_corvos']
+INSIDE = ['k_escuro', 'k_escuro_b', 'k_nome', 'k_guerreiro', 'k_revoada_rei', 'k_vida', 'k_mao', 'k_queda', 'k_ajoelha', 'k_revoada_vida', 'k_vida3', 'k_volta', 'k_letal_mao', 'k_letal', 'k_golpe', 'k_coringa', 'k_dreno', 'k_inimigo', 'k_corvos', 'k_letal_b']
 L = ED.LOGO
 g = C['k_golpe']['t0']; door = C['k_porta']['t0']; s0 = C['ia_hall1']['t0']; s1 = C['k_nome']['t0']
 rv0 = C['k_inimigo']['t0'] if 'k_inimigo' in C else C['k_revoada_rei']['t0']
@@ -74,7 +74,7 @@ if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7', 'corte8'):
                       {'t': FT, 'file': 'audio/sfx/joker-sig/joker_boss_carrion.mp3', 'db': 0, 'what': 'assinatura do coringa na face da carta'}]
     PLAN['extra'].append({'t': s0, 'file': 'audio/sfx/boss/boss_hold_ambience.mp3', 'db': ROOM_DB, 'in': 0.5, 'loop': True, 'len': C['ia_hall1']['t1'] - s0 + 0.3, 'fade': 0.3, 'what': 'tom de sala no trono vazio (-45 a -50 dBFS)'})
 
-if getattr(ED, 'OUT_NAME', '') in ('corte9', 'corte10', 'corte10b'):
+if getattr(ED, 'OUT_NAME', '') in ('corte9', 'corte10', 'corte10b', 'corte10c'):
     PLAN['sfx_env'] = [(0, 0), (g - 0.66, 0), (g - 0.58, -32), (g - 0.02, -32), (g, 0)]
     PLAN['amb_env'] = [(0, 0), (g - 0.66, 0), (g - 0.58, -40), (g - 0.02, -40), (g, 0)]
 
