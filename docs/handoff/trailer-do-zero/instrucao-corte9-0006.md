@@ -1,4 +1,4 @@
-# Revis├úo do Grimoire: corte 8 (02/11/2026 00:06)
+# Instrução do corte 9, mensagem das 00:06 (complementa revisao-grimoire-corte8.md, versão das 00:07)
 
 **Veredito: REPROVADO.** Tirano 8,0 / Rei 7,8. Elogios: a luta (come├ºo e fim), o golpe do 48 e o esp├│lio. Abrir o corte 9 nas duas vers├Áes (sa├¡das `grimoire_zero_corte9_*`, sem sobrescrever masters).
 
