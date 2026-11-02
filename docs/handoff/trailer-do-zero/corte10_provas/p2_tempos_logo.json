@@ -1,0 +1,38 @@
+{
+ "t2": {
+  "grimoire": 58.85,
+  "genero": 59.4,
+  "wishlist": 61.983,
+  "wishlist_na_tela": 2.517
+ },
+ "t9": {
+  "grimoire": 59.433,
+  "genero": 59.983,
+  "wishlist": 62.567,
+  "wishlist_na_tela": 1.933
+ },
+ "t": {
+  "grimoire": 58.85,
+  "genero": 59.4,
+  "wishlist": 61.983,
+  "wishlist_na_tela": 2.517
+ },
+ "r2": {
+  "grimoire": 59.217,
+  "genero": 59.767,
+  "wishlist": 62.35,
+  "wishlist_na_tela": 2.15
+ },
+ "r9": {
+  "grimoire": 59.383,
+  "genero": 59.933,
+  "wishlist": 62.517,
+  "wishlist_na_tela": 1.983
+ },
+ "r": {
+  "grimoire": 58.85,
+  "genero": 59.4,
+  "wishlist": 61.983,
+  "wishlist_na_tela": 2.517
+ }
+}

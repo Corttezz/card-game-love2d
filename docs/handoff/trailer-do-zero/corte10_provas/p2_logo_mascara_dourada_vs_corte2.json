@@ -1,0 +1,20 @@
+{
+ "tirano": {
+  "quadros": 372,
+  "iou_media": 0.943,
+  "iou_min_apos_59s": 0.943,
+  "iou_media_apos_59s": 0.975
+ },
+ "rei": {
+  "quadros": 372,
+  "iou_media": 0.944,
+  "iou_min_apos_59s": 0.946,
+  "iou_media_apos_59s": 0.975
+ },
+ "corte9_tirano": {
+  "quadros": 372,
+  "iou_media": 0.778,
+  "iou_min_apos_59s": 0.0,
+  "iou_media_apos_59s": 0.874
+ }
+}

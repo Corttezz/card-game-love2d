@@ -1,0 +1,3 @@
+grimoire_zero_corte10_720p.mp4 escuro 33,4-36,9 s contra o corte 9: quadros 210 diferenca media 0.0 max 0.0
+grimoire_zero_corte10_rei_720p.mp4 escuro 33,4-36,9 s contra o corte 9: quadros 210 diferenca media 0.0 max 0.0
+tirano final: pares medidos 1908 mudancas > 3%: 10 [(8.533, 1.462, 13), (35.067, 0.946, 45), (35.133, 0.966, 39), (35.233, 0.954, 52), (35.4, 1.037, 215), (35.5, 0.962, 46), (35.567, 0.951, 32), (35.6, 0.966, 76), (35.667, 1.032, 13), (36.0, 0.932, 56)]

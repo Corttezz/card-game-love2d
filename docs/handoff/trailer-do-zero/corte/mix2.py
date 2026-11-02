@@ -74,7 +74,7 @@ if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7', 'corte8'):
                       {'t': FT, 'file': 'audio/sfx/joker-sig/joker_boss_carrion.mp3', 'db': 0, 'what': 'assinatura do coringa na face da carta'}]
     PLAN['extra'].append({'t': s0, 'file': 'audio/sfx/boss/boss_hold_ambience.mp3', 'db': ROOM_DB, 'in': 0.5, 'loop': True, 'len': C['ia_hall1']['t1'] - s0 + 0.3, 'fade': 0.3, 'what': 'tom de sala no trono vazio (-45 a -50 dBFS)'})
 
-if getattr(ED, 'OUT_NAME', '') == 'corte9':
+if getattr(ED, 'OUT_NAME', '') in ('corte9', 'corte10'):
     PLAN['sfx_env'] = [(0, 0), (g - 0.66, 0), (g - 0.58, -32), (g - 0.02, -32), (g, 0)]
     PLAN['amb_env'] = [(0, 0), (g - 0.66, 0), (g - 0.58, -40), (g - 0.02, -40), (g, 0)]
 
