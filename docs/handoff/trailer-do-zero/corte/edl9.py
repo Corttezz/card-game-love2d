@@ -315,15 +315,15 @@ _fix_devolve()
 def _c9():
     C = {c['id']: c for c in CLIPS}
     if VARIANT == 'tirano':
-        C['e5_esporo']['t1'] = 26.819
-        C['e6_pouso'].update(t0=26.819, t1=27.968, s0=8.95)
+        C['e5_esporo']['t1'] = 26.552
+        C['e6_pouso'].update(t0=26.552, t1=27.968, s0=8.95)
         C['k_porta'].update(t0=27.968, t1=30.08, s0=9.19)
     else:
         C['e5_esporo']['t1'] = 26.355
         C['e6_pouso'].update(t0=26.355, t1=27.585, s0=8.88)
         C['k_porta'].update(t0=27.585, t1=30.08, s0=8.80)
         rv = C['k_revoada_rei']
-        rv.update(s0=36.30, fx=dict(freeze=(round(rv['t0'] + 0.15, 3), int(round((rv['t1'] - rv['t0'] - 0.15) * FPS)))))
+        rv.update(s0=36.80, fx=dict(freeze=(round(rv['t0'] + 0.15, 3), int(round((rv['t1'] - rv['t0'] - 0.15) * FPS)))))
     h = C['ia_hall1']; k = C['k_escuro']
     h['t1'] = round(h['t1'] + 1.1, 3)
     k.update(t0=h['t1'], t1=round(h['t1'] + 1.5, 3), s0=12.15, fx=dict(lift=(h['t1'], 60, 22)))

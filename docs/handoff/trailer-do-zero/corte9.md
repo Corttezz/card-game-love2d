@@ -47,3 +47,12 @@ Pipeline: `corte/edl9.py` (o 8b + `_c9()`), `build_video.py`, `crt_pass.py`, `mi
 | respiro antes do 48 | 30,7 dB de queda | 33,0 dB de queda |
 | quadros < 5% de luma | 0 | 0 |
 | mudanças de escala na queda | 0 | 0 |
+
+## Rodada 9b (resposta a `revisao-corte9.md`)
+
+| item | correção | prova |
+|---|---|---|
+| Rei: "Murder of Crows" não aparecia | **Real** (o quadro segurado era o do "ENEMY TURN", tomada 36,45 s). A tomada do plano agora começa em 36,80 s, e o quadro segurado (a 42,15 s, por 66 quadros) é o da tomada 36,95 s, com o nome cheio, **igual ao da principal**. Nome legível de ~42,1 a 43,25 s (1,1 s); corte de 43,25 s mantido. | `corte9_provas/rei/p7_anuncio_rei_9b_42.00-43.30s.png` |
+| Tirano: corte do anjo fora da batida | **Real.** Anjo em **26,552 s** (ataque de 19,7 dB): esporo 1,17 s, anjo 1,42 s, portão 27,968 s sem mudança. | `corte9_provas/tirano/p6_anjo_9b_25.30-28.10s.png` |
+
+Medidas depois da 9b: Tirano −14,1 LUFS, LRA 8,1, margem +2,6 dB, coringa 4,7 dB; Rei −14,1 LUFS, LRA 8,5, margem +3,1 dB, coringa 5,2 dB.
