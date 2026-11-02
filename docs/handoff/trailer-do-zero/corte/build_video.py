@@ -29,6 +29,14 @@ def render_take(c, out):
     n = nframes(c)
     hold = c.get('hold', 0)
     vf = []
+    if c['z'] == 4:
+        x, y = c['crop']
+        if c.get('pan'):
+            n0, v, ymax = c['pan']
+            vf.append(f"crop=480:270:{x}:'min({ymax},{y}+max(0,n-{n0})*{v})'")
+        else:
+            vf.append(f'crop=480:270:{x}:{y}')
+        vf.append('scale=1920:1080:flags=neighbor')
     if c['z'] == 3:
         x, y = c['crop']
         if c.get('pan'):
@@ -81,6 +89,11 @@ def silhouette_outline(q, pal, pct=40, area=0.006, diff=28):
         nb = np.roll(np.roll(L, dy, 0), dx, 1); nd = np.roll(np.roll(D, dy, 0), dx, 1)
         m |= inner & ~nd & ((nb - L) > diff)
     m[0, :] = m[-1, :] = False; m[:, 0] = m[:, -1] = False
+    if getattr(E, 'HALL_HOT_EXCLUDE', False):
+        hsv = cv2.cvtColor(q, cv2.COLOR_BGR2HSV)
+        hot = ((hsv[..., 0] <= 25) & (hsv[..., 1] >= 110) & (hsv[..., 2] >= 150)) | (L >= np.percentile(L, 82))
+        hot = cv2.dilate(hot.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+        m &= ~hot
     dark = pal[np.argmin(pal.sum(1))].astype(np.uint8)
     q = q.copy(); q[m] = dark
     return q
@@ -111,7 +124,13 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
         lab = np.stack([L, 128 + ca * kk, 128 + cb * kk], -1)
         img = cv2.cvtColor(np.clip(lab, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR).astype(np.float32)
         if getattr(E, 'HALL_CLEAN', False):
-            img = cv2.bilateralFilter(img.astype(np.uint8), 5, 18, 3).astype(np.float32)
+            sm = cv2.bilateralFilter(img.astype(np.uint8), 5, 18, 3).astype(np.float32)
+            if getattr(E, 'HALL_HOT_EXCLUDE', False):
+                hv = cv2.cvtColor(np.clip(img, 0, 255).astype(np.uint8), cv2.COLOR_BGR2HSV)
+                hot = ((hv[..., 0] <= 25) & (hv[..., 1] >= 110) & (hv[..., 2] >= 150))[..., None]
+                img = np.where(hot, img, sm)
+            else:
+                img = sm
         d = ((img[:, :, None, :] - pal[None, None, :, :]) ** 2).sum(-1)
         q = pal[d.argmin(-1)].astype(np.uint8)
         if getattr(E, 'HALL_CLEAN', False):
@@ -131,6 +150,18 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
             q = q.copy(); q[m] = dark
         out.append(cv2.resize(q, (W, H), interpolation=cv2.INTER_NEAREST))
     return out
+
+
+_PLATE = {}
+
+
+def card_plate():
+    if 'p' not in _PLATE:
+        bgp = os.path.join(WORK, 'card_plate.png')
+        run(['ffmpeg', '-v', 'error', '-y', '-ss', f"{getattr(E, 'CARD_BG_T', 63.20):.2f}", '-i', E.take_path('zero_carrion'), '-vf',
+             'crop=960:540:475:165,scale=1920:1080:flags=neighbor', '-frames:v', '1', bgp])
+        _PLATE['p'] = cv2.imread(bgp)
+    return _PLATE['p']
 
 
 def apply_fx_from(c, src, out):
@@ -195,7 +226,8 @@ def apply_fx_from(c, src, out):
         t, n = fx['dust']
         k0 = idx(t)
         rng = np.random.default_rng(5)
-        P = [(rng.uniform(760, 1780), rng.uniform(960, 1010), rng.uniform(-2.5, 2.5), rng.uniform(-3.2, -0.8), rng.integers(2, 4)) for _ in range(46)]
+        DX0, DX1, DY0, DY1 = getattr(E, 'DUST_BOX', (760, 1780, 960, 1010))
+        P = [(rng.uniform(DX0, DX1), rng.uniform(DY0, DY1), rng.uniform(-2.5, 2.5), rng.uniform(-3.2, -0.8), rng.integers(2, 4)) for _ in range(46)]
         for i in range(n):
             k = k0 + i
             if not 0 <= k < len(frames):
@@ -208,10 +240,36 @@ def apply_fx_from(c, src, out):
                 if 0 <= px < W - s and 0 <= py < H - s:
                     roi = f[py:py + s, px:px + s].astype(np.float32)
                     f[py:py + s, px:px + s] = (roi * (1 - 0.7 * a) + np.array([150, 160, 170], np.float32) * 0.7 * a).astype(np.uint8)
+    if 'card_depth' in fx:
+        t, n = fx['card_depth']
+        k0 = idx(t)
+        x0, y0, x1, y1 = getattr(E, 'CARD_BOX', CARD_BOX)
+        cy = (y0 + y1) / 2
+        SH = np.array((16, 12, 22), np.uint8)
+        for i in range(n):
+            k = k0 + i
+            if not 0 <= k < len(frames):
+                continue
+            ramp = min(1.0, i / 24.0)
+            a = 0.03 * ramp * math.sin(2 * math.pi * i / 150.0)
+            f = frames[k]
+            card = f[y0:y1, x0:x1].copy()
+            g = f.copy()
+            sh = np.zeros(g.shape[:2], bool)
+            sh[y0 + 15:y1 + 15, x0 + 15:x1 + 15] = True
+            sh[y0:y1, x0:x1] = False
+            g[sh] = SH
+            for r in range(0, y1 - y0, 5):
+                off = int(round(a * (r + y0 - cy) / 5.0)) * 5
+                blk = card[r:r + 5]
+                h = len(blk)
+                g[y0 + r:y0 + r + h, x0:x1] = SH
+                g[y0 + r:y0 + r + h, x0 + off:x1 + off] = blk
+            frames[k] = g
     if 'glint' in fx:
         t, per = fx['glint']
         k0 = idx(t)
-        x0, y0, x1, y1 = CARD_BOX
+        x0, y0, x1, y1 = getattr(E, 'CARD_BOX', CARD_BOX)
         yy, xx = np.mgrid[y0:y1, x0:x1]
         diag = ((xx - x0) + (yy - y0) * 0.5) // 4 * 4
         span = (x1 - x0) + (y1 - y0) * 0.5 + 120
@@ -220,14 +278,19 @@ def apply_fx_from(c, src, out):
             if ph > 0.55:
                 continue
             c0 = -60 + span * (ph / 0.55)
-            band = (np.abs(diag - c0) < 28).astype(np.float32)
-            if not band.any():
-                continue
             f = frames[k].copy()
             frames[k] = f
-            roi = f[y0:y1, x0:x1].astype(np.float32)
-            roi += band[..., None] * 38.0
-            f[y0:y1, x0:x1] = np.clip(roi, 0, 255).astype(np.uint8)
+            roi = f[y0:y1, x0:x1]
+            if getattr(E, 'GLINT_V2', False):
+                lum = roi.astype(np.float32).mean(2)
+                inner = (np.abs(diag - c0) < 5) & (lum > 70)
+                outer = (np.abs(diag - c0) < 10) & ~inner & (lum > 70)
+                roi[outer] = (150, 215, 240)
+                roi[inner] = (225, 245, 255)
+            else:
+                band = (np.abs(diag - c0) < 28).astype(np.float32)
+                r2 = roi.astype(np.float32) + band[..., None] * 38.0
+                roi[:] = np.clip(r2, 0, 255).astype(np.uint8)
     if 'zoom' in fx:
         z0, z1 = fx['zoom']
         n = len(frames)
@@ -312,12 +375,14 @@ def logo_segment(c, last_frame, out):
     font = ImageFont.truetype(FONT, 40)
     font2 = ImageFont.truetype(FONT, 48)
     lf = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
-    card = Image.fromarray(lf).crop(CARD_BOX).convert('RGBA')
-    cx, cy = (CARD_BOX[0] + CARD_BOX[2]) // 2, (CARD_BOX[1] + CARD_BOX[3]) // 2
+    CB = getattr(E, 'CARD_BOX', CARD_BOX)
+    card = Image.fromarray(lf).crop(CB).convert('RGBA')
+    cx, cy = (CB[0] + CB[2]) // 2, (CB[1] + CB[3]) // 2
     bgp = os.path.join(WORK, 'logo_bg.png')
     x0, y0 = 475, 165
+    vfp = 'null' if getattr(E, 'NO_ZOOM', False) else f'crop=960:540:{x0}:{y0},scale=1920:1080:flags=neighbor'
     run(['ffmpeg', '-v', 'error', '-y', '-ss', f"{getattr(E, 'CARD_BG_T', 63.20):.2f}", '-i', E.take_path('zero_carrion'), '-vf',
-         f'crop=960:540:{x0}:{y0},scale=1920:1080:flags=neighbor', '-frames:v', '1', bgp])
+         vfp, '-frames:v', '1', bgp])
     bg = cv2.cvtColor(cv2.imread(bgp), cv2.COLOR_BGR2RGB)
     gray = (bg.astype(np.float32) * 0.28).astype(np.uint8)
     frames = []
