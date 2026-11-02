@@ -122,3 +122,41 @@ No corte 7 anterior a variante não tinha nenhum salto de luma depois de 55 s. �
 
 ## Status geral (após 7b)
 Principal (Tirano): **APROVADO** (inalterada). Variante (Rei): **NÃO APROVADO** (fim do plano do coringa lavado). `===CORTE7_PRONTO===` ainda não.
+
+## Variante do Rei, rodada 7c (commit f5f02f38, 22:17): APROVADO
+
+_Só o `grimoire_zero_corte7_rei_720p.mp4` mudou (a principal segue com a data de 21:44). Medidas: `...\scratchpad\rev\c7c\` (`rei.txt`, `mixr.txt`, `q\cr.png` a 20 quadros/s, `q\tail.png` a 10 quadros/s de 56,6 a 58,5 s)._
+
+- **Fim do plano do coringa: resolvido.** A face da Carrion Crown fica parada com o nome até ~58,2 s, e a 58,30 s o logo entra pelo giro da carta para o selo, a mesma passagem da principal (`q\tail.png`). Não há mais dissolução nem cinza lavado: o `medir.py` não acusa nenhum salto de luma > 25% depois de 50 s (na 7b havia +57% a 57,67 s e −67% a 58,32 s).
+- **Giro único mantido** (`q\cr.png`): verso de 54,57 a 54,72 s, quina, face a partir de 54,87 s e assentada a ~55,07 s. Face legível por ~3,2 s antes do logo.
+- **O resto, sem mudança:** cortes de 0 a 57 s idênticos aos da 7b; zero quadros < 5%; −14,1 LUFS, −1,1 dBTP, LRA 8,6; níveis do golpe, da queda, do coringa (música **5,1 dB abaixo do SFX**) e do logo iguais aos da 7b; pico +3,1 dB; portão (27,31 s) e pouso (26,31 s) no ataque; os 5 cortes do ponto 10 nos onsets da tabela.
+
+### Notas da variante do Rei (7c)
+
+| critério | nota | | ponto | nota |
+|---|---|---|---|---|
+| C1 Gameplay ≤ 2 s / quadro 0 | 10 | | G1 nenhum quadro preto | 10 |
+| C2 Sem preto | 10 | | G2 caminhada | 9 (2,24 s) |
+| C3 Sincronia | 9 | | G3 salões legíveis e marcantes | 9 |
+| C4 Legibilidade | 9 | | G4 luta do Rei sem interrupção | 10 |
+| C5 Ritmo | 9 | | G5 golpe final forte | 9 |
+| C6 Pico | 10 (+3,1 dB) | | G6 LETAL do gancho | 10 |
+| C7 Regra de 3 | 9 | | G7 textos exatos | 10 |
+| C8 Fecho | 9 | | N1 virada legível | 9 |
+| C9 Conformidade | 9 | | N2 caminhada / porta | 9 |
+| C10 Checklist do Daniel | 9 | | N3 salões na grade nativa | 9 |
+| C11 Continuidade | 9 | | N4 zoom em degraus progressivos | 10 |
+| C12 Está bom / legal de assistir | 9 | | N5 mixagem | 9 |
+| C13 Prende do início ao fim | 9 | | correções do corte 4 e 6 pontos do corte 4 | 9 em todos |
+| C14 Som | 9 | | 10 pontos do corte 5 | 9 ou mais em todos |
+| **Q queda do Rei** | **9** | | correções do corte 6 (portão no ataque, carta fora do texto, giro único) | 9 em todas |
+
+**Status da variante do Rei (7c): APROVADO.**
+
+## Status final do corte 7
+- Principal (Tirano) 1080p e 720p: **APROVADO** (arquivos de 21:44).
+- Variante (Rei-Carniça) 720p: **APROVADO** (rodada 7c, arquivo de 22:17).
+
+Lembrete que continua valendo: **não publicável até trocar ou licenciar os SFX**, e ninguém ouviu as mixagens. As passagens escondidas nos silêncios (Tirano: entrada do Rei e respiro antes do golpe; Rei: entrada) ficam para o Daniel ouvir.
+
+===CORTE7_PRONTO===
