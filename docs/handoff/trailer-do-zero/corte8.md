@@ -75,3 +75,36 @@ Os ~1,4 s do revisor não batem com nenhum limite de plano; o mais próximo é o
 
 ## O que continua igual
 Os 10 pontos do corte 5 e as correções dos cortes 6 e 7: soco de câmera do jogo fora, "48" grande, corpo segurado sem a carta sob "BREAK THEM BACK.", coringa com um giro só, música até o fim, portão no ataque, salões na grade de 5 px, tom de sala na entrada do Rei.
+
+## Corte 8b: ponto 7 refeito (correção oficial)
+
+A revisora reprovou o corte 8 só no ponto 7: o contorno pegava manchas de luz e reflexos (chama do trono, estrias da lava, tochas). O 8b é a correção oficial; o resto do corte 8 não mudou.
+
+| versão | caminho |
+|---|---|
+| principal (Tirano) 1080p | `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte8b_1080p.mp4` |
+| principal 720p | `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte8b_720p.mp4` |
+| variante (Rei) 720p | `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte8b_rei_720p.mp4` |
+
+Os arquivos `grimoire_zero_corte8_*` ficaram intactos. EDL: `corte/edl8b.py` (igual ao `edl8.py`, com `HALL_OUTLINE = 'silhueta'`, saída `corte8b`); pastas `zero8b` e `zero8b_rei`.
+
+**Regra nova do contorno** (`silhouette_outline` em `build_video.py`, na grade do salão, 384×216):
+1. Máscara das massas escuras: luminância suavizada abaixo do percentil 40, abertura 3×3 (tira pontos soltos) e fechamento 5×5 (fecha buracos e reflexos dentro do objeto).
+2. Só ficam as massas grandes (≥ 0,6% do quadro): pilares, arcos, trono, estátua da caveira.
+3. O contorno é a borda dessas massas, 1 pixel da grade (5 px na tela), só onde o lado de fora é mais claro (diferença de luminância > 28), na cor mais escura da paleta do salão real.
+4. Chamas, tochas, lava e reflexos ficam fora porque são claros (nunca entram na máscara) e os reflexos dentro dos objetos são fechados no passo 1.
+
+Testei três ajustes (percentil 45/40/50, área 0,4/0,6/0,3%, diferença 20/28/18). Escolhi o do meio, o mais conservador sem perder as silhuetas.
+
+**Provas** (`corte8_provas/`): `p7b_mascara_contorno_vermelho_3ajustes.png` (máscara em vermelho nos três salões e nos três ajustes); `p7b_ia_hall3_*`, `p7b_ia_hall4_*` e `p7b_ia_hall1_*_antes_c8_depois_c8b_1para1.png` (antes: chama, lava e tochas contornadas; depois: não); `p7b_final_c8b_14.5s/21.3s/31.0s_1para1.png` (no vídeo final, com CRT).
+
+**Medidas (mp4):**
+
+| | principal (Tirano) | variante (Rei) |
+|---|---|---|
+| loudness / pico / LRA | −14,1 LUFS / −1,1 dBFS / 8,4 LU | −14,1 LUFS / −1,1 dBFS / 8,6 LU |
+| margem do pico | +2,5 dB | +3,1 dB |
+| coringa: música abaixo do SFX | 4,7 dB | 5,2 dB |
+| quadros < 5% de luma | 0 | 0 |
+
+Diferença média entre o corte 8 e o 8b, no mesmo quadro: 3,6 / 2,4 / 3,4 nos três salões (14,5 / 21,3 / 31,0 s) e **0,0** fora deles (40 e 50 s). Só os salões mudaram. Mesmos salões, mesma grade e mesma paleta.

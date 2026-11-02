@@ -66,6 +66,26 @@ def hall_frames(spec, s0, n):
     return frames, cv2.imread(realp)
 
 
+def silhouette_outline(q, pal, pct=40, area=0.006, diff=28):
+    L = cv2.cvtColor(q, cv2.COLOR_BGR2LAB)[..., 0].astype(np.float32)
+    Lb = cv2.GaussianBlur(L, (0, 0), 1.5)
+    D = (Lb < np.percentile(Lb, pct)).astype(np.uint8)
+    D = cv2.morphologyEx(D, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    D = cv2.morphologyEx(D, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(D, 8)
+    keep = np.zeros(n, bool); keep[1:] = st[1:, cv2.CC_STAT_AREA] >= area * L.size
+    D = keep[lab]
+    inner = D & ~(cv2.erode(D.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0)
+    m = np.zeros(L.shape, bool)
+    for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+        nb = np.roll(np.roll(L, dy, 0), dx, 1); nd = np.roll(np.roll(D, dy, 0), dx, 1)
+        m |= inner & ~nd & ((nb - L) > diff)
+    m[0, :] = m[-1, :] = False; m[:, 0] = m[:, -1] = False
+    dark = pal[np.argmin(pal.sum(1))].astype(np.uint8)
+    q = q.copy(); q[m] = dark
+    return q
+
+
 def treat_halls(frames, real, kr=0.80, k=0.30):
     Hh, Ww = real.shape[:2]; gh = round(Ww * 9 / 16); y0 = (Hh - gh) // 2
     GW, GH = getattr(E, 'HALL_GRID', (Ww, gh))
@@ -98,7 +118,9 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
             q2 = cv2.medianBlur(q, 3).astype(np.float32)
             d = ((q2[:, :, None, :] - pal[None, None, :, :]) ** 2).sum(-1)
             q = pal[d.argmin(-1)].astype(np.uint8)
-        if getattr(E, 'HALL_OUTLINE', False):
+        if getattr(E, 'HALL_OUTLINE', False) == 'silhueta':
+            q = silhouette_outline(q, pal)
+        elif getattr(E, 'HALL_OUTLINE', False):
             Lq = cv2.cvtColor(q, cv2.COLOR_BGR2LAB)[..., 0].astype(np.int16)
             dark = pal[np.argmin(pal.sum(1))].astype(np.uint8)
             m = np.zeros(Lq.shape, bool)
