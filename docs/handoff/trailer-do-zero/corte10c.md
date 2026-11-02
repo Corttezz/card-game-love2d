@@ -94,3 +94,8 @@ De 0 a 38,93 s (Tirano) / 38,895 s (Rei) é a tomada antiga, igual ao 10b (difer
 ## Para o Daniel
 - O trecho da luta mostra o herói já ferido (41/70) e o Rei com 102/220. Esses dois valores são o primeiro número que aparece no filme (preparo no começo do turno, fora dos quadros usados). Daí em diante só há golpes.
 - Arquivos: `grimoire_zero_corte10c_1080p.mp4`, `grimoire_zero_corte10c_720p.mp4` e `grimoire_zero_corte10c_rei_720p.mp4` em `E:\dev\projects\card-game-trailer\build\trailer\`.
+
+## Aprovação e entrega
+- Revisora: **APROVADO** nas duas versões, Tirano 9,3 e Rei 9,2 (`revisao-corte10c.md`, commit b45089c0).
+- Copiados, iguais byte a byte aos masters: `C:\Users\corte\grokbot_entrega\corte10c_720p.mp4` (Tirano) e `corte10c_rei_720p.mp4` (Rei).
+- Riscos registrados pela revisora, sem reprovar: margem do golpe na Tirano +2,1 dB (limite 2 dB); no Rei, os cortes de 41,379 e 42,656 s caem no tempo fraco (sugestão: 41,98 e 43,25 s).
