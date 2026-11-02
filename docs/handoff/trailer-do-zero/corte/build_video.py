@@ -86,8 +86,14 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
         kk = np.where(emis, 1.0, np.where(ca > 14, kr, k))
         lab = np.stack([L, 128 + ca * kk, 128 + cb * kk], -1)
         img = cv2.cvtColor(np.clip(lab, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR).astype(np.float32)
+        if getattr(E, 'HALL_CLEAN', False):
+            img = cv2.bilateralFilter(img.astype(np.uint8), 5, 18, 3).astype(np.float32)
         d = ((img[:, :, None, :] - pal[None, None, :, :]) ** 2).sum(-1)
         q = pal[d.argmin(-1)].astype(np.uint8)
+        if getattr(E, 'HALL_CLEAN', False):
+            q2 = cv2.medianBlur(q, 3).astype(np.float32)
+            d = ((q2[:, :, None, :] - pal[None, None, :, :]) ** 2).sum(-1)
+            q = pal[d.argmin(-1)].astype(np.uint8)
         out.append(cv2.resize(q, (W, H), interpolation=cv2.INTER_NEAREST))
     return out
 
@@ -134,6 +140,12 @@ def apply_fx_from(c, src, out):
             L0 = len(frames)
             frames = frames[:k] + [frames[k]] * n + frames[k:]
             frames = frames[:L0]
+    if 'freeze2' in fx:
+        t, n = fx['freeze2']
+        k = idx(t)
+        if 0 <= k < len(frames):
+            L0 = len(frames)
+            frames = (frames[:k] + [frames[k]] * n + frames[k:])[:L0]
     if 'shake2' in fx:
         t, n, amp = fx['shake2']
         k0 = idx(t)
