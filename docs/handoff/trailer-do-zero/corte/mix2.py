@@ -23,7 +23,7 @@ lt0 = C['k_mao']['t0'] if 'k_mao' in C else (C['k_letal_mao']['t0'] if 'k_letal_
 PLAN = {
     'name': os.path.basename(ED.OUT) + '_' + ED.VARIANT, 'edl': os.path.join(ED.OUT, f'{os.path.basename(ED.OUT)}_{ED.VARIANT}_edl.json'), 'dur': ED.DUR,
     'group_db': {'sfx': 0, 'ambient': 10},
-    'code_db': dict(M0.PLAN['code_db'], castleGateOpen=9 if getattr(ED, 'CUT', '') in ('corte5', 'corte6', 'corte7') else 0, bossEyes=-2, bossLandImpact=9, bossRevealSting=-3),
+    'code_db': dict(M0.PLAN['code_db'], castleGateOpen=9 if getattr(ED, 'CUT', '') in ('corte5', 'corte6', 'corte7', 'corte8') else 0, bossEyes=-2, bossLandImpact=9, bossRevealSting=-3),
     'clip_db': {'h_mao': 2, 'k_escuro': -10, 'k_nome': -8, 'k_revoada_rei': 3, 'k_revoada_vida': 4, 'k_vida3': 4, 'k_vida': 4, 'k_porta_a': -40, 'k_golpe': 10, 'k_queda': 4, 'k_coringa': -11, 'e2_gargula': -11, 'h_letal': 2},
     'amb_clip_db': {'k_estrada': 4, 'k_porta': 2, 'k_escuro': -6, 'e2_gargula': -4, 'e4_serpente': 8, 'e5_esporo': 6, 'e6_anjo': 6},
     'code_window': {'k_porta': {'wx:': (0, s0 - 0.1)}},
@@ -41,7 +41,7 @@ PLAN = {
         {'t': 0.0, 'file': 'audio/sfx/boot-tv-power-on.mp3', 'db': -10, 'what': 'TV liga (som do jogo)'},
         {'t': C['ia_hall3']['t0'] + 0.07, 'file': 'audio/sfx/boss/boss_hellfire_wall.mp3', 'in': 0.6, 'db': -20, 'len': C['ia_hall3']['t1'] - C['ia_hall3']['t0'], 'what': 'salao IA do Tirano: parede de fogo'},
         {'t': C['ia_hall4']['t0'] + 0.07, 'file': 'audio/sfx/boss/boss_frost_storm.mp3', 'in': 0.6, 'db': -11, 'len': C['ia_hall4']['t1'] - C['ia_hall4']['t0'], 'what': 'salao IA do Monarca: tempestade de gelo'},
-        *([] if getattr(ED, 'CUT', '') in ('corte5', 'corte6', 'corte7') else [{'t': C.get('k_porta_a', C['k_porta'])['t0'], 'file': GATE, 'in': max(0.0, C.get('k_porta_a', C['k_porta'])['s0'] - 9.40), 'db': 6, 'what': 'portao do castelo (cabeca aparada no corte)'}]),
+        *([] if getattr(ED, 'CUT', '') in ('corte5', 'corte6', 'corte7', 'corte8') else [{'t': C.get('k_porta_a', C['k_porta'])['t0'], 'file': GATE, 'in': max(0.0, C.get('k_porta_a', C['k_porta'])['s0'] - 9.40), 'db': 6, 'what': 'portao do castelo (cabeca aparada no corte)'}]),
         {'t': g, 'file': 'audio/sfx/boss/boss_land_impact.mp3', 'db': 5, 'len': 1.2, 'what': 'peso no golpe LETAL'},
         *([{'t': C['e6_anjo']['t0'], 'file': 'audio/sfx/entrances/fallen_angel_start.mp3', 'in': max(0.0, C['e6_anjo']['s0'] - 6.35), 'db': 0, 'what': 'anjo descendo (cabeca aparada)'}] if 'e6_anjo' in C else []),
         *([           {'t': C['e6_pouso']['t0'] + (9.50 - C['e6_pouso']['s0']), 'file': 'audio/sfx/entrances/fallen_angel_stop.mp3', 'db': 2, 'what': 'pouso do anjo'}] if 'e6_pouso' in C else []),
@@ -57,14 +57,14 @@ PLAN = {
     ],
 }
 
-if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7'):
+if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7', 'corte8'):
     h3 = C['ia_hall3']; cr = C['k_coringa']
     env = PLAN['music_env']
     env += [(h3['t0'] - 1.2, -4), (h3['t0'] - 0.02, -4), (h3['t0'], 5), (h3['t1'] - 0.2, 5), (h3['t1'], 0)]
     CDB = float(os.environ.get('TDZ_CORINGA_DB', '16' if ED.VARIANT == 'tirano' else '-18'))
     env += [(cr['t0'] - 0.1, 3), (cr['t0'], CDB), (cr['t1'], CDB), (L['spin0'] + 0.3, -1)]
     env = [(t, v) for t, v in env if not (cr['t0'] - 0.1 < t < cr['t1'] + 0.05)]
-    CDB = float(os.environ.get('TDZ_CORINGA_DB', ('-2' if getattr(ED, 'CUT', '') == 'corte7' else '6' if getattr(ED, 'CUT', '') == 'corte6' else '11') if ED.VARIANT == 'tirano' else ('-6' if getattr(ED, 'CUT', '') in ('corte6', 'corte7') else '2')))
+    CDB = float(os.environ.get('TDZ_CORINGA_DB', ('-2' if getattr(ED, 'CUT', '') in ('corte7', 'corte8') else '6' if getattr(ED, 'CUT', '') == 'corte6' else '11') if ED.VARIANT == 'tirano' else ('-6' if getattr(ED, 'CUT', '') in ('corte6', 'corte7', 'corte8') else '2')))
     env = [(t, v + (2 if g <= t <= g + 2.3 else 0)) for t, v in env]
     env += [(cr['t0'] - 0.1, 3), (cr['t0'], CDB), (cr['t1'], CDB)]
     PLAN['music_env'] = sorted(env, key=lambda k: k[0])
@@ -75,9 +75,9 @@ if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7'):
     PLAN['extra'].append({'t': s0, 'file': 'audio/sfx/boss/boss_hold_ambience.mp3', 'db': ROOM_DB, 'in': 0.5, 'loop': True, 'len': C['ia_hall1']['t1'] - s0 + 0.3, 'fade': 0.3, 'what': 'tom de sala no trono vazio (-45 a -50 dBFS)'})
 
 if ED.VARIANT == 'rei':
-    REI_UP = 6 if getattr(ED, 'CUT', '') not in ('corte4', 'corte5', 'corte6', 'corte7') else 3
+    REI_UP = 6 if getattr(ED, 'CUT', '') not in ('corte4', 'corte5', 'corte6', 'corte7', 'corte8') else 3
     PLAN['music_env'] = [(t, v + REI_UP if t >= s1 and v > SIL else v) for t, v in PLAN['music_env']]
-    if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7'):
+    if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7', 'corte8'):
         PLAN['music_env'] = sorted([(t, v) for t, v in PLAN['music_env'] if t < L['spin0'] + 0.3]
                                    + [(L['spin0'] + 0.3, -2), (L['grimoire'], -4), (ED.DUR, -4)], key=lambda k: k[0])
 

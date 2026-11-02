@@ -31,7 +31,11 @@ def render_take(c, out):
     vf = []
     if c['z'] == 3:
         x, y = c['crop']
-        vf.append(f'crop=640:360:{x}:{y}')
+        if c.get('pan'):
+            n0, v, ymax = c['pan']
+            vf.append(f"crop=640:360:{x}:'min({ymax},{y}+max(0,n-{n0})*{v})'")
+        else:
+            vf.append(f'crop=640:360:{x}:{y}')
         vf.append('scale=1920:1080:flags=neighbor')
     if c['z'] == 2:
         x, y = c['crop']
@@ -94,6 +98,15 @@ def treat_halls(frames, real, kr=0.80, k=0.30):
             q2 = cv2.medianBlur(q, 3).astype(np.float32)
             d = ((q2[:, :, None, :] - pal[None, None, :, :]) ** 2).sum(-1)
             q = pal[d.argmin(-1)].astype(np.uint8)
+        if getattr(E, 'HALL_OUTLINE', False):
+            Lq = cv2.cvtColor(q, cv2.COLOR_BGR2LAB)[..., 0].astype(np.int16)
+            dark = pal[np.argmin(pal.sum(1))].astype(np.uint8)
+            m = np.zeros(Lq.shape, bool)
+            for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                nb = np.roll(np.roll(Lq, dy, 0), dx, 1)
+                m |= (nb - Lq) > 55
+            m[0, :] = m[-1, :] = False; m[:, 0] = m[:, -1] = False
+            q = q.copy(); q[m] = dark
         out.append(cv2.resize(q, (W, H), interpolation=cv2.INTER_NEAREST))
     return out
 
@@ -173,6 +186,26 @@ def apply_fx_from(c, src, out):
                 if 0 <= px < W - s and 0 <= py < H - s:
                     roi = f[py:py + s, px:px + s].astype(np.float32)
                     f[py:py + s, px:px + s] = (roi * (1 - 0.7 * a) + np.array([150, 160, 170], np.float32) * 0.7 * a).astype(np.uint8)
+    if 'glint' in fx:
+        t, per = fx['glint']
+        k0 = idx(t)
+        x0, y0, x1, y1 = CARD_BOX
+        yy, xx = np.mgrid[y0:y1, x0:x1]
+        diag = ((xx - x0) + (yy - y0) * 0.5) // 4 * 4
+        span = (x1 - x0) + (y1 - y0) * 0.5 + 120
+        for k in range(max(0, k0), len(frames)):
+            ph = ((k - k0) % per) / per
+            if ph > 0.55:
+                continue
+            c0 = -60 + span * (ph / 0.55)
+            band = (np.abs(diag - c0) < 28).astype(np.float32)
+            if not band.any():
+                continue
+            f = frames[k].copy()
+            frames[k] = f
+            roi = f[y0:y1, x0:x1].astype(np.float32)
+            roi += band[..., None] * 38.0
+            f[y0:y1, x0:x1] = np.clip(roi, 0, 255).astype(np.uint8)
     if 'zoom' in fx:
         z0, z1 = fx['zoom']
         n = len(frames)

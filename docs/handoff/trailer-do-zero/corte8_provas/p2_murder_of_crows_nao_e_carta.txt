@@ -1,0 +1,7 @@
+grep -rni 'murder' src/data/cards/  ->
+(nenhum resultado: nao existe carta Murder of Crows)
+
+grep -rn 'murder_of_crows' src/data/ ->
+src/data/enemies.lua:100:            { id = "murder_of_crows", kind = "multi", weight = 45, mult = 0.35,
+
+12:        call_of_crows = { name = "Call of Crows" }, murder_of_crows = { name = "Murder of Crows" },
