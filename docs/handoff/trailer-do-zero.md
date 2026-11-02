@@ -77,3 +77,9 @@ Decisões do Grimoire (16:42 e 16:43), recebidas por `tdz_c2b.txt` na pasta de o
 
 ## Estado do corte 2
 - [ ] corte2 (principal 1080p/720p com a faixa do Tirano + variante 720p com a do Rei-Carniça, em revisão; `trailer-do-zero/corte2.md`)
+
+## Corte 9: aprovado (02/11/2026)
+- Revisora: **APROVADO nas duas versões** na rodada 9b (`revisao-corte9.md`, commit 636fe396, `===CORTE9_PRONTO===`), 9 ou mais em todos os critérios, inclusive Q.
+- Arquivos: `grimoire_zero_corte9_1080p.mp4`, `_720p.mp4` (Tirano) e `_rei_720p.mp4` em `E:\dev\projects\card-game-trailer\build\trailer\`; cópias dos 720p em `C:\Users\corte\grokbot_entrega\corte9_720p.mp4` e `corte9_rei_720p.mp4`.
+- Sem nenhum zoom (pedido do Daniel, 00:46). **FINAL_DO_CORTE=2** (tempos do bloco do logo/CTA iguais aos do corte 2; fundo em tela inteira e áudio do trecho atual: dúvida registrada para o Daniel).
+- Detalhe e provas: `trailer-do-zero/corte9.md` e `corte9_provas/`. Não publicável até trocar ou licenciar os SFX; ninguém ouviu as mixagens.
