@@ -14,10 +14,10 @@ C = {c['id']: c for c in ED.CLIPS}
 SIL = -70
 ROOM_DB = float(os.environ.get('TDZ_ROOM_DB', '-26'))
 GATE = [json.loads(l)['path'] for l in open(E.LOG, encoding='utf-8') if '"castleGateOpen"' in l][-1]
-INSIDE = ['k_escuro', 'k_escuro_b', 'k_nome', 'k_guerreiro', 'k_revoada_rei', 'k_vida', 'k_mao', 'k_queda', 'k_ajoelha', 'k_revoada_vida', 'k_vida3', 'k_volta', 'k_letal_mao', 'k_letal', 'k_golpe', 'k_coringa']
+INSIDE = ['k_escuro', 'k_escuro_b', 'k_nome', 'k_guerreiro', 'k_revoada_rei', 'k_vida', 'k_mao', 'k_queda', 'k_ajoelha', 'k_revoada_vida', 'k_vida3', 'k_volta', 'k_letal_mao', 'k_letal', 'k_golpe', 'k_coringa', 'k_dreno', 'k_inimigo', 'k_corvos']
 L = ED.LOGO
 g = C['k_golpe']['t0']; door = C['k_porta']['t0']; s0 = C['ia_hall1']['t0']; s1 = C['k_nome']['t0']
-rv0 = C['k_revoada_rei']['t0']
+rv0 = C['k_inimigo']['t0'] if 'k_inimigo' in C else C['k_revoada_rei']['t0']
 rv1 = C['k_vida']['t1'] if 'k_vida' in C else (C['k_vida3']['t1'] if 'k_vida3' in C else (C['k_revoada_vida']['t1'] if 'k_revoada_vida' in C else C['k_revoada_rei']['t1']))
 lt0 = C['k_mao']['t0'] if 'k_mao' in C else (C['k_letal_mao']['t0'] if 'k_letal_mao' in C else C['k_letal']['t0'])
 PLAN = {
@@ -74,7 +74,7 @@ if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7', 'corte8'):
                       {'t': FT, 'file': 'audio/sfx/joker-sig/joker_boss_carrion.mp3', 'db': 0, 'what': 'assinatura do coringa na face da carta'}]
     PLAN['extra'].append({'t': s0, 'file': 'audio/sfx/boss/boss_hold_ambience.mp3', 'db': ROOM_DB, 'in': 0.5, 'loop': True, 'len': C['ia_hall1']['t1'] - s0 + 0.3, 'fade': 0.3, 'what': 'tom de sala no trono vazio (-45 a -50 dBFS)'})
 
-if getattr(ED, 'OUT_NAME', '') in ('corte9', 'corte10'):
+if getattr(ED, 'OUT_NAME', '') in ('corte9', 'corte10', 'corte10b'):
     PLAN['sfx_env'] = [(0, 0), (g - 0.66, 0), (g - 0.58, -32), (g - 0.02, -32), (g, 0)]
     PLAN['amb_env'] = [(0, 0), (g - 0.66, 0), (g - 0.58, -40), (g - 0.02, -40), (g, 0)]
 
