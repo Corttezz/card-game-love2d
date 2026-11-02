@@ -158,6 +158,7 @@ _c6()
 CARD_BG_T = 55.25
 TV_SKIP = 240
 CUT = 'corte7'
+FACE_T = 54.92 if VARIANT == 'rei' else None
 NUMBER_Y = 40
 HALL_GRID = (384, 216)
 HALL_COLORS = 32
@@ -263,6 +264,8 @@ if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1':
     _C['k_queda']['t1'] = _gc
     _C['k_coringa']['t0'] = _gc
     _C['k_coringa']['s0'] = round(_C['k_coringa']['s0'] + _dc, 3)
+    _C['k_coringa']['s0'] = round(_C['k_coringa']['s0'] + 0.37, 3)
+    _C['k_coringa']['fx'] = dict(freeze=(57.70, 52))
 
 
 if VARIANT == 'rei' and os.environ.get('TDZ_NO_SNAP') != '1':

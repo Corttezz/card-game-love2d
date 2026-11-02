@@ -61,3 +61,14 @@ Zoom só para dentro, sem o soco de câmera do jogo; "48" grande no hit-stop; sa
 
 ## Para o Daniel ouvir
 A faixa do Tirano agora tem duas passagens escondidas em silêncios: na entrada do Rei e no respiro de 0,6 s antes do golpe. A peça é a mesma, sem outra faixa. Ninguém ouviu as mixagens ainda.
+
+## Rodada 7b: giro duplo do coringa na variante do Rei
+
+Só `grimoire_zero_corte7_rei_720p.mp4` foi regravado; a principal (Tirano) não mudou (data do arquivo conferida).
+
+- **Defeito** (`revisao-corte7.md`, 21:54): o plano do coringa abria cedo na tomada, e a carta mostrava a face (54,72 a 54,82 s), voltava ao verso (até 55,12 s) e só assentava a face por volta de 55,3 s: dois giros.
+- **Correção:** o corte continua a **54,555 s** (ataque forte), e o início da tomada nesse plano foi **atrasado 0,37 s** (56,605 → 56,975 s), igual ao que já funcionava na principal. O plano agora abre no segundo verso, gira **uma vez** e assenta a face. A face parada no fim do plano passou de 30 para 52 quadros repetidos, para a tomada acabar (59,85 s) antes de a carta sumir, e a face segue até o logo a 58,30 s.
+- **Quadro da face medido** (centro escuro da ilustração entrando na carta): **54,92 s**. A revelação (`boss_reveal_sting`) e a assinatura do coringa foram para **54,92 s**. No stem de SFX, o nível sobe de −16 para −6 dB nesse quadro (janelas de 20 ms).
+- **Coringa:** música **5,2 dB abaixo** do SFX (−18,3 / −13,1).
+- **Arquivo:** −14,1 LUFS, −1,1 dBFS de pico, LRA 8,6; margem do pico +3,2 dB; 0 quadros < 5% de luma.
+- **Provas:** `corte7_provas/rei/coringa_7b_20qps_54.50-56.00s.png` (folha a 20 quadros/s: verso → giro → face, uma vez só) e `corte7_provas/rei/face_e_revelacao_54.92s.png`.

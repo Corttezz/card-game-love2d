@@ -69,8 +69,9 @@ if getattr(ED, 'CUT', '') in ('corte4', 'corte5', 'corte6', 'corte7'):
     env += [(cr['t0'] - 0.1, 3), (cr['t0'], CDB), (cr['t1'], CDB)]
     PLAN['music_env'] = sorted(env, key=lambda k: k[0])
     PLAN['code_window'] = dict(PLAN.get('code_window', {}), k_coringa={'bossRevealSting': (0, 0), 'jokerSig': (0, 0)})
-    PLAN['extra'] += [{'t': cr['t0'] + 0.02, 'file': 'audio/sfx/boss/boss_reveal_sting.mp3', 'db': 0, 'what': 'revelacao do coringa na face da carta'},
-                      {'t': cr['t0'] + 0.02, 'file': 'audio/sfx/joker-sig/joker_boss_carrion.mp3', 'db': 0, 'what': 'assinatura do coringa na face da carta'}]
+    FT = getattr(ED, 'FACE_T', None) or cr['t0'] + 0.02
+    PLAN['extra'] += [{'t': FT, 'file': 'audio/sfx/boss/boss_reveal_sting.mp3', 'db': 0, 'what': 'revelacao do coringa na face da carta'},
+                      {'t': FT, 'file': 'audio/sfx/joker-sig/joker_boss_carrion.mp3', 'db': 0, 'what': 'assinatura do coringa na face da carta'}]
     PLAN['extra'].append({'t': s0, 'file': 'audio/sfx/boss/boss_hold_ambience.mp3', 'db': ROOM_DB, 'in': 0.5, 'loop': True, 'len': C['ia_hall1']['t1'] - s0 + 0.3, 'fade': 0.3, 'what': 'tom de sala no trono vazio (-45 a -50 dBFS)'})
 
 if ED.VARIANT == 'rei':
