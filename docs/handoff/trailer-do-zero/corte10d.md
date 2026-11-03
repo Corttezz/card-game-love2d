@@ -29,3 +29,8 @@ _Diretora, 02/11/2026. Base: `revisao-grimoire-corte10c.md` (d857b4b0, Tirano 9,
   - Tirano: −14,1 LUFS / −1,2 dBTP, LRA 6,9.
   - Rei: −14,1 LUFS / −1,3 dBTP, LRA 7,4.
 - **Sincronia da Tirano:** todos os cortes a ≤ 0,1 quadro de um onset do stem, exceto a queda (−2,3 q), como antes.
+
+## Aprovação e entrega
+- Revisora: **APROVADO** nas duas versões, Tirano 9,3 e Rei 9,3 (`revisao-corte10d.md`, commit 3b67ae84). Sincronia do Rei 9,5.
+- Copiados, iguais byte a byte aos masters: `C:\Users\corte\grokbot_entrega\corte10d_720p.mp4` e `corte10d_rei_720p.mp4`.
+- Riscos registrados sem bloquear: margem do golpe da Tirano +2,1 dB; no Rei, o corte de 38,895 s (saída do nome) em tempo fraco desde o 10b; salões e ritmo com 8,5 do Grimoire no 10c, sem mudança.
