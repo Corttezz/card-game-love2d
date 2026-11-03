@@ -96,3 +96,9 @@ As outras medidas não mudaram:
 - golpe letal +14,1 dB; cartas +2,3 dB contra o corte 12;
 - logo igual ao 12 (0,04/255);
 - 720p a 13,6 Mb/s.
+
+## Aprovação e entrega
+
+- **Revisora do time:** `revisao-corte13b.md` (commit `d70e1496`), **9,2**, `===CORTE13_PRONTO===`.
+- **Entregue:** `C:\Users\corte\grokbot_entrega\corte13_720p.mp4`, igual byte a byte ao master 720p. sha256 `22dd06f6ef2dcbd1eaf8e5aee5153a3021a710033d501202aa1a49d722d71ece`.
+- **Ressalva não aplicada:** ficou um vale de ~0,8 s (50,5 a 51,4 s, −32 a −40 dB na medida dela) entre a saída da música e a entrada do vento. Ela recomenda entrar com o vento ~0,5 s antes.
