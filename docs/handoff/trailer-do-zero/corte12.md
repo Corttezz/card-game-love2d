@@ -59,3 +59,15 @@ Outras checagens:
 Custo do mix novo:
 - a faixa dinâmica (LRA) subiu de 8,8 para 12,0 LU;
 - as cartas e a Coleção ficam cerca de 4 dB mais baixas que no 11g; os salões e a luta, mais altos.
+
+## Aprovação e entrega
+
+Revisora do time (`revisao-corte12.md`, commit `ba9bf2dc`):
+- **Principal: 9,4**, `===CORTE12_PRONTO===`. Sem regressão contra o 11g rev 2.
+- **Loja: 8,8.** Piora o filme: são 3 s de prateleira parada, e a música da loja corta a do Rei na subida para o Espantalho. Por isso ela **não** entra no corte.
+
+Entregue em `C:\Users\corte\grokbot_entrega\`, os dois iguais byte a byte aos masters 720p:
+- `corte12_720p.mp4`, sha256 `fc956a726ddaa921b2671a80f953d9cc1694086fe4fcbc02832ec5040f668f71`;
+- `corte12_loja_720p.mp4`, só como registro do A/B rejeitado, sha256 `6b20b167860814833421c6597d210063e98ec9be8f34b524ef42fed2a5739adf`.
+
+Ressalva da revisora, não aplicada: a música some em cerca de 0,75 s antes do portão. Um fade de 1,5 a 2 s leria mais como "abaixando".
