@@ -1,0 +1,27 @@
+== 11f Tirano
+cut  38.500  nearest onset off -123.4 ms  strength   3.0x  rank 4/12 in +-1s  bass  1.9x
+cut  39.572  nearest onset off  -46.0 ms  strength   2.5x  rank 4/11 in +-1s  bass  2.9x
+cut  40.717  nearest onset off  -53.2 ms  strength   2.3x  rank 6/10 in +-1s  bass  0.7x
+cut  41.850  nearest onset off  -48.5 ms  strength   3.4x  rank 1/11 in +-1s  bass  0.3x
+cut  42.717  nearest onset off  -56.3 ms  strength   3.2x  rank 3/12 in +-1s  bass  1.6x
+cut  44.150  nearest onset off  -61.3 ms  strength   2.8x  rank 4/12 in +-1s  bass  0.1x
+cut  45.350  nearest onset off   +4.2 ms  strength   0.9x  rank 11/12 in +-1s  bass  1.1x
+== 11e Tirano
+cut  38.713  nearest onset off  -57.8 ms  strength   2.8x  rank 6/12 in +-1s  bass  1.2x
+cut  39.851  nearest onset off  -46.4 ms  strength   2.4x  rank 5/12 in +-1s  bass  2.2x
+cut  40.989  nearest onset off  -46.6 ms  strength   3.0x  rank 2/11 in +-1s  bass  0.3x
+cut  41.848  nearest onset off  -46.5 ms  strength   3.4x  rank 1/11 in +-1s  bass  0.3x
+cut  42.997  nearest onset off  -46.1 ms  strength   3.0x  rank 4/11 in +-1s  bass  2.1x
+cut  44.140  nearest onset off  -51.3 ms  strength   2.8x  rank 4/12 in +-1s  bass  0.1x
+== 11f Rei
+cut  38.217  nearest onset off  +55.2 ms  strength   1.1x  rank 7/9 in +-1s  bass  0.9x
+cut  39.398  nearest onset off  -46.1 ms  strength   7.7x  rank 1/10 in +-1s  bass 17.4x
+cut  40.683  nearest onset off  -65.6 ms  strength   6.1x  rank 1/9 in +-1s  bass 14.2x
+cut  41.617  nearest onset off  -47.6 ms  strength   5.8x  rank 2/10 in +-1s  bass 18.1x
+cut  43.183  nearest onset off  -69.4 ms  strength   6.5x  rank 1/9 in +-1s  bass  4.6x
+cut  44.450  nearest onset off  -82.6 ms  strength   7.7x  rank 1/10 in +-1s  bass 24.4x
+cut  45.650  nearest onset off  -17.1 ms  strength   7.2x  rank 1/9 in +-1s  bass 17.1x
+== faixa Tirano inteira: onsets com grave >=4x ou forca >=5x
+  7.047   3.1x bass  5.1x
+  8.197   3.8x bass  4.5x
+ 34.482   2.8x bass  4.3x
