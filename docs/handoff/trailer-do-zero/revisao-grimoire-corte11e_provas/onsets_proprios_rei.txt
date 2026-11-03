@@ -1,0 +1,12 @@
+cut  39.108  nearest onset off  -46.3 ms  strength   2.6x  rank 3/11 in +-1s  bass  0.2x
+cut  40.664  nearest onset off  -46.6 ms  strength   6.1x  rank 1/9 in +-1s  bass 14.2x
+cut  41.604  nearest onset off  -34.6 ms  strength   5.8x  rank 2/10 in +-1s  bass 18.1x
+cut  43.160  nearest onset off  -46.4 ms  strength   6.5x  rank 1/9 in +-1s  bass  4.6x
+cut  44.414  nearest onset off  -46.6 ms  strength   7.7x  rank 1/10 in +-1s  bass 24.4x
+cut  45.679  nearest onset off  -46.1 ms  strength   7.2x  rank 1/9 in +-1s  bass 17.1x
+cut  46.631  nearest onset off  -46.1 ms  strength   5.5x  rank 2/9 in +-1s  bass 20.9x
+cut  50.103  nearest onset off  -46.7 ms  strength   2.8x  rank 3/11 in +-1s  bass  0.2x
+cut  51.659  nearest onset off  -46.9 ms  strength   3.1x  rank 3/10 in +-1s  bass  8.2x
+cut  53.214  nearest onset off  -46.2 ms  strength   6.0x  rank 1/9 in +-1s  bass  2.4x
+cut  58.230  nearest onset off  -46.7 ms  strength   6.2x  rank 1/9 in +-1s  bass  6.4x
+cut  62.695  nearest onset off -134.7 ms  strength   2.2x  rank 4/9 in +-1s  bass  1.0x
