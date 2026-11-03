@@ -57,3 +57,16 @@ _Director, 03/11/2026. Base: cut 11 rev 5 (11e), approved by the team (5616373d)
 - **Bitrate:** 720p 13,7 / 14,1 Mb/s; 1080p 33,0 / 34,4 Mb/s.
 - **Duration:** 76,5 s (Tirano) and 69,6 s (Rei).
 - **"SIX BOSSES." over five halls** is unchanged (pending with Daniel).
+
+## Tirano revision (after `revisao-corte11f.md`, 8d47e70b: Rei 9,4 PASS, Tirano 8,9)
+- **Halls:** back to **~1,15 s each**, the fast switching Daniel praised.
+  - Each cut sits on the strongest bass attack within ±0,35 s of the beat: **39,572 / 40,710 / 41,848 / 42,707 / 44,135**, then the gate at 45,285 (`acentos_saloes_tirano.md`).
+  - Three of the cuts are the strongest accent within ±1 s.
+  - Mean bass rise at the cut: +4,5 dB (11e: +3,6). The Tirano track never gives a strong accent every 1,1 s.
+- **Duration:** 70,2 s (was 76,5).
+- **Ending:** 390/390 frames, 1,56/255 from the source.
+- **Loudness:** −14,1 LUFS / −1,2 dBTP, LRA 11,2.
+- **Bitrate:** 720p 13,9 Mb/s.
+- **Scale:** gameplay stays at 1,00.
+- **Continuity:** every fight cut and card cut shows the same numbers on both sides (`tirano\p_cortes_da_luta_antes_depois.png`).
+- **Rei version:** unchanged since the 11f that passed (9,4).

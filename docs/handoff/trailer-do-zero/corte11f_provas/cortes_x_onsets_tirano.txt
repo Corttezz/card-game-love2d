@@ -14,18 +14,18 @@
 13 33.280 35.857 entr_storm_griffin     onset 33.280 (6.0x, bass +4.4 dB) +0.0 q
 14 35.857 38.133 entr_fallen_angel      onset 35.857 (6.1x, bass +7.8 dB) +0.0 q
 15 38.133 39.572 entr_ice_wyrm          onset 38.133 (7.8x, bass +1.3 dB) +0.0 q
-16 39.572 41.848 4k:hall1_carrion       onset 39.572 (7.3x, bass +4.2 dB) +0.0 q
-17 41.848 44.135 4k:hall2_lich          onset 41.848 (9.6x, bass +10.7 dB) +0.0 q
-18 44.135 46.422 4k:hall3_tyrant        onset 44.135 (7.2x, bass +4.2 dB) +0.0 q
-19 46.422 48.709 4k:hall4_ice           onset 46.422 (10.5x, bass +6.5 dB) +0.0 q
-20 48.709 50.997 4k:hall5_heart         onset 48.709 (6.9x, bass +4.1 dB) +0.0 q
-21 50.997 52.134 c11boss                onset 50.997 (8.0x, bass +5.3 dB) +0.0 q
-22 52.134 55.559 c11boss                onset 52.134 (9.2x, bass +2.7 dB) +0.0 q
-23 55.559 57.568 c11boss                onset 55.559 (7.5x, bass +3.7 dB) +0.0 q
-24 57.568 58.996 c11boss                onset 57.568 (10.3x, bass +5.4 dB) +0.0 q
-25 58.996 64.708 c11boss                onset 58.996 (5.6x, bass +1.8 dB) +0.0 q
-26 64.708 69.615 c11boss                onset 64.708 (10.7x, bass +11.7 dB) +0.0 q
-27 69.615 69.915 black                  onset 69.573 (7.6x, bass -1.5 dB) -2.5 q
-28 69.915 76.415 brand:logo_sting       onset 69.840 (12.5x, bass +5.4 dB) -4.5 q
-29 76.415 76.515 black                  onset 72.429 (7.3x, bass -0.4 dB) -239.2 q
-version tirano music in 12.6 track from 21.0 total 76.515
+16 39.572 40.710 4k:hall1_carrion       onset 39.572 (7.3x, bass +4.2 dB) +0.0 q
+17 40.710 41.848 4k:hall2_lich          onset 40.710 (5.4x, bass +2.0 dB) +0.0 q
+18 41.848 42.707 4k:hall3_tyrant        onset 41.848 (9.6x, bass +10.7 dB) +0.0 q
+19 42.707 44.135 4k:hall4_ice           onset 42.707 (7.3x, bass +3.1 dB) +0.0 q
+20 44.135 45.285 4k:hall5_heart         onset 44.135 (7.2x, bass +4.2 dB) +0.0 q
+21 45.285 46.422 c11boss                onset 45.285 (7.6x, bass +2.9 dB) +0.0 q
+22 46.422 49.847 c11boss                onset 46.422 (10.5x, bass +6.5 dB) +0.0 q
+23 49.847 51.566 c11boss                onset 49.847 (5.6x, bass +1.7 dB) +0.0 q
+24 51.566 52.715 c11boss                onset 51.566 (8.1x, bass +2.6 dB) +0.0 q
+25 52.715 58.137 c11boss                onset 52.715 (11.1x, bass +4.4 dB) +0.0 q
+26 58.137 63.334 c11boss                onset 58.137 (6.9x, bass +6.4 dB) +0.0 q
+27 63.334 63.634 black                  onset 63.292 (2.9x, bass +0.3 dB) -2.5 q
+28 63.634 70.134 brand:logo_sting       onset 63.570 (5.5x, bass -0.2 dB) -3.8 q
+29 70.134 70.234 black                  onset 70.130 (13.6x, bass +3.2 dB) -0.2 q
+version tirano music in 12.6 track from 21.0 total 70.23400000000001
