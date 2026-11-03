@@ -1,0 +1,18 @@
+{
+ "t": {
+  "quadros": 390,
+  "dif_media": 1.37,
+  "dif_max": 2.01
+ },
+ "r": {
+  "quadros": 390,
+  "dif_media": 1.37,
+  "dif_max": 2.01
+ },
+ "v8": {
+  "quadros": 390,
+  "dif_media": 1.37,
+  "dif_max": 2.01
+ },
+ "c11_x_v8": 0.0
+}
