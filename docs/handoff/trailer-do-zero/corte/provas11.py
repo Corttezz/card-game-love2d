@@ -20,26 +20,35 @@ def tail_frames(p, secs):
     return [f for _, f in frames(p, d - secs, d)]
 
 
+LOGO_T0 = {'t': float(os.environ.get('C11_LOGO_T', '0')), 'r': float(os.environ.get('C11_LOGO_R', '0'))}
+
+
+def logo_frames(k):
+    if k == 'v8':
+        return tail_frames(V[k], 6.5)
+    return [f for _, f in frames(V[k], LOGO_T0[k], LOGO_T0[k] + 6.5)]
+
+
 def logo_cmp():
     src = [f for _, f in frames(LOGO, 0, 6.5)]
     out = {}
     for k in ('t', 'r', 'v8'):
-        fr = tail_frames(V[k], 6.5)
+        fr = logo_frames(k)
         n = min(len(src), len(fr))
         d = []
         for i in range(n):
             a = src[i].astype(int); b = fr[i].astype(int)
             d.append(float(np.abs(a - b).mean()))
         out[k] = dict(quadros=n, dif_media=round(float(np.mean(d)), 2), dif_max=round(float(np.max(d)), 2))
-    v8 = tail_frames(V['v8'], 6.5); t = tail_frames(V['t'], 6.5)
+    v8 = logo_frames('v8'); t = logo_frames('t')
     n = min(len(v8), len(t))
     out['c11_x_v8'] = round(float(np.mean([np.abs(v8[i].astype(int) - t[i].astype(int)).mean() for i in range(n)])), 2)
     pick = [0.3, 1.5, 2.6, 3.2, 4.4, 6.2]
     it = []
     for lab, p in (('v8', V['v8']), ('c11', V['t'])):
-        d = dur(p)
+        t0 = dur(p) - 6.5 if lab == 'v8' else LOGO_T0['t']
         for s in pick:
-            for _, f in frames(p, d - 6.5 + s, d - 6.5 + s + 0.02):
+            for _, f in frames(p, t0 + s, t0 + s + 0.02):
                 it.append((s, f, f'{lab} logo +{s:.1f}s'))
                 break
     sheet(it, len(pick), os.path.join(P, 'p_fecho_v8_x_c11.png'), 300)

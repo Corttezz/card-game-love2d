@@ -67,3 +67,27 @@ How to rebuild: `TRAILER_SRC=%APPDATA%\LOVE\card-game-trailer-c11\trailer TRAILE
 - Gameplay is captured in-engine (recorder, 25/Oct build), with the HUD on in the card and fight shots. God mode and 5 mana were used for capture.
 - The halls are AI mood shots, used only for the boss montage with names.
 - The final boss (Eclipse Queen) is not shown.
+
+## Revision 2 (after `revisao-corte11.md`, b1ed4360, FAIL 8/8)
+
+This section replaces the times and numbers above where they differ.
+
+| reviewer's fix | what was done |
+|---|---|
+| 1. climax ends with the King's death | The whole boss sequence now comes from one take, `boss_carrion4` (v6 recording, in-engine CRT): gate, eyes, swoop, "CARRION KING", turn 1 with combo and hits, then the last turn: Fireball, the killing blow, the death in slow motion and desaturated. "ONE HAND CAN BREAK A KING." sits over the last turn. Then black, then the logo. Tirano 44,1 to 61,1 s; Rei 45,7 to 62,5 s. |
+| 2. dynamics | The engine's dynamic loudnorm is off for this cut (`TRAILER_NO_LOUDNORM=1`, new switch; the default is unchanged). Two-pass linear loudnorm instead. The opening ambient is ~15 dB under the climax, and the music goes −9 under the acts, −6 under the cards, −4 under the entrances, +2 from the halls on. RMS per 3 s (Tirano): acts −33 to −20, cards −19 to −11, halls/climax −9 to −12. **LRA 10,4 (Tirano) / 9,2 (Rei)**, was 3,9 / 3,4. |
+| 3. boss cuts on the strong accent | The hall and climax cuts pick the strongest onset within ±0,45 s (strength × bass rise). Rei halls: 39,108 / 40,664 / 41,604 / 43,160 / 44,414 s, onsets of 9× to 31× with bass +30 dB. Tirano: 38,713 / 39,851 / 40,989 / 41,848 / 42,997 s. Tables: `cortes_x_onsets_*.txt`. |
+| 4. bigger text | Scale 7 to 9 by length (was 5), always inside the frame. |
+| 5. collection | After the grid scroll, two cards open big (Blood Sword, Helm of Valor), each on a beat. |
+| 6. longer acts | 2,0 s each (was 1,6). |
+
+Numbers now:
+- **Duration:** 67,6 s (Tirano) and 69,0 s (Rei).
+- **Bitrate:**
+  - 720p: 13,4 Mb/s
+  - 1080p: 32,8 / 32,5 Mb/s
+- **Loudness:**
+  - Tirano: −13,6 LUFS, −1,1 dBTP
+  - Rei: −14,1 LUFS, −1,3 dBTP
+- **Ending:** frame-exact against `logo_sting.mp4` and v8, 1,56/255 in all three (`p_fecho_quadro_a_quadro.json`). The Tirano file loses the last 3 of 390 logo frames at the mux.
+- **Dark frames:** only the TV turning on (0 to 1,1 s) and the logo background.

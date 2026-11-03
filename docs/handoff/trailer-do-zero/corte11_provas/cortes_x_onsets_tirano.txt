@@ -1,24 +1,27 @@
  0  0.000  3.000 poweron                
  1  3.000  5.000 poweron                
- 2  5.000  6.600 night_a2               
- 3  6.600  8.200 night_a3               
- 4  8.200  9.800 night_a4               
- 5  9.800 11.400 night_a5               
- 6 11.400 13.287 night_a6               
- 7 13.287 22.413 deck8                  onset 13.287 (5.3x, bass +2.9 dB) +0.0 q
- 8 22.413 26.430 collection2            onset 22.413 (11.1x, bass +2.8 dB) -0.0 q
- 9 26.430 28.984 entr_cursed_scarecrow  onset 26.430 (3.5x, bass +3.6 dB) +0.0 q
-10 28.984 31.283 entr_storm_griffin     onset 28.984 (13.5x, bass +2.0 dB) +0.0 q
-11 31.283 33.570 entr_fallen_angel      onset 31.283 (3.5x, bass +2.5 dB) +0.0 q
-12 33.570 35.857 entr_ice_wyrm          onset 33.570 (7.2x, bass +0.9 dB) +0.0 q
-13 35.857 36.995 4k:hall1_carrion       onset 35.857 (6.1x, bass +7.8 dB) +0.0 q
-14 36.995 38.133 4k:hall2_lich          onset 36.995 (7.0x, bass +0.4 dB) +0.0 q
-15 38.133 39.282 4k:hall3_tyrant        onset 38.133 (7.8x, bass +1.3 dB) +0.0 q
-16 39.282 40.420 4k:hall4_ice           onset 39.282 (7.7x, bass +1.4 dB) +0.0 q
-17 40.420 41.569 4k:hall5_heart         onset 40.420 (4.7x, bass +3.1 dB) +0.0 q
-18 41.569 42.707 boss8                  onset 41.569 (7.2x, bass +7.1 dB) +0.0 q
-19 42.707 46.144 boss8                  onset 42.707 (7.3x, bass +3.1 dB) +0.0 q
-20 46.144 52.715 boss8                  onset 46.144 (7.6x, bass +1.0 dB) +0.0 q
-21 52.715 53.015 black                  onset 52.715 (11.1x, bass +4.4 dB) +0.0 q
-22 53.015 59.515 brand:logo_sting       onset 52.994 (10.4x, bass -0.3 dB) -1.3 q
-version tirano music in 12.6 track from 21.0 total 59.515
+ 2  5.000  7.000 night_a2               
+ 3  7.000  9.000 night_a3               
+ 4  9.000 11.000 night_a4               
+ 5 11.000 13.009 night_a5               
+ 6 13.009 14.994 night_a6               onset 13.009 (3.4x, bass -0.4 dB) -0.0 q
+ 7 14.994 23.853 deck8                  onset 14.994 (12.2x, bass -0.0 dB) -0.0 q
+ 8 23.853 26.987 collection2            onset 23.853 (8.3x, bass +8.7 dB) +0.0 q
+ 9 26.987 28.137 card_2                 onset 26.987 (10.3x, bass +1.1 dB) +0.0 q
+10 28.137 29.274 card_4                 onset 28.137 (13.9x, bass +13.8 dB) +0.0 q
+11 29.274 31.852 entr_cursed_scarecrow  onset 29.274 (13.5x, bass +2.9 dB) +0.0 q
+12 31.852 34.139 entr_storm_griffin     onset 31.852 (7.2x, bass +2.6 dB) +0.0 q
+13 34.139 36.426 entr_fallen_angel      onset 34.139 (6.0x, bass +0.8 dB) +0.0 q
+14 36.426 38.713 entr_ice_wyrm          onset 36.426 (6.6x, bass +1.2 dB) +0.0 q
+15 38.713 39.851 4k:hall1_carrion       onset 38.713 (5.8x, bass +0.2 dB) +0.0 q
+16 39.851 40.989 4k:hall2_lich          onset 39.851 (6.3x, bass +2.9 dB) +0.0 q
+17 40.989 41.848 4k:hall3_tyrant        onset 40.989 (7.2x, bass +2.3 dB) +0.0 q
+18 41.848 42.997 4k:hall4_ice           onset 41.848 (9.6x, bass +10.7 dB) +0.0 q
+19 42.997 44.135 4k:hall5_heart         onset 42.997 (6.2x, bass +1.3 dB) +0.0 q
+20 44.135 45.285 boss_carrion4          onset 44.135 (7.2x, bass +4.2 dB) +0.0 q
+21 45.285 48.709 boss_carrion4          onset 45.285 (7.6x, bass +2.9 dB) +0.0 q
+22 48.709 55.281 boss_carrion4          onset 48.709 (6.9x, bass +4.1 dB) +0.0 q
+23 55.281 60.837 boss_carrion4          onset 55.281 (8.0x, bass +4.4 dB) +0.0 q
+24 60.837 61.137 black                  onset 60.714 (8.1x, bass +1.5 dB) -7.4 q
+25 61.137 67.637 brand:logo_sting       onset 60.993 (8.9x, bass +3.3 dB) -8.6 q
+version tirano music in 12.6 track from 21.0 total 67.637
