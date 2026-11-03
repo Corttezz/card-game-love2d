@@ -41,3 +41,12 @@ _Director, 03/11/2026. Tirano stays the main version, Rei the alternative. No ne
 - **Loudness:** Tirano −14,1 LUFS / −1,0 dBTP / LRA 10,5; Rei −14,0 / −0,8 / 9,2.
 - **Bitrate:** 720p 14,0 / 14,1 Mb/s.
 - **Delivery:** the files in `grokbot_entrega` were replaced with this revision (`cmp` identical).
+
+## Approval and delivery
+- **Reviewer:** **PASS** on both, 9,4 / 9,4 (`revisao-corte11g2.md`, commit 7e7d32f8). The lethal blow is +19,0 dB (Tirano) and +13,7 dB (Rei) over the median of the music 2,5 to 0,5 s before it.
+- **Reviewer's technical note (true peak):** fixed afterwards with a true-peak limiter (oversampled to 192 kHz, limit 0,85) on the audio only; the video is copied, not re-encoded.
+  - Tirano: −14,1 LUFS, −1,2 dBTP, LRA 10,4.
+  - Rei: −14,1 LUFS, −1,1 dBTP, LRA 8,8.
+  - Hit margins are unchanged by more than 0,5 dB.
+- **Render script:** `corte/render11g.sh` (render, linear loudnorm, gain trim, true-peak limiter, 720p).
+- **Delivery:** `C:\Users\corte\grokbot_entrega\corte11g_720p.mp4` and `corte11g_rei_720p.mp4`, identical byte for byte to the masters.
