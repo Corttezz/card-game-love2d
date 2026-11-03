@@ -102,3 +102,45 @@ As outras medidas não mudaram:
 - **Revisora do time:** `revisao-corte13b.md` (commit `d70e1496`), **9,2**, `===CORTE13_PRONTO===`.
 - **Entregue:** `C:\Users\corte\grokbot_entrega\corte13_720p.mp4`, igual byte a byte ao master 720p. sha256 `22dd06f6ef2dcbd1eaf8e5aee5153a3021a710033d501202aa1a49d722d71ece`.
 - **Ressalva não aplicada:** ficou um vale de ~0,8 s (50,5 a 51,4 s, −32 a −40 dB na medida dela) entre a saída da música e a entrada do vento. Ela recomenda entrar com o vento ~0,5 s antes.
+
+## Revisão 3 (só mix, depois de `revisao-grimoire-corte13.md`, 5b3e8aff, Lead 8,9)
+
+**Causa medida:** não foi a normalização. A entrada do chefe ficou mais longa (7,5 s contra 3,2 s no 12), e a luta passou a tocar outro trecho da faixa do Rei: posição 81,0 s em vez de 74,1 s, um trecho mais baixo. Os stems confirmam: os salões ficaram iguais e só a luta caiu.
+
+**Mudanças** (`card-game-trailer\tools\trailer_c13c_cut.py`; a EDL é idêntica à do 13):
+- música da luta +8 dB no envelope, porque o limitador come parte disso;
+- trecho antes do golpe +1,5 dB, mantendo a queda para −16 dB 0,3 s antes do golpe letal;
+- cartas e Coleção +2 dB no envelope;
+- vento do portão 0,5 s antes;
+- saída da loja: o Rei entra a −26 dB já no início do crossfade, e a música da loja sai mais tarde.
+
+**Como foi feito:** só o áudio foi refeito (`corte/build13c_audio.py` + `corte/render13c.sh`), sobre o vídeo do 13. Os streams de vídeo são idênticos byte a byte:
+- 1080p: MD5 `a6e51bef…`, o mesmo do `grimoire_trailer_c13.mp4`;
+- 720p: MD5 `0c8fdfa8…`, o mesmo do `grimoire_trailer_c13_720p.mp4`.
+
+### Nível por seção (dB RMS do mix, `corte/secoes13c.py`, `corte13_provas\medidas_rev3.txt`)
+
+| seção | corte 12 com loja (o que o Daniel viu) | 13 rev 2 | **13 rev 3** | rev 3 − 12 |
+|---|---|---|---|---|
+| cartas | −13,9 | −11,7 | **−12,0** | +1,8 |
+| Coleção | −16,5 | −13,9 | **−14,2** | +2,3 |
+| criaturas | −12,7 | −12,7 | **−13,9** | −1,2 |
+| salões | −11,1 | −10,9 | **−11,6** | −0,6 |
+| **luta** | −7,7 | −10,7 | **−8,4** | −0,7 |
+| golpe até o preto | −8,6 | −7,6 | **−8,2** | +0,4 |
+
+- A luta fica **+3,2 dB acima dos salões** (corte 12: +3,4; rev 2: +0,2).
+- Contra o corte 12 principal: cartas +1,6 dB e Coleção +1,8 dB.
+- **Limite:** com −14 LUFS fixos, cada dB a mais na luta tira um pouco do resto. Escolhi devolver o arco do 12 (a luta acima dos salões) e manter as cartas cerca de +2 dB acima do 12.
+
+### Critérios
+
+- **Loudness:** `I: -14.1 LUFS  LRA: 11.9 LU  Peak: -1.3 dBFS` (720p final).
+- **Golpe letal:** +13,4 dB (2,5 a 0,5 s antes) e +18,4 dB (1,6 a 0,15 s antes).
+- **Morte nas cartas:** +11,4 dB.
+- **Fade antes do portão:** de 48,91 s até abaixo de −50 dBFS em 50,66 s, 1,75 s.
+- **Música isolada:**
+  - do portão até a luta: máx. −93,3 dBFS;
+  - logo: máx. −97,4 dBFS.
+- **Vale do portão** (50,38 a 51,48 s): mínimo −32,1 dB, mediana −25,9 dB (rev 2: −30,4 / −27,3).
+- **Saída da loja:** mínimo −28,8 dB (rev 2: −29,8), subida máxima de +2,5 dB em 50 ms.

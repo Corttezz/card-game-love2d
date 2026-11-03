@@ -1,0 +1,19 @@
+ebur128 grimoire_trailer_c13c_720p.mp4: I:         -14.1 LUFS LRA:        11.9 LU Peak:       -1.3 dBFS
+| secao | c12 loja (o que o Daniel viu) | c13 rev 2 | c13 rev 3 | rev 3 - c12 |
+|---|---|---|---|---|
+| cartas | -13.9 | -11.7 | -12.0 | +1.8 |
+| colecao | -16.5 | -13.9 | -14.2 | +2.3 |
+| criaturas | -12.7 | -12.7 | -13.9 | -1.2 |
+| saloes | -11.1 | -10.9 | -11.6 | -0.6 |
+| luta | -7.7 | -10.7 | -8.4 | -0.7 |
+| golpe->preto | -8.6 | -7.6 | -8.2 | +0.4 |
+luta rev 3 acima dos saloes: +3.2 dB
+golpe letal 69.916 s: pico -1.3, som 1.6 a 0.1 s antes -19.7, margem +18.4 dB
+golpe letal 69.916 s: pico -1.3, som 2.5 a 0.5 s antes -14.7, margem +13.4 dB
+morte nas cartas 24.096 s: margem (1.6 a 0.1 s antes) +11.1 dB
+morte nas cartas 24.096 s: margem (2.5 a 0.5 s antes) +11.4 dB
+fade antes do portao: 48.91 s -> abaixo de -50 dBFS em 50.66 s (1.75 s)
+musica isolada do portao (52.58 s) ate 50 ms antes da luta (62.13 s): max -93.3 dBFS
+musica isolada no logo (73.35 a 79.85 s): max -97.4 dBFS
+vale do portao 50.38 a 51.48 s (som total, 50 ms): min -32.1, mediana -25.9 dB
+saida da loja 32.91 a 33.51 s (som total, 50 ms): min -28.8 dB, max subida +2.5 dB
