@@ -70,3 +70,7 @@ _Director, 03/11/2026. Base: cut 11 rev 5 (11e), approved by the team (5616373d)
 - **Scale:** gameplay stays at 1,00.
 - **Continuity:** every fight cut and card cut shows the same numbers on both sides (`tirano\p_cortes_da_luta_antes_depois.png`).
 - **Rei version:** unchanged since the 11f that passed (9,4).
+
+## Approval and delivery
+- Reviewer: **PASS** on both, Tirano 9,3 and Rei 9,4 (`revisao-corte11f2.md`, commit d210e493).
+- Copied, identical byte for byte: `C:\Users\corte\grokbot_entrega\corte11f_720p.mp4` and `corte11f_rei_720p.mp4`.
