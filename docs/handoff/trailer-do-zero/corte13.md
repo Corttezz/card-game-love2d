@@ -144,3 +144,12 @@ As outras medidas não mudaram:
   - logo: máx. −97,4 dBFS.
 - **Vale do portão** (50,38 a 51,48 s): mínimo −32,1 dB, mediana −25,9 dB (rev 2: −30,4 / −27,3).
 - **Saída da loja:** mínimo −28,8 dB (rev 2: −29,8), subida máxima de +2,5 dB em 50 ms.
+
+### Aprovação e entrega da rev 3
+
+- **Revisora do time:** `revisao-corte13c.md` (commit `0977e2ab`), **9,3**, `===CORTE13C_PRONTO===`.
+- **Entregue:** `C:\Users\corte\grokbot_entrega\corte13c_720p.mp4`, igual byte a byte ao master 720p. sha256 `8e3e6e0c47252261576f6d49235570339be5c6b9ce4f3b7d98862d337f58de47`.
+- O `corte13_720p.mp4` não foi tocado (sha256 `22dd06f6ef2dcbd1eaf8e5aee5153a3021a710033d501202aa1a49d722d71ece`).
+- **Ressalva da revisora:** na janela larga (2,5 a 0,5 s antes), a margem do golpe letal caiu para +6,9 dB na medida dela. A causa é a batida forte da luta 2,5 s antes do golpe, que subiu junto com a luta.
+  - Na descida de 1,75 s antes do golpe, a margem é de +20,3 dB.
+  - Na minha medida (mediana do RMS de 100 ms), dá +13,4 dB na janela larga e +18,4 dB na janela de 1,6 a 0,15 s.
