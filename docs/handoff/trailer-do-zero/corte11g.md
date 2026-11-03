@@ -27,3 +27,17 @@ _Director, 03/11/2026. Tirano stays the main version, Rei the alternative. No ne
 - **Scale:** gameplay stays at 1,00. The only flags are the TV power-on and the game's door-to-swoop transition.
 - **Proofs** in `corte11g_provas\`: `golpes_e_grave.md`, plus for each version `p_corvos_6qps.png`, `p_golpe_letal_20qps.png` and `p_cartas_morte_8qps.png`.
 - **"SIX BOSSES." over five halls:** unchanged, pending with Daniel.
+
+## Revision 2 (after `revisao-corte11g.md`, f1fb98a1, PASS 9,3 / 9,4, with sound risks)
+- **Lethal blow:** the music now drops −7 dB when the lethal turn starts, then −9 dB, and ducks to −16 dB 0,3 s before the blow. The blow's peak already sits at the −1 dBTP limit, so the margin has to come from the bed under it. Impacts on the blow are +4 dB.
+
+  | lethal blow, peak over… | Tirano | Rei |
+  |---|---|---|
+  | the bed 1 s before | +22,3 dB | +19,5 dB |
+  | the music 2,2 to 1,2 s before | +18,5 dB | +14,6 dB |
+  | the crows' climax 3,5 to 2,5 s before | +5,4 dB | +9,0 dB |
+
+- **Card-play kill:** `boss_land_impact` added on the −30. It is now +10,0 dB (Tirano) and +9,3 dB (Rei) over the bed (was −5,3 / −2,5).
+- **Loudness:** Tirano −14,1 LUFS / −1,0 dBTP / LRA 10,5; Rei −14,0 / −0,8 / 9,2.
+- **Bitrate:** 720p 14,0 / 14,1 Mb/s.
+- **Delivery:** the files in `grokbot_entrega` were replaced with this revision (`cmp` identical).
