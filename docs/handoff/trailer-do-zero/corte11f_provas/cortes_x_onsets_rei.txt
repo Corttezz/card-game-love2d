@@ -1,0 +1,31 @@
+ 0  0.000  3.000 poweron                
+ 1  3.000  5.000 poweron                
+ 2  5.000  7.300 night_a2               
+ 3  7.300  9.600 night_a3               
+ 4  9.600 11.900 night_a4               
+ 5 11.900 14.332 night_a5               
+ 6 14.332 16.527 night_a6               onset 14.332 (4.5x, bass +0.5 dB) -0.0 q
+ 7 16.527 23.168 cards_c11f             onset 16.527 (6.2x, bass -0.5 dB) +0.0 q
+ 8 23.168 25.496 cards_c11f             onset 23.168 (4.6x, bass +0.8 dB) +0.0 q
+ 9 25.496 28.496 collection2            onset 25.513 (2.1x, bass +0.3 dB) +1.0 q
+10 28.496 29.414 card_2                 onset 28.508 (2.1x, bass -0.2 dB) +0.7 q
+11 29.414 30.656 card_4                 onset 29.414 (4.0x, bass +1.1 dB) +0.0 q
+12 30.656 33.141 entr_cursed_scarecrow  onset 30.656 (7.5x, bass +1.0 dB) +0.0 q
+13 33.141 35.637 entr_storm_griffin     onset 33.141 (30.8x, bass +25.4 dB) +0.0 q
+14 35.637 37.854 entr_fallen_angel      onset 35.637 (24.8x, bass +18.7 dB) +0.0 q
+15 37.854 39.398 entr_ice_wyrm          onset 37.854 (6.9x, bass -2.0 dB) +0.0 q
+16 39.398 40.664 4k:hall1_carrion       onset 39.398 (28.6x, bass +33.7 dB) +0.0 q
+17 40.664 41.604 4k:hall2_lich          onset 40.664 (21.9x, bass +30.6 dB) -0.0 q
+18 41.604 43.160 4k:hall3_tyrant        onset 41.604 (23.0x, bass +32.5 dB) +0.0 q
+19 43.160 44.414 4k:hall4_ice           onset 43.160 (26.4x, bass +30.5 dB) +0.0 q
+20 44.414 45.679 4k:hall5_heart         onset 44.414 (31.5x, bass +30.9 dB) -0.0 q
+21 45.679 46.631 c11boss                onset 45.679 (25.2x, bass +32.4 dB) -0.0 q
+22 46.631 50.103 c11boss                onset 46.631 (23.7x, bass +21.6 dB) +0.0 q
+23 50.103 51.659 c11boss                onset 50.103 (7.1x, bass -0.2 dB) +0.0 q
+24 51.659 53.214 c11boss                onset 51.659 (11.2x, bass +7.3 dB) +0.0 q
+25 53.214 58.230 c11boss                onset 53.214 (20.2x, bass +2.1 dB) +0.0 q
+26 58.230 62.695 c11boss                onset 58.230 (23.9x, bass +43.9 dB) +0.0 q
+27 62.695 62.995 black                  onset 62.595 (7.8x, bass -1.4 dB) -6.0 q
+28 62.995 69.495 brand:logo_sting       onset 62.920 (16.9x, bass +21.8 dB) -4.5 q
+29 69.495 69.595 black                  onset 69.515 (2.2x, bass -0.6 dB) +1.2 q
+version rei music in 12.6 track from 36.0 total 69.595
