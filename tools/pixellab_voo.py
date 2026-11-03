@@ -67,6 +67,16 @@ SPECS = {
                  "lick upward. The whole body rises 2 pixels while the tatters flare and sinks back after. The legs "
                  "hang loosely, never standing. The hood and face stay the same."),
     },
+    "fallen_angel": {
+        "frames": 12,
+        "text": ("Flying hover loop of a dark fallen angel in black armor with a purple robe, a gold halo and a sword. "
+                 "The two huge black feathered wings BEAT once with a big clear motion: first both wings lift HIGH and "
+                 "spread OUT wide (up-stroke, frames 1 to 5), then sweep powerfully DOWN and forward (down-stroke, "
+                 "frames 6 to 8), then come back to the start. On the down-stroke the whole body rises 3 pixels, "
+                 "between strokes it sinks back. The legs and feet hang loose below and sway, never standing on "
+                 "anything. The purple robe hem flutters and ripples with each beat. The gold halo, the pale face and "
+                 "the sword stay the same. The wing tips stay inside the frame."),
+    },
     "abyss_watcher": {
         "frames": 12,
         "text": ("Floating loop of a horned many-eyed jellyfish horror. The fleshy bell PULSES once like a swimming "
