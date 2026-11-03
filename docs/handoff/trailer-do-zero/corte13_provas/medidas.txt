@@ -1,14 +1,14 @@
 ## grimoire_trailer_c13
-ebur128 (720p final): I:         -14.1 LUFS LRA:         8.0 LU Peak:       -1.2 dBFS
-fade antes do portao: comeca em 48.91 s (musica -18.0 dBFS no segundo anterior), passa de -50 dBFS em 51.20 s; duracao 2.29 s
-- musica isolada plano de aproximacao + portao + entrada inteira do chefe (ate 50 ms antes da luta) 51.20 a 62.08 s: max -53.0 dBFS, mediana -99.8 dBFS
-- musica isolada portao (corte do portao) ate o fim da entrada 52.58 a 62.08 s: max -91.6 dBFS, mediana -99.9 dBFS
-- musica isolada fim inteiro (preto + logo) 73.35 a 79.85 s: max -95.7 dBFS, mediana -180.0 dBFS
+ebur128 (720p final): I:         -14.0 LUFS LRA:         7.9 LU Peak:       -1.2 dBFS
+fade antes do portao: comeca em 48.91 s (musica -17.9 dBFS no segundo anterior), passa de -50 dBFS em 51.20 s; duracao 2.29 s
+- musica isolada plano de aproximacao + portao + entrada inteira do chefe (ate 50 ms antes da luta) 51.20 a 62.08 s: max -52.9 dBFS, mediana -99.7 dBFS
+- musica isolada portao (corte do portao) ate o fim da entrada 52.58 a 62.08 s: max -91.5 dBFS, mediana -99.8 dBFS
+- musica isolada fim inteiro (preto + logo) 73.35 a 79.85 s: max -95.6 dBFS, mediana -180.0 dBFS
 - aproximacao 50.18 s, portao 52.58 s, entrada do chefe 54.58 s (olhos acendem no quadro 730 = 55.08 s), luta 62.13 s
-- morte nas cartas 24.096 s: pico -2.0 dB, musica 1.6 a 0.1 s antes -12.5 dB, margem +10.4 dB
-- morte nas cartas 24.096 s: pico -2.0 dB, musica 2.5 a 0.5 s antes -13.3 dB, margem +11.3 dB
-- golpe letal 69.916 s: pico -1.1 dB, musica 1.6 a 0.1 s antes -18.9 dB, margem +17.8 dB
-- golpe letal 69.916 s: pico -1.1 dB, musica 2.5 a 0.5 s antes -15.2 dB, margem +14.1 dB
+- morte nas cartas 24.096 s: pico -2.0 dB, musica 1.6 a 0.1 s antes -12.4 dB, margem +10.4 dB
+- morte nas cartas 24.096 s: pico -2.0 dB, musica 2.5 a 0.5 s antes -13.2 dB, margem +11.2 dB
+- golpe letal 69.916 s: pico -1.1 dB, musica 1.6 a 0.1 s antes -18.8 dB, margem +17.8 dB
+- golpe letal 69.916 s: pico -1.1 dB, musica 2.5 a 0.5 s antes -15.1 dB, margem +14.1 dB
 - loja 29.41 a 33.41 s, crossfade de musica de 28.91 a 29.91 s e de 32.91 a 33.71 s, dissolve 0,5 s na entrada e 0,45 s na saida
-- cartas + Colecao 16.53 a 29.41 s: RMS -12.5 dB no 13 contra -14.8 dB no 12, diferenca +2.2 dB
+- cartas + Colecao 16.53 a 29.41 s: RMS -12.4 dB no 13 contra -14.8 dB no 12, diferenca +2.3 dB
 - final: corte para o preto em 73.051 s (onset da faixa), musica abaixo de -50 dBFS a partir de 73.18 s, logo de 73.35 a 79.85 s

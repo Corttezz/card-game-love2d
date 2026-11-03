@@ -75,3 +75,24 @@ Pendências do corte 12 também aplicadas:
   - Os avisos de `escala.txt` ficam em 27,4 s (corte com glitch) e 41,43 s (medida degenerada no pouso do anjo).
   - Os demais caem de 57,77 a 58,63 s, dentro da cinemática do próprio jogo, com poucos pontos casados.
 - **Custo:** a morte nas cartas perdeu cerca de 4 dB de margem contra o corte 12, porque as cartas subiram. Continua acima do 11g (+9,6).
+
+## Revisão 2 (depois de `revisao-corte13.md`, d3a1141c, 8,8 FAIL)
+
+Só mixagem; a imagem é a mesma.
+
+1. **Entrada da loja sem buraco.**
+   - O Rei agora desce devagar, sobreposto à loja, e só zera 1,8 s depois do corte: +2 → −3 dB em 29,91 s → −10 dB em 30,71 s → silêncio em 31,21 s.
+   - A música da loja sobe de −34 para −3 dB entre 28,81 e 29,81 s.
+   - O Rei volta 2,8 s antes do ponto onde ficou inaudível, e os salões continuam nas mesmas posições da faixa do corte 12.
+   - **Medida** (envelope de 50 ms, `corte13_provas\transicoes_som.txt`): mínimo de −26,5 dB e subida máxima de +7,6 dB em 50 ms. Antes eram −39 dB e +25 dB. No meio da loja, o ritmo da própria faixa sobe +11,8 dB em 50 ms.
+2. **Aproximação com som de ambiente.**
+   - O ambiente da tomada subiu (ambiente 4,0).
+   - Entram o vento e os grilos do jogo (`weather/wind-1`, `night-crickets-1`).
+   - **Medida:** o som total de 50,18 a 52,58 s fica entre −30,4 e −14,2 dB, mediana −23,5 dB (antes, −44 a −54).
+
+As outras medidas não mudaram:
+- `I: -14.0 LUFS  LRA: 7.9 LU  Peak: -1.2 dBFS`;
+- fade de 2,29 s; música ≤ −91,5 dBFS do portão até a luta e ≤ −95,6 dBFS no logo;
+- golpe letal +14,1 dB; cartas +2,3 dB contra o corte 12;
+- logo igual ao 12 (0,04/255);
+- 720p a 13,6 Mb/s.
