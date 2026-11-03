@@ -122,3 +122,11 @@ Numbers now:
 - **Duration:** 69,1 s (Tirano) and 69,6 s (Rei).
 - **Bitrate:** 720p 13,7 / 13,8 Mb/s.
 - **Scale:** gameplay unchanged; the only flags are the TV turning on and the game's door-to-swoop transition.
+
+## Revision 5 (after `revisao-corte11d.md`, 53bc9ce6)
+
+- **The turn-1 split is now contiguous in the take.** The second piece starts on the frame right after the first (Tirano 1618, Rei 1622), so the cut cannot change any number. The King's counter keeps going down across it: 85 → 70 → 52 → 42 → … → 30 (`corte11_provas\<version>\p_contador_rei_no_corte_do_turno1.png`, 15 frames/s around the cut).
+- **Onset tables are updated** (`cortes_x_onsets_*.txt`).
+- **Measures:**
+  - Loudness: Tirano −14,1 LUFS / −1,4 dBTP, LRA 11,3; Rei −14,0 / −1,0, LRA 9,5.
+  - Bitrate: 720p 13,7 / 13,8 Mb/s; 1080p 33,2 Mb/s.

@@ -22,9 +22,9 @@
 21 46.631 50.103 c11boss                onset 46.631 (23.7x, bass +21.6 dB) +0.0 q
 22 50.103 51.659 c11boss                onset 50.103 (7.1x, bass -0.2 dB) +0.0 q
 23 51.659 53.214 c11boss                onset 51.659 (11.2x, bass +7.3 dB) +0.0 q
-24 53.214 55.118 c11boss                onset 53.214 (20.2x, bass +2.1 dB) +0.0 q
-25 55.118 59.897 c11boss                onset 55.118 (7.0x, bass -0.2 dB) +0.0 q
-26 59.897 60.197 black                  onset 59.820 (2.5x, bass -0.1 dB) -4.6 q
-27 60.197 66.697 brand:logo_sting       onset 60.134 (4.8x, bass -1.4 dB) -3.8 q
-28 66.697 66.797 black                  onset 66.659 (5.4x, bass +7.6 dB) -2.3 q
-version rei music in 12.6 track from 36.0 total 66.797
+24 53.214 58.230 c11boss                onset 53.214 (20.2x, bass +2.1 dB) +0.0 q
+25 58.230 62.695 c11boss                onset 58.230 (23.9x, bass +43.9 dB) +0.0 q
+26 62.695 62.995 black                  onset 62.595 (7.8x, bass -1.4 dB) -6.0 q
+27 62.995 69.495 brand:logo_sting       onset 62.920 (16.9x, bass +21.8 dB) -4.5 q
+28 69.495 69.595 black                  onset 69.515 (2.2x, bass -0.6 dB) +1.2 q
+version rei music in 12.6 track from 36.0 total 69.595
