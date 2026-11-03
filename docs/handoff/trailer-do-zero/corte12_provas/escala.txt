@@ -1,0 +1,2 @@
+main pares medidos 1860, mudancas de escala > 3%: 4 [(27.4, inf, 91), (47.667, 0.932, 53), (47.8, 1.091, 37), (47.9, 1.036, 211)]
+loja pares medidos 1882, mudancas de escala > 3%: 3 [(27.4, inf, 92), (50.8, 1.091, 35), (50.9, 1.036, 195)]

@@ -1,0 +1,17 @@
+{
+ "main": {
+  "quadros": 390,
+  "dif_media": 3.2,
+  "dif_max": 15.48
+ },
+ "loja": {
+  "quadros": 390,
+  "dif_media": 3.2,
+  "dif_max": 15.48
+ },
+ "g": {
+  "quadros": 390,
+  "dif_media": 3.22,
+  "dif_max": 19.21
+ }
+}

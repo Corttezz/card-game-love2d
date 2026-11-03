@@ -1,0 +1,33 @@
+## grimoire_trailer_c12
+ebur128 (720p final): I:         -14.1 LUFS LRA:        12.0 LU Peak:       -1.2 dBFS
+musica isolada (stem com o mesmo ganho), RMS 20 ms:
+- portao + entrada do chefe (ate 50 ms antes da luta) 45.68 a 50.66 s: max -95.7 dBFS, mediana -102.9 dBFS
+- fim inteiro (preto + logo) 62.70 a 69.50 s: max -96.2 dBFS, mediana -108.1 dBFS
+- luta (referencia) 50.71 a 52.71 s: max -5.0 dBFS, mediana -10.5 dBFS
+- morte nas cartas 24.096 s: pico -2.0 dB, musica 1.6 a 0.1 s antes -16.7 dB, margem +14.7 dB
+- morte nas cartas 24.096 s: pico -2.0 dB, musica 2.5 a 0.5 s antes -17.5 dB, margem +15.5 dB
+- golpe letal 59.495 s: pico -0.9 dB, musica 1.6 a 0.1 s antes -19.2 dB, margem +18.3 dB
+- golpe letal 59.495 s: pico -0.9 dB, musica 2.5 a 0.5 s antes -17.6 dB, margem +16.7 dB
+## grimoire_trailer_c12_loja
+ebur128 (720p final): I:         -14.1 LUFS LRA:        11.7 LU Peak:       -1.2 dBFS
+musica isolada (stem com o mesmo ganho), RMS 20 ms:
+- portao + entrada do chefe (ate 50 ms antes da luta) 48.68 a 53.66 s: max -92.7 dBFS, mediana -99.6 dBFS
+- fim inteiro (preto + logo) 65.69 a 72.49 s: max -96.1 dBFS, mediana -104.2 dBFS
+- luta (referencia) 53.71 a 55.71 s: max -4.9 dBFS, mediana -10.4 dBFS
+- morte nas cartas 24.096 s: pico -2.0 dB, musica 1.6 a 0.1 s antes -16.6 dB, margem +14.6 dB
+- morte nas cartas 24.096 s: pico -2.0 dB, musica 2.5 a 0.5 s antes -17.4 dB, margem +15.4 dB
+- golpe letal 62.495 s: pico -0.9 dB, musica 1.6 a 0.1 s antes -19.1 dB, margem +18.2 dB
+- golpe letal 62.495 s: pico -0.9 dB, musica 2.5 a 0.5 s antes -17.5 dB, margem +16.6 dB
+- loja 29.41 a 32.41 s: o stem nesse trecho e so a musica da loja (Rei pausado com env -90 dB): max -7.5 dBFS
+## grimoire_trailer_c11g_rei_720p.mp4
+ebur128: I:         -14.1 LUFS LRA:         8.8 LU Peak:       -1.1 dBFS
+- morte nas cartas 24.096 s: pico -2.8, musica -11.6 dB, margem +8.9 dB
+- morte nas cartas 24.096 s: pico -2.8, musica -12.4 dB, margem +9.6 dB
+- golpe letal 58.230 s: pico -2.2, musica -16.5 dB, margem +14.3 dB
+- golpe letal 58.230 s: pico -2.2, musica -15.0 dB, margem +12.8 dB
+## grimoire_trailer_c11f_rei_720p.mp4
+ebur128: I:         -14.1 LUFS LRA:         9.2 LU Peak:       -1.1 dBFS
+- morte nas cartas 24.100 s: pico -9.2, musica -12.0 dB, margem +2.8 dB
+- morte nas cartas 24.100 s: pico -9.2, musica -12.8 dB, margem +3.6 dB
+- golpe letal 0.000 s: pico -180.0, musica -40.0 dB, margem -140.0 dB
+- golpe letal 0.000 s: pico -180.0, musica -27.2 dB, margem -152.8 dB
