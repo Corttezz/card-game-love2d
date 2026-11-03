@@ -1,2 +1,2 @@
-t pares medidos 1860 mudancas de escala > 3%: 5 [(1.5, 1.136, 16), (45.367, 0.95, 14), (45.433, 0.966, 57), (45.667, 1.033, 203), (58.533, inf, 16)]
-r pares medidos 1859 mudancas de escala > 3%: 2 [(1.5, 1.136, 16), (47.1, 1.03, 186)]
+t pares medidos 1862 mudancas de escala > 3%: 4 [(1.5, 1.136, 16), (45.367, 0.952, 15), (45.433, 0.966, 57), (45.667, 1.033, 203)]
+r pares medidos 1861 mudancas de escala > 3%: 2 [(1.5, 1.136, 16), (47.1, 1.03, 186)]

@@ -106,3 +106,19 @@ Numbers now:
   - Loudness: −13,4 / −13,8 LUFS, −0,8 dBTP, LRA 10,3 / 9,6.
   - Scale: no change in gameplay. The only flags are the TV turning on (1,5 s) and the game's dark-door-to-swoop transition (Tirano 45,4 to 45,7 s, Rei 47,1 s).
   - Dark frames: only the TV turning on and the logo background.
+
+## Revision 4 (after `revisao-corte11c.md`, b4059330, FAIL on number continuity)
+
+- **The crows shot is now one continuous piece of the take.** It runs from the hero still at 41 (18 frames before the first dive), through all 8 dives to 9, and through the burn tick that takes the King from 30 to 21. The cut into the lethal turn falls in the stretch where nothing changes: hero 9, King 21.
+- **Proof:** `corte11_provas\<version>\p_cortes_da_luta_antes_depois.png` shows the frames just before and just after each fight cut, 1:1.
+  - name card → turn 1: the first HUD shows 124/220 with the −94 preview;
+  - turn 1 split: hero 41 on both sides;
+  - turn 1 → crows: hero 41, King 30 on both sides;
+  - crows → lethal: hero 9, King 21 on both sides.
+- **Cut timing:**
+  - Tirano: 51,856 s (9,4×) and 57,289 s (10,3×).
+  - Rei: 53,214 s (20×) and 58,230 s (24×, bass +44 dB).
+- **Loudness:** the last step is a measured gain trim. Tirano −14,1 LUFS / −1,3 dBTP, LRA 11,2. Rei −14,0 LUFS / −1,0 dBTP, LRA 9,6.
+- **Duration:** 69,1 s (Tirano) and 69,6 s (Rei).
+- **Bitrate:** 720p 13,7 / 13,8 Mb/s.
+- **Scale:** gameplay unchanged; the only flags are the TV turning on and the game's door-to-swoop transition.
