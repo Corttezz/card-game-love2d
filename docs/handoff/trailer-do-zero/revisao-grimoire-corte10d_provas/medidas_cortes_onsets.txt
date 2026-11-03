@@ -1,0 +1,55 @@
+== t frames 3870 frame0 luma 54.4 dark<5% 0 min luma 15.7 at 34.3
+  diff vs 10c por segundo: 34:0.0 35:0.0 36:0.0 37:0.0 38:0.0 39:0.0 40:0.1 41:7.5 42:7.5 43:5.0 44:4.0 45:3.9 46:3.7 47:12.0 48:6.8 49:1.5 50:0.7 51:0.3 52:0.2 53:0.2 54:0.1 55:0.0 56:0.0 57:0.0 58:0.0 59:0.0 60:0.0 61:0.0 62:0.0 63:0.0 64:0.0
+  primeiro quadro diferente do 10c (>0.5): [41.5]
+  corte (edl)        t0     | detectado | onset fluxo perto (forca) | forte em 0.5s | grave perto
+  h_letal          2.550 | nao-det |  +6.4q ( 2.9x) | forte 2.773 +13.4q ( 6.7x) | grave  +3.5q (11.3dB)
+  h_cascata        4.180 | nao-det |  +2.3q ( 2.7x) | forte 4.501 +19.3q ( 4.6x) | grave +10.0q ( 8.4dB)
+  h_morte          7.480 | nao-det |  -0.5q ( 3.0x) | forte 7.349  -7.8q ( 5.9x) | grave  +0.5q ( 8.1dB)
+  espolio          8.533 | 8.533   |  -1.9q ( 3.3x) | forte 8.197 -20.1q ( 3.6x) | grave  +2.9q (10.8dB)
+  e2_gargula      11.690 | 11.683  |  +0.0q ( 2.7x) | forte 11.920 +13.8q ( 6.8x) | grave  +0.4q (13.5dB)
+  t_correntes     16.240 | 16.233  |  -2.6q ( 5.4x) | forte 15.931 -18.6q ( 8.8x) | grave  +0.0q (10.6dB)
+  e4_serpente     18.540 | 18.533  |  -2.0q ( 5.1x) | forte 18.789 +15.0q ( 5.9x) | grave  +1.2q (23.0dB)
+  m_geada         22.270 | 22.267  |  -3.1q ( 6.1x) | forte 22.219  -3.1q ( 6.1x) | grave +16.1q (10.1dB)
+  e5_esporo       25.380 | 25.383  |  -0.9q ( 6.9x) | forte 25.637 +15.4q ( 8.1x) | grave +23.4q ( 8.1dB)
+  e6_pouso        26.552 | 26.550  |  -2.7q ( 7.2x) | forte 26.213 -20.3q ( 7.3x) | grave -14.2q (10.0dB)
+  k_porta         27.968 | 27.967  |  -2.2q ( 5.1x) | forte 27.931  -2.2q ( 5.1x) | grave -
+  k_escuro        33.340 | 33.333  | - | grave -
+  k_escuro_b      34.840 | nao-det | - | grave -
+  k_nome          36.970 | nao-det |  -0.3q ( 8.4x) | forte 36.965  -0.3q ( 8.4x) | grave  +0.7q (103.5dB)
+  k_guerreiro     38.930 | 38.933  |  -2.0q ( 5.5x) | forte 38.608 -19.3q ( 5.6x) | grave  +0.8q (11.9dB)
+  k_inimigo       42.343 | nao-det |  +0.2q ( 2.8x) | forte 42.032 -18.7q ( 5.6x) | grave  +5.7q ( 8.0dB)
+  k_vida          43.794 | nao-det |  -2.7q ( 4.9x) | forte 43.749  -2.7q ( 4.9x) | grave +11.4q (10.5dB)
+  k_vida_b        47.498 | nao-det |  -1.9q ( 4.4x) | forte 47.467  -1.9q ( 4.4x) | grave  -8.0q (11.9dB)
+  k_letal         48.067 | nao-det |  -1.8q ( 4.5x) | forte 48.325 +15.5q ( 5.4x) | grave  +1.4q (15.0dB)
+  k_letal_b       49.216 | nao-det |  -2.2q ( 4.9x) | forte 49.179  -2.2q ( 4.9x) | grave -
+  k_golpe         50.360 | 50.367  |  -0.5q (11.2x) | forte 50.352  -0.5q (11.2x) | grave  +0.5q (75.3dB)
+  k_queda         50.960 | nao-det |  +0.0q ( 5.2x) | forte 50.869  -5.4q ( 7.8x) | grave  -0.6q ( 8.2dB)
+  k_coringa       55.220 | nao-det |  -2.2q ( 4.1x) | forte 54.891 -19.8q ( 6.9x) | grave +17.4q (14.6dB)
+  cortes detectados no video: 3.867 8.533 11.683 13.033 16.233 18.533 20.483 22.267 25.383 26.550 27.083 27.967 30.083 33.333 36.400 36.450 38.933 50.367
+== r frames 3870 frame0 luma 54.7 dark<5% 0 min luma 15.7 at 34.3
+  diff vs 10c por segundo: 34:0.0 35:0.0 36:0.0 37:0.0 38:1.1 39:6.2 40:3.0 41:10.7 42:2.2 43:3.4 44:3.0 45:3.0 46:2.9 47:6.6 48:8.3 49:3.2 50:0.6 51:0.2 52:0.2 53:0.2 54:0.1 55:0.0 56:0.0 57:0.0 58:0.0 59:0.0 60:0.0 61:0.0 62:0.0 63:0.0 64:0.0
+  primeiro quadro diferente do 10c (>0.5): [38.9]
+  corte (edl)        t0     | detectado | onset fluxo perto (forca) | forte em 0.5s | grave perto
+  h_letal          2.480 | nao-det |  +0.3q ( 3.9x) | forte 2.459  -1.3q ( 4.8x) | grave  +0.0q (15.3dB)
+  h_cascata        3.720 | nao-det |  -0.5q ( 9.4x) | forte 3.712  -0.5q ( 9.4x) | grave  +1.8q (42.9dB)
+  h_morte          7.480 | nao-det |  -0.8q ( 9.7x) | forte 7.467  -0.8q ( 9.7x) | grave  +2.7q (46.9dB)
+  espolio          8.760 | 8.767   |  -0.5q ( 6.1x) | forte 8.752  -0.5q ( 6.1x) | grave  +2.7q (43.0dB)
+  e2_gargula      12.500 | 12.500  |  +0.1q ( 9.7x) | forte 12.501  +0.1q ( 9.7x) | grave  +1.4q (13.6dB)
+  t_correntes     16.290 | 16.283  |  -0.4q ( 7.2x) | forte 16.283  -0.4q ( 7.2x) | grave  +2.1q (42.4dB)
+  e4_serpente     18.780 | 18.783  |  +0.2q ( 6.8x) | forte 18.784  +0.2q ( 6.8x) | grave  +1.2q (42.7dB)
+  m_geada         22.250 | 22.250  |  -0.6q ( 8.3x) | forte 22.240  -0.6q ( 8.3x) | grave  +1.3q (58.9dB)
+  e5_esporo       25.070 | 25.067  |  -0.8q (18.3x) | forte 25.056  -0.8q (18.3x) | grave  +1.4q (58.4dB)
+  e6_pouso        26.355 | 26.350  |  -1.5q (15.6x) | forte 26.331  -1.5q (15.6x) | grave  +0.1q (60.8dB)
+  k_porta         27.585 | 27.583  |  -1.0q (10.3x) | forte 27.568  -1.0q (10.3x) | grave  +0.3q (50.2dB)
+  k_escuro        33.340 | 33.333  | - | grave -
+  k_escuro_b      34.840 | nao-det | - | grave -
+  k_nome          36.970 | nao-det |  -0.6q (11.0x) | forte 36.960  -0.6q (11.0x) | grave  +1.0q (107.3dB)
+  k_guerreiro     38.895 | 38.900  |  -2.5q ( 3.4x) | forte 38.853  -2.5q ( 3.4x) | grave +23.7q ( 8.8dB)
+  k_inimigo       41.993 | nao-det |  +1.7q ( 3.6x) | forte 41.963  -1.8q (13.3x) | grave  +0.4q (12.5dB)
+  k_vida          43.270 | nao-det |  -0.0q ( 3.5x) | forte 43.237  -2.0q (11.2x) | grave  +0.3q (37.9dB)
+  k_letal         48.274 | nao-det |  -1.7q (10.7x) | forte 48.245  -1.7q (10.7x) | grave  -0.1q (35.5dB)
+  k_letal_b       49.528 | nao-det |  +0.5q ( 2.5x) | forte 49.499  -1.8q (13.5x) | grave  +0.8q (58.9dB)
+  k_golpe         50.360 | 50.367  |  -0.5q ( 3.5x) | forte 50.757 +23.8q (17.4x) | grave  +1.4q (65.8dB)
+  k_queda         50.780 | nao-det |  -1.4q (17.4x) | forte 50.757  -1.4q (17.4x) | grave  +1.5q (55.6dB)
+  k_coringa       54.555 | nao-det |  -1.6q ( 7.5x) | forte 54.528  -1.6q ( 7.5x) | grave  +8.3q ( 9.0dB)
+  cortes detectados no video: 8.767 12.500 13.767 16.283 18.783 20.367 22.250 25.067 26.350 26.950 27.583 30.083 33.333 36.400 36.450 38.900 50.367
