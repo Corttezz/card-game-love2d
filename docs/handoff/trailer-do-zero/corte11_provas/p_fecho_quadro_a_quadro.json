@@ -1,6 +1,6 @@
 {
- "metodo": "ffmpeg select por indice de quadro, 480x270, contra build/trailer/brand/logo_sting.mp4 (390 quadros); inicio achado pelo menor erro",
- "grimoire_trailer_c11.mp4": {"inicio_quadro": 3666, "quadros": 387, "dif_media": 1.56, "dif_max": 2.18, "nota": "faltam os 3 ultimos quadros do logo (o mux corta no fim do audio)"},
- "grimoire_trailer_c11_rei.mp4": {"inicio_quadro": 3752, "quadros": 390, "dif_media": 1.56, "dif_max": 2.18},
+ "metodo": "ffmpeg select por indice de quadro, 480x270, contra build/trailer/brand/logo_sting.mp4 (390 quadros); inicio pelo menor erro",
+ "grimoire_trailer_c11.mp4": {"inicio_quadro": 3525, "quadros": 390, "dif_media": 1.56, "dif_max": 2.18},
+ "grimoire_trailer_c11_rei.mp4": {"inicio_quadro": 3614, "quadros": 390, "dif_media": 1.56, "dif_max": 2.18},
  "grimoire_trailer_v8.mp4 (referencia)": {"inicio_quadro": 3330, "quadros": 390, "dif_media": 1.56, "dif_max": 2.18}
 }

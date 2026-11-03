@@ -91,3 +91,18 @@ Numbers now:
   - Rei: −14,1 LUFS, −1,3 dBTP
 - **Ending:** frame-exact against `logo_sting.mp4` and v8, 1,56/255 in all three (`p_fecho_quadro_a_quadro.json`). The Tirano file loses the last 3 of 390 logo frames at the mux.
 - **Dark frames:** only the TV turning on (0 to 1,1 s) and the logo background.
+
+## Revision 3 (after `revisao-corte11b.md`, 6af56085, FAIL on the final blow)
+
+- **Real final blow.** I re-recorded the fight headless with one lovec, same recorder and commit `97abc744`, scene `zero_carrion_c10c`, this time WITH the game's CRT and bezel (identity `card-game-trailer-v9`, output folder `trailer_c11_boss\`, linked into the cut as `c11boss`). God mode is off and no HP is adjusted after the preparation frames. On screen:
+  - Turn 1: Colossus Blow −39, then Twin Strike −33 (King 102 → 30), split into two cuts on strong onsets.
+  - Then 8 crows dive on the hero, 41 → 9.
+  - Last turn: the preview shows **21/21 LETHAL**, the cards fly, **−21**, and the King dies in the game's slow-motion death. "ONE HAND CAN BREAK A KING." sits over the lethal pick.
+  - No number changes across a cut.
+- **The ending gets all 390 logo frames** (a 0,1 s black tail keeps the mux from cutting them), frame-exact: 1,56/255 in both, the same as v8.
+- **Numbers:**
+  - Duration: 65,4 s (Tirano) and 66,8 s (Rei).
+  - Bitrate: 720p 13,7 Mb/s, 1080p 33,4 / 33,3 Mb/s.
+  - Loudness: −13,4 / −13,8 LUFS, −0,8 dBTP, LRA 10,3 / 9,6.
+  - Scale: no change in gameplay. The only flags are the TV turning on (1,5 s) and the game's dark-door-to-swoop transition (Tirano 45,4 to 45,7 s, Rei 47,1 s).
+  - Dark frames: only the TV turning on and the logo background.

@@ -18,10 +18,13 @@
 17 40.989 41.848 4k:hall3_tyrant        onset 40.989 (7.2x, bass +2.3 dB) +0.0 q
 18 41.848 42.997 4k:hall4_ice           onset 41.848 (9.6x, bass +10.7 dB) +0.0 q
 19 42.997 44.135 4k:hall5_heart         onset 42.997 (6.2x, bass +1.3 dB) +0.0 q
-20 44.135 45.285 boss_carrion4          onset 44.135 (7.2x, bass +4.2 dB) +0.0 q
-21 45.285 48.709 boss_carrion4          onset 45.285 (7.6x, bass +2.9 dB) +0.0 q
-22 48.709 55.281 boss_carrion4          onset 48.709 (6.9x, bass +4.1 dB) +0.0 q
-23 55.281 60.837 boss_carrion4          onset 55.281 (8.0x, bass +4.4 dB) +0.0 q
-24 60.837 61.137 black                  onset 60.714 (8.1x, bass +1.5 dB) -7.4 q
-25 61.137 67.637 brand:logo_sting       onset 60.993 (8.9x, bass +3.3 dB) -8.6 q
-version tirano music in 12.6 track from 21.0 total 67.637
+20 44.135 45.285 c11boss                onset 44.135 (7.2x, bass +4.2 dB) +0.0 q
+21 45.285 48.709 c11boss                onset 45.285 (7.6x, bass +2.9 dB) +0.0 q
+22 48.709 50.718 c11boss                onset 48.709 (6.9x, bass +4.1 dB) +0.0 q
+23 50.718 51.856 c11boss                onset 50.718 (7.2x, bass +5.8 dB) +0.0 q
+24 51.856 53.574 c11boss                onset 51.856 (9.4x, bass +1.6 dB) +0.0 q
+25 53.574 58.481 c11boss                onset 53.574 (6.1x, bass +4.4 dB) +0.0 q
+26 58.481 58.781 black                  onset 58.439 (2.9x, bass +4.8 dB) -2.5 q
+27 58.781 65.281 brand:logo_sting       onset 58.706 (3.9x, bass +1.5 dB) -4.5 q
+28 65.281 65.381 black                  onset 65.277 (12.3x, bass +1.8 dB) -0.2 q
+version tirano music in 12.6 track from 21.0 total 65.381
