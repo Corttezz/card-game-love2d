@@ -119,3 +119,28 @@ Ficam em `C:\Users\corte\OpenBot\Agents\agent-ea3ceccd-cade-4621-9506-561542dc2b
 - **Merge** das 4 branches: com o Lead. A branch de documentos e a do jogo mexem em arquivos diferentes.
 - **Teste da estrada instável:** abrir uma frente para ele.
 - **Nada na Steam:** a arte nova da loja está só no repo.
+
+### Hashes reescritos (10/11/2026, autor e committer corrigidos para Daniel Cortez <cortezjuninho@hotmail.com>)
+Conteúdo e mensagens iguais (árvores idênticas); só os commits desta sessão mudaram, os antigos mantêm o hash.
+- **nome-runemoire:**
+  - 3a9ce110 → abaed706
+  - 0e93ab3d → 24f12eaf
+  - 159676b2 → 2d4fc154
+  - 8a275682 → 3df4b1ac
+- **nome-runemoire-docs:**
+  - 39e672e8 → ac2682aa
+  - 15e6d50a → ca37f2b6
+  - 6062e71b → b17a1de2
+- **runemoire-trailer:**
+  - 14f17c23 → 92ce4907
+  - 369b9316 → 0d1a818a
+- **trailer-gameplay:**
+  - ef4ae1b6 → b347b0da
+  - 95d77404 → 7972e39e
+  - 86f30da6 → 29eadb7a
+  - b673fee2 → 94bf104a
+  - ea65ab46 → 7f9f0ea7
+  - cf6e7a86 → 2c4a6d04
+  - 85d630b4 → fe7baffa
+  - c4b48ffd → ae7dc304
+  - 4a7c4185 → 9e4122d1
