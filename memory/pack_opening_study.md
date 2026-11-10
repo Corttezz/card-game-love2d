@@ -1,10 +1,10 @@
 ---
-name: Estudo da abertura de pacote (Balatro x Grimoire)
+name: Estudo da abertura de pacote (Balatro x Runemoire, antes Grimoire)
 description: Out/2026 — a abertura de pacote do Balatro batida a batida (tempos, sons, fundo, partículas, escolha, pular), a nossa antes da v2, a lista de lacunas por impacto e o que a v2 adotou. Leitura obrigatória antes de mexer em components/PackOpenScreen.lua.
 type: project
 ---
 
-# Abertura de pacote: Balatro x Grimoire (Out/2026)
+# Abertura de pacote: Balatro x Runemoire (Out/2026)
 
 Fonte do Balatro: `E:\dev\projects\balatro-source` (descompilado, SÓ estudo:
 nenhum código, asset ou shader copiado). Linhas citadas são desse espelho.
@@ -34,7 +34,7 @@ cresce, com som que sobe) antes do estouro; (3) estouro curto e seco; (4)
 as cartas saem DO pacote e se espalham com mola; (5) escolher é destacar +
 botão preso na carta; (6) sair desce tudo e devolve a loja.
 
-## 2. Grimoire antes da v2 (`components/PackOpenScreen.lua`, até 42f99d50)
+## 2. Runemoire antes da v2 (`components/PackOpenScreen.lua`, até 42f99d50)
 
 | t (s) | Batida | O que acontecia | Som |
 |---|---|---|---|

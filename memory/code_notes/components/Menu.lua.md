@@ -119,7 +119,7 @@ Origem: `components/Menu.lua` em `7dbdb60d` (57 de 128 blocos de comentário tin
 ## L406-408 (em `Menu:draw`, junto a `function Menu:_drawOsdChrome()`)
 
 > ===== v2: OSD do televisor =====
-> "AV-1 GRIMOIRE" + relógio real no canto sup-dir. Visível ~3.5s após
+> "AV-1 RUNEMOIRE" (Runemoire, antes Grimoire) + relógio real no canto sup-dir. Visível ~3.5s após
 > entrar no menu, depois some com fade — comportamento de TV de verdade.
 
 ## L423-426 (em `Menu:_drawOsdChrome`, junto a `function Menu:_drawButtonCrtFx(btn)`)

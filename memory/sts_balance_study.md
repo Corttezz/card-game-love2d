@@ -1,10 +1,10 @@
 ---
 name: STS Balance Study (REA + fonte descompilada)
-description: Out/2026. Estudo de balanceamento do Slay the Spire (personagens, curva de poder das cartas por raridade, escala de inimigos por ato, motores e limites de combo, equilíbrio entre classes) confrontado com o Grimoire; responde por que o guerreiro vence 20% e o ladino 67% (veneno nosso é CÚBICO, o do StS é no máximo quadrático) e lista 8 propostas medíveis. Inclui o que o REA fez de fato.
+description: Out/2026. Estudo de balanceamento do Slay the Spire (personagens, curva de poder das cartas por raridade, escala de inimigos por ato, motores e limites de combo, equilíbrio entre classes) confrontado com o Runemoire (antes Grimoire); responde por que o guerreiro vence 20% e o ladino 67% (veneno nosso é CÚBICO, o do StS é no máximo quadrático) e lista 8 propostas medíveis. Inclui o que o REA fez de fato.
 type: reference
 ---
 
-# Estudo de balanceamento do StS e confronto com o Grimoire (14/Out/2026)
+# Estudo de balanceamento do StS e confronto com o Runemoire (14/Out/2026)
 
 Pedido do dono (literal): *"quero que você rode o REA no Slay the Spire para ver
 a questão de balanceamento de personagens, de escala de poder, de combos,
@@ -109,7 +109,7 @@ quando você joga poder, que limitam 300 de dano por turno; Força e Destreza
 temporárias; upgrade único. **Nenhum motor do StS passa de quadrático no dano
 acumulado** e todos exigem investimento de deck.
 
-## 6. Confronto com o Grimoire
+## 6. Confronto com o Runemoire
 
 Números nossos: `src/core/Config.lua` (`ENEMY_POWER_BY_ACT`), `src/systems/ActSystem.lua`,
 `src/core/Game.lua` (passivas), `src/data/cards/*.lua`, bateria `final_full`

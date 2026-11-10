@@ -27,8 +27,8 @@ em Out/2026). Sem ele: aviso e o .exe fica com o coracao do LOVE (a JANELA
 usa `assets/branding/icon.png` via conf.lua de qualquer jeito).
 
 Saida:
-- `build/release/<versao>/Grimoire.love` — zip (png/mp3 STORED, texto deflate)
-- `build/release/<versao>/windows/` — `Grimoire.exe` (love.exe + .love
+- `build/release/<versao>/Runemoire.love` (Runemoire, antes Grimoire; a identidade do save continua `Grimoire`) — zip (png/mp3 STORED, texto deflate)
+- `build/release/<versao>/windows/` — `Runemoire.exe` (love.exe + .love
   concatenados), 7 DLLs do LOVE, `license.txt`, `THIRD_PARTY_NOTICES.txt`
 - `build/steam/windows/content/` — copia identica, e o ContentRoot do depot
 - `build/release/<versao>/build_report.txt` — tamanhos + assets suspeitos de
@@ -221,7 +221,7 @@ subdir `Grimoire/`):
 - `steam/steam_appid.dev.txt` (480 = Spacewar): pra testar a API num exe
   LOCAL, copiar como `steam_appid.txt` ao lado dele. O depot exclui
   `steam_appid.txt` (em producao a Steam injeta o AppID).
-- Launch option: executavel `Grimoire.exe`, sem argumentos (release ignora).
+- Launch option: executavel `Runemoire.exe`, sem argumentos (release ignora).
 
 ### Steamworks / luasteam — o que o DONO precisa fazer
 
@@ -241,7 +241,7 @@ O codigo ja esta pronto (`SteamBridge` + `AchievementSystem.install` +
 4. Trocar `APP_ID` / `DEPOT_ID` em `steam/app_build_windows.vdf` e
    `steam/depot_build_windows.vdf` pelos do painel.
 5. Teste local: `steam/steam_appid.dev.txt` (480) ou um com o AppID real
-   copiado como `steam_appid.txt` ao lado do `Grimoire.exe` LOCAL, Steam
+   copiado como `steam_appid.txt` ao lado do `Runemoire.exe` LOCAL, Steam
    aberta, e procurar `[SteamBridge] Steam ATIVA` em
    `%APPDATA%/Grimoire/logs/last_session.log`.
 6. Cadastrar as conquistas (checklist em memory/steam_achievements.md).
@@ -265,7 +265,7 @@ Arte da loja (tamanhos atuais do Steamworks — conferir no painel):
 - [ ] Vertical capsule 748×896 · Page background 1438×810 (opcional)
 - [ ] Library: capsule 600×900, header 920×430, hero 3840×1240, logo 1280×720 (PNG transparente)
 - [ ] Community icon 184×184 (JPG) + client icon (.ico — `assets/branding/icon.ico` serve de base)
-- [ ] Logo/nome final "Grimoire": checar marca registrada / colisao de nome na Steam
+- [x] Logo/nome final: o nome passou de "Grimoire" (ja existe outro jogo com esse nome na Steam) para "Runemoire" (Daniel, 10/11/2026; checagem do Lead: sem jogo nem marca registrada com esse nome). Arte da loja regerada com o logo RUNEMOIRE em 10/11 (`python tools/store_art.py build`, branch nome-runemoire; screenshot `01_menu` en/pt_BR refeita)
 - [ ] 5+ screenshots 1920×1080 (sem UI de debug; usar o pacote de release)
 - [ ] Trailer 1080p mp4 (30-90s, gameplay nos 5 primeiros segundos)
 - [ ] Descricao curta (≤300 chars) e longa nos 5 idiomas (pt-BR, en, es, fr, de) — marcar os idiomas suportados (interface + legendas)

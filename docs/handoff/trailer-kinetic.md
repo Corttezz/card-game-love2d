@@ -1,5 +1,7 @@
 # Frente: trailer-kinetic (Grimoire)
 
+> **Nome do jogo (10/11/2026):** o jogo agora se chama **Runemoire** (antes Grimoire). Este histórico mantém o nome antigo; os arquivos `grimoire_*` não foram renomeados.
+
 > **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
 
 ## Frente
