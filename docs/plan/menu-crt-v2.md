@@ -15,7 +15,7 @@ desenham por cima da imagem: canal, volume em bloquinhos, relógio).
 Duas linguagens convivem SEM brigar:
 - **Programa** (sépia grimório): cenário, título DynaText, cartas
   flutuantes, botões de pergaminho — o que já existe, polido.
-- **Aparelho** (OSD verde-fósforo): tag de canal "AV-1 GRIMOIRE" que
+- **Aparelho** (OSD verde-fósforo): tag de canal "AV-1 RUNEMOIRE" (Runemoire, antes Grimoire) que
   aparece e some (como TV real após trocar de canal), chuvisco de
   sintonia na entrada, barras de volume em segmentos nas Settings,
   varredura de scanline no hover dos botões.
@@ -45,7 +45,7 @@ Duas linguagens convivem SEM brigar:
 
 ### 2.3 Menu v2
 - **OSD do aparelho**: ao entrar no menu, canto sup-dir mostra
-  "AV-1 GRIMOIRE" + relógio real (os OSDs somem em ~3.5s com fade, como
+  "AV-1 RUNEMOIRE" + relógio real (os OSDs somem em ~3.5s com fade, como
   TV de verdade; reaparecem a cada enterWithIntro).
 - **Botões CRT**: no hover — (a) varredura de scanline clara descendo
   pelo botão em loop (scissor no rect), (b) glow de fósforo pulsante na
@@ -61,7 +61,7 @@ Duas linguagens convivem SEM brigar:
 - Volumes (music/sfx/master) e screenshake trocam "NN%" por
   **segmentBar de 10 bloquinhos verde-fósforo** (a imagem mental de
   ajustar volume numa TV velha).
-- Header vira OSD: "◼ MENU" verde + linha; footer "AV-1 · GRIMOIRE".
+- Header vira OSD: "◼ MENU" verde + linha; footer "AV-1 · RUNEMOIRE".
 - Painel/botões continuam pixel sépia (consistência) — o VERDE aparece
   só nos elementos "do aparelho". Toda a lógica intocada (persistência,
   dropdown de idioma, caminho do clique testado).

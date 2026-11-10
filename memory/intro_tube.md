@@ -40,7 +40,7 @@ de 4 px. Pedido: "a mesma coisa, com o nosso visual".
 - **Fita e subtítulo do menu**: a fita ticker (`título · subtítulo · vN`
   no pé, borda de 4 px) e o SUBTÍTULO "Cartas arcanas. Decisões fatais."
   sob o título foram REMOVIDOS em 13/Out a pedido do dono ("tira essas
-  coisas embaixo de Grimório, deixa sem nada"). Sob GRIMOIRE não há nada;
+  coisas embaixo de Grimório, deixa sem nada"). Sob o logo RUNEMOIRE (Runemoire, antes Grimoire) não há nada;
   a frase vive só na tela do computador da abertura (`menu.subtitle` nos
   locales continua, por causa dela). Trava: `test_intro_tube` §7.
 

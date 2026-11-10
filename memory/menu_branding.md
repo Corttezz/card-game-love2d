@@ -1,5 +1,5 @@
 ---
-name: Logotipo do trailer no menu (selo + GRIMOIRE) e vinheta de entrada
+name: Logotipo do trailer no menu (selo + RUNEMOIRE; jogo Runemoire, antes Grimoire) e vinheta de entrada
 description: Out/2026, pedido do dono ("adorei o logo do fim do trailer, quero no menu"). Wordmark e selo assados do mesmo codigo do trailer, desenhados em escala inteira; vinheta do trailer na 1a entrada do menu; vida parada sutil. Ideias para o dono no fim.
 type: project
 ---
@@ -12,14 +12,14 @@ Referencia: ultimos ~5 s de `card-game-trailer/build/trailer/grimoire_trailer_v7
 ## O que entrou
 
 - **Arte assada** por `python tools/menu_brand.py` (mesmo codigo do trailer, copiado sem a TV):
-  - `assets/branding/wordmark.png` 257x48 = `store_art.logo(1, (6, 4))` (glifo 8 px da fonte do jogo, bloco 6x4, bisel dourado, contorno tinta + sangue seco, sombra).
+  - `assets/branding/wordmark.png` 289x48 = `store_art.logo(1, (6, 4))` (glifo 8 px da fonte do jogo, bloco 6x4, bisel dourado, contorno tinta + sangue seco, sombra).
   - `assets/branding/wordmark_gold.png` mascara do ouro (varredura e carimbo so tocam o ouro).
   - `assets/branding/seal.png` 113x113, o selo-bussola ACESO (estado final).
   - `assets/branding/seal_data.png` 113x113, o selo CODIFICADO para a vinheta: R = indice de paleta (0..6), G = raio 1..8 / 9 = anel+miolo, +16 = cubo, B = posicao ao longo do raio ou angulo do anel, A = instante de revelacao / 1,25.
   - `src/data/menu_brand.lua`: tamanhos, pontas dos raios, cortes das letras, 4 paletas (apagada, acesa, quente, brasa).
   - `python tools/menu_brand.py ref <T...>` grava quadros de referencia do Python; `lovec . test_one screenshot_menu_logo fidelity` compara o shader com eles (0 a 43 de 12.769 pixels divergem, todos na borda de um degrau de tempo por quantizacao de 1/255).
-- **Desenho em escala inteira, por ZONAS** (revisto em 25/Out a pedido do dono: "aumenta a fonte, esta muito pequeno"): a coluna de botoes e ancorada no PE da tela (`MenuBrand.buttonColumn`: base a 97,5% da altura, espacamento 9,2% ate 80, altura 8% ate 60; o Menu usa a mesma funcao) e o logo ocupa a banda de 2,5% da altura ate 2% acima de "Continuar" (existindo ou nao, para o logo nao pular). `MenuBrand.layout` escolhe o maior P inteiro para a PALAVRA ate 42% da largura e, para o SELO, a maior escala inteira de P ate P-2 que caiba (`ZONE.sealDrop`). Desenha em coordenadas FISICAS (`scale(1/k)` dentro do UiScale), origem inteira, nearest. Resultado (palavra/selo): 720p 2/1, 1080p 3/2, 1440p 4/3, 4K 6/4 (antes 1, 2, 2, 4 para os dois). O selo fica menor que a palavra; a varredura atravessa os dois com `pxScale` no `brand_seal.glsl`.
-- **GRIMOIRE e o nome em todo idioma.** A chave `menu.title` continua existindo (fallback: se a arte nao carregar, o titulo de texto antigo volta, avisado por `Debug.warn`).
+- **Desenho em escala inteira, por ZONAS** (revisto em 25/Out a pedido do dono: "aumenta a fonte, esta muito pequeno"): a coluna de botoes e ancorada no PE da tela (`MenuBrand.buttonColumn`: base a 97,5% da altura, espacamento 9,2% ate 80, altura 8% ate 60; o Menu usa a mesma funcao) e o logo ocupa a banda de 2,5% da altura ate 2% acima de "Continuar" (existindo ou nao, para o logo nao pular). `MenuBrand.layout` escolhe o maior P inteiro para a PALAVRA ate 46% da largura (42% antes de RUNEMOIRE, que tem uma letra a mais) e, para o SELO, a maior escala inteira de P ate P-2 que caiba (`ZONE.sealDrop`). Desenha em coordenadas FISICAS (`scale(1/k)` dentro do UiScale), origem inteira, nearest. Resultado (palavra/selo): 720p 2/1, 1080p 3/2, 1440p 4/3, 4K 6/4 (antes 1, 2, 2, 4 para os dois). O selo fica menor que a palavra; a varredura atravessa os dois com `pxScale` no `brand_seal.glsl`.
+- **RUNEMOIRE e o nome em todo idioma.** A chave `menu.title` continua existindo (fallback: se a arte nao carregar, o titulo de texto antigo volta, avisado por `Debug.warn`).
 - **Vinheta de entrada** (so na PRIMEIRA entrada do menu do processo, depois do boot): mesmos tempos do trailer (`MenuBrand.T`): anel pontilhado fecha, o selo se revela pelo anel, os 8 raios acendem um a um, carga com tremor de 1 px e faiscas convergindo, clarao (o selo em paleta de brasa + pulso de brilho de tela cheia de 0,16 s, sem disco) + 2 aneis de choque finos + brasas, o selo sobe, as letras carimbam uma a uma com quique e poeira, tremor de 1 px quando a ultima pousa, varredura dourada. O fundo do trailer (vinheta roxa pontilhada) cobre o menu ate o clarao e o cenario do menu entra em 0,8 s depois dele. Botoes entram a partir de 3,95 s (depois das letras pousarem), um a cada 0,08 s.
   - Shaders: `shaders/brand_seal.glsl` (a funcao `Seal.render` do trailer pixel a pixel), `shaders/brand_word.glsl` (carimbo branco/brilho + varredura), `shaders/brand_fx.glsl` (fundo, aneis e clarao numa passada de tela cheia, so durante a vinheta, com Bayer 4x4 na grade da arte).
   - Faiscas, brasas, poeira: retangulos de 1 px de arte em Lua.
