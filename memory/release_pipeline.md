@@ -265,7 +265,7 @@ Arte da loja (tamanhos atuais do Steamworks — conferir no painel):
 - [ ] Vertical capsule 748×896 · Page background 1438×810 (opcional)
 - [ ] Library: capsule 600×900, header 920×430, hero 3840×1240, logo 1280×720 (PNG transparente)
 - [ ] Community icon 184×184 (JPG) + client icon (.ico — `assets/branding/icon.ico` serve de base)
-- [ ] Logo/nome final: o nome passou de "Grimoire" (ja existe outro jogo com esse nome na Steam) para "Runemoire" (Daniel, 10/11/2026; checagem do Lead: sem jogo nem marca registrada com esse nome). Falta regerar a arte da loja com o logo novo
+- [x] Logo/nome final: o nome passou de "Grimoire" (ja existe outro jogo com esse nome na Steam) para "Runemoire" (Daniel, 10/11/2026; checagem do Lead: sem jogo nem marca registrada com esse nome). Arte da loja regerada com o logo RUNEMOIRE em 10/11 (`python tools/store_art.py build`, branch nome-runemoire; screenshot `01_menu` en/pt_BR refeita)
 - [ ] 5+ screenshots 1920×1080 (sem UI de debug; usar o pacote de release)
 - [ ] Trailer 1080p mp4 (30-90s, gameplay nos 5 primeiros segundos)
 - [ ] Descricao curta (≤300 chars) e longa nos 5 idiomas (pt-BR, en, es, fr, de) — marcar os idiomas suportados (interface + legendas)
