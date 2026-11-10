@@ -142,7 +142,7 @@ function MenuBrand.canSting()
 end
 
 MenuBrand.COLUMN = { bottom = 0.975, spacingRatio = 0.092, spacingMax = 80, heightRatio = 0.08, heightMax = 60 }
-MenuBrand.ZONE = { top = 0.025, clear = 0.02, wordMaxW = 0.42, sealDrop = 2 }
+MenuBrand.ZONE = { top = 0.025, clear = 0.02, wordMaxW = 0.46, sealDrop = 2 }
 
 function MenuBrand.buttonColumn(vh)
     local C = MenuBrand.COLUMN

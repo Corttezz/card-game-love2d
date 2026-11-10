@@ -5,7 +5,7 @@
 	// ESTE arquivo. O conteudo e gerado por: python tools/build_release.py
 	// Upload: steamcmd +login <conta> +run_app_build <caminho>\steam\app_build_windows.vdf +quit
 	"AppID"        "APP_ID"
-	"Desc"         "Grimoire Windows"
+	"Desc"         "Runemoire Windows"
 	"BuildOutput"  "../build/steam/output/"
 	"ContentRoot"  "../build/steam/windows/content/"
 	// Vazio = nao publica sozinho. Publique pela pagina de Builds (ou "beta").

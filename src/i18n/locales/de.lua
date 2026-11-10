@@ -6,7 +6,7 @@ return {
     },
 
     menu = {
-        title           = "GRIMOIRE",
+        title           = "RUNEMOIRE",
         subtitle        = "Arkane Karten. Fatale Wahlen.",
         play            = "SPIELEN",
         continue        = "FORTSETZEN",
@@ -960,7 +960,7 @@ return {
 
     play_button = { label = "Karten spielen", end_turn = "Zug Beenden" },
 
-    window_title = "Grimoire",
+    window_title = "Runemoire",
     crash = {
         title    = "Etwas ist schiefgelaufen",
         body     = "Das Spiel ist auf einen unerwarteten Fehler gestoßen und muss beendet werden. Der bis zur letzten Ebene gespeicherte Fortschritt bleibt erhalten.",

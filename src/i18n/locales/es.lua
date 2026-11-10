@@ -6,7 +6,7 @@ return {
     },
 
     menu = {
-        title           = "GRIMORIO",
+        title           = "RUNEMOIRE",
         subtitle        = "Cartas arcanas. Decisiones fatales.",
         play            = "JUGAR",
         continue        = "CONTINUAR",
@@ -960,7 +960,7 @@ return {
 
     play_button = { label = "Jugar Cartas", end_turn = "Terminar Turno" },
 
-    window_title = "Grimoire",
+    window_title = "Runemoire",
     crash = {
         title    = "Algo salio mal",
         body     = "El juego encontró un error inesperado y debe cerrarse. El progreso guardado hasta el último piso está a salvo.",

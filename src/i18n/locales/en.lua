@@ -6,7 +6,7 @@ return {
     },
 
     menu = {
-        title           = "GRIMOIRE",
+        title           = "RUNEMOIRE",
         subtitle        = "Arcane cards. Fatal choices.",
         play            = "PLAY",
         continue        = "CONTINUE",
@@ -960,7 +960,7 @@ return {
 
     play_button = { label = "Play Cards", end_turn = "End Turn" },
 
-    window_title = "Grimoire",
+    window_title = "Runemoire",
     crash = {
         title    = "Something went wrong",
         body     = "The game hit an unexpected error and needs to close. Progress saved up to the last floor is safe.",

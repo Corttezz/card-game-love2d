@@ -27,7 +27,7 @@ function love.conf(t)
     t.externalstorage = false
     t.gammacorrect = false
 
-    t.window.title = "Grimoire"
+    t.window.title = "Runemoire"
     t.window.icon = "assets/branding/icon.png"
     t.window.width = 1024
     t.window.height = 768

@@ -16,7 +16,7 @@ Release.info    = info
 Release.RELEASE = info.release == true
 Release.DEV     = not Release.RELEASE
 
-Release.GAME_NAME = "Grimoire"
+Release.GAME_NAME = "Runemoire"
 Release.IDENTITY_DEV     = "card-game"
 Release.IDENTITY_RELEASE = "Grimoire"
 
