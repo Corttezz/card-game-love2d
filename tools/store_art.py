@@ -285,7 +285,8 @@ def build():
     save(hero, "library_hero_3840x1240.png")
     # logo 1280x720 transparente
     lg = Image.new("RGBA", (1280, 720), (0, 0, 0, 0))
-    l = logo(10)
+    k = max(k for k in range(1, 11) if logo(1).width * k <= 1280 * 0.94)
+    l = logo(k)
     lg.alpha_composite(l, ((1280 - l.width) // 2, (720 - l.height) // 2))
     save(lg, "library_logo_1280x720.png", rgb=False)
     # --- page background: mundo escurecido e dessaturado (fundo da página) -
@@ -295,12 +296,12 @@ def build():
     arr = (arr * 0.45 + gray * 0.55) * 0.42
     save(Image.fromarray(arr.clip(0, 255).astype(np.uint8)),
          "page_background_1438x810.png")
-    # --- ícone da comunidade 184x184: G do logotipo sobre selo -----------
+    # --- ícone da comunidade 184x184: inicial do logotipo sobre selo -----------
     save(community_icon(), "community_icon_184x184.png")
 
 
 def community_icon():
-    """Selo de cera da UI (seal_common, 32px) + o "G" do logotipo, montados
+    """Selo de cera da UI (seal_common, 32px) + a inicial do logotipo, montados
     numa grade NATIVA de 46px e só então x4 — o pixel do selo e o da letra
     saem do MESMO tamanho (selo x6 com letra x4 lia como duas resoluções)."""
     N = 46
@@ -310,7 +311,7 @@ def community_icon():
     k = max(1, (N - 2) // seal.width)
     seal = seal.resize((seal.width * k, seal.height * k), Image.NEAREST)
     base.alpha_composite(seal, ((N - seal.width) // 2, (N - seal.height) // 2))
-    g = glyph_mask("G")
+    g = glyph_mask(TITLE[0])
     g = np.kron(g, np.ones((3, 2), bool))
     pad = 2
     m = np.zeros((g.shape[0] + 2 * pad, g.shape[1] + 2 * pad), bool)

@@ -20,6 +20,7 @@ function M.run()
         require("engine.ProfileStats")._swapForTests({ runs = 12, wins = 3, bestAct = 5, bestFloor = 6 })
     end
 
+    require("src.ui.MenuBrand").markStingPlayed()
     local Menu = require("components.Menu")
     local menu = Menu:new()
     menu:enterWithIntro()
