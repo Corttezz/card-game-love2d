@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build de RELEASE do Grimoire (Windows primeiro, pronto pra depot Steam).
+"""Build de RELEASE do Runemoire (Windows primeiro, pronto pra depot Steam).
 
     python tools/build_release.py                  # build completo + smoke
     python tools/build_release.py --skip-tests     # pula o test_all da copia limpa
@@ -21,7 +21,7 @@ O que faz, em ordem (para no primeiro erro, exit code 1):
   4. (default) Roda `test_all` numa copia limpa que inclui tools/ — a suite
      inteira contra o codigo SEM comentarios.
   5. Escreve build_info.lua (a flag de RELEASE, ver src/core/Release.lua),
-     empacota Grimoire.love (mp3/png sem recompressao), funde com love.exe
+     empacota Runemoire.love (mp3/png sem recompressao), funde com love.exe
      (icone via rcedit se disponivel) e monta build/steam/windows/content.
   6. Smoke: boota o EXECUTAVEL fundido com GRIMOIRE_SELFTEST=1 (boot real,
      pula splash, renderiza todas as cartas, abre run das 3 classes, desenha
@@ -39,7 +39,7 @@ import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(ROOT, "build")
-GAME_NAME = "Grimoire"
+GAME_NAME = "Runemoire"
 SELFTEST_IDENTITY = "grimoire-selftest"
 
 RUNTIME_ROOT_FILES = {"conf.lua", "main.lua"}
@@ -287,7 +287,7 @@ def unreferenced_report(files):
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="Build de release do Grimoire")
+    ap = argparse.ArgumentParser(description="Build de release do Runemoire")
     ap.add_argument("--love-dir", default=os.environ.get("LOVE_DIR", r"C:\Program Files\LOVE"))
     ap.add_argument("--skip-tests", action="store_true", help="nao roda test_all na copia limpa")
     ap.add_argument("--skip-smoke", action="store_true", help="nao boota o executavel")

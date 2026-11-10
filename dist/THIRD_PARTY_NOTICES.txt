@@ -1,4 +1,4 @@
-Grimoire - third-party notices
+Runemoire - third-party notices
 ==============================
 
 The engine (LOVE 11.5) and the libraries it ships with (SDL2, OpenAL Soft,

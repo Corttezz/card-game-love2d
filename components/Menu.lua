@@ -414,7 +414,7 @@ function Menu:_drawOsdChrome()
     if a <= 0.02 then return end
 
     local W = love.graphics.getWidth()
-    local tag = "AV-1  GRIMOIRE"
+    local tag = "AV-1  RUNEMOIRE"
     TvOsd.text(tag, W - TvOsd.textWidth(tag) - 26, 20, a)
     local clock = os.date("%H:%M")
     TvOsd.text(clock, W - TvOsd.textWidth(clock) - 26, 44, a * 0.85)
