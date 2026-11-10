@@ -4,6 +4,9 @@ description: Som próprio de cada uma das 42 criaturas ao levar golpe e ao morre
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # Vozes dos inimigos (25/Out/2026)
 
 Pedido do dono: "os mobs, quando tomam dano, emitam um som específico deles assim que tomam o golpe".
@@ -216,7 +219,7 @@ Vozes COMPARTILHADAS (mesma fonte EL com pitch e material diferentes):
 
 ## Pendente
 
-- TUDO ainda nasce de ElevenLabs FREE (as 2 fontes, as entradas e os sons de chefe): `known_gaps.md` 0d.
+- TUDO ainda nasce de ElevenLabs FREE (as 2 fontes, as entradas e os sons de chefe): `known_gaps.md` 0d. — **áudio licenciado (Daniel, 10/11/2026)**
 - **Ouvir primeiro**:
   - plague_rats, dusk_bat e storm_harpy: eram os mais "brinquedo" e agora são guincho grave com rosnado;
   - plague_toad: era o trem de pulsos;

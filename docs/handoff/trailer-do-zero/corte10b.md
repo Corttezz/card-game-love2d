@@ -1,5 +1,7 @@
 # Corte 10b (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 02/11/2026. Base: `revisao-corte10.md` (aa991b4e, Tirano 8,8 e Rei 8,9, reprovado na continuidade). Só montagem, mesma tomada `zero_carrion`: nenhuma troca de faixa, texto ou salão, **sem zoom** (escala 1,00). Sem 4K, Steam, push ou save real; um `lovec` por vez, headless. Os masters antigos estão intactos (pastas novas `zero10b` e `zero10b_rei`)._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

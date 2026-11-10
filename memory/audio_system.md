@@ -4,6 +4,9 @@ description: AudioManager (Balatro-inspired) com polifonia, grupos master/music/
 type: project
 originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 ---
+
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 `engine/AudioManager.lua` (substitui o antigo `src/systems/AudioSystem.lua`, deletado). Exposto como **`_G.audioSystem`** em `main.lua`. Inspirado em `balatro-source/engine/sound_manager.lua` mas síncrono (sem `love.thread`).
 
 **Por que mudou (Abril/2026):** o antigo cache flat `audioCache[name]` mantinha 1 source por som — não tocava o mesmo SFX duas vezes simultâneo, e `setSFXVolume` sobrescrevia o `baseVolume` original. Sem grupos, sem crossfade, sem persistência.
@@ -34,6 +37,6 @@ originSessionId: e544765f-309d-4fc7-89e3-58b3dabfa059
 
 **How to apply:** Som novo = (1) arquivo em `audio/` ou `audio/sfx/`, (2) `audioSystem:loadSound("name", path, Config.Audio.X_VOLUME)` em `main.lua` `love.load`, (3) `Sfx.play("name")`. Para SFX repetitivo (sword, click), passar `{pitchVariation=0.1}` no `loadSound` para variação automática de pitch e evitar fadiga auditiva.
 
-**Pool de variantes com cooldown (corvos, 17/Out/2026):** `src/systems/CrowSfx.lua` registra por SCAN `audio/sfx/boss/crow/<momento>_<n>.mp3` como `crowAppear1..`, `crowDive1..`, `crowFlock1..`, `crowCine1..` e toca por MOMENTO (`CrowSfx.play("crowDive")`): sorteia variante sem repetir a anterior, pitch leve, cooldown por momento (1,2 s) e `CrowSfx.attack(h, hits)` agrupa a revoada (nunca um som por corvo). `BossCinematic.play` e `BossTrophy` desviam para ele quando o código é um momento de corvo. Relógio injetável (`CrowSfx.now`) e relógio que volta não trava. Modelo para outro som repetitivo que irrite: pool + cooldown + grupo, não um arquivo só. Licença: ElevenLabs FREE, sem uso comercial; regerar antes de vender (lista em `memory/known_gaps.md`). Detalhes e medição antes/depois: [[boss_mechanics]], "Som dos corvos".
+**Pool de variantes com cooldown (corvos, 17/Out/2026):** `src/systems/CrowSfx.lua` registra por SCAN `audio/sfx/boss/crow/<momento>_<n>.mp3` como `crowAppear1..`, `crowDive1..`, `crowFlock1..`, `crowCine1..` e toca por MOMENTO (`CrowSfx.play("crowDive")`): sorteia variante sem repetir a anterior, pitch leve, cooldown por momento (1,2 s) e `CrowSfx.attack(h, hits)` agrupa a revoada (nunca um som por corvo). `BossCinematic.play` e `BossTrophy` desviam para ele quando o código é um momento de corvo. Relógio injetável (`CrowSfx.now`) e relógio que volta não trava. Modelo para outro som repetitivo que irrite: pool + cooldown + grupo, não um arquivo só. Licença: ElevenLabs FREE, sem uso comercial; regerar antes de vender (lista em `memory/known_gaps.md`). Detalhes e medição antes/depois: [[boss_mechanics]], "Som dos corvos". — **áudio licenciado (Daniel, 10/11/2026)**
 
 **Sons de entrada por criatura (22/Out/2026):** `audio/sfx/entrances/<id>_<beat>.mp3` (52 arquivos ElevenLabs), scan no `main.lua` como `entrance_<id>_<beat>` (0,55), referenciados em `src/data/enemy_entrances.lua` como 1o codigo do beat com o generico atras (fallback). Gerador e pos-processo em `tools/gen_entrance_sfx.py`; trava `test_entrance_sfx`. Ver [[enemy_entrances]] "Som proprio por criatura".

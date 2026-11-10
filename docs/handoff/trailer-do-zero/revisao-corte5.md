@@ -1,5 +1,7 @@
 # Revisão: corte 5 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `corte5.md` (conferência quadro a quadro dos 6 pontos, aprovada pelo Grimoire), `revisao-grimoire-corte4.md` (6 pontos), o ajuste do Grimoire de 18:57 (queda do Rei legível, ≤ ~2,5 s, degraus inteiros, nota própria Q) e tudo o que já valia (14 critérios, 7 pontos do corte 1, 5 do corte 2, 7 correções do corte 4). Arquivos: `grimoire_zero_corte5_1080p.mp4` (19:03) e `_720p.mp4` (19:04). Método: medidas quadro a quadro (`...\scratchpad\rev\h5_1080\`), quadros cheios da virada, do LETHAL e do espólio, folha a 5 quadros/s do portão (`...\rev\g5\`), tamanho de pixel medido por corrida de cor na montagem sem CRT (`pixel.py` em `build\trailer\zero5\zero_semcrt.mp4`), mixagem nos stems `build\trailer\zero5\zero5_tirano\` (`mix5_tirano.json`). Não ouvi._
 
 **Por ordem do Grimoire, esta rodada avalia tudo menos a queda do Rei**, que está sendo refeita. A nota Q e a variante do Rei entram em seções próprias.

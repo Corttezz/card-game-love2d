@@ -4,6 +4,9 @@ description: WeatherEngine v2 + WeatherAudio — clima FINO com profundidade no 
 type: architecture
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # WeatherEngine v1 — clima com profundidade (Out/2026)
 
 **Pedido do dono:** "algo que cause impressão de UAU nos mundos normais, como
@@ -140,7 +143,7 @@ Trava em `test_enemy_stage`.
 - Trava: test_weather §12 (mock de audioSystem: rotação sem repetir, ganho ≤1,
   trovão sem repetir, watchdog, todo nome existe no disco).
 
-## ⚠️ Sons gerados no ElevenLabs FREE (sem uso comercial) — REGENERAR
+## ⚠️ Sons gerados no ElevenLabs FREE (sem uso comercial) — REGENERAR — **áudio licenciado (Daniel, 10/11/2026)**
 `audio/sfx/weather/`: rain-light-1/2/3, rain-heavy-1/2, wind-1/2/3,
 blizzard-1/2, night-crickets-1/2, marsh-night-1, ember-crackle-1 (camas, 6 s,
 loop:true); thunder-near, thunder-crack-2, thunder-mid (era
@@ -181,7 +184,7 @@ livre, mapSelection) / boss (salão — `GameplayScene.inBossRoom`) / shop
   RestScreen não dobra.
 - Trava: test_weather §13 (decisão por estado, chuva cala em 1.5 s na loja
   com o mundo tickando, cama do lugar sobe, volta restaura, menu mudo).
-Sons a REGENERAR (ElevenLabs FREE) em `audio/sfx/place/`: shop-room-1/2,
+Sons a REGENERAR (ElevenLabs FREE) em `audio/sfx/place/`: shop-room-1/2, — **áudio licenciado (Daniel, 10/11/2026)**
 forge-fire-1/2, rest-camp-1/2, event-drone-1/2, boss-room-1 (camas 6 s);
 shop-bell-1/2, coin-clink-1/2/3, shop-creak-1, anvil-1/2/3, bellows-1,
 event-chime-1/2, paper-1, boss-rumble-1. Reuso de weather/: night-crickets,

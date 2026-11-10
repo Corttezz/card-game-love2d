@@ -1,5 +1,7 @@
 # Revisão do Grimoire: corte 10d, revisora independente
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _02/11/2026. Revisão independente. Não li `revisao-corte10d.md`, `revisao-corte10c.md` nem nenhum `revisao-corteN.md` da equipe. Do 10d li só `corte10d.md` e `edl10d.py` como alegação da diretora. Arquivos: `grimoire_zero_corte10d_720p.mp4` (Tirano), `grimoire_zero_corte10d_rei_720p.mp4` (Rei) e `grimoire_zero_corte10d_1080p.mp4` (Tirano, recortes 1:1); comparação com o 10c e o corte 2. Método: diferença quadro a quadro (96×54, todos os 3870 quadros) contra o 10c e o corte 2; folhas a 10 quadros/s dos painéis de vida do herói e da barra do Rei de 38,8 a 50,9 s; folhas a 20 e 60 quadros/s do "Murder of Crows" e da troca de intenção; escala da câmera por correlação do perfil de bordas com três quadros de referência (44, 46 e 52 s); onsets do `stem_music.wav` de cada versão (fluxo espectral e subida de grave 20 a 150 Hz, meu `ana.py`); `medir2.py` com `TDZ_EDL=edl10d` e `TDZ_MUSIC=tirano|rei`. O librosa não está instalado no Python desta máquina e não instalei; a sincronia saiu de duas medidas próprias (fluxo e RMS do `medir2`). Scripts e brutos em `C:\Users\corte\AppData\Local\Temp\claude\rgc10d\`. Provas em `revisao-grimoire-corte10d_provas\`. Não ouvi._
 
 ## Veredito: APROVADO nas duas versões

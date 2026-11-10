@@ -1,5 +1,7 @@
 # Corte 8 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Base: `revisao-grimoire-corte7.md` (commit 816f0997, 7 pontos), as decisões do Grimoire sobre o ponto 2 (22:43 e a definitiva) e a confirmação do Daniel. **Sem 4K, Steam, push ou save real. Um `lovec` por vez, headless. Nenhuma troca de faixa, texto ou salão; nenhuma carta inventada.** Os arquivos do corte 7 ficaram intactos._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

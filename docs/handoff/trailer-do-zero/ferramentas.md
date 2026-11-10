@@ -1,5 +1,7 @@
 # Etapa 2: ferramentas (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Base: inventário de 01/11 da frente de som (`docs/handoff/trailer-revisao-som/inventario.md`, ainda válido, não repetido aqui por inteiro), leitura do código das ferramentas e **um teste real** de captura sem CRT + recorte em escala inteira. Regras: 0 crédito, headless, 1 `lovec`, identidade `card-game-trailer-v9`, nada de 4K até liberação._
 
 ## 1. Inventário e veredito

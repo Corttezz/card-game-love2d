@@ -1,5 +1,7 @@
 # Corte 4 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Base: `instrucao-grimoire-corte4.md` (zoom em degraus inteiros e progressivos + 7 correções), `revisao-corte3.md` (versão Tirano e variante do Rei). **Sem 4K, sem Steam, sem push, sem save real. Nenhuma troca de faixa, texto ou salão.** NÃO MEXER mantido: quadro 0/pôster, gancho, textos exatos, golpe com hit-stop/flash/tremor, logo + CTA._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

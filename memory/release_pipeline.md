@@ -4,6 +4,9 @@ description: Como gerar o pacote de publicacao (tools/build_release.py), o que m
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # Release Pipeline (Out/2026)
 
 ## Comando
@@ -185,7 +188,7 @@ subdir `Grimoire/`):
 - Chave ElevenLabs: NAO esta no repo (scripts leem `ELEVENLABS_API_KEY` do
   ambiente). Fica so na auto-memoria do Claude — o dono ja planeja rotacionar.
 - **Licenca ElevenLabs (ALTO)**: SFX e as 9 faixas de musica foram gerados na
-  conta FREE. O plano gratuito do ElevenLabs nao concede uso comercial (exige
+  conta FREE. O plano gratuito do ElevenLabs nao concede uso comercial (exige — **áudio licenciado (Daniel, 10/11/2026)**
   atribuicao e nao-comercial; licenca comercial vem com plano pago). Antes de
   vender: assinar plano pago e REGERAR (ou confirmar por escrito com o
   ElevenLabs que o conteudo antigo fica coberto).

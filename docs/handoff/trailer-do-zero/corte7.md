@@ -1,5 +1,7 @@
 # Corte 7 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Base: `revisao-corte6.md` (21:30) e a atualização do Grimoire (21:36): a rodada 6b virou o corte 7. **Sem 4K, push, Steam ou save real. Um `lovec` por vez, headless. Nenhuma troca de faixa, texto ou salão.** Os arquivos do corte 6 (`grimoire_zero_corte6_*`) ficaram intactos._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

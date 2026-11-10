@@ -1,5 +1,7 @@
 # Revisão independente: corte 10d (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 02/11/2026. Arquivos: `grimoire_zero_corte10d_1080p.mp4` e `_720p.mp4` (Tirano) e `grimoire_zero_corte10d_rei_720p.mp4` (Rei), os três com 64,5 s e 3870 quadros. Base: `revisao-grimoire-corte10c.md` (d857b4b0, Tirano 9,0 e Rei 8,7, reprovado na sincronia), minha `revisao-corte10c.md` (b45089c0) e `corte10d.md` (ce385019). Medi tudo de novo com scripts próprios:_
 
 - _onsets (fluxo espectral e ataque de grave de 30 a 160 Hz) no **`stem_music.wav` de cada versão** (`zero10d/zero10d_tirano/` e `zero10d_rei/zero10d_rei_rei/`);_

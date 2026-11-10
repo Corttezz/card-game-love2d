@@ -1,5 +1,7 @@
 # Corte 10 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 02/11/2026. Base: `revisao-grimoire-corte9.md` (commit 255c8668, Tirano 8,6 e Rei 8,8, reprovado). Só montagem: nenhuma troca de faixa, texto ou salão, nada criado que não exista no jogo, **sem zoom** (escala 1,00 em todo o filme). **Sem 4K, Steam, push ou save real. Um `lovec` por vez, headless.** Os masters antigos estão intactos (`grimoire_zero_corte9_*` e anteriores não foram regravados; pastas de trabalho novas `zero10` e `zero10_rei`)._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

@@ -1,5 +1,7 @@
 # Inventário de skills e MCPs para a revisão de SOM dos trailers
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 Data: 01/11/2026. Levantamento somente leitura. Regras da revisão: nada pago (0 crédito), sem Scenario e sem gerar nada no ElevenLabs.
 
 ## 1. Skills
@@ -77,7 +79,7 @@ Projeto `E:/dev/projects/card-game-love2d`: **pixellab** (http). Projeto `card-g
 - Proveniência de todo asset (ledger) e revisão de direitos: música, SFX e conteúdo gerado por IA (declarar na Steam/YouTube).
 
 **scenario-kinetic-film**
-- Áudio vem do usuário com licença comercial (perguntar a licença antes de usar). No caso do Grimoire os SFX/música do jogo foram feitos no ElevenLabs **free** (sem uso comercial, ver CLAUDE.md "Pendente"): registrar isso na proveniência; não resolve com geração nova aqui.
+- Áudio vem do usuário com licença comercial (perguntar a licença antes de usar). No caso do Grimoire os SFX/música do jogo foram feitos no ElevenLabs **free** (sem uso comercial, ver CLAUDE.md "Pendente"): registrar isso na proveniência; não resolve com geração nova aqui. — **áudio licenciado (Daniel, 10/11/2026)**
 - Spec: `music: { offset, stopBeat, gain: -7 }` (música ~-7 dB, parada seca no stopBeat = silêncio antes do clímax), `sounds` com ganhos individuais (-7 a +1 dB); `mix.py` lista hit mais baixo que a música, subir em `spec.sounds`.
 - Render 4K: H.264 `-level 5.2`, não usar `-shortest` no mux.
 

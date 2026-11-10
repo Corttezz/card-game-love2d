@@ -4,6 +4,9 @@ description: V4 "Circle Land" — o mundo é um DOMO (disco-terra que gira, fiel
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # WorldRoad — Circle Land (V4, Julho/2026)
 
 ## ⭐ V4 — A GEOMETRIA ATUAL (domo-esfera)
@@ -1806,7 +1809,7 @@ abrindo e barulho de porta".
   forkHoverFire/Door/Flag/Elite/Tent, gerados no ElevenLabs
   (sound-generation, 1.4-2.0s) em `audio/sfx/fork-hover-*.mp3`,
   registrados no main.lua (0.50-0.60). Key do ElevenLabs: memória
-  auto do Claude (`elevenlabs-api-key`) — free tier, usuário rotaciona.
+  auto do Claude (`elevenlabs-api-key`) — free tier, usuário rotaciona. — **áudio licenciado (Daniel, 10/11/2026)**
 - Micro-luz do lugar ganha boost ×1.4 na intensidade durante o hover.
 - Convergência: hover congela (sem som/aceleração), porta fecha sozinha.
 

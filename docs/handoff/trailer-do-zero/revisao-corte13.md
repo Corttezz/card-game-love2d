@@ -1,5 +1,7 @@
 # Revisão independente: corte 13 (trailer)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 03/11/2026. Read-only._
 
 _Arquivo: `grimoire_trailer_c13_720p.mp4` (80,0 s, 4795 quadros). Comparação com `grimoire_trailer_c12_loja_720p.mp4` (a versão que o Daniel viu) e com `grimoire_trailer_c12_720p.mp4`. Pedido: fala do Daniel de 03/11 14:21. Registro: `corte13.md` (f5878721)._

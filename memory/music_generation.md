@@ -4,6 +4,9 @@ description: As 6 faixas ambientes do jogo (3 atos, boss, loja, descanso) e o pi
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # Music Generation — trilha por contexto
 
 Seis faixas em `audio/music/`, 20s cada, em loop: `music-act1`, `music-act2`,
@@ -477,7 +480,7 @@ bandas log de 40 Hz a 10 kHz (timbre, piso -3).
 
 ### Licença
 
-Plano FREE do ElevenLabs: **sem uso comercial**. As 30 seções precisam ser
+Plano FREE do ElevenLabs: **sem uso comercial**. As 30 seções precisam ser — **áudio licenciado (Daniel, 10/11/2026)**
 regeradas com plano pago antes da venda (mesmos prompts, mesmo
 pós-processamento). Listado em [[known_gaps]] 0c.
 

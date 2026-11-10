@@ -1,5 +1,7 @@
 # Revisão: corte 8 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `corte8.md` (commit 31724b34), `revisao-grimoire-corte7.md` (7 pontos, commit 816f0997), a decisão definitiva do Grimoire sobre o ponto 2 e os critérios de sempre. Vídeos: `grimoire_zero_corte8_1080p.mp4`, `_720p.mp4` e `_rei_720p.mp4`; stems em `build\trailer\zero8\zero8_tirano\` e `zero8_rei\zero8_rei_rei\`. Método: luma de todos os quadros e loudness (`medir.py`), mixagem por plano (`mixagem.py` → `mix8_*.json`), força de ataque do grave (30 a 160 Hz), fluxo espectral em mel (`flux.py`), deslocamento vertical quadro a quadro na queda (perfil da parede), folhas a 2,5, 10 e 20 quadros/s, recortes 1:1 e quadros a 50%. Tudo em `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\f967decd-bccd-487a-92fd-ff59f9b0ee6d\scratchpad\rev\c8\` (pré-checagem no corte 7 em `...\rev\p8\`). Não ouvi._
 
 ## Os 7 pontos: real ou falso, conferido por conta própria

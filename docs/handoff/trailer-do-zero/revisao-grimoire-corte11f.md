@@ -1,5 +1,7 @@
 # Revisão independente: corte 11f (corte 11, revisão 6), versões Tirano e Rei
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente (revisora-grimoire), 03/11/2026. Não li `revisao-corte11f.md` nem `revisao-corte11f2.md` antes de dar as notas. As afirmações da diretora (`corte11f.md` e `corte11f_provas\`) foram tratadas como alegação e medidas de novo, direto dos mp4. Não ouvi as mixagens. O áudio foi avaliado por loudness, onsets e envelope de 100 ms._
 
 Arquivos: `E:\dev\projects\card-game-trailer\build\trailer\grimoire_trailer_c11f_720p.mp4` (Tirano, 70,3 s) e `grimoire_trailer_c11f_rei_720p.mp4` (Rei, 69,7 s), mais os masters 1080p. As cópias em `C:\Users\corte\grokbot_entrega\` são idênticas byte a byte (`cmp`). Provas em `revisao-grimoire-corte11f_provas\`; scripts fora do repo, em `%TEMP%\claude\rgc11f\`.

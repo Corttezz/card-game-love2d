@@ -1,5 +1,7 @@
 # Revisão independente: corte 11f, versão Tirano regravada (trailer)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 03/11/2026. Read-only._
 
 _Arquivo: `grimoire_trailer_c11f_720p.mp4` (Tirano, 70,3 s, 4211 quadros) e o master `grimoire_trailer_c11f.mp4`. Base: minha `revisao-corte11f.md` (8d47e70b: Rei 9,4 PASS, Tirano 8,9 FAIL) e `corte11f.md`, seção "Tirano revision" (d2443e0d). A versão Rei não mudou desde o PASS._

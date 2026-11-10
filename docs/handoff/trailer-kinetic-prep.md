@@ -1,5 +1,7 @@
 # Trailer kinetic: preparação (fase 1)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _30/10/2026. Frente `trailer-kinetic`, fase 1 = só preparação: nada renderizado com Kinetic Film, nenhum mp4 final, nenhum `lovec` rodado, jogo não aberto, 0 crédito. Base: `docs/handoff/trailer-kinetic.md` e `docs/handoff/trailer-kinetic-referencias.md`. Worktree dos insumos: `E:\dev\projects\card-game-trailer` (= R), branch `steam-store-v2` em `f68db8e5`._
 
 Convenção das tabelas: **p** = segundo da faixa, **t** = segundo do trailer. Todo corte e toda entrada de texto marcados com "grave" caem EXATAMENTE num grave do `_beats.json` (Δ = 0,00 s, conferido por script); "drop" = drop do mesmo JSON. Onde a faixa não tem grave (pads), a tabela diz "sem grave" e o ponto é ancorado num acontecimento da imagem.

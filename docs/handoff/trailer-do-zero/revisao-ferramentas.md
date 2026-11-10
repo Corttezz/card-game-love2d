@@ -1,5 +1,7 @@
 # Revisão: etapa 2, ferramentas (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `ferramentas.md` (10.014 bytes, 14:34). Conferi o worktree `card-game-trailer-zero` (commit `52a262c3`, `TRAILER_OUT`), a tomada de teste `%APPDATA%\LOVE\card-game-trailer-v9\trailer_zero_teste\deck8.mkv` (231 MB + `audio.jsonl`; as tomadas antigas em `trailer\` continuam lá) e abri os recortes `x2_13.png` e `x3_13.png` em tamanho real. Régua: ≥ 9 em todos os critérios para aprovar._
 
 ## Rodada 1, NÃO APROVADO

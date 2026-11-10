@@ -1,5 +1,7 @@
 # CLAUDE.md — Card Game (LÖVE2D)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 Guia de contexto para o Claude Code neste repositório. Mantenha este arquivo em sincronia com o código: se uma afirmação aqui conflita com o que está no código, **confie no código** e atualize este arquivo.
 
 ---
@@ -492,7 +494,7 @@ Nota de comportamento fixada pelos testes: desde 14/Out/2026 o **veneno decai co
 - ✅ **Passivas que CRESCEM NA LUTA** (Out/2026, depois do roster novo + Combo v3: guerreiro 43% · mago 13% · ladino 17%): as três passivas têm a forma do Ímpeto — regra de TURNO que soma na batalha. Conduíte: 2+ cartas de orbe no turno → +1 Foco. Toxinas: 2+ ataques no turno → o Veneno da passiva sobe `Game.TOXIN_GROWTH` (2). Dano de orbe (pulso/evoke de raio/fogo/sombra) passa pelo MAIOR `damage_multiplier` de coringa (`EffectSystem.orbDamageMult`, fonte única com OrbRow/DamagePreview/piloto). Ladino: Punhalada 11→8, Adrenalina custo 0→1, `poison_stack` +2→+4. Ímpeto pede 3 ataques (`Game.IMPETUS_ATTACKS`; com 2 o guerreiro foi a 67%). Foco soma inteiro no pulso de orbe. Bateria final 30/classe: guerreiro 47% · mago 43% · ladino 50%; mago ainda luta ~14 turnos no A5-A6 por política do piloto (passa turno com mana e ataque na mão). Depois do f67ebe4 (a passiva do mago só valia na 1ª luta da run) o mago foi a 63%: Foco INICIAL do Conduíte passou de 2/3/4 para 0/1/2 por ato → mago 53% (guerreiro 50%, ladino 55% em 20 runs no mesmo HEAD). Números em `memory/balance_curves.md`. **Revisto com os combos simples (Out/2026):** com `ENEMY_POWER` o mago foi a 73-90% e o crescimento do Conduíte, o orbe pelo multiplicador de coringa e o Foco inteiro no pulso SAÍRAM (mago 47%); Ímpeto e Toxinas continuam crescendo.
 
 Pendente:
-- **Licenças antes de vender**: SFX/música gerados no plano FREE do ElevenLabs (não permite uso comercial) — assinar e regenerar; confirmar assinatura PixelLab no período da arte; declarar conteúdo gerado por IA na Steam; documentar origem de `music.mp3`, `hoverCard.wav` e PNGs antigos. Token PixelLab vencido segue no histórico git (`3fc14ea`) — reescrever histórico se o repo for público.
+- **Licenças antes de vender**: SFX/música gerados no plano FREE do ElevenLabs (não permite uso comercial) — assinar e regenerar; confirmar assinatura PixelLab no período da arte; declarar conteúdo gerado por IA na Steam; documentar origem de `music.mp3`, `hoverCard.wav` e PNGs antigos. Token PixelLab vencido segue no histórico git (`3fc14ea`) — reescrever histórico se o repo for público. — **áudio licenciado (Daniel, 10/11/2026)**
 - 12 cartas ainda com `effects = {}` (intencionalmente — são âncoras de tag starter/básicas).
 - Alguns eventos narrativos avançados (trocas complexas Slay-style) não mapeados.
 - HUD legacy com gradientes 20-step (não é do redesign de gameplay).

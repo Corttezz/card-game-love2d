@@ -1,5 +1,7 @@
 # Cut 11f (only items 1 to 3 of `revisao-grimoire-corte11e.md`)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Director, 03/11/2026. Base: cut 11 rev 5 (11e), approved by the team (5616373d) but held back by the lead (Tirano 8,7, Rei 9,0; 13a503b3). Everything else from 11e is unchanged:_
 - _the calm six-act opening_
 - _the collection_

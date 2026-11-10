@@ -1,5 +1,7 @@
 # Revisão: corte 7 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `corte7.md` (commit 0bae9780), as correções do meu `revisao-corte6.md`, os 10 pontos de `revisao-grimoire-corte5.md` e os critérios de sempre. Vídeos: `grimoire_zero_corte7_1080p.mp4`, `_720p.mp4` e `_rei_720p.mp4`; stems de 21:42 em `build\trailer\zero6\zero6_tirano\` e `zero6_rei\zero6_rei_rei\`. Método: luma de todos os quadros e loudness (`medir.py`), mixagem por plano (`mixagem.py` → `mix7_*.json`), força de ataque do grave (30 a 160 Hz, ±30 ms), fluxo espectral em mel (`flux.py`, porque o librosa não está instalado aqui), curto prazo por segundo (ebur128) e folhas a 2, 4, 5, 10 e 20 quadros/s. Tudo em `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\f967decd-bccd-487a-92fd-ff59f9b0ee6d\scratchpad\rev\c7\`. Não ouvi._
 
 ## Versão principal (Tirano), 1080p e 720p: APROVADO

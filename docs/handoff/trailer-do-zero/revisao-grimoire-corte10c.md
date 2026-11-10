@@ -1,5 +1,7 @@
 # Revisão do Grimoire: corte 10c, revisora independente
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _02/11/2026. Revisão independente. Não li `revisao-corte10c.md` nem `revisao-corte10b.md`; do corte 10c li só `corte10c.md` como alegação da diretora. Arquivos: `grimoire_zero_corte10c_720p.mp4` (Tirano) e `grimoire_zero_corte10c_rei_720p.mp4` (Rei), 64,5 s a 60 quadros/s, mais a 1080p da Tirano para recortes 1:1. Comparação com os cortes 2, 9 e 10b. Método: quadros de 0,25 s (folha a 2 quadros/s no trecho que não mudou, 4 a 20 quadros/s na luta), folhas a 10 quadros/s dos painéis de vida de 37 a 52 s, detecção de cortes e de quadro escuro em todos os 3870 quadros, diferença quadro a quadro contra o 10b e o 9, escala da câmera por correlação do perfil de bordas (0,85 a 1,15), onsets (fluxo espectral e ataque de grave de 20 a 150 Hz) no `stem_music.wav` de cada versão, `medir2.py` (TDZ_EDL=edl10c), `ebur128` e RMS do mix em janelas de 100 ms. Scripts e brutos em `C:\Users\corte\AppData\Local\Temp\claude\rgc10c\`. Provas em `revisao-grimoire-corte10c_provas\`. Não ouvi._
 
 ## Veredito: Tirano APROVADA no limite, Rei REPROVADA

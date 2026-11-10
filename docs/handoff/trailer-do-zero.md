@@ -1,5 +1,7 @@
 # Frente: trailer-do-zero (Grimoire)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 ## Frente
 _Pedido do Daniel em 01/11/2026 14:15, prioridade ALTA. Sessão diretora: `grimoire-trailer-diretora`; revisora independente: `grimoire-trailer-revisora`._
 
@@ -7,7 +9,7 @@ O Daniel assistiu aos `*_som` (remix de som de 01/11 dos trailers A, B e C) e ac
 
 ### Regras
 - Só headless: nunca abrir janela, nunca roubar o foco do PC. Captura só headless, 1 `lovec` por vez, identidade `card-game-trailer-v9`, nunca o save real, nunca abrir o jogo na tela. Nunca matar processo por nome.
-- Pode usar todos os SFX atuais (liberação do Daniel, só para ver como fica): o resultado sai marcado **"não publicável até trocar ou licenciar os SFX"**.
+- Pode usar todos os SFX atuais (liberação do Daniel, só para ver como fica): o resultado sai marcado **"não publicável até trocar ou licenciar os SFX"**. — **áudio licenciado (Daniel, 10/11/2026)**
 - Nada pago: 0 crédito, sem Scenario, sem gerar no ElevenLabs.
 - Não sobrescrever os masters antigos (nomes novos). Nada para Steam ou depot.
 - Commits em nome de Daniel Cortez, sem Co-Authored-By nem menção a Claude/Grok/Codex, sem push. Suíte completa só via `suite_lock.sh`.
@@ -38,7 +40,7 @@ Responda e relate sempre em português. Decisão do Daniel: MANTER os salões do
 
 ## Entrega (01/11/2026)
 
-> **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (SFX do jogo gerados no ElevenLabs free, usados com a liberação do Daniel de 01/11 13:00 só para ver). Música ACE-Step local (uso comercial). Sem 4K, nada para Steam ou depot, sem push.
+> **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (SFX do jogo gerados no ElevenLabs free, usados com a liberação do Daniel de 01/11 13:00 só para ver). Música ACE-Step local (uso comercial). Sem 4K, nada para Steam ou depot, sem push. — **áudio licenciado (Daniel, 10/11/2026)**
 
 - **Corte 1 "Contra as regras"** (68,5 s, 60 fps, −14,0 LUFS, −1,2 dBTP):
   - 1080p: `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte1_1080p.mp4`
@@ -82,4 +84,4 @@ Decisões do Grimoire (16:42 e 16:43), recebidas por `tdz_c2b.txt` na pasta de o
 - Revisora: **APROVADO nas duas versões** na rodada 9b (`revisao-corte9.md`, commit 636fe396, `===CORTE9_PRONTO===`), 9 ou mais em todos os critérios, inclusive Q.
 - Arquivos: `grimoire_zero_corte9_1080p.mp4`, `_720p.mp4` (Tirano) e `_rei_720p.mp4` em `E:\dev\projects\card-game-trailer\build\trailer\`; cópias dos 720p em `C:\Users\corte\grokbot_entrega\corte9_720p.mp4` e `corte9_rei_720p.mp4`.
 - Sem nenhum zoom (pedido do Daniel, 00:46). **FINAL_DO_CORTE=2** (tempos do bloco do logo/CTA iguais aos do corte 2; fundo em tela inteira e áudio do trecho atual: dúvida registrada para o Daniel).
-- Detalhe e provas: `trailer-do-zero/corte9.md` e `corte9_provas/`. Não publicável até trocar ou licenciar os SFX; ninguém ouviu as mixagens.
+- Detalhe e provas: `trailer-do-zero/corte9.md` e `corte9_provas/`. Não publicável até trocar ou licenciar os SFX; ninguém ouviu as mixagens. — **áudio licenciado (Daniel, 10/11/2026)**

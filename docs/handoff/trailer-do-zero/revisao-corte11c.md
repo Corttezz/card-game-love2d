@@ -1,5 +1,7 @@
 # Revisão independente: corte 11, revisão 3 (trailer)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 03/11/2026. Read-only._
 
 _Arquivos (regravados): `grimoire_trailer_c11_720p.mp4` (Tirano, 65,4 s, 3918 quadros), `grimoire_trailer_c11_rei_720p.mp4` (Rei, 66,9 s, 4007 quadros) e os masters 1080p. Base: minha `revisao-corte11b.md` (6af56085) e `corte11.md`, seção "Revision 3" (472e0f8f). Critérios e referências iguais aos de antes: feedback literal do Daniel, v5, v6, v8 e kinetic_new_som._

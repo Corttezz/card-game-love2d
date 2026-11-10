@@ -1,5 +1,7 @@
 # Revisão do Grimoire: corte 9 (rodada 9b), revisora independente
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _02/11/2026. Revisão independente, sem aproveitar a aprovação de `revisao-corte9.md` (commit 636fe396). Arquivos: `grimoire_zero_corte9_720p.mp4` e `_1080p.mp4` (Tirano, idênticos: diferença média de 0,42/255 em 3870 quadros), `grimoire_zero_corte9_rei_720p.mp4` (Rei), os três com 64,5 s a 60 quadros/s. Método: quadros a 2 e 4 quadros/s do filme inteiro, folhas a 5 e 10 quadros/s nos momentos-chave, recortes 1:1 na 1080p, detecção de cortes quadro a quadro, escala da câmera por correlação do perfil de bordas do salão (0,85 a 1,15), onsets por fluxo espectral e ataque de grave (20 a 150 Hz) nas faixas `zero9/music_tirano.wav` e `zero9_rei/music_rei.wav`, RMS do mix em janelas de 100 ms, `ebur128` e tempos de cada linha do logo nos cortes 2, 8b e 9. Evidências em `C:\Users\corte\AppData\Local\Temp\claude\rgc9\` (`t_ov_*.png`, `r_ov_*.png`, `t_anjo.png`, `r_anjo.png`, `gate_t.png`, `r_corvos.png`, `t_golpe.png`, `hp.png`, `logo_cmp.png`, `carta.png`, `fogo.png`, `textos.png`). Não ouvi._
 
 ## Veredito: REPROVADO

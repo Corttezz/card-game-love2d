@@ -1,5 +1,7 @@
 # Corte 10c (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 02/11/2026. Base: `revisao-corte10b.md` (a7b3d112, Tirano 8,9 e Rei 8,9, reprovado: Rei 131 → 48 no corte do LETHAL). Decisão do Lead (`E:\dev\_orquestracao\tdz_c10c.txt`): **opção 1, regravar a luta do Rei-Carniça** para a barra do Rei chegar ao golpe final só por golpes reais e os corvos levarem o herói para baixo na tela._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

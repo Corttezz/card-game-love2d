@@ -1,5 +1,7 @@
 # Revisão independente: corte 10 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 02/11/2026. Arquivos: `grimoire_zero_corte10_1080p.mp4` e `_720p.mp4` (Tirano) e `grimoire_zero_corte10_rei_720p.mp4` (Rei), os três com 64,5 s a 60 quadros/s. Base: `revisao-grimoire-corte9.md` (255c8668) e `corte10.md` (c7f66cc3). Medi tudo de novo sem aproveitar as provas da diretora: luma, cortes e loudness (`medir.py`), tempos do logo pelo brilho de cada linha (bandas fixas, comparados com o corte 2 e o corte 9), ataque de grave (30 a 160 Hz) e fluxo espectral nas faixas `zero9/music_tirano.wav` e `zero9_rei/music_rei.wav`, folhas a 10 e 15 quadros/s do plano novo, recortes 1:1 na 1080p das barras de vida do herói e do Rei, e md5 dos quadros de 20 a 30 s contra o corte 9. Evidências em `scratchpad/rev/c10/` (`t_dreno.png`, `r_dreno.png`, `t_corte_dreno.png`, `hp_all.png`, `t_gancho.png`, `t_coringa.png`, `r_coringa.png`). Não ouvi._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX.**

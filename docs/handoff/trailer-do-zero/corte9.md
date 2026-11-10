@@ -1,5 +1,7 @@
 # Corte 9 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 02/11/2026. Base: `revisao-grimoire-corte8.md` (00:07, commit 83eea09e), `instrucao-corte9-0006.md`, as exigências do Grimoire na revisão do corte 9 e o **feedback direto do Daniel (00:46), prioridade máxima**: sem nenhum zoom e final igual ao de um corte anterior. Repasse final em `tdz_c9_final.txt` (00:54). **Sem 4K, Steam, push ou save real. Um `lovec` por vez. Nenhuma troca de faixa, texto ou salão; nada criado que não exista no jogo.** Masters antigos intactos._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

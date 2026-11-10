@@ -1,5 +1,7 @@
 # Corte 10d (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 02/11/2026. Base: `revisao-grimoire-corte10c.md` (d857b4b0, Tirano 9,0 e Rei 8,7, Rei reprovado na sincronia). Só montagem e overlay sobre a tomada `zero_carrion_c10c` do 10c. Nenhuma tomada nova; faixa, textos, salões, fecho e o cartão "42 CREATURES." sem mudança; escala 1,00. Pastas novas `zero10d` / `zero10d_rei`._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

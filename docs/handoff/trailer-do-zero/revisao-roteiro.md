@@ -1,5 +1,7 @@
 # Revisão: etapa 3, roteiro "Contra as regras" (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `roteiro.md` (13.201 bytes, 14:56). Conferi no código os chefes por ato (`src/data/enemies.lua`: 1 Rei-Carniça, 2 Lich, 3 Tirano, 4 Monarca, 5 Colosso, 6 Rainha), as criaturas citadas (espantalho, gárgula, cão do inferno, serpente de gelo, mãe-esporo e anjo caído existem nos atos indicados), o rótulo LETHAL (`DamagePreviewPanel`, locale en) e a revoada (`swarm` no kit do Rei). Também medi a curva de loudness de curto prazo da faixa `boss-carrion_king.mp3` e conferi os graves no `_beats.json` (64 graves; nenhum entre 35,19 e 55,26 s da faixa). Régua: ≥ 9 em todos os critérios, com nota prevista para o filme que este roteiro produziria._
 
 ## Rodada 1, NÃO APROVADO

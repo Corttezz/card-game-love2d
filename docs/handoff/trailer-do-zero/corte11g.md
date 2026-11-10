@@ -1,5 +1,7 @@
 # Cut 11g (edit/mix only, from `revisao-grimoire-corte11f.md`, ae13205d)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Director, 03/11/2026. Tirano stays the main version, Rei the alternative. No new capture. Everything else from 11f2 is unchanged: card play 55 → 7/55 → kill, halls at ~1,1 s, CRT takes, Higgsfield halls, text cards, the logo_sting ending, and no zoom._
 
 > **NOT PUBLISHABLE UNTIL THE SFX ARE REPLACED OR LICENSED.**

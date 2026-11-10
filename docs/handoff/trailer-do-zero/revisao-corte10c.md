@@ -1,5 +1,7 @@
 # Revisão independente: corte 10c (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 02/11/2026. Arquivos: `grimoire_zero_corte10c_1080p.mp4` e `_720p.mp4` (Tirano) e `grimoire_zero_corte10c_rei_720p.mp4` (Rei), os três com 64,5 s e 3870 quadros. Base: `revisao-corte10b.md` (a7b3d112), decisão do Lead `E:\dev\_orquestracao\tdz_c10c.txt` (opção 1, regravar a luta) e `corte10c.md` (426872c1). Medi tudo de novo, com scripts próprios:_
 
 - _barra do Rei e painel HERO recortados 1:1 da 1080p, a 10 quadros/s de 38,8 a 50,4 s, nas duas versões;_

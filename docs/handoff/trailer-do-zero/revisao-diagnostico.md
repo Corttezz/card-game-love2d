@@ -1,5 +1,7 @@
 # Revisão: etapa 1, diagnóstico (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `diagnostico.md` (13.113 bytes, 14:22). Conferi por conta própria a folha de quadros de A e B (1 quadro/s), a curva EBU R128 de curto prazo do B_som (720p) e a contagem de cartas no código. Critérios: os 10 de `trailer-kinetic-referencias.md` e os trailers do gênero (StS, Balatro, Inscryption, Monster Train, Cobalt Core, Dicey Dungeons)._
 
 ## Rodada 1, nota 7,5/10

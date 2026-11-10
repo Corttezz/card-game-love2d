@@ -1,5 +1,7 @@
 # Frente: trailer-revisao-som (Grimoire)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 ## Frente
 _Escrita em 01/11/2026. Pedido do Daniel (via Grimoire) depois de assistir ao trailer B (`grimoire_kinetic_new.mp4`); o retorno vale também para A (`grimoire_kinetic_hook30.mp4`) e C (`grimoire_trailer_v9_kinetic.mp4`)._
 
@@ -14,9 +16,9 @@ _Escrita em 01/11/2026. Pedido do Daniel (via Grimoire) depois de assistir ao tr
 3. Remixagem, começando pelo B: SFX reais do jogo em primeiro plano nesses pontos (arquivos de `audio/` posicionados pelo `audio.jsonl` das tomadas, levados ao tempo do filme pela EDL; síntese só onde o jogo não tem o som), ducking da trilha, pausas de silêncio antes do chefe e do clímax, final com detalhe sonoro. Iterar em 1080p, depois master 4K a −14 LUFS e versão 720p. Depois A e C. Nomes novos (`*_som.mp4`); os masters atuais ficam intactos.
 
 ### Licença (atenção)
-O handoff `trailer-kinetic.md` registra que os SFX do jogo (`audio/sfx/**`, inclusive `castle-gate-open.mp3`) vêm do **ElevenLabs free, sem uso comercial**. Usar os SFX do jogo é decisão do Daniel nesta frente. A Entrega lista a origem de cada som, e toda versão que usa SFX ElevenLabs sai marcada **"não publicável até confirmar licença"**. Nada novo é gerado no ElevenLabs.
+O handoff `trailer-kinetic.md` registra que os SFX do jogo (`audio/sfx/**`, inclusive `castle-gate-open.mp3`) vêm do **ElevenLabs free, sem uso comercial**. Usar os SFX do jogo é decisão do Daniel nesta frente. A Entrega lista a origem de cada som, e toda versão que usa SFX ElevenLabs sai marcada **"não publicável até confirmar licença"**. Nada novo é gerado no ElevenLabs. — **áudio licenciado (Daniel, 10/11/2026)**
 
-**Atualização 01/11/2026 13:00:** o Daniel liberou o uso de **todos** os sons, inclusive os SFX do ElevenLabs free (como `castle-gate-open`). A versão serve para ele ver como fica; depois ele mesmo gera sons novos. Nenhum som deixa de ser usado por causa da licença. Toda versão com som do jogo leva a marca **"não publicável até trocar ou licenciar os SFX"**, e a Entrega anota a origem de cada som.
+**Atualização 01/11/2026 13:00:** o Daniel liberou o uso de **todos** os sons, inclusive os SFX do ElevenLabs free (como `castle-gate-open`). A versão serve para ele ver como fica; depois ele mesmo gera sons novos. Nenhum som deixa de ser usado por causa da licença. Toda versão com som do jogo leva a marca **"não publicável até trocar ou licenciar os SFX"**, e a Entrega anota a origem de cada som. — **áudio licenciado (Daniel, 10/11/2026)**
 
 ### Limites
 Headless sempre, sem janela visível nem roubo de foco; 1 `lovec` por vez, identidade `card-game-trailer-v9`, save real intocado; nunca matar processo por nome; 0 crédito (sem Scenario, ElevenLabs, PixelLab pago, Higgsfield); nada para Steam/depot; sem push; commits em nome de Daniel Cortez; suíte completa só via `suite_lock.sh`.
@@ -30,7 +32,7 @@ Headless sempre, sem janela visível nem roubo de foco; 1 `lovec` por vez, ident
 ## Entrega
 _01/11/2026. Remixagem dos três trailers com o som do jogo. A imagem é a dos masters aprovados, copiada sem recodificar no 4K e no 1080p; só o áudio é novo. 0 crédito gasto, nenhum `lovec` rodado, nada gerado no ElevenLabs, nada publicado, masters antigos intactos (30/10)._
 
-> **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX.** As nove versões abaixo usam SFX do jogo gerados no ElevenLabs free (sem uso comercial), além de três arquivos de origem não documentada (`audio/hoverCard.wav`, `audio/clickselect2-92097.mp3` e `audio/sword-sound-260274.mp3`, os dois últimos com padrão de nome Pixabay). O uso foi liberado pelo Daniel em 01/11 às 13:00 só para ele ver como fica. A música continua sendo a ACE-Step local (uso comercial).
+> **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX.** As nove versões abaixo usam SFX do jogo gerados no ElevenLabs free (sem uso comercial), além de três arquivos de origem não documentada (`audio/hoverCard.wav`, `audio/clickselect2-92097.mp3` e `audio/sword-sound-260274.mp3`, os dois últimos com padrão de nome Pixabay). O uso foi liberado pelo Daniel em 01/11 às 13:00 só para ele ver como fica. A música continua sendo a ACE-Step local (uso comercial). — **áudio licenciado (Daniel, 10/11/2026)**
 
 ### Arquivos (R = `E:\dev\projects\card-game-trailer\build\trailer`)
 
@@ -135,6 +137,6 @@ Tabela completa por arquivo, com quantas vezes aparece e em que tempos, para os 
 
 ### Pendências
 1. **Escuta humana.** Ninguém ouviu as mixagens: tudo foi conferido por medida (níveis dos stems nos pontos-chave, espectrograma, limitador, LUFS). O Daniel precisa ouvir os três 1080p, de preferência no fone e na caixa da TV.
-2. **Licença:** trocar ou licenciar os SFX do ElevenLabs free e os três arquivos sem origem antes de publicar. O Daniel vai gerar sons novos. Como o motor lê o `audio.jsonl` pelo caminho do arquivo, basta substituir os arquivos em `audio/sfx/` com o mesmo nome e rodar `python plan_X.py` + `python make_outputs.py X`, sem tocar na imagem.
+2. **Licença:** trocar ou licenciar os SFX do ElevenLabs free e os três arquivos sem origem antes de publicar. O Daniel vai gerar sons novos. Como o motor lê o `audio.jsonl` pelo caminho do arquivo, basta substituir os arquivos em `audio/sfx/` com o mesmo nome e rodar `python plan_X.py` + `python make_outputs.py X`, sem tocar na imagem. — **áudio licenciado (Daniel, 10/11/2026)**
 3. A bússola do logo não tem som próprio no jogo; usei o `boot-card-whoosh` (boot do jogo).
 4. O limitador ainda corta até 5,5 dB num transiente do rasante de C (44,05 s, 50 ms) e até cerca de 4,5 dB em quatro outros pontos. Se soar abafado, baixar o `crowCine`/`bossWingPass` de C na fonte.

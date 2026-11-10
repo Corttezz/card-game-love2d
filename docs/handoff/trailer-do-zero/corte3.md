@@ -1,5 +1,7 @@
 # Corte 3 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Entra: `revisao-grimoire-corte2.md` (NÃO MEXER + 5 correções na ordem), `revisao-corte2.md` (rodada 1, itens 1 a 9, e a análise de mixagem M1 a M5). **Sem 4K, sem Steam, sem push, sem save real. Nenhuma troca de faixa, texto ou salão.**_
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

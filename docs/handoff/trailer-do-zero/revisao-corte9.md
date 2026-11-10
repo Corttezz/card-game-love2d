@@ -1,5 +1,7 @@
 # Revisão: corte 9 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 02/11/2026. Base: `corte9.md` (commit edc2bf40), o feedback do Daniel (00:46, prioridade máxima), `revisao-grimoire-corte8.md` (00:07, fonte oficial, commit 83eea09e), `instrucao-corte9-0006.md`, as exigências extras do Grimoire (queda, respiro, Rei do mesmo lado) e os critérios de sempre. Vídeos: `grimoire_zero_corte9_1080p.mp4` (01:12), `_720p.mp4` (01:13) e `_rei_720p.mp4` (01:25); stems em `build\trailer\zero9\` e `zero9_rei\`. Método: luma de todos os quadros e loudness (`medir.py`), mixagem por plano (`mixagem.py`), respiro em janelas de 100 ms no `mix.wav`, força de ataque do grave e fluxo espectral (`flux.py`), deslocamento do fundo quadro a quadro no filme inteiro (correlação de fase), escala da câmera pelas posições das quatro tochas da parede, comparação dos finais com todos os cortes anteriores (`final_fp.py` e tempos das linhas do logo), folhas a 1, 4, 5, 10 e 20 quadros/s e recortes 1:1. Tudo em `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\f967decd-bccd-487a-92fd-ff59f9b0ee6d\scratchpad\rev\c9\`. Não ouvi._
 
 ## Feedback do Daniel (00:46)

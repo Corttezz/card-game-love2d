@@ -1,5 +1,7 @@
 # Revisão independente: corte 13, revisão 2 (trailer)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 03/11/2026. Read-only._
 
 _Arquivo regravado: `grimoire_trailer_c13_720p.mp4` (80,0 s). Stem de música `grimoire_trailer_c13_music.f32` com o ganho de +9,3 dB. Base: minha `revisao-corte13.md` (d3a1141c, 8,8, FAIL) e `corte13.md`, seção "Revisão 2"._

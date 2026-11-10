@@ -4,10 +4,13 @@ description: Como gerar efeitos sonoros novos pro jogo via ElevenLabs, o contrat
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # SFX Generation — ElevenLabs
 
 Pipeline usado desde Jul/2026 pros SFX do jogo. A chave do ElevenLabs fica na
-memória automática do Claude (`elevenlabs-api-key`) — é free tier, 10.000
+memória automática do Claude (`elevenlabs-api-key`) — é free tier, 10.000 — **áudio licenciado (Daniel, 10/11/2026)**
 créditos por ciclo, e o dono avisou que rotaciona. Se der 401, pedir a nova.
 
 ```

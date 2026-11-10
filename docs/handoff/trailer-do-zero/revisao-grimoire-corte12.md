@@ -1,5 +1,7 @@
 # Revisão independente: corte 12 (principal Rei-Carniça + variante com loja)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente (revisora-grimoire), 03/11/2026. Não li `revisao-corte12.md` nem nenhum `revisao-corte11*.md` da revisora do time. Medi tudo de novo direto dos mp4. Não ouvi as mixagens: o som foi avaliado pela stem de música, pelo envelope RMS de 100 ms, por loudness EBU R128 e pela margem dos golpes._
 
 ## Arquivos revisados

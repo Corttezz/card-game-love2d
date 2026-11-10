@@ -1,5 +1,7 @@
 # Revisão: corte 2 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `corte2.md` (17:30, commit `fb606ea4`), `revisao-grimoire-corte1.md` (7 pontos) e `E:\dev\_orquestracao\tdz_c2b.txt`. Arquivos: `grimoire_zero_corte2_1080p.mp4` (17:28, regravado depois da 1ª passada), `_720p.mp4` (17:29) e `grimoire_zero_corte2_rei_720p.mp4` (17:26), todos com 64,50 s e 60 fps. O que fiz: medidas quadro a quadro (luma, quadros quase pretos < 5%, cortes, R128 por segundo) com `...\scratchpad\rev\medir.py` (saídas `d3_1080\` e `d2_rei\`); distância de cada clipe e texto ao grave, pela `edl2.py` de cada variante (Tirano com deslocamento 18,0 s; Rei com 2,57 s até o silêncio e 16,10 s depois); quadros em resolução cheia e folhas da abertura, dos salões, das correntes, da Geada, da caminhada, do golpe e da entrada no escuro (`...\rev\g2\`). Não ouvi o áudio._
 
 ## Rodada 1, NÃO APROVADO (principal e variante)

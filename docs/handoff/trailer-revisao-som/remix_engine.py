@@ -13,7 +13,7 @@ ELEVEN = ('audio/sfx/',)
 LICENSE = {
     'audio/music/boss-': 'ACE-Step 1.5 local, uso comercial',
     'build/trailer/sfx_synth/': 'sintese local (tools/synth_trailer_sfx.py), sem licenca de terceiros',
-    'audio/sfx/': 'SFX do jogo gerado no ElevenLabs free: SEM uso comercial confirmado',
+    'audio/sfx/': 'SFX do jogo gerado no ElevenLabs: áudio licenciado (Daniel, 10/11/2026)',
     'audio/hoverCard.wav': 'origem nao documentada',
     'audio/clickselect2-92097.mp3': 'padrao Pixabay pelo nome, origem nao documentada',
     'audio/sword-sound-260274.mp3': 'padrao Pixabay pelo nome, origem nao documentada',

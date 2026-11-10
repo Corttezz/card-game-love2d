@@ -1,5 +1,7 @@
 # Revisão independente: corte 10b (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 02/11/2026. Arquivos: `grimoire_zero_corte10b_1080p.mp4` e `_720p.mp4` (Tirano) e `grimoire_zero_corte10b_rei_720p.mp4` (Rei), os três com 64,5 s e 3870 quadros. Base: `revisao-corte10.md` (aa991b4e) e `corte10b.md` (6afd08c5). Medi tudo de novo, com scripts próprios: folhas a 6, 10 e 12 quadros/s de 38,8 a 46,2 s, recortes 1:1 da barra do Rei e do painel HERO na 1080p, tempos do logo pelo brilho de cada linha, luma por quadro, `ebur128`, ataque de grave (30 a 160 Hz, subida em 30 ms) e fluxo espectral nas faixas `zero9/music_tirano.wav` e `zero9_rei/music_rei.wav`, e md5 dos quadros de 0 a 36 s contra o corte 10. Evidências em `C:\Users\corte\AppData\Local\Temp\rev10b\` (`t_barra.png`, `t_seq.png`, `r_seq.png`, `t_dreno.png`, `t_48.png`). Não ouvi._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX.**

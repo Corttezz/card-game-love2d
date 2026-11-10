@@ -1,5 +1,7 @@
 # Revisão: corte 3 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `corte3.md`, `revisao-grimoire-corte2.md` (5 pontos), `revisao-grimoire-corte1.md` (7 pontos) e os 14 critérios. Por ordem do Grimoire, esta rodada cobre **só a versão Tirano** (`grimoire_zero_corte3_1080p.mp4` de 17:57 e `_720p.mp4` de 17:58); a variante do Rei entra numa rodada própria, quando sair. O que fiz: medidas quadro a quadro (`medir.py` → `...\scratchpad\rev\e3_1080\`); folhas a 2 e 4 quadros/s da virada (43,9–53,1 s), das estradas (25,3–32,7 s) e quadros cheios dos salões, do espólio, do LETAL e do golpe (`...\rev\g3\`); mixagem sobre os stems reais `build\trailer\zero3\zero3_tirano\` (`mixagem.py` → `mix3_tirano.json`: nível por plano de cada stem, subida do grave da música em cada corte e perfil de 100 ms); leitura do `mix_sources.json`. Não ouvi._
 
 ## Versão Tirano, rodada 1: NÃO APROVADO

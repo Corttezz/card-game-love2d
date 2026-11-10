@@ -1,5 +1,7 @@
 # Revisão: etapa 4, corte 1 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente, 01/11/2026. Base: `corte1.md` (15:41) e os vídeos `E:\dev\projects\card-game-trailer\build\trailer\grimoire_zero_corte1_1080p.mp4` (1920×1080, 60 fps, 68,50 s, 15 Mb/s) e `..._720p.mp4` (1280×720, 60 fps, 6,1 Mb/s). O que fiz: folha de quadros a 2 quadros/s do filme inteiro; quadros em resolução cheia em 20 instantes; folhas a 3-4 quadros/s da cascata, da Revoada, das correntes e do final; movimento quadro a quadro dos planos de estrada; luma por plano; distância de cada clipe e texto ao grave (`corte/edl.py` × `boss-abyss_tyrant_beats.json`, deslocamento 1,60 s); EBU R128 por segundo (curto prazo e momentâneo) nos dois arquivos; leitura do `mix_sources.json` (399 eventos). Script: `C:\Users\corte\AppData\Local\Temp\claude\E--dev-projects-card-game-love2d\f967decd-bccd-487a-92fd-ff59f9b0ee6d\scratchpad\rev\medir.py`; medidas e imagens em `...\scratchpad\rev\c1_1080\` e `...\rev\fr\`. Não ouvi o áudio: o som foi avaliado por medida e pela lista de eventos. A escuta humana continua obrigatória, como a diretora disse._
 
 ## Rodada 1, NÃO APROVADO

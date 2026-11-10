@@ -1,5 +1,7 @@
 # Revisão independente do corte 11 (revisora-grimoire)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _03/11/2026. Revisora independente, só leitura. Medi tudo por quadros (ffmpeg) e por números. As revisões do time (`revisao-corte11*.md`) **não foram lidas** antes desta nota. As afirmações da diretora (`corte11.md`, `corte11_inventario.md`, `corte11_provas\`) foram tratadas como alegação e conferidas de novo._
 
 Arquivos revisados (`E:\dev\projects\card-game-trailer\build\trailer\`): `grimoire_trailer_c11_720p.mp4` (Tirano, 69,1 s), `grimoire_trailer_c11_rei_720p.mp4` (Rei, 69,7 s) e os masters 1080p. Referências: v5, v6, v8 master, kinetic B (`grimoire_kinetic_new_som_720p.mp4`), 10d 720p (rejeitado) e `brand\logo_sting.mp4`.

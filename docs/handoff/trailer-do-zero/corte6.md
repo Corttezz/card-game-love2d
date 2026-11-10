@@ -1,5 +1,7 @@
 # Corte 6 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Base: `revisao-grimoire-corte5.md` (commit 09ac75f6, 10 pontos). **Sem 4K, push, Steam ou save real. Um `lovec` por vez, headless. Nenhuma troca de faixa, texto ou salão.** Masters antigos intactos._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (ElevenLabs free). Música ACE-Step local. Salões do Higgsfield nos acentos (decisão do Daniel).

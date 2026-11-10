@@ -1,5 +1,7 @@
 # Referências para o trailer Kinetic Film do Grimoire
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Montado em 29/10/2026 para a frente `trailer-kinetic` (briefing: `docs/handoff/trailer-kinetic.md`). Nada renderizado. Fontes reais com link; o que é medição nossa está marcado como tal._
 
 **Método dos trailers:** baixei cada trailer em 360p (só para análise, `/tmp/tr` na box, não vai para o repo), medi a duração, contei cortes com `ffmpeg select='gt(scene,0.3)'` (contagem aproximada: não pega cortes em fade e conta flashes) e olhei quadros de 1 em 1 s nos primeiros 6 s e de 2 em 2 s nos últimos 10 s. Não deu para ouvir a música; por isso o "ritmo de cortes x música" é inferido da densidade de cortes, não medido no grave.

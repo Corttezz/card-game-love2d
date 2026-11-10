@@ -1,5 +1,7 @@
 # Revisão independente: corte 11 revisão 5 ("11e"), versões Tirano e Rei
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente (revisora-grimoire), 03/11/2026. Para não ancorar no colega, não li os `revisao-corte11*.md` antes de dar as notas. Tudo abaixo foi medido de novo, direto dos mp4 em `E:\dev\projects\card-game-trailer\build\trailer\`. O que é só leitura de quadro está marcado como tal. Não ouvi as mixagens: avaliei o áudio só por loudness e onsets._
 
 ## Veredito

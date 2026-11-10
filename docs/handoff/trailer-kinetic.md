@@ -1,5 +1,7 @@
 # Frente: trailer-kinetic (Grimoire)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 ## Frente
 _Escrita pelo grimoire em 29/10/2026. Pedido do Daniel (via chefe): "olhe as conversas que tivemos ja no grimoire sobre o trailer do nosso jogo etc quero que vc use isso ai parafazer um tariler e melhorar esse nosso ai"._
 
@@ -10,7 +12,7 @@ _Escrita pelo grimoire em 29/10/2026. Pedido do Daniel (via chefe): "olhe as con
 - Skill: `~/.claude/skills/scenario-kinetic-film` (box), **sem a Scenario**; venv/playwright em `/home/box/agent-home/skills-externas/kinetic-film/`. Aguardar o chefe confirmar que o teste de instalação passou.
 
 ### Trailer atual (resumo)
-> **O v8 (todas as versões: 1080p, 4K, review) NÃO é publicável** até o Daniel mostrar a licença da trilha `trailer_T4.wav` (decisão do Grimoire, 30/10/2026). Além disso, o áudio do v8 traz SFX do jogo (ElevenLabs free). Os clipes extraídos dele para o kinetic são só imagem, sem áudio.
+> **O v8 (todas as versões: 1080p, 4K, review) NÃO é publicável** até o Daniel mostrar a licença da trilha `trailer_T4.wav` (decisão do Grimoire, 30/10/2026). Além disso, o áudio do v8 traz SFX do jogo (ElevenLabs free). Os clipes extraídos dele para o kinetic são só imagem, sem áudio. — **áudio licenciado (Daniel, 10/11/2026)**
 
 - **Arquivo:** `E:\dev\projects\card-game-trailer\build\trailer\grimoire_trailer_v8.mp4` (1920x1080, 60 fps, 62,0 s); 4K: `grimoire_trailer_v8_4k.mp4`; revisão: `grimoire_trailer_v8_review.mp4`. Commit v8b `f68db8e5` (26/10, 01:02), branch `steam-store-v2` no worktree `card-game-trailer`.
 - **Desenho:** `docs\steam\trailer-v8-design.md` (linha do tempo completa) e `docs\steam\trailer-v7-design.md` (regras e promessa). Editor: `tools\trailer_v3.py` com `TRAILER_CUT=trailer_v8_cut` (`tools\trailer_v8_cut.py`); graves medidos em `build\trailer\music\trailer_T4_beats.json` (`tools\trailer_beats.py`).
@@ -30,8 +32,8 @@ _Escrita pelo grimoire em 29/10/2026. Pedido do Daniel (via chefe): "olhe as con
 - **Música:**
   - `R\build\trailer\music\trailer_T4.wav` (base do v7/v8, beats em `trailer_T4_beats.json`) e `trailer_T1.wav` (v3/v4). **Origem/licença não documentada** — ver lacunas.
   - `R\audio\music\boss-carrion_king.mp3` e `boss-abyss_tyrant.mp3`: geradas localmente com **ACE-Step 1.5, uso comercial ok** (`docs\steam\store-page-v2.md`). Também `boss-tower_lich.mp3`, `boss-winter_monarch.mp3` (provavelmente ACE-Step, confirmar).
-  - `R\audio\music\music-act1..6.mp3`, `music-boss*.mp3`, `music-rest/shop.mp3`, `audio\music.mp3` e as mesmas em `E:\dev\projects\card-game-trilha\audio\music\`: **licença não documentada**; a pesquisa de 20/10 diz que "a música atual veio do plano gratuito do ElevenLabs" → tratar como **sem licença comercial** até prova em contrário.
-- **SFX:** os SFX do jogo (`audio\sfx\**`, 97+ arquivos; `audio\sfx\boss\*` no trilha; `tools\stingers_src\*`; `tools\preview_out\vozes_inimigos\raw\el_*`) vêm do **ElevenLabs free = SEM uso comercial** (gerados por `tools\generate_sfx.py`/`gen_entrance_sfx.py`). Isso inclui o `castleGateOpen` (`castle-gate-open.mp3`). Permitidos: blips sintetizados localmente (`tools\synth_narrator_blips.py`, zero licença) e SFX sintetizados por código no próprio Kinetic Film. Os antigos `audio\clickselect2-92097.mp3`, `sword-sound-260274.mp3`, `punching-light-armour-87442.mp3` (padrão Pixabay pelo nome) e `deckStart.mp3`/`hoverCard.wav`: origem não documentada, não usar sem confirmar.
+  - `R\audio\music\music-act1..6.mp3`, `music-boss*.mp3`, `music-rest/shop.mp3`, `audio\music.mp3` e as mesmas em `E:\dev\projects\card-game-trilha\audio\music\`: **licença não documentada**; a pesquisa de 20/10 diz que "a música atual veio do plano gratuito do ElevenLabs" → tratar como **sem licença comercial** até prova em contrário. — **áudio licenciado (Daniel, 10/11/2026)**
+- **SFX:** os SFX do jogo (`audio\sfx\**`, 97+ arquivos; `audio\sfx\boss\*` no trilha; `tools\stingers_src\*`; `tools\preview_out\vozes_inimigos\raw\el_*`) vêm do **ElevenLabs free = SEM uso comercial** (gerados por `tools\generate_sfx.py`/`gen_entrance_sfx.py`). Isso inclui o `castleGateOpen` (`castle-gate-open.mp3`). Permitidos: blips sintetizados localmente (`tools\synth_narrator_blips.py`, zero licença) e SFX sintetizados por código no próprio Kinetic Film. Os antigos `audio\clickselect2-92097.mp3`, `sword-sound-260274.mp3`, `punching-light-armour-87442.mp3` (padrão Pixabay pelo nome) e `deckStart.mp3`/`hoverCard.wav`: origem não documentada, não usar sem confirmar. — **áudio licenciado (Daniel, 10/11/2026)**
 - **Capturas:** frames TGA 1080p em `%APPDATA%\LOVE\card-game-trailer\trailer\<shot>\` (act1_mage, act2_griffin, act3_hellhound, act4_wyrm, act5_spore, act6_dullahan, boss_carrion/lich/tyrant/monarch/eclipse, cards, hand_hover, fork, intro, menu, reward, shop, victory, collection, journal, classsel, ai_book) + `audio.jsonl`. Os takes do v8 (`entrances`, `deck8`, `boss8`, identidade `card-game-trailer-v8`) **não estão mais no disco**; se precisar, sair do próprio mp4 v8 ou regravar headless (`tools\trailer_record.lua`, ver `memory\trailer_capture.md`) — regravar roda `lovec` headless: 1 por vez, nunca com janela, e só se o Daniel não estiver jogando.
 - **B-roll:** salões 4K `R\build\trailer\ai_4k\hall1..5_*.mp4` (Higgsfield, IA, declarar na Steam); `ai\castle_hall_*.mp4`. **Não usar** `ai\abyss/splash/catacumbs/stone_tower.mp4` (cenários que não existem mais no jogo).
 - **Marca:** `R\build\trailer\brand\logo_final.png`, `logo_sting.mp4` (6,5 s), `tv_frame.png`, `tv_glass.png`, `bezel_mask.png`, `bezel_ring.png`; `tools\trailer_brand.py`.
@@ -40,7 +42,7 @@ _Escrita pelo grimoire em 29/10/2026. Pedido do Daniel (via chefe): "olhe as con
 ### Critério de pronto
 - 2 mp4 finais renderizados em 1080p: `R\build\trailer\grimoire_kinetic_new.mp4` e `R\build\trailer\grimoire_trailer_v9_kinetic.mp4` (+ folhas de contato de revisão).
 - Duração alvo Steam: 45–90 s (mediana de referência 72 s; v8 tem 62 s). Gameplay antes de 4 s no que for candidato a 1º vídeo.
-- Nenhum asset pago e nenhum asset sem licença comercial: a música usada tem que ser comprovadamente de uso comercial (ACE-Step local) e os SFX sintetizados/permitidos; listar a origem de cada faixa e efeito na Entrega. Se não der para fechar sem ElevenLabs free, entregar marcado **"não publicável"** e dizer qual arquivo bloqueia.
+- Nenhum asset pago e nenhum asset sem licença comercial: a música usada tem que ser comprovadamente de uso comercial (ACE-Step local) e os SFX sintetizados/permitidos; listar a origem de cada faixa e efeito na Entrega. Se não der para fechar sem ElevenLabs free, entregar marcado **"não publicável"** e dizer qual arquivo bloqueia. — **áudio licenciado (Daniel, 10/11/2026)**
 - Tudo em nome de **Daniel Cortez**; sem Co-Authored-By, sem menção a Claude, Grok ou Codex (no vídeo, metadados e commits).
 - Seção "## Entrega" com caminho dos mp4, duração, resolução, o que mudou em relação ao v8, origem/licença de cada áudio.
 
@@ -52,8 +54,8 @@ _Escrita pelo grimoire em 29/10/2026. Pedido do Daniel (via chefe): "olhe as con
 - Não publicar nada (Steam/redes): a subida do trailer na página da loja é com o Daniel.
 
 ### Lacunas conhecidas
-1. `trailer_T4.wav`/`trailer_T1.wav` (música do trailer atual) sem origem/licença registrada; a pesquisa de 20/10 diz que a música atual veio do ElevenLabs free. Se for o caso, o v8 inteiro não é publicável como está e a versão melhorada precisa trocar a trilha (ACE-Step do Rei-Carniça/Tirano) e refazer o corte nos graves dela.
-2. Todos os SFX do jogo são ElevenLabs free (incluindo o som da porta que o Daniel pediu audível).
+1. `trailer_T4.wav`/`trailer_T1.wav` (música do trailer atual) sem origem/licença registrada; a pesquisa de 20/10 diz que a música atual veio do ElevenLabs free. Se for o caso, o v8 inteiro não é publicável como está e a versão melhorada precisa trocar a trilha (ACE-Step do Rei-Carniça/Tirano) e refazer o corte nos graves dela. — **áudio licenciado (Daniel, 10/11/2026)**
+2. Todos os SFX do jogo são ElevenLabs free (incluindo o som da porta que o Daniel pediu audível). — **áudio licenciado (Daniel, 10/11/2026)**
 3. Takes do v8 apagados do AppData.
 4. Sem feedback registrado do Daniel sobre o v8.
 
@@ -102,7 +104,7 @@ Checklist do Daniel, itens parciais: tomadas regravadas no código da `steam-sto
 
 ### O que mudou em relação ao v8
 - **Trilha:** T4 (sem licença comprovada) sai; entra uma faixa ACE-Step contínua e séria, ligada ao chefe (Rei-Carniça em B e C, Tirano em A), cortada nos graves medidos.
-- **Som:** nenhum SFX do jogo (ElevenLabs free). TV, whooshes, golpes, porta, glitch e selo são sintetizados localmente, com ganhos medidos contra a música.
+- **Som:** nenhum SFX do jogo (ElevenLabs free). TV, whooshes, golpes, porta, glitch e selo são sintetizados localmente, com ganhos medidos contra a música. — **áudio licenciado (Daniel, 10/11/2026)**
 - **TV:** de 3 s de TV sem música para 0,75 a 1,0 s, com **pôster de gameplay no quadro 0** (Steam mostra o 1º quadro antes do play).
 - **Texto:** os cartões viraram tipografia kinetic palavra a palavra no grave, em Grimoire Pixel inteira, sem blur nem brilho. Nomes de chefe e as 2 telas pretas de frase saíram.
 - **Moldura do CRT em 100 % dos quadros**, incluindo salões e logo (o v8 perdia a moldura no logo).
@@ -146,7 +148,7 @@ As tomadas usadas nos três trailers foram gravadas nesse código, 2 commits de 
 3. **Coringas com rosto:** conferido pela folha de contato e em recortes 1:1. Resta um artefato pequeno: durante a faixa COMBO da luta (~0,5 s em A, B e C), a parte reconstruída da faixa mostra listras horizontais leves. Se incomodar, a saída é regravar com a faixa de coringas desligada no HUD.
 4. **Merge da `main` / suíte:** os 4 FAIL e o CRASH acima. Depois de resolver, regravar se as 2 mudanças de estrada da `main` precisarem aparecer.
 5. **Melhorias opcionais:** nenhuma pendente no C (grifo, porta de fora e cauda já entraram). Os textos novos de A/B (PLAY., BREAK., EVERY CARD IS ALIVE., BEND EVERY HAND.) já foram aprovados pelo Daniel (repassado pelo Grimoire). Opcionais: abrir o cartão final do A para ~4 s; conferir o microtrailer da Steam depois do upload.
-6. **Licença da T4:** o v8 (todas as versões) continua **não publicável** até a licença de `trailer_T4.wav` aparecer. Nenhum dos três novos usa a T4.
+6. **Licença da T4:** o v8 (todas as versões) continua **não publicável** até a licença de `trailer_T4.wav` aparecer. Nenhum dos três novos usa a T4. — **áudio licenciado (Daniel, 10/11/2026)**
 7. **IA declarada:** os salões `ai_4k/hall1..5` (Higgsfield) aparecem em A, B e C e precisam ser declarados na Steam.
 8. Apagar as 4 pastas listadas (14,1 GB) só com OK explícito.
 

@@ -1,5 +1,7 @@
 # Revisão independente: corte 11g revisão 2 FINAL (com limitador de áudio), versões Tirano e Rei
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente (revisora-grimoire), 03/11/2026. Não li `revisao-corte11g.md` nem `revisao-corte11g2.md` (revisora do time). As alegações da diretora (`corte11g.md`) foram medidas de novo, direto dos mp4. Não ouvi as mixagens: o som foi avaliado por loudness, envelope RMS, banda grave e onsets._
 
 ## Que arquivo foi revisado

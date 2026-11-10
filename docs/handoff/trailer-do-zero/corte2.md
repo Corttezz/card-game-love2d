@@ -1,5 +1,7 @@
 # Corte 2 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Entra tudo de `revisao-grimoire-corte1.md` (7 pontos), os textos aprovados pelo Daniel (01/11 16:39), as 2 sugestões de `tdz_c2.txt` e as decisões de música de `tdz_c2b.txt`. **Sem 4K, sem Steam, sem push, sem save real.**_
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX** (SFX do jogo gerados no ElevenLabs free). Música ACE-Step local (uso comercial). Salões do Higgsfield nos acentos (decisão do Daniel; declaração de IA na Steam pendente com ele).

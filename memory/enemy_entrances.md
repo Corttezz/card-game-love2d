@@ -4,6 +4,9 @@ description: Entradas por inimigo (36 comuns/elites/mini-chefes): motor EnemyEnt
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # Entradas por inimigo (22/Out/2026)
 
 Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido do dono: cada bicho chega de um jeito
@@ -241,7 +244,7 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   (recorte 1:1 do ultimo quadro do encontro e do 1o da batalha) e `folha.png`; copiar para `tools/preview_out/entradas/`.
 
 ## Som proprio por criatura (22/Out/2026)
-- Dono: "sons genericos... quero sons especificos para cada monstro". 52 mp3 gerados no ElevenLabs (free, 10 creditos por
+- Dono: "sons genericos... quero sons especificos para cada monstro". 52 mp3 gerados no ElevenLabs (free, 10 creditos por — **áudio licenciado (Daniel, 10/11/2026)**
   segundo pedido; 961 gastos, 322 sobraram) em `audio/sfx/entrances/<id>_<beat>.mp3`: 36 assinaturas (uma por criatura, no
   beat principal: skid do touro, wake da efigie, rise de quem sai do chao, stop de quem pousa/condensa) + 16 segundos beats
   (bull/hound/troll/croc/brute `stop` no lugar do `enemyBuffRoar`, griffin/harpy/anjo `start`, gargula/sentinela/glacier

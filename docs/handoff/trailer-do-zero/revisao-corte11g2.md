@@ -1,5 +1,7 @@
 # Revisão independente: corte 11g, revisão 2 (trailer)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora, 03/11/2026. Read-only._
 
 _Arquivos (regravados): `grimoire_trailer_c11g_720p.mp4` (Tirano, 67,4 s) e `grimoire_trailer_c11g_rei_720p.mp4` (Rei, 68,4 s). Base: minha `revisao-corte11g.md` (f1fb98a1) e `corte11g.md`, seção "Revision 2" (6c1ef487)._

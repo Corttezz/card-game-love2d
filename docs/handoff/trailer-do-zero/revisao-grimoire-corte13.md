@@ -1,5 +1,7 @@
 # Revisão independente: corte 13 rev 2
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Revisora independente (revisora-grimoire), 03/11/2026. Não li `revisao-corte13.md` nem `revisao-corte13b.md`. Medi tudo de novo direto do mp4, com quadros extraídos agora. Não ouvi a mixagem: o som foi avaliado pelo envelope RMS de 100 ms, pela stem de música, por loudness EBU R128 e pela margem dos golpes._
 
 ## Arquivo revisado

@@ -4,6 +4,9 @@ description: Out/2026. Coringa próprio de cada chefe (6, lendários, class "bos
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # Coringa do chefe (Out/2026, pedido do dono)
 
 > "Quando cada boss morre, a partir do corpo dele sobe uma carta que fica
@@ -42,7 +45,7 @@ pegá-lo. A ideia de cada carta é um TROFÉU do chefe vencido.
   curto + farfalhar de pena (0,8 s; prompt em `tools/generate_sfx.py`,
   `joker_boss_carrion`). O recorte anterior do `cine_2` v1 media centroide de
   838 Hz, quase nada entre 1 e 4 kHz: rosnado, não grasnado (ver
-  `memory/boss_mechanics.md`, "Som dos corvos", v2). ElevenLabs FREE: entram na
+  `memory/boss_mechanics.md`, "Som dos corvos", v2). ElevenLabs FREE: entram na — **áudio licenciado (Daniel, 10/11/2026)**
   lista de regenerar antes de vender.
 
 ## Arte

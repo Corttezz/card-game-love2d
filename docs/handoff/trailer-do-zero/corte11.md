@@ -1,5 +1,7 @@
 # Cut 11 (rebuilt from the brief, not patched)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Director, 02/11/2026. Base: Daniel's rejection of cut 10d (22:30) and `corte11_inventario.md` (commit 32131e50). Built with the v8 engine (`E:\dev\projects\card-game-trailer\tools\trailer_v3.py`) and a new cut file `tools/trailer_c11_cut.py` on branch `steam-store-v2` of the trailer worktree. No new capture. No zoom. No 4K, no push, nothing published._
 
 > **NOT PUBLISHABLE UNTIL THE SFX ARE REPLACED OR LICENSED** (ElevenLabs free plan). Music: ACE-Step local (`boss-abyss_tyrant.mp3` main, `boss-carrion_king.mp3` alt). Halls: Higgsfield originals (AI, non-gameplay mood shots, labelled with the boss names).

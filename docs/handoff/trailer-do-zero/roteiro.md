@@ -1,5 +1,7 @@
 # Etapa 3: roteiro (trailer-do-zero), rodada 2
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Rodada 2 depois de `revisao-roteiro.md` (respostas em `resposta-roteiro.md`). Nome de trabalho: **"Contra as regras"**. Alvo: 1º vídeo da página da Steam, **68,5 s**, 1920×1080, 60 fps. Tomadas já gravadas (sem CRT, carta a 2 px por pixel lógico) em `%APPDATA%\LOVE\card-game-trailer-v9\trailer_zero\`: `zero_hand`, `fork_a1`, `night_a1`, `entr_moon_gargoyle`, `entr_hellhound`, `entr_ice_wyrm`, `entr_spore_mother`, `entr_fallen_angel`, `zero_carrion`, `zero_monarch`, `zero_tyrant`._
 
 ## 1. Conceito

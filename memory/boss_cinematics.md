@@ -4,6 +4,9 @@ description: Out/2026. Cinemática de chefe (entrada no salão VAZIO + morte em 
 type: project
 ---
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
+
 # Cinemática de chefe (Out/2026) — protótipo no rei-carniça
 
 **Ordem fixada pelo dono:** porta do castelo abre (cerimônia já existente,
@@ -126,7 +129,7 @@ soltavam corvos PROCEDURAIS (máscara ASCII 7x4 em blocos `px()`, locais
   carrion_king: `dive` (rasante), `land` (pouso), `roar` (cartão).
   `EnemyRenderer.playClip(name, fps)` toca one-shot e volta pro idle;
   `hasClip` decide. Prancha: `python tools/pixellab_boss_cine.py sheet <id>`.
-- **Som em tudo** (`audio/sfx/boss/`, ElevenLabs FREE — regerar): olhos
+- **Som em tudo** (`audio/sfx/boss/`, ElevenLabs FREE — regerar): olhos — **áudio licenciado (Daniel, 10/11/2026)**
   (ignite + rumble loop + blink click), rasante (wing pass com pitch por
   distância, crows caw na 1ª), pouso (land impact, feathers settle 0.45 s
   depois, caw), cartão (sting); morte (death thud no slowmo, feather burst +

@@ -1,5 +1,7 @@
 # Etapa 4: corte 1 (trailer-do-zero)
 
+> **Correção (10/11/2026): áudio licenciado (Daniel, 10/11/2026).** As marcas deste arquivo como "não publicável até trocar ou licenciar os SFX", "ElevenLabs free, sem uso comercial" ou "regerar/regenerar antes de vender" são históricas e não valem mais; não regerar nem trocar áudio por causa de licença.
+
 _Diretora, 01/11/2026. Primeiro corte do roteiro "Contra as regras" (rodada 2). **Nenhuma saída 4K** (os salões `ai_4k` entram só como insumo, reduzidos à grade de 400×225 do salão real)._
 
 > **NÃO PUBLICÁVEL ATÉ TROCAR OU LICENCIAR OS SFX.** O som usa SFX do jogo gerados no ElevenLabs free (liberação do Daniel de 01/11 13:00, só para ver). A música é ACE-Step local (uso comercial). Textos marcados ⚠️ no roteiro são novos e dependem do OK do Daniel; a reserva aprovada está ao lado de cada um.
