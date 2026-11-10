@@ -9,7 +9,7 @@ W, H, FPS = 1920, 1080, E.FPS
 WORK = os.path.join(E.OUT, 'work')
 RED = (226, 52, 44, 255)
 FONT = r'E:\dev\projects\card-game-trailer-zero\assets\fonts\pixel.ttf'
-LOGO = os.path.join(E.R, 'build', 'trailer', 'brand', 'logo_final.png')
+LOGO = os.environ.get('TDZ_LOGO') or os.path.join(E.R, 'build', 'trailer', 'brand_runemoire', 'logo_final.png')
 ENC = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10', '-pix_fmt', 'yuv444p', '-r', str(FPS)]
 PARCH = (244, 230, 200, 255)
 GOLD = (232, 184, 80, 255)
@@ -365,13 +365,29 @@ def text_layer(lines, y, gold, size=64, xc=None):
     return img
 
 
+def logo_boxes(logo):
+    a = np.array(logo)[..., 3] > 0
+    rows = np.nonzero(a.any(1))[0]
+    gaps = np.nonzero(np.diff(rows) > 1)[0]
+    split = rows[gaps[0]] + 1 if len(gaps) else rows[0] + (rows[-1] - rows[0]) // 2
+    boxes = []
+    for y0, y1 in ((rows[0], split), (split, rows[-1] + 1)):
+        cols = np.nonzero(a[y0:y1].any(0))[0]
+        ys = np.nonzero(a[y0:y1].any(1))[0]
+        boxes.append((int(cols[0]), int(y0 + ys[0]), int(cols[-1]) + 1, int(y0 + ys[-1]) + 1))
+    return boxes[0], boxes[1]
+
+
 def logo_segment(c, last_frame, out):
     n = nframes(c)
     L = E.LOGO
     logo = Image.open(LOGO).convert('RGBA')
     la = np.array(logo)
-    seal = logo.crop((730, 90, 1195, 550))
-    word = logo.crop((440, 570, 1485, 775))
+    seal_box, word_box = logo_boxes(logo)
+    seal = logo.crop(seal_box)
+    word = logo.crop(word_box)
+    wx, wy = word_box[0], word_box[1]
+    scx, scy = (seal_box[0] + seal_box[2]) // 2, (seal_box[1] + seal_box[3]) // 2
     font = ImageFont.truetype(FONT, 40)
     font2 = ImageFont.truetype(FONT, 48)
     lf = cv2.cvtColor(last_frame, cv2.COLOR_BGR2RGB)
@@ -407,13 +423,13 @@ def logo_segment(c, last_frame, out):
             size = int(round(card.height * (1 - m) + seal.height * m))
             sw = max(2, int(size * seal.width / seal.height * sx) // 2 * 2)
             ss = seal.resize((sw, size), Image.NEAREST)
-            px = int(round(cx * (1 - m) + 962 * m)); py = int(round(cy * (1 - m) + 320 * m))
+            px = int(round(cx * (1 - m) + scx * m)); py = int(round(cy * (1 - m) + scy * m))
             im.alpha_composite(ss, (px - sw // 2, py - size // 2))
             if t >= L['grimoire']:
                 k2 = min(1.0, (t - L['grimoire']) / 0.5)
                 cols = int(word.width * k2) // 8 * 8
                 if cols > 0:
-                    im.alpha_composite(word.crop((0, 0, cols, word.height)), (440, 570))
+                    im.alpha_composite(word.crop((0, 0, cols, word.height)), (wx, wy))
             d = ImageDraw.Draw(im); d.fontmode = '1'
             if t >= L['genre']:
                 s = 'A ROGUELIKE DECKBUILDER'
