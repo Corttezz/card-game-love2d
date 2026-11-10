@@ -195,7 +195,7 @@ function M.run()
             t:truthy(tag .. ": escala inteira >= 1 (P=" .. L.P .. ")", L.P >= 1 and L.P == math.floor(L.P))
             t:truthy(tag .. ": origem no pixel fisico", L.ox == math.floor(L.ox) and L.oy == math.floor(L.oy))
             local D = require("src.data.menu_brand")
-            t:truthy(tag .. ": palavra ate 42% da largura", D.word.w * L.P <= w * MenuBrand.ZONE.wordMaxW + 0.5)
+            t:truthy(tag .. ": palavra dentro de wordMaxW da largura", D.word.w * L.P <= w * MenuBrand.ZONE.wordMaxW + 0.5)
             local want = OLD_P[tag] and math.ceil(OLD_P[tag] * 1.5) or 1
             t:truthy(("%s: palavra >= 1,5x o tamanho antigo (P=%d, antes %s)"):format(tag, L.P, tostring(OLD_P[tag])),
                 L.P >= want)

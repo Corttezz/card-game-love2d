@@ -61,11 +61,14 @@ def dilate(m, r=1):
     return out
 
 
+TITLE = "RUNEMOIRE"
+
+
 def logo(scale=6, letter=(3, 2), tagline=False):
-    """GRIMOIRE em metal dourado: glifo nativo → blocos `letter`x`letter` →
+    """Título do jogo (TITLE) em metal dourado: glifo nativo → blocos `letter`x`letter` →
     bisel (topo claro, base escura, faixas de ouro por linha) → contorno de
     tinta 1px → contorno de sangue seco 1px → sombra deslocada → x`scale`."""
-    g = glyph_mask("GRIMOIRE")
+    g = glyph_mask(TITLE)
     # glifo esticado na VERTICAL (3:2): título de grimório é alto e estreito,
     # e o bloco quadrado da fonte lia como placar de fliperama
     g = np.kron(g, np.ones(letter, bool))
