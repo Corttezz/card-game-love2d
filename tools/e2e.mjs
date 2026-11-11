@@ -13,8 +13,16 @@ const open = async (p, w = 1440, h = 900) => {
   pg.on('console', (x) => { if (x.type() === 'error' && !p.includes('nada') && !/api\/view/.test(x.text())) errs.push(p + ' ' + x.text()); });
   pg.on('pageerror', (e) => errs.push(p + ' ' + e.message));
   await pg.goto(base + p, { waitUntil: 'networkidle' }); await pg.waitForTimeout(600);
+  if (await pg.isVisible('#screenhit')) { await pg.waitForTimeout(900); await pg.click('#screenhit'); await pg.waitForTimeout(1100); }
   return { ctx, pg };
 };
+{
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } }); const pg = await ctx.newPage();
+  await pg.goto(base + '/', { waitUntil: 'networkidle' }); await pg.waitForTimeout(1500);
+  ok('abre no computador do jogo com a tela ligada', await pg.isVisible('#computer') && await pg.evaluate(() => document.documentElement.classList.contains('mode-desk') && !document.getElementById('tv').classList.contains('off')));
+  ok('a tela dentro do monitor não recebe teclado', await pg.evaluate(() => document.getElementById('tv').hasAttribute('inert')));
+  await ctx.close();
+}
 const LBL = { '/': 'PLAY', '/pt/': 'JOGAR', '/es/': 'JUGAR', '/fr/': 'JOUER', '/de/': 'SPIELEN' };
 for (const [p, word] of Object.entries(LBL)) for (const w of [1440, 390]) {
   const { ctx, pg } = await open(p, w, w < 600 ? 844 : 900);
@@ -42,10 +50,12 @@ for (const [p, word] of Object.entries(LBL)) for (const w of [1440, 390]) {
   ok('carta flutuante vira e mostra carta do jogo', (await pg.getAttribute('.hang.left', 'aria-pressed')) === 'true' && /\/img\/gamecards\/en\//.test(src), src);
   await pg.focus('.menu a[data-open="play"]'); await pg.keyboard.press('ArrowDown');
   ok('setas movem a seleção do menu', await pg.evaluate(() => document.activeElement?.getAttribute('data-open') === 'collection'));
-  await pg.click('.menu a[data-open="quit"]'); await pg.waitForTimeout(1500);
-  ok('sair apaga a cena e mostra o selo', await pg.isVisible('#quit.show') && await pg.evaluate(() => document.getElementById('main').hasAttribute('inert')));
-  await pg.click('.seal-btn'); await pg.waitForTimeout(1500);
-  ok('selo reacende', !(await pg.isVisible('#quit.show')) && await pg.evaluate(() => document.getElementById('quit').hasAttribute('inert')));
+  await pg.click('.menu a[data-open="quit"]'); await pg.waitForTimeout(1200);
+  ok('sair desliga a TV e volta ao computador', await pg.evaluate(() => document.documentElement.classList.contains('mode-desk') && document.getElementById('tv').classList.contains('off')));
+  await pg.click('#screenhit'); await pg.waitForTimeout(1200);
+  ok('clicar na tela apagada liga a TV', await pg.evaluate(() => !document.getElementById('tv').classList.contains('off')));
+  await pg.click('#screenhit'); await pg.waitForTimeout(1200);
+  ok('clicar de novo mergulha na tela cheia', await pg.evaluate(() => document.documentElement.classList.contains('mode-full') && !document.getElementById('tv').hasAttribute('inert')));
   await pg.click('.menu a[data-open="settings"]'); await pg.click('#opt-crt');
   ok('opção CRT desliga', !(await pg.evaluate(() => document.body.classList.contains('crt'))));
   await pg.click('#opt-motion');

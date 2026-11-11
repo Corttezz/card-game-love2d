@@ -28,10 +28,11 @@ out["panel"] = cp("assets/sprites/ui/panel_main.png", "panel.png")
 _p = Image.open(os.path.join(IMG, "panel.png")).convert("RGBA")
 _p.crop(_p.getbbox()).save(os.path.join(IMG, "panel.png"))
 out["panel"] = Image.open(os.path.join(IMG, "panel.png")).size
+out["computer"] = cp("assets/sprites/intro/computer.png", "computer.png")
 out["ach"] = cp("assets/sprites/achievements/primeira_pagina.png", "ach.png")
 out["ach_locked"] = cp("assets/sprites/achievements/primeira_pagina_locked.png", "ach_locked.png")
 # sons do próprio jogo (só tocam com o som ligado)
-for f in ["button-click", "menu-hover", "menu-open", "menu-close", "card-discovered"]:
+for f in ["button-click", "menu-hover", "menu-open", "menu-close", "card-discovered", "boot-tv-power-on", "boot-card-whoosh", "boot-vortex"]:
     shutil.copyfile(os.path.join(GAME, "audio/sfx", f + ".mp3"), os.path.join(MED, f + ".mp3"))
 # música do menu, mais leve para a web (mono 96 kbps)
 subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", os.path.join(GAME, "audio/music.mp3"), "-ac", "1", "-b:a", "96k", os.path.join(MED, "menu.mp3")], check=True)

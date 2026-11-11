@@ -35,11 +35,15 @@ const CANDLES: [number, number][] = [[0.209, 0.44], [0.770, 0.44]];
 // O canvas tem o tamanho da cena em pixels DO JOGO (cw x ch) e o navegador o amplia k vezes, sem suavizar:
 // mesma pixel art, k² menos trabalho por quadro do que desenhar na resolução do aparelho.
 let cw = 0, ch = 0, ox = 0, oy = 0;
+const tv = $('#tv');
+// tamanho da tela em px de CSS (a tela pode estar dentro do monitor, em tamanho virtual, ou em tela cheia)
+const tvSize = () => ({ w: tv?.clientWidth || innerWidth, h: tv?.clientHeight || innerHeight });
 function layout() {
   if (!cv || !ctx) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  W = Math.round(innerWidth * dpr); H = Math.round(innerHeight * dpr);
-  const portrait = innerWidth / innerHeight < 0.8;
+  const { w: TW, h: TH } = tvSize();
+  W = Math.round(TW * dpr); H = Math.round(TH * dpr);
+  const portrait = TW / TH < 0.8;
   // retrato: ~234 px da cena na largura: as duas velas ficam cortadas nas bordas (velas em x 84 e 308 da cena)
   k = portrait ? Math.max(1, Math.floor(W / 234)) : Math.max(1, Math.ceil(Math.max(W / 400, H / 256)));
   cw = Math.ceil(W / k); ch = Math.ceil(H / k);
@@ -47,16 +51,38 @@ function layout() {
   cv.style.width = `${(cw * k) / dpr}px`; cv.style.height = `${(ch * k) / dpr}px`;
   ctx.imageSmoothingEnabled = false;
   ox = Math.round((cw - 400) / 2);
-  // retrato: a capela mais perto (o livro ocupa a largura, velas cortadas nas bordas), com o livro a 3/4 da altura
   // retrato: a capela apoiada embaixo (sobra uma faixa para a linha da Steam); paisagem: centrada
   oy = portrait ? Math.round(ch - 256 - (44 * dpr) / k) : Math.round((ch - 256) / 2);
   sx = ox * k; sy = oy * k;
-  // posição da cena na tela, para o CSS alinhar o menu e as cartas com ela
-  root.style.setProperty('--book-y', `${(sy + 150 * k) / dpr}px`);
-  root.style.setProperty('--scene-top', `${Math.max(0, sy) / dpr}px`);
-  root.style.setProperty('--menu-top-p', `${(sy + 22 * k) / dpr}px`);
-  root.style.setProperty('--cards-top-p', `${sy / dpr - 160}px`);
+  const st = tv?.style || root.style;
+  const menuTop = (sy + 22 * k) / dpr;
+  st.setProperty('--menu-top-p', `${menuTop}px`);
+  placeCards(portrait, TW, TH, menuTop);
   draw(performance.now());
+}
+
+// as cartas flutuantes nunca cruzam o menu: no retrato ficam centradas na faixa livre entre o logotipo e o menu,
+// num tamanho inteiro (verso 96 ou 64 px); sem espaço, somem. Na paisagem, 192 ou 144 px a 30% da altura (como no jogo).
+function placeCards(portrait: boolean, TW: number, TH: number, menuTop: number) {
+  const st = tv?.style; if (!st) return;
+  const cards = $$<HTMLElement>('.hang');
+  if (!cards.length) return;
+  let w = 0, top = 0;
+  if (portrait) {
+    const brand = $('.brand');
+    const bottom = brand ? brand.offsetTop + brand.offsetHeight : 160;
+    const band = menuTop - bottom - 20;
+    w = band >= 156 ? 96 : band >= 108 ? 64 : 0;
+    top = bottom + 10 + Math.max(0, (band - w * 1.5) / 2);
+  } else if (TH <= 520) {
+    w = 64; top = TH * 0.22;
+  } else {
+    w = TW >= 1100 && TH >= 760 ? 192 : 144;
+    top = TH * 0.30 - w * 0.75;
+  }
+  cards.forEach((c) => (c.hidden = w === 0));
+  st.setProperty('--card-w', `${w}px`);
+  st.setProperty('--card-top', `${Math.round(top)}px`);
 }
 
 function noise(t: number, s: number) { return (Math.sin(t * 1.9 + s) * 0.5 + Math.sin(t * 3.7 + s * 2.1) * 0.3 + Math.sin(t * 7.3 + s * 0.7) * 0.2) * 0.5 + 0.5; }
@@ -82,6 +108,12 @@ function draw(now: number) {
     ctx.fillStyle = g2; ctx.fillRect(0, by - 1, cw, ch - by + 1);
   }
   if (img?.complete && img.naturalWidth) ctx.drawImage(img, ox, oy);
+  if (oy > 0) {
+    // retrato: o alto da capela some no escuro (sem emenda dura)
+    const f = ctx.createLinearGradient(0, oy, 0, oy + 24);
+    f.addColorStop(0, topColor); f.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = f; ctx.fillRect(0, oy, cw, 24);
+  }
   const lit = 1 - dark;
   if (lit > 0.01) {
     // o feixe de luz da janela alta da capela (Menu:_drawLightShaft)
@@ -93,7 +125,7 @@ function draw(now: number) {
   }
   if (dark > 0.01) {
     // velas apagadas: as chamas somem antes do resto escurecer
-    ctx.fillStyle = `rgba(14,10,16,${Math.min(1, dark * 1.6)})`;
+    ctx.fillStyle = `rgba(6,4,8,${Math.min(1, dark * 1.8)})`;
     CANDLES.forEach(([ax, ay]) => ctx.fillRect(Math.round(ox + ax * 400 - 7), Math.round(oy + ay * 256 - 22), 14, 22));
   }
   if (lit > 0.01) {
@@ -153,6 +185,7 @@ function loadScene() {
     };
   }
   addEventListener('resize', layout);
+  if (tv && 'ResizeObserver' in window) new ResizeObserver(() => layout()).observe(tv);
   document.addEventListener('visibilitychange', start);
   layout();
 }
@@ -186,14 +219,88 @@ function closePanel() {
   lastOpener?.focus();
   sfx('menu-close');
 }
+// ---------------- o computador da abertura do jogo: mesa, ligar, mergulhar, desligar ----------------
+// arte do jogo: assets/sprites/intro/computer.png (640x773), tela em x 106, y 140, 427x343 (src/data/intro_computer.lua)
+const PC = { w: 640, h: 773, sx: 106, sy: 140, sw: 427, sh: 343 };
+const VW = 1120, VH = 900; // tamanho virtual da tela dentro do monitor (mesma proporção da tela do computador)
+const pcEl = $('#computer'), hint = $('#hint'), hit = $<HTMLButtonElement>('#screenhit');
+let mode: 'desk' | 'dive' | 'full' = 'full';
+let screenRect = { x: 0, y: 0, w: 0, h: 0 };
+const setMode = (m: typeof mode) => { mode = m; root.classList.remove('mode-desk', 'mode-dive', 'mode-full'); root.classList.add('mode-' + m); };
+function deskGeometry() {
+  if (!pcEl) return;
+  const vw = innerWidth, vh = innerHeight;
+  const c = Math.min((vh * 0.86) / PC.h, (vw * 0.94) / PC.w);
+  const w = PC.w * c, h = PC.h * c, x = (vw - w) / 2, y = Math.max(8, (vh - h) / 2 - 14);
+  const st = root.style;
+  st.setProperty('--pc-x', `${x}px`); st.setProperty('--pc-y', `${y}px`); st.setProperty('--pc-w', `${w}px`); st.setProperty('--pc-h', `${h}px`);
+  st.setProperty('--pc-ox', `${((PC.sx + PC.sw / 2) / PC.w) * 100}%`); st.setProperty('--pc-oy', `${((PC.sy + PC.sh / 2) / PC.h) * 100}%`);
+  st.setProperty('--glow-y', `${((y + (PC.sy + PC.sh / 2) * c) / vh) * 100}%`);
+  st.setProperty('--hint-y', `${vh - (y + h) > 40 ? y + h + 10 : y + h * 0.71}px`);
+  // a tela do jogo, em tamanho virtual, encaixada no buraco da tela do computador (a moldura cobre 2 px de borda)
+  screenRect = { x: x + (PC.sx - 2) * c, y: y + (PC.sy - 2) * c, w: (PC.sw + 4) * c, h: (PC.sh + 4) * c };
+  if (mode === 'desk' && tv) {
+    tv.style.width = `${VW}px`; tv.style.height = `${VH}px`;
+    tv.style.transform = `translate(${screenRect.x}px, ${screenRect.y}px) scale(${screenRect.w / VW}, ${screenRect.h / VH})`;
+  }
+}
+function toDesk(off: boolean) {
+  setMode('desk');
+  if (tv) { tv.classList.toggle('off', off); tv.classList.remove('dive', 'off-anim'); setInert([tv], true); }
+  if (pcEl) { pcEl.style.transform = ''; pcEl.style.opacity = ''; }
+  if (hint) hint.textContent = (off ? hint.dataset.off : hint.dataset.on) || '';
+  if (hit) hit.setAttribute('aria-label', (off ? hint?.dataset.off : hint?.dataset.on) || '');
+  deskGeometry(); layout();
+}
+function powerOn() {
+  if (!tv) return;
+  tv.classList.remove('off'); tv.classList.remove('on-anim'); void tv.offsetWidth; tv.classList.add('on-anim');
+  sfx('boot-tv-power-on');
+  if (hint) hint.textContent = hint.dataset.on || '';
+  if (hit) hit.setAttribute('aria-label', hint?.dataset.on || '');
+  setTimeout(() => tv.classList.remove('on-anim'), 950);
+}
+// mergulho: a tela sai do monitor e ocupa a janela, como a câmera entrando no tubo na abertura do jogo (IntroTube)
+function dive() {
+  if (!tv || mode !== 'desk') return;
+  if (tv.classList.contains('off')) { powerOn(); return; }
+  const r = screenRect;
+  setMode('dive');
+  tv.style.width = ''; tv.style.height = '';
+  tv.style.transform = `translate(${r.x}px, ${r.y}px) scale(${r.w / innerWidth}, ${r.h / innerHeight})`;
+  layout();
+  void tv.offsetWidth;
+  tv.classList.add('dive');
+  tv.style.transform = 'none';
+  if (pcEl) { pcEl.style.transform = `scale(${(innerWidth / r.w) * 1.6})`; pcEl.style.opacity = '0'; }
+  sfx('boot-card-whoosh');
+  const done = () => {
+    tv.classList.remove('dive'); tv.style.transform = '';
+    setMode('full'); setInert([tv], false);
+    ($('.menu .mbtn[data-sel]') as HTMLElement | null)?.focus({ preventScroll: true });
+  };
+  if (reduced()) done(); else setTimeout(done, 920);
+}
+// sair: a TV desliga como no jogo (CRTShader.powerOff: a imagem vira uma linha e some) e volta para a mesa, com a tela apagada
 function quit(on: boolean) {
-  darkTarget = on ? 1 : 0;
-  document.body.classList.toggle('quitting', on);
-  const q = $('#quit');
-  setInert(BG(), on); if (q) setInert([q], !on);
-  if (on) { q?.classList.add('show'); setTimeout(() => ($('.seal-btn') as HTMLElement | null)?.focus(), 400); sfx('menu-close'); }
-  else { q?.classList.remove('show'); ($('.mbtn[data-open="quit"]') as HTMLElement | null)?.focus(); sfx('menu-open'); }
-  if (reduced()) { dark = darkTarget; draw(performance.now()); }
+  if (document.body.classList.contains('nf') || !tv) {
+    darkTarget = on ? 1 : 0; if (reduced()) { dark = darkTarget; draw(performance.now()); }
+    return;
+  }
+  if (!on) return;
+  closePanel();
+  sfx('menu-close');
+  tv.classList.add('off-anim');
+  setTimeout(() => { toDesk(true); hit?.focus({ preventScroll: true }); }, reduced() ? 0 : 560);
+}
+function desk() {
+  if (!tv || !pcEl) { setMode('full'); return; }
+  addEventListener('resize', () => { deskGeometry(); if (mode === 'desk') layout(); });
+  hit?.addEventListener('click', () => { sfx('button-click'); dive(); });
+  // link direto para um painel (#play, #collection...) entra direto na tela cheia
+  if (location.hash && location.hash.length > 1) { setMode('full'); return; }
+  toDesk(true);
+  setTimeout(powerOn, reduced() ? 0 : 450);
 }
 function menu() {
   const items = $$<HTMLAnchorElement>('.menu .mbtn');
@@ -204,7 +311,8 @@ function menu() {
     a.addEventListener('click', (e) => { e.preventDefault(); sfx('button-click'); openPanel(a.dataset.open!, a); });
   });
   addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { if (document.body.classList.contains('quitting')) quit(false); else closePanel(); return; }
+    if (e.key === 'Escape') { closePanel(); return; }
+    if (mode !== 'full') return;
     if (document.body.classList.contains('panel-open') || document.body.classList.contains('quitting')) return;
     const i = items.findIndex((x) => x.hasAttribute('data-sel'));
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -294,7 +402,7 @@ function trailer() {
     const v = document.createElement('video');
     v.src = b.dataset.src!; v.controls = true; v.autoplay = true; v.playsInline = true;
     v.setAttribute('aria-label', b.getAttribute('aria-label') || '');
-    b.closest('.tv')!.replaceChildren(v); v.focus();
+    b.closest('.vid')!.replaceChildren(v); v.focus();
     if (S.a) S.a.pause();
   });
 }
@@ -321,7 +429,7 @@ function unsubscribe() {
   });
 }
 
-loadScene(); menu(); hangingCards(); settings(); notify(); trailer(); clock(); unsubscribe();
+desk(); loadScene(); menu(); hangingCards(); settings(); notify(); trailer(); clock(); unsubscribe();
 if ($('.title')) addEventListener('load', () => setTimeout(() => {
   if (navigator.sendBeacon) navigator.sendBeacon('/api/view', new Blob([JSON.stringify({ variant: 'v3', lang: D.lang })], { type: 'application/json' }));
 }, 500), { once: true });

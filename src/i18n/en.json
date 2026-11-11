@@ -251,5 +251,8 @@
  "flipCard": "Turn the card",
  "screensTitle": "Screens from the game",
  "nf404": "This page was torn out of the grimoire.",
- "soundTitle": "Sound"
+ "soundTitle": "Sound",
+ "enterHint": "CLICK THE SCREEN",
+ "powerHint": "CLICK TO TURN IT ON",
+ "enterLabel": "Enter the game screen"
 }

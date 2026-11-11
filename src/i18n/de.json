@@ -251,5 +251,8 @@
  "flipCard": "Karte umdrehen",
  "screensTitle": "Bilder aus dem Spiel",
  "nf404": "Diese Seite wurde aus dem Grimoire gerissen.",
- "soundTitle": "Ton"
+ "soundTitle": "Ton",
+ "enterHint": "KLICKE AUF DEN BILDSCHIRM",
+ "powerHint": "KLICKE ZUM EINSCHALTEN",
+ "enterLabel": "Den Spielbildschirm betreten"
 }

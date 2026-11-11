@@ -251,5 +251,8 @@
  "flipCard": "Retourner la carte",
  "screensTitle": "Écrans du jeu",
  "nf404": "Cette page a été arrachée du grimoire.",
- "soundTitle": "Son"
+ "soundTitle": "Son",
+ "enterHint": "CLIQUEZ SUR L’ÉCRAN",
+ "powerHint": "CLIQUEZ POUR L’ALLUMER",
+ "enterLabel": "Entrer dans l’écran du jeu"
 }

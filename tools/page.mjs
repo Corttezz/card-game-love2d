@@ -49,7 +49,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="${l.og}"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/seal_32.png"><link rel="apple-touch-icon" href="/img/brand/seal_180.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="preload" href="/img/v3/menu.png" as="image" fetchpriority="high"><link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/img/v3/computer.png" as="image" fetchpriority="high"><link rel="preload" href="/img/v3/menu.png" as="image"><link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${ctx.CSS}"><script type="module" src="${ctx.JS}"></script>`;
 }
 
@@ -73,7 +73,12 @@ export function renderHome(t, l, ctx) {
   const items = [['play', 'menu.play'], ['collection', 'menu.collection'], ['achievements', 'menu.achievements'], ['settings', 'menu.settings'], ['quit', 'menu.quit']];
   const langs = LANGS.map((x) => `<a href="${home(x)}" lang="${x.html}" hreflang="${x.html}"${x.code === l.code ? ' aria-current="true"' : ''}>${x.self}</a>`).join('');
   const toggle = (id, label, on = false) => `<div class="opt"><span id="${id}-l">${esc(label)}</span><button class="sw" type="button" id="${id}" role="switch" aria-checked="${on}" aria-labelledby="${id}-l"><span class="on">${esc(t.onLabel)}</span><span class="off">${esc(t.offLabel)}</span></button></div>`;
-  const body = `${sceneDom(t, l, G)}
+  // a mesa: o quarto escuro (atrás), a tela no meio e o computador da abertura do jogo por cima (a moldura cobre as bordas da tela)
+  const desk = `<div class="desk" id="desk" aria-hidden="true"></div>`;
+  const computer = `<div class="computer" id="computer"><img class="cimg" src="/img/v3/computer.png" width="640" height="773" alt="">
+<button class="screenhit" id="screenhit" type="button" aria-label="${esc(t.enterLabel)}"></button></div>
+<p class="hint" id="hint" data-on="${esc(t.enterHint)}" data-off="${esc(t.powerHint)}">${esc(t.enterHint)}</p>`;
+  const body = `${desk}<div class="tv" id="tv"><div class="tvin" id="tvin">${sceneDom(t, l, G)}
 <main class="title" id="main">
 <h1 class="brand"><img class="px seal" src="/img/v3/seal.png" width="113" height="113" alt=""><img class="px word" src="/img/v3/wordmark.png" width="578" height="96" alt="Runemoire"></h1>
 <p class="sr">${esc(loc(G.ui.subtitle, l))} ${esc(t.metaDesc)}</p>
@@ -81,7 +86,7 @@ export function renderHome(t, l, ctx) {
 <p class="wish">${esc(t.wishSoon)}</p>
 </main>
 <a class="corner" href="${home(l)}privacy/">${esc(t.privacy)}</a>
-${panel('play', t.trailerPlay, `<div class="tv"><img src="/media/runemoire-gameplay.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><button class="vplay" type="button" data-src="/media/runemoire-gameplay.mp4" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span></span></button></div>`, t, l)}
+${panel('play', t.trailerPlay, `<div class="vid"><img src="/media/runemoire-gameplay.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><button class="vplay" type="button" data-src="/media/runemoire-gameplay.mp4" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span></span></button></div>`, t, l)}
 ${panel('collection', ui(l, 'collection.title'), `<p class="sub">${esc(t.cardsTitle)}</p><div class="cards">${COLLECTION_CARDS.map((id) => `<img class="px" src="${cardSrc(l, id)}" width="192" height="288" alt="" loading="lazy" decoding="async">`).join('')}</div>
 <p class="sub">${esc(t.screensTitle)}</p><div class="screens">${shots.map((s) => `<img src="${s.thumb}" width="960" height="540" alt="${esc(SHOT_ALT[s.id][l.code] || SHOT_ALT[s.id].en)}" loading="lazy" decoding="async">`).join('')}</div>`, t, l)}
 ${panel('achievements', ui(l, 'menu.achievements'), `<div class="ach"><img class="px icon" id="ach-icon" src="/img/v3/ach_locked.png" data-on="/img/v3/ach.png" width="128" height="128" alt=""><div><h3>${esc(t.achName)}</h3><p>${esc(t.achDesc)}</p></div></div>
@@ -94,7 +99,8 @@ ${panel('achievements', ui(l, 'menu.achievements'), `<div class="ach"><img class
 ${panel('settings', ui(l, 'settings.title'), `<div class="opt"><span>${esc(ui(l, 'settings.language'))}</span><span class="langs">${langs}</span></div>
 ${toggle('opt-music', ui(l, 'settings.music'))}${toggle('opt-sfx', ui(l, 'settings.sfx'))}${toggle('opt-crt', ui(l, 'settings.crt_shader'), true)}${toggle('opt-motion', ui(l, 'settings.reduced_motion'))}
 <p class="fine"><a href="${home(l)}privacy/">${esc(t.privacy)}</a> · ${esc(t.pressShort)}: <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>`, t, l)}
-<div class="toast" id="toast" role="status" aria-live="polite" hidden><img class="px" src="/img/v3/ach.png" width="64" height="64" alt=""><div><b>${esc(ui(l, 'achievements.toast_label'))}</b><strong>${esc(t.achName)}</strong><span>${esc(t.achDesc)}</span></div></div>`;
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><img class="px" src="/img/v3/ach.png" width="64" height="64" alt=""><div><b>${esc(ui(l, 'achievements.toast_label'))}</b><strong>${esc(t.achName)}</strong><span>${esc(t.achDesc)}</span></div></div>
+</div><div class="crtfx" aria-hidden="true"><i class="band"></i></div></div>${computer}`;
   const client = { lang: l.code, unsubPath: home(l) + 'unsubscribe/', pool: CARD_POOL, cardBase: `/img/gamecards/${l.code}/`, sceneTop: SCENE.top, sceneBottom: SCENE.bottom,
     t: { sending: t.sending, notifyOk: t.notifyOk, notifyBad: t.notifyBad, notifyRate: t.notifyRate, notifyNet: t.notifyNet, unsubLink: t.unsubLink } };
   return head(t, l, ctx, { title: t.htmlTitle, desc: t.metaDesc, path: home(l) }) +
@@ -126,7 +132,7 @@ export function renderUnsub(t, l, ctx) {
 export function render404(t, l, ctx) {
   return head(t, l, ctx, { title: `${t.nfTitle} — Runemoire`, desc: t.metaDesc, path: home(l) + '404', noindex: true }) +
     `<script type="application/json" id="rm-data">${JSON.stringify({ lang: l.code, sceneTop: SCENE.top, sceneBottom: SCENE.bottom, t: {} })}</script>
-</head><body class="crt dark nf"><h1 class="sr">${esc(t.nfTitle)}</h1>${sceneDom(t, l, ctx.GAME, { dark: true, line: t.nf404 })}</body></html>`;
+</head><body class="crt dark nf"><h1 class="sr">${esc(t.nfTitle)}</h1><div class="tv full" id="tv"><div class="tvin" id="tvin">${sceneDom(t, l, ctx.GAME, { dark: true, line: t.nf404 })}</div><div class="crtfx" aria-hidden="true"><i class="band"></i></div></div></body></html>`;
 }
 
 const PRIVACY = {

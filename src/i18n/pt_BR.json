@@ -251,5 +251,8 @@
  "flipCard": "Virar a carta",
  "screensTitle": "Telas do jogo",
  "nf404": "Esta página foi arrancada do grimório.",
- "soundTitle": "Som"
+ "soundTitle": "Som",
+ "enterHint": "CLIQUE NA TELA",
+ "powerHint": "CLIQUE PARA LIGAR",
+ "enterLabel": "Entrar na tela do jogo"
 }

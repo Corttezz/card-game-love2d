@@ -251,5 +251,8 @@
  "flipCard": "Girar la carta",
  "screensTitle": "Pantallas del juego",
  "nf404": "Esta página fue arrancada del grimorio.",
- "soundTitle": "Sonido"
+ "soundTitle": "Sonido",
+ "enterHint": "HAZ CLIC EN LA PANTALLA",
+ "powerHint": "HAZ CLIC PARA ENCENDER",
+ "enterLabel": "Entrar en la pantalla del juego"
 }
