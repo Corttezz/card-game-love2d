@@ -19,7 +19,7 @@ const GAME = JSON.parse(fs.readFileSync(path.join(R, 'src/data/game.json'), 'utf
 
 // 1. só o que a v2 usa
 const KEEP = [
-  'favicon.ico', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/v3', 'img/gamecards', 'media/v3',
+  'favicon.ico', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
   'img/brand/seal_32.png', 'img/brand/seal_180.png', 'img/brand/seal_192.png', 'img/brand/seal_512.png',
   'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
   ...['en', 'pt_BR'].flatMap((l) => ['03_road_battle', '06_road_fork', '05_shop'].flatMap((s) => [`img/shots/${l}/${s}.webp`, `img/shots/${l}/${s}_s.webp`])),
@@ -34,7 +34,7 @@ for (const rel of KEEP) {
 const res = await esbuild.build({
   entryPoints: { app: path.join(R, 'src/ts/main.ts'), site: path.join(R, 'src/css/index.css') },
   bundle: true, minify: !process.env.NOMINIFY, format: 'esm', target: ['es2020'], outdir: path.join(D, 'assets'), entryNames: '[name]-[hash]',
-  metafile: true, external: ['/img/*', '/fonts/*'], legalComments: 'none',
+  metafile: true, loader: { '.glsl': 'text' }, external: ['/img/*', '/fonts/*'], legalComments: 'none',
 });
 const out = Object.keys(res.metafile.outputs).map((p) => '/' + path.relative(D, path.resolve(R, p)).replace(/\\/g, '/'));
 const JS = out.find((p) => /app-.*\.js$/.test(p));

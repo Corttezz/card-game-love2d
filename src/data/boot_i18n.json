@@ -1,0 +1,35 @@
+{
+ "version": "0.9.3",
+ "t": {
+  "en": {
+   "loading": "LOADING...",
+   "skip": "Press any key to skip",
+   "title": "RUNEMOIRE",
+   "subtitle": "Arcane cards. Fatal choices."
+  },
+  "pt_BR": {
+   "loading": "CARREGANDO...",
+   "skip": "Pressione qualquer tecla para pular",
+   "title": "RUNEMOIRE",
+   "subtitle": "Cartas arcanas. Decisões fatais."
+  },
+  "es": {
+   "loading": "CARGANDO...",
+   "skip": "Pulsa cualquier tecla para saltar",
+   "title": "RUNEMOIRE",
+   "subtitle": "Cartas arcanas. Decisiones fatales."
+  },
+  "fr": {
+   "loading": "CHARGEMENT...",
+   "skip": "Appuyez sur une touche pour passer",
+   "title": "RUNEMOIRE",
+   "subtitle": "Cartes arcanes. Choix fatals."
+  },
+  "de": {
+   "loading": "LADEN...",
+   "skip": "Beliebige Taste zum Überspringen",
+   "title": "RUNEMOIRE",
+   "subtitle": "Arkane Karten. Fatale Wahlen."
+  }
+ }
+}

@@ -26,7 +26,7 @@ const SEG = {
 
 const LANGS = ['en', 'pt_BR', 'es', 'fr', 'de'];
 const BIOMES = ['fields', 'highlands', 'abyss', 'frost', 'marsh', 'dusk', 'eclipse'];
-const VARIANTS = ['a', 'b', 'v2', 'v3'];
+const VARIANTS = ['a', 'b', 'v2', 'v3', 'v3b'];
 
 // contador diário anônimo (sem IP, sem identificador): visitas por sessão e cadastros, por versão e idioma
 async function bump(env, variant, lang, col) {
@@ -87,7 +87,7 @@ async function notify(req, env) {
   const now = new Date().toISOString();
   const biome = BIOMES.includes(b.biome) ? b.biome : null;
   const variant = VARIANTS.includes(b.variant) ? b.variant : null;
-  const source = ['hero', 'final'].includes(b.source) ? b.source : null;
+  const source = ['hero', 'final', 'achievements'].includes(b.source) ? b.source : null;
   // e-mail novo: grava e devolve o link de saída. Já cadastrado: só confirma, sem devolver o token
   // (senão qualquer um tiraria qualquer e-mail da lista); a pessoa sai pelo link original ou pelo contato.
   const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token, biome, variant, source) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(email) DO NOTHING')

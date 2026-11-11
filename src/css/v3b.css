@@ -1,0 +1,125 @@
+/* runemoire.com v3b — a abertura do jogo e a tela de título, desenhadas em canvas pelo porte do código do jogo (src/ts/game.ts).
+   O CSS cuida só do que fica por cima: alvos transparentes e acessíveis, a dica da tela desligada, painéis, toast e páginas simples. */
+@font-face { font-family: 'Runic'; src: url('/fonts/pixel.woff2') format('woff2'); font-display: block; }
+:root { --amber: #ffb838; --amber-hi: #ffd161; --amber-lo: #db8c1f; --gold: #b08a3e; --gold-l: #d4b060; --gold-d: #7a5e20;
+  --parch-l: #e8d5a0; --parch: #b8a068; --ink: #2a1d14; --night: #0c0a10; --text: #e6d9bc; color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #000; color: var(--text); font: 16px/1.5 'Runic', ui-monospace, monospace; overflow: hidden; -webkit-font-smoothing: none; }
+img { display: block; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--amber-hi); outline-offset: 3px; }
+.sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* os dois canvases: #cv (a página com o computador, sem CRT, como no jogo) e #crt (a tela cheia pelo crt.glsl) */
+#cv, #crt { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; }
+#cv { image-rendering: pixelated; z-index: 1; }
+#crt { z-index: 2; display: none; }
+.on-crt #crt { display: block; }
+.on-crt #cv { visibility: hidden; }
+
+/* a tela inteira é o alvo do clique enquanto a abertura roda (como "qualquer tecla" no jogo) */
+.screenhit { position: fixed; inset: 0; z-index: 5; border: 0; padding: 0; margin: 0; background: none; cursor: pointer; }
+.screenhit:focus-visible { outline-offset: -6px; }
+.in-menu .screenhit { display: none; }
+
+/* a dica da página (IntroTube: fonte 16, tinta, pulso 0.78 + 0.22 sin 2.4t, 40 px acima da borda de baixo) */
+.hint { position: fixed; z-index: 4; left: 0; right: 0; bottom: 40px; margin: 0; text-align: center; font-size: 16px; line-height: 1.25; color: #1a0f08;
+  opacity: 0; animation: hintPulse 2.618s linear infinite; animation-delay: .6s; pointer-events: none; padding: 0 12px; }
+@keyframes hintPulse { 0% { opacity: .78; } 25% { opacity: 1; } 75% { opacity: .56; } 100% { opacity: .78; } }
+.started .hint { display: none; }
+.nfback { position: fixed; z-index: 6; left: 50%; translate: -50% 0; bottom: 10px; color: #1a0f08; font-size: 16px; padding: 8px; }
+
+/* a tela de título: os alvos ficam onde o jogo desenha botões, cartas e rodapé (posição calculada pelo porte) */
+.title { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
+.in-menu .title { pointer-events: auto; }
+.title > *:not(.sr), .menu > * { position: absolute; }
+.menu { position: static; }
+.mbtn, .hang, .corner { opacity: 0; display: block; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; font: 16px 'Runic', monospace; color: transparent; overflow: hidden; }
+.title .mbtn:focus-visible, .title .hang:focus-visible, .title .corner:focus-visible { opacity: 1; outline: 2px solid var(--amber-hi); outline-offset: 4px; }
+
+/* ===================== painéis no estilo do jogo (dentro da moldura de TV do CRT) =====================
+/* ===================== painéis no estilo do jogo ===================== */
+.panel { position: fixed; inset: 18px; z-index: 10; border-radius: 20px; overflow: hidden; display: none; place-items: center; background: rgba(5, 4, 8, .74); }
+.no-js .panel:target, .panel.open { display: grid; }
+.frame9 { position: relative; width: min(1040px, 94vw); max-height: 90vh; overflow: auto; overscroll-behavior: contain;
+  border: 52px solid transparent; border-image: url('/img/v3/panel.png') 26 fill / 52px / 0 stretch; image-rendering: pixelated;
+  padding: 0 6px 6px; color: var(--ink); animation: pop .22s steps(4); }
+@keyframes pop { from { transform: scale(.94); opacity: 0; } }
+.panel .frame9 h2 { margin: 0 0 16px; font: 24px/1.2 'Runic', monospace; text-align: center; color: var(--ink); text-transform: uppercase; }
+.frame9 h2:focus { outline: none; }
+.frame9 .back { display: inline-flex; margin-top: 22px; }
+.frame9 .back, .frame9 .mbtn { color: #1f1408; text-shadow: none; background: linear-gradient(var(--amber-hi) 0 50%, var(--amber-lo) 50% 100%);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(26, 18, 10, .9); border: 0; padding: 0 18px; height: 40px; align-items: center; text-decoration: none; font: 16px/1 'Runic', monospace; cursor: pointer; }
+.frame9 .back:hover, .frame9 .mbtn:hover { filter: brightness(1.08); }
+.pbody .sub { margin: 16px 0 10px; font-size: 16px; color: #5a4128; }
+.pbody .fine { margin: 18px 0 0; font-size: 16px; line-height: 1.6; color: #5a4128; }
+.pbody .fine a { color: #3b2716; }
+.vid { position: relative; aspect-ratio: 16 / 9; background: #000; box-shadow: 0 0 0 4px var(--ink); }
+.vid img, .vid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.vplay { position: absolute; inset: 0; border: 0; background: #0004; cursor: pointer; }
+.vplay span { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 84px; height: 84px; background: #1a1209f2; box-shadow: 0 0 0 3px var(--gold), 0 0 0 6px #000; }
+.vplay span::after { content: ''; position: absolute; left: 33px; top: 26px; border: 16px solid transparent; border-left: 24px solid var(--gold-l); border-right: 0; }
+.cards { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.cards img { flex: none; width: 192px; height: 288px; }
+.screens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.screens img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; box-shadow: 0 0 0 3px var(--ink); }
+.ach { display: flex; gap: 18px; align-items: center; }
+.ach .icon { width: 128px; height: 128px; flex: none; }
+.ach h3 { margin: 0 0 6px; font: 16px/1.3 'Runic', monospace; color: var(--ink); }
+.ach p, .prompt { margin: 0; font-size: 16px; line-height: 1.6; color: #4a3626; }
+.prompt { margin: 18px 0 10px; }
+.notify { display: flex; flex-wrap: wrap; gap: 10px; }
+.notify input { flex: 1 1 240px; height: 40px; padding: 0 12px; font: 16px 'Runic', monospace; color: var(--ink); background: #efe0bb; border: 0; box-shadow: inset 0 0 0 2px var(--ink), inset 3px 3px 0 #0002; }
+.notify input:focus { outline: 2px solid var(--amber-lo); }
+.notify .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.notify .msg { width: 100%; margin: 4px 0 0; min-height: 1.4em; font-size: 16px; line-height: 1.6; color: #2f2012; }
+.notify .msg.err { color: #8b1a1a; }
+.opt { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 2px solid #0002; font-size: 16px; flex-wrap: wrap; }
+.langs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
+.langs a { text-decoration: none; color: #5a4128; padding: 4px; }
+.langs a[aria-current='true'] { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+.sw { min-width: 132px; height: 36px; padding: 0 12px; margin-left: auto; font: 16px 'Runic', monospace; border: 0; cursor: pointer; background: #1a1209; color: var(--parch); box-shadow: 0 0 0 2px var(--gold-d); }
+.sw .on { display: none; }
+.sw[aria-checked='true'] { color: #1f1408; background: linear-gradient(var(--amber-hi) 0 50%, var(--amber-lo) 50% 100%); }
+.sw[aria-checked='true'] .on { display: inline; }
+.sw[aria-checked='true'] .off { display: none; }
+
+/* toast de conquista do jogo */
+.toast { position: absolute; z-index: 30; top: 22px; right: 22px; display: flex; gap: 14px; align-items: center; width: min(420px, calc(100vw - 32px)); padding: 12px 16px 12px 12px;
+  background: #1a1209f5; border-radius: 6px; box-shadow: 0 0 0 2px var(--gold), inset 0 0 0 4px #1a1209, inset 0 0 0 6px var(--gold-d), 4px 4px 0 6px #0007;
+  transform: translateX(120%); transition: transform .45s cubic-bezier(.2, 1.2, .4, 1); }
+.toast.in { transform: none; }
+.toast img { width: 64px; height: 64px; flex: none; }
+.toast div { display: grid; gap: 6px; }
+.toast b { font-weight: normal; font-size: 16px; letter-spacing: .04em; color: var(--gold-l); }
+.toast strong { font-weight: normal; font-size: 16px; color: var(--parch-l); }
+.toast span { font-size: 16px; line-height: 1.4; color: var(--parch); }
+
+.toast { position: fixed; }
+@media (max-aspect-ratio: 4/5) {
+  .frame9 { width: 100%; max-height: 100%; border-width: 40px; border-image-width: 40px; padding: 0 0 10px; }
+  #collection .frame9, #achievements .frame9 { height: 100%; }
+  .panel .frame9 h2 { font-size: 16px; margin: 0 0 12px; }
+  .screens { grid-template-columns: 1fr; }
+  .cards { display: grid; grid-template-columns: repeat(2, 144px); justify-content: center; gap: 14px; }
+  .cards img { width: 144px; height: 216px; }
+  .ach { flex-direction: column; text-align: center; }
+  .opt .langs { justify-content: flex-start; width: 100%; }
+  .notify .mbtn { width: 100%; white-space: normal; height: auto; min-height: 44px; padding: 10px 12px; line-height: 1.5; justify-content: center; text-align: center; }
+  .toast { top: auto; bottom: 26px; right: 26px; }
+  .toast b, .toast span { font-size: 8px; line-height: 1.8; }
+}
+@media (prefers-reduced-motion: reduce) { .frame9, .hint { animation: none !important; } .hint { opacity: .9; } .toast { transition-duration: .01s !important; } }
+body.reduced .frame9, body.reduced .hint { animation: none !important; }
+/* ===================== páginas simples (privacidade, sair da lista) =====================
+/* ===================== páginas simples (privacidade, sair da lista) ===================== */
+body.simple { overflow: auto; background: radial-gradient(ellipse at 50% 30%, #241c26, var(--night) 70%); }
+.simple main { min-height: 100vh; display: grid; place-items: center; padding: 24px 8px; }
+.frame9.page { width: min(820px, 96vw); max-height: none; overflow: visible; }
+.frame9.page .home { display: inline-block; margin: -20px 0 16px; }
+.prose h1 { font: 24px/1.3 'Runic', monospace; margin: 0 0 16px; color: var(--ink); text-align: left; }
+.prose h2 { font: 16px/1.3 'Runic', monospace; margin: 22px 0 8px; color: var(--ink); text-align: left; }
+.prose p { font: 17px/1.6 Georgia, 'Times New Roman', serif; margin: 0 0 10px; color: #3b2a1d; }
+@media (max-width: 600px) { .frame9.page { border-width: 40px; border-image-width: 40px; } }

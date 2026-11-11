@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG = JSON.parse(fs.readFileSync(path.join(R, 'src/data/config.json'), 'utf8'));
 const UI = JSON.parse(fs.readFileSync(path.join(R, 'src/data/ui_game.json'), 'utf8'));
-const SCENE = JSON.parse(fs.readFileSync(path.join(R, 'src/data/scene_colors.json'), 'utf8'));
+const BOOT = JSON.parse(fs.readFileSync(path.join(R, 'src/data/boot_i18n.json'), 'utf8'));
 
 export const LANGS = [
   { code: 'en', prefix: '', html: 'en', self: 'English', short: 'EN', og: 'en_US' },
@@ -49,7 +49,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="${l.og}"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/seal_32.png"><link rel="apple-touch-icon" href="/img/brand/seal_180.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="preload" href="/img/v3/computer.png" as="image" fetchpriority="high"><link rel="preload" href="/img/v3/menu.png" as="image"><link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/img/v3b/computer.png" as="image" fetchpriority="high"><link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${ctx.CSS}"><script type="module" src="${ctx.JS}"></script>`;
 }
 
@@ -57,35 +57,25 @@ const panel = (id, title, body, t, l, extra = '') => `<section class="panel" id=
 <div class="frame9"><h2 id="${id}-t">${esc(title)}</h2><div class="pbody">${body}</div>
 <a class="back" href="#" data-close>${esc(ui(l, 'settings.back'))}</a></div></section>`;
 
-function sceneDom(t, l, G, { dark = false, line = '' } = {}) {
-  const hang = (side) => `<button class="hang ${side}" type="button" aria-label="${esc(t.flipCard)}" aria-pressed="false">
-<span class="inner"><img class="b" src="/img/v3/back.png" width="192" height="288" alt=""><img class="f" src="${cardSrc(l, 'warrior_strike')}" width="96" height="144" alt=""></span></button>`;
-  return `<canvas id="scene" aria-hidden="true"></canvas><div class="glowfx" aria-hidden="true"></div>
-${dark ? '' : hang('left') + hang('right')}
-<div class="osd" aria-hidden="true"><span>AV-1&nbsp; RUNEMOIRE</span><time id="clock"></time></div>
-<div class="quit" id="quit" ${dark ? 'data-static' : ''}><button class="seal-btn" type="button" aria-label="${esc(dark ? t.nfBack : t.quitLine)}"><img class="px" src="/img/v3/seal.png" width="113" height="113" alt=""></button>
-<p>${esc(line || t.quitLine)}</p>${dark ? `<a class="nfback" href="${home(l)}">${esc(t.nfBack)}</a>` : ''}</div>`;
-}
-
 export function renderHome(t, l, ctx) {
   const G = ctx.GAME;
   const shots = (l.code === 'pt_BR' ? G.shots.pt_BR : G.shots.en).filter((s) => SHOTS.includes(s.id)).sort((a, b) => SHOTS.indexOf(a.id) - SHOTS.indexOf(b.id));
   const items = [['play', 'menu.play'], ['collection', 'menu.collection'], ['achievements', 'menu.achievements'], ['settings', 'menu.settings'], ['quit', 'menu.quit']];
   const langs = LANGS.map((x) => `<a href="${home(x)}#settings" lang="${x.html}" hreflang="${x.html}"${x.code === l.code ? ' aria-current="true"' : ''}>${x.self}</a>`).join('');
   const toggle = (id, label, on = false) => `<div class="opt"><span id="${id}-l">${esc(label)}</span><button class="sw" type="button" id="${id}" role="switch" aria-checked="${on}" aria-labelledby="${id}-l"><span class="on">${esc(t.onLabel)}</span><span class="off">${esc(t.offLabel)}</span></button></div>`;
-  // a mesa: o quarto escuro (atrás), a tela no meio e o computador da abertura do jogo por cima (a moldura cobre as bordas da tela)
-  const desk = `<div class="desk" id="desk" aria-hidden="true"></div>`;
-  const computer = `<div class="computer" id="computer"><img class="cimg" src="/img/v3/computer.png" width="640" height="773" alt="">
-<button class="screenhit" id="screenhit" type="button" aria-label="${esc(t.enterLabel)}"></button></div>
-<p class="hint" id="hint" data-on="${esc(t.enterHint)}" data-off="${esc(t.powerHint)}">${esc(t.enterHint)}</p>`;
-  const body = `${desk}<div class="tv" id="tv"><div class="tvin" id="tvin">${sceneDom(t, l, G)}
-<main class="title" id="main">
-<h1 class="brand"><img class="px seal" src="/img/v3/seal.png" width="113" height="113" alt=""><img class="px word" src="/img/v3/wordmark.png" width="578" height="96" alt="Runemoire"></h1>
+  const B = BOOT.t[l.code] || BOOT.t.en;
+  // a abertura do jogo é desenhada em canvas (porte do código do jogo); por cima ficam só elementos transparentes e acessíveis
+  const body = `<canvas id="cv" aria-hidden="true"></canvas><canvas id="crt" aria-hidden="true"></canvas>
+<button class="screenhit" id="screenhit" type="button" aria-label="${esc(t.enterLabel)}"></button>
+<p class="hint" id="hint" aria-hidden="true">${esc(t.enterHint)}</p>
+<main class="title" id="main" inert>
+<h1 class="sr">Runemoire</h1>
 <p class="sr">${esc(loc(G.ui.subtitle, l))} ${esc(t.metaDesc)}</p>
-<nav class="menu" aria-label="Menu">${items.map(([id, k], i) => `<a class="mbtn" href="#${id}" data-open="${id}"${i === 0 ? ' data-sel' : ''}>${esc(ui(l, k))}</a>`).join('')}</nav>
-<p class="wish">${esc(t.wishSoon)}</p>
+<nav class="menu" aria-label="Menu">${items.map(([id, k]) => `<a class="mbtn" href="#${id}" data-open="${id}">${esc(ui(l, k))}</a>`).join('')}</nav>
+<button class="hang" type="button" data-i="0" aria-label="${esc(t.flipCard)}" aria-pressed="false"></button><button class="hang" type="button" data-i="1" aria-label="${esc(t.flipCard)}" aria-pressed="false"></button>
+<a class="corner" id="priv" href="${home(l)}privacy/">${esc(t.privacy)}</a>
+<p class="sr">${esc(t.wishSoon)}</p>
 </main>
-<a class="corner" href="${home(l)}privacy/">${esc(t.privacy)}</a>
 ${panel('play', t.trailerPlay, `<div class="vid"><img src="/media/runemoire-gameplay.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><button class="vplay" type="button" data-src="/media/runemoire-gameplay.mp4" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span></span></button></div>`, t, l)}
 ${panel('collection', ui(l, 'collection.title'), `<p class="sub">${esc(t.cardsTitle)}</p><div class="cards">${COLLECTION_CARDS.map((id) => `<img class="px" src="${cardSrc(l, id)}" width="192" height="288" alt="" loading="lazy" decoding="async">`).join('')}</div>
 <p class="sub">${esc(t.screensTitle)}</p><div class="screens">${shots.map((s) => `<img src="${s.thumb}" width="960" height="540" alt="${esc(SHOT_ALT[s.id][l.code] || SHOT_ALT[s.id].en)}" loading="lazy" decoding="async">`).join('')}</div>`, t, l)}
@@ -99,9 +89,9 @@ ${panel('achievements', ui(l, 'menu.achievements'), `<div class="ach"><img class
 ${panel('settings', ui(l, 'settings.title'), `<div class="opt"><span>${esc(ui(l, 'settings.language'))}</span><span class="langs">${langs}</span></div>
 ${toggle('opt-music', ui(l, 'settings.music'))}${toggle('opt-sfx', ui(l, 'settings.sfx'))}${toggle('opt-crt', ui(l, 'settings.crt_shader'), true)}${toggle('opt-motion', ui(l, 'settings.reduced_motion'))}
 <p class="fine"><a href="${home(l)}privacy/">${esc(t.privacy)}</a> · ${esc(t.pressShort)}: <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>`, t, l)}
-<div class="toast" id="toast" role="status" aria-live="polite" hidden><img class="px" src="/img/v3/ach.png" width="64" height="64" alt=""><div><b>${esc(ui(l, 'achievements.toast_label'))}</b><strong>${esc(t.achName)}</strong><span>${esc(t.achDesc)}</span></div></div>
-</div><div class="crtfx" aria-hidden="true"><i class="band"></i></div></div>${computer}`;
-  const client = { lang: l.code, unsubPath: home(l) + 'unsubscribe/', pool: CARD_POOL, cardBase: `/img/gamecards/${l.code}/`, sceneTop: SCENE.top, sceneBottom: SCENE.bottom,
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><img class="px" src="/img/v3/ach.png" width="64" height="64" alt=""><div><b>${esc(ui(l, 'achievements.toast_label'))}</b><strong>${esc(t.achName)}</strong><span>${esc(t.achDesc)}</span></div></div>`;
+  const client = { lang: l.code, unsubPath: home(l) + 'unsubscribe/', pool: CARD_POOL, cardBase: `/img/gamecards/${l.code}/`,
+    boot: { ...B, version: BOOT.version, hint: t.enterHint, privacy: t.privacy, wish: t.wishSoon, osd: 'AV-1  RUNEMOIRE', buttons: Object.fromEntries(items.map(([id, k]) => [id, ui(l, k)])) },
     t: { sending: t.sending, notifyOk: t.notifyOk, notifyBad: t.notifyBad, notifyRate: t.notifyRate, notifyNet: t.notifyNet, unsubLink: t.unsubLink } };
   return head(t, l, ctx, { title: t.htmlTitle, desc: t.metaDesc, path: home(l) }) +
     `<script type="application/json" id="rm-data">${JSON.stringify(client).replace(/</g, '\\u003c')}</script>
@@ -128,11 +118,13 @@ export function renderUnsub(t, l, ctx) {
   return simple(t, l, ctx, { title: t.unsubTitle, path: home(l) + 'unsubscribe/', body });
 }
 
-// 404: a mesma capela com as velas apagadas
+// 404: o computador da abertura, desligado, com a frase e o caminho de volta
 export function render404(t, l, ctx) {
+  const B = BOOT.t[l.code] || BOOT.t.en;
   return head(t, l, ctx, { title: `${t.nfTitle} — Runemoire`, desc: t.metaDesc, path: home(l) + '404', noindex: true }) +
-    `<script type="application/json" id="rm-data">${JSON.stringify({ lang: l.code, sceneTop: SCENE.top, sceneBottom: SCENE.bottom, t: {} })}</script>
-</head><body class="crt dark nf"><h1 class="sr">${esc(t.nfTitle)}</h1><div class="tv full" id="tv"><div class="tvin" id="tvin">${sceneDom(t, l, ctx.GAME, { dark: true, line: t.nf404 })}</div><div class="crtfx" aria-hidden="true"><i class="band"></i></div></div></body></html>`;
+    `<script type="application/json" id="rm-data">${JSON.stringify({ lang: l.code, nf: true, boot: { ...B, version: BOOT.version, hint: t.nf404, privacy: '', wish: '', osd: '', buttons: {} }, t: {} })}</script>
+</head><body class="crt nf"><h1 class="sr">${esc(t.nfTitle)}</h1><canvas id="cv" aria-hidden="true"></canvas><canvas id="crt" aria-hidden="true"></canvas>
+<p class="hint" id="hint">${esc(t.nf404)}</p><a class="nfback" href="${home(l)}">${esc(t.nfBack)}</a></body></html>`;
 }
 
 const PRIVACY = {
