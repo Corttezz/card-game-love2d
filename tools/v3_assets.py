@@ -35,6 +35,13 @@ for f in ["button-click", "menu-hover", "menu-open", "menu-close", "card-discove
     shutil.copyfile(os.path.join(GAME, "audio/sfx", f + ".mp3"), os.path.join(MED, f + ".mp3"))
 # música do menu, mais leve para a web (mono 96 kbps)
 subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", os.path.join(GAME, "audio/music.mp3"), "-ac", "1", "-b:a", "96k", os.path.join(MED, "menu.mp3")], check=True)
+# cor média da primeira e da última linha da cena (o site usa para prolongar a parede no celular)
+import json
+_m = Image.open(os.path.join(IMG, "menu.png")).convert("RGB")
+def _avg(y0):
+    px = [_m.getpixel((x, y)) for x in range(_m.width) for y in range(y0, y0 + 4)]
+    return "#%02x%02x%02x" % tuple(sum(p[i] for p in px) // len(px) for i in range(3))
+json.dump({"top": _avg(0), "bottom": _avg(_m.height - 4)}, open(os.path.join(SITE, "src", "data", "scene_colors.json"), "w"))
 for k, v in out.items():
     print(k, v)
 print("menu.mp3", round(os.path.getsize(os.path.join(MED, "menu.mp3")) / 1e6, 2), "MB")

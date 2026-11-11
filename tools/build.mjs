@@ -33,7 +33,7 @@ for (const rel of KEEP) {
 // 2. JS e CSS
 const res = await esbuild.build({
   entryPoints: { app: path.join(R, 'src/ts/main.ts'), site: path.join(R, 'src/css/index.css') },
-  bundle: true, minify: true, format: 'esm', target: ['es2020'], outdir: path.join(D, 'assets'), entryNames: '[name]-[hash]',
+  bundle: true, minify: !process.env.NOMINIFY, format: 'esm', target: ['es2020'], outdir: path.join(D, 'assets'), entryNames: '[name]-[hash]',
   metafile: true, external: ['/img/*', '/fonts/*'], legalComments: 'none',
 });
 const out = Object.keys(res.metafile.outputs).map((p) => '/' + path.relative(D, path.resolve(R, p)).replace(/\\/g, '/'));

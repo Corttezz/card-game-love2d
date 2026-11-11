@@ -2,7 +2,7 @@
 // A capela é desenhada como no jogo (components/Menu.lua): os 4 quadros da cena alternam a 10 fps (a chama das velas),
 // brilho das velas, brasas, tremor quente e vinheta, em escala inteira nos pixels do aparelho.
 // Nada é guardado no aparelho; som só com o visitante ligando.
-type Data = { lang: string; unsubPath?: string; pool?: string[]; cardBase?: string; t: Record<string, string> };
+type Data = { lang: string; unsubPath?: string; pool?: string[]; cardBase?: string; sceneTop?: string; sceneBottom?: string; t: Record<string, string> };
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector(s) as T | null;
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => Array.from(r.querySelectorAll(s)) as T[];
 const D: Data = JSON.parse($('#rm-data')?.textContent || '{"t":{}}');
@@ -25,101 +25,105 @@ const SEQ = ['menu', 'menu_normal', 'menu', 'menu_1', 'menu_2', 'menu_normal', '
 const imgs: Record<string, HTMLImageElement> = {};
 const cv = $<HTMLCanvasElement>('#scene');
 const ctx = cv?.getContext('2d', { alpha: false }) || null;
-let k = 1, sx = 0, sy = 0, W = 0, H = 0, topColor = '#141018', bottomColor = '#141018';
+// cores da borda de cima e de baixo da cena, medidas no build (tools/build.mjs) no PNG do jogo: sem ler pixels no navegador
+let k = 1, sx = 0, sy = 0, W = 0, H = 0, topColor = D.sceneTop || '#141018', bottomColor = D.sceneBottom || '#141018';
 let dark = document.body.classList.contains('dark') ? 1 : 0, darkTarget = dark;
 type Ember = { x: number; y: number; vy: number; life: number; t: number; c: number };
 const embers: Ember[] = [];
 const CANDLES: [number, number][] = [[0.209, 0.44], [0.770, 0.44]];
 
+// O canvas tem o tamanho da cena em pixels DO JOGO (cw x ch) e o navegador o amplia k vezes, sem suavizar:
+// mesma pixel art, k² menos trabalho por quadro do que desenhar na resolução do aparelho.
+let cw = 0, ch = 0, ox = 0, oy = 0;
 function layout() {
   if (!cv || !ctx) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   W = Math.round(innerWidth * dpr); H = Math.round(innerHeight * dpr);
-  cv.width = W; cv.height = H;
-  ctx.imageSmoothingEnabled = false;
   const portrait = innerWidth / innerHeight < 0.8;
-  if (portrait) {
-    // retrato: a capela mais perto (livro e altar no centro, velas cortadas nas bordas), apoiada embaixo
-    k = Math.max(1, Math.floor(W / 195));
-    sx = Math.round((W - 400 * k) / 2); sy = Math.round(H * 0.74 - 190 * k);
-  } else {
-    k = Math.max(1, Math.ceil(Math.max(W / 400, H / 256)));
-    sx = Math.round((W - 400 * k) / 2); sy = Math.round((H - 256 * k) / 2);
-  }
-  // posição do livro e das velas na tela, para o CSS alinhar o menu e as cartas com a cena
+  k = portrait ? Math.max(1, Math.floor(W / 195)) : Math.max(1, Math.ceil(Math.max(W / 400, H / 256)));
+  cw = Math.ceil(W / k); ch = Math.ceil(H / k);
+  cv.width = cw; cv.height = ch;
+  cv.style.width = `${(cw * k) / dpr}px`; cv.style.height = `${(ch * k) / dpr}px`;
+  ctx.imageSmoothingEnabled = false;
+  ox = Math.round((cw - 400) / 2);
+  // retrato: a capela mais perto (o livro ocupa a largura, velas cortadas nas bordas), com o livro a 3/4 da altura
+  oy = portrait ? Math.round(ch * 0.74 - 190) : Math.round((ch - 256) / 2);
+  sx = ox * k; sy = oy * k;
+  // posição da cena na tela, para o CSS alinhar o menu e as cartas com ela
   root.style.setProperty('--book-y', `${(sy + 150 * k) / dpr}px`);
   root.style.setProperty('--scene-top', `${Math.max(0, sy) / dpr}px`);
-  root.style.setProperty('--px', `${k / dpr}px`);
   root.style.setProperty('--menu-top-p', `${(sy + 56 * k) / dpr}px`);
   root.style.setProperty('--cards-top-p', `${(sy - 12 * k) / dpr}px`);
-  draw(performance.now(), true);
+  draw(performance.now());
 }
 
 function noise(t: number, s: number) { return (Math.sin(t * 1.9 + s) * 0.5 + Math.sin(t * 3.7 + s * 2.1) * 0.3 + Math.sin(t * 7.3 + s * 0.7) * 0.2) * 0.5 + 0.5; }
 
-let last = 0;
-function draw(now: number, force = false) {
+let last = 0, vign: CanvasGradient | null = null, vignKey = '';
+function draw(now: number) {
   if (!ctx) return;
   const t = now / 1000;
   const frame = reduced() ? 'menu' : SEQ[Math.floor(t * 10) % SEQ.length];
   const img = imgs[frame] || imgs.menu;
-  ctx.fillStyle = topColor; ctx.fillRect(0, 0, W, H);
-  if (sy > 0) {
-    // acima da capela (retrato): a parede escura do topo da cena, sumindo no preto
-    const g = ctx.createLinearGradient(0, 0, 0, sy + 2);
+  ctx.fillStyle = topColor; ctx.fillRect(0, 0, cw, ch);
+  if (oy > 0) {
+    // acima da capela (retrato): a parede do topo da cena sumindo no escuro
+    const g = ctx.createLinearGradient(0, 0, 0, oy + 1);
     g.addColorStop(0, '#0c0a10'); g.addColorStop(1, topColor);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, sy + 2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cw, oy + 1);
   }
-  const by = sy + 256 * k;
-  if (by < H) {
+  const by = oy + 256;
+  if (by < ch) {
     // abaixo do altar (retrato): a pedra da frente do altar sumindo no escuro
-    const g2 = ctx.createLinearGradient(0, by - 2, 0, H);
+    const g2 = ctx.createLinearGradient(0, by - 1, 0, ch);
     g2.addColorStop(0, bottomColor); g2.addColorStop(1, '#0c0a10');
-    ctx.fillStyle = g2; ctx.fillRect(0, by - 2, W, H - by + 2);
+    ctx.fillStyle = g2; ctx.fillRect(0, by - 1, cw, ch - by + 1);
   }
-  if (img?.complete && img.naturalWidth) ctx.drawImage(img, sx, sy, 400 * k, 256 * k);
+  if (img?.complete && img.naturalWidth) ctx.drawImage(img, ox, oy);
   const lit = 1 - dark;
   if (lit > 0.01) {
     ctx.globalCompositeOperation = 'lighter';
     CANDLES.forEach(([ax, ay], i) => {
-      const x = sx + ax * 400 * k, y = sy + ay * 256 * k;
-      const r = (34 + 6 * (reduced() ? 0.5 : noise(t, i * 5))) * k;
+      const x = ox + ax * 400, y = oy + ay * 256;
+      const r = 34 + 6 * (reduced() ? 0.5 : noise(t, i * 5));
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, `rgba(255,170,80,${0.22 * lit})`); g.addColorStop(1, 'rgba(255,140,60,0)');
       ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
     });
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = `rgba(255,178,87,${(0.03 + 0.028 * (reduced() ? 0.5 : noise(t * 0.8, 7.3))) * lit})`;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, cw, ch);
     if (!reduced()) {
-      const dt = Math.min(0.05, (now - last) / 1000 || 0.016);
-      if (Math.random() < 0.06) { const c = Math.floor(Math.random() * 2); embers.push({ x: CANDLES[c][0] * 400 + (Math.random() - 0.5) * 3, y: CANDLES[c][1] * 256 - 8, vy: 8 + Math.random() * 10, life: 1.4 + Math.random(), t: 0, c }); }
+      const dt = Math.min(0.12, (now - last) / 1000 || 0.1);
+      if (Math.random() < 0.12) { const c = Math.floor(Math.random() * 2); embers.push({ x: CANDLES[c][0] * 400 + (Math.random() - 0.5) * 3, y: CANDLES[c][1] * 256 - 8, vy: 8 + Math.random() * 10, life: 1.4 + Math.random(), t: 0, c }); }
       for (let i = embers.length - 1; i >= 0; i--) {
-        const e = embers[i]; e.t += dt; e.y -= e.vy * dt; e.x += Math.sin(e.t * 3 + e.c) * 0.08;
+        const e = embers[i]; e.t += dt; e.y -= e.vy * dt; e.x += Math.sin(e.t * 3 + e.c) * 0.15;
         if (e.t > e.life) { embers.splice(i, 1); continue; }
         ctx.fillStyle = `rgba(255,${150 + Math.floor(80 * (1 - e.t / e.life))},70,${(1 - e.t / e.life) * lit})`;
-        ctx.fillRect(Math.round(sx + e.x * k), Math.round(sy + e.y * k), k, k);
+        ctx.fillRect(Math.round(ox + e.x), Math.round(oy + e.y), 1, 1);
       }
     }
   }
-  const v = ctx.createRadialGradient(W / 2, H * 0.48, Math.min(W, H) * 0.25, W / 2, H * 0.5, Math.max(W, H) * 0.75);
-  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.62)');
-  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
-  if (dark > 0.001) { ctx.fillStyle = `rgba(4,3,6,${0.92 * dark})`; ctx.fillRect(0, 0, W, H); }
+  const key = `${cw}x${ch}`;
+  if (!vign || vignKey !== key) {
+    vign = ctx.createRadialGradient(cw / 2, ch * 0.48, Math.min(cw, ch) * 0.25, cw / 2, ch * 0.5, Math.max(cw, ch) * 0.75);
+    vign.addColorStop(0, 'rgba(0,0,0,0)'); vign.addColorStop(1, 'rgba(0,0,0,0.62)'); vignKey = key;
+  }
+  ctx.fillStyle = vign; ctx.fillRect(0, 0, cw, ch);
+  if (dark > 0.001) { ctx.fillStyle = `rgba(4,3,6,${0.92 * dark})`; ctx.fillRect(0, 0, cw, ch); }
   last = now;
-  void force;
 }
 
 let raf = 0, lastFrame = 0;
 function loop(now: number) {
   raf = requestAnimationFrame(loop);
-  if (now - lastFrame < 50 && Math.abs(dark - darkTarget) < 0.001) return; // ~20 fps basta para a vela
+  if (now - lastFrame < 100 && Math.abs(dark - darkTarget) < 0.001) return; // 10 fps: o ritmo da chama no jogo (BG_FPS = 10)
   dark += (darkTarget - dark) * 0.08; if (Math.abs(dark - darkTarget) < 0.002) dark = darkTarget;
   lastFrame = now; draw(now);
 }
 function start() {
   cancelAnimationFrame(raf);
-  if (reduced() || document.hidden) { dark = darkTarget; draw(performance.now(), true); return; }
+  if (reduced() || document.hidden) { dark = darkTarget; draw(performance.now()); return; }
   raf = requestAnimationFrame(loop);
 }
 
@@ -129,17 +133,8 @@ function loadScene() {
   for (const f of ['menu', 'menu_normal', 'menu_1', 'menu_2']) {
     const im = new Image(); im.src = `/img/v3/${f}.png`; imgs[f] = im;
     im.onload = () => {
-      if (f === 'menu') {
-        const c = document.createElement('canvas'); c.width = 400; c.height = 4; const x = c.getContext('2d')!;
-        x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, 400, 4).data; let r = 0, g = 0, b = 0;
-        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
-        const m = d.length / 4; topColor = `rgb(${Math.round(r / m)},${Math.round(g / m)},${Math.round(b / m)})`;
-        x.clearRect(0, 0, 400, 4); x.drawImage(im, 0, -252); const e = x.getImageData(0, 0, 400, 4).data; r = g = b = 0;
-        for (let i = 0; i < e.length; i += 4) { r += e[i]; g += e[i + 1]; b += e[i + 2]; }
-        bottomColor = `rgb(${Math.round(r / m)},${Math.round(g / m)},${Math.round(b / m)})`;
-        layout();
-      }
-      if (++n === 4) start();
+      if (f === 'menu') layout();
+      if (++n === 4) { if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true }); }
     };
   }
   addEventListener('resize', layout);
@@ -176,7 +171,7 @@ function quit(on: boolean) {
   const q = $('#quit');
   if (on) { q?.classList.add('show'); setTimeout(() => ($('.seal-btn') as HTMLElement | null)?.focus(), 400); sfx('menu-close'); }
   else { q?.classList.remove('show'); ($('.mbtn[data-open="quit"]') as HTMLElement | null)?.focus(); sfx('menu-open'); }
-  if (reduced()) { dark = darkTarget; draw(performance.now(), true); }
+  if (reduced()) { dark = darkTarget; draw(performance.now()); }
 }
 function menu() {
   const items = $$<HTMLAnchorElement>('.menu .mbtn');

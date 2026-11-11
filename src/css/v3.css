@@ -14,7 +14,7 @@ a { color: inherit; }
 .sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- a cena ---------- */
-#scene { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 0; }
+#scene { position: fixed; left: 0; top: 0; z-index: 0; image-rendering: pixelated; image-rendering: crisp-edges; }
 .osd { position: fixed; top: 20px; right: 26px; z-index: 3; display: grid; justify-items: end; gap: 6px; font-size: 16px; color: #f2f2ea;
   text-shadow: 0 0 6px #fff6, 2px 2px 0 #000; animation: osd 4.8s steps(8) forwards; pointer-events: none; }
 @keyframes osd { 0%, 72% { opacity: 1; } 100% { opacity: 0; } }

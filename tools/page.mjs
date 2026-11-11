@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG = JSON.parse(fs.readFileSync(path.join(R, 'src/data/config.json'), 'utf8'));
 const UI = JSON.parse(fs.readFileSync(path.join(R, 'src/data/ui_game.json'), 'utf8'));
+const SCENE = JSON.parse(fs.readFileSync(path.join(R, 'src/data/scene_colors.json'), 'utf8'));
 
 export const LANGS = [
   { code: 'en', prefix: '', html: 'en', self: 'English', short: 'EN', og: 'en_US' },
@@ -94,7 +95,7 @@ ${panel('settings', ui(l, 'settings.title'), `<div class="opt"><span>${esc(ui(l,
 ${toggle('opt-music', ui(l, 'settings.music'))}${toggle('opt-sfx', ui(l, 'settings.sfx'))}${toggle('opt-crt', ui(l, 'settings.crt_shader'), true)}${toggle('opt-motion', ui(l, 'settings.reduced_motion'))}
 <p class="fine"><a href="${home(l)}privacy/">${esc(t.privacy)}</a> · ${esc(t.pressShort)}: <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>`, t, l)}
 <div class="toast" id="toast" role="status" aria-live="polite" hidden><img class="px" src="/img/v3/ach.png" width="64" height="64" alt=""><div><b>${esc(ui(l, 'achievements.toast_label'))}</b><strong>${esc(t.achName)}</strong><span>${esc(t.achDesc)}</span></div></div>`;
-  const client = { lang: l.code, unsubPath: home(l) + 'unsubscribe/', pool: CARD_POOL, cardBase: `/img/gamecards/${l.code}/`,
+  const client = { lang: l.code, unsubPath: home(l) + 'unsubscribe/', pool: CARD_POOL, cardBase: `/img/gamecards/${l.code}/`, sceneTop: SCENE.top, sceneBottom: SCENE.bottom,
     t: { sending: t.sending, notifyOk: t.notifyOk, notifyBad: t.notifyBad, notifyRate: t.notifyRate, notifyNet: t.notifyNet, unsubLink: t.unsubLink } };
   return head(t, l, ctx, { title: t.htmlTitle, desc: t.metaDesc, path: home(l) }) +
     `<script type="application/json" id="rm-data">${JSON.stringify(client).replace(/</g, '\\u003c')}</script>
@@ -124,7 +125,7 @@ export function renderUnsub(t, l, ctx) {
 // 404: a mesma capela com as velas apagadas
 export function render404(t, l, ctx) {
   return head(t, l, ctx, { title: `${t.nfTitle} — Runemoire`, desc: t.metaDesc, path: home(l) + '404', noindex: true }) +
-    `<script type="application/json" id="rm-data">${JSON.stringify({ lang: l.code, t: {} })}</script>
+    `<script type="application/json" id="rm-data">${JSON.stringify({ lang: l.code, sceneTop: SCENE.top, sceneBottom: SCENE.bottom, t: {} })}</script>
 </head><body class="crt dark nf"><h1 class="sr">${esc(t.nfTitle)}</h1>${sceneDom(t, l, ctx.GAME, { dark: true, line: t.nf404 })}</body></html>`;
 }
 
