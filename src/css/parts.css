@@ -229,3 +229,5 @@ canvas.confetti.on { display: block; }
 .acts button img { width: auto; height: 24px; }
 .secret-rune img { width: auto; height: 20px; }
 .secret-rune { width: auto; }
+@media (max-width: 560px) { .card .face { padding-top: 22px; } }
+.card .face { padding-top: 18px; }
