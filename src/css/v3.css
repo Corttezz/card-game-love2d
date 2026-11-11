@@ -189,3 +189,39 @@ body.simple { overflow: auto; background: radial-gradient(ellipse at 50% 30%, #2
   .menu { width: min(250px, 66vw); }
 }
 .frame9 h2:focus { outline: none; }
+
+/* ===================== revisão independente, rodada 1 ===================== */
+.panel .frame9 h2 { text-transform: uppercase; }
+.prose h1, .prose h2 { text-align: left; }
+/* cartas em escala inteira: verso 192 (1x) ou 144, frente 96 x 2 ou 1,5 */
+.hang { width: 144px; top: calc(30vh - 108px); }
+.hang.left { left: calc(16vw - 72px); }
+.hang.right { left: calc(84vw - 72px); }
+@media (min-width: 1100px) and (min-height: 760px) { .hang { width: 192px; top: calc(30vh - 144px); } .hang.left { left: calc(16vw - 96px); } .hang.right { left: calc(84vw - 96px); } }
+/* texto pequeno: 16 px (2x a grade da fonte) no computador */
+@media (min-width: 760px) {
+  .wish { font-size: 16px; }
+  .corner { font-size: 16px; }
+  .pbody .fine { font-size: 16px; line-height: 1.6; }
+  .notify .msg { font-size: 16px; line-height: 1.6; }
+  .toast b, .toast span { font-size: 16px; line-height: 1.4; }
+  .quit p, .quit .nfback { font-size: 16px; }
+}
+.corner { min-height: 28px; display: inline-flex; align-items: center; }
+body.reduced .osd { display: none; }
+@media (prefers-reduced-motion: reduce) { .osd { display: none; } }
+@media (max-aspect-ratio: 4/5) {
+  .hang { width: 96px; top: var(--cards-top-p, 28vh); }
+  .hang.left { left: 5vw; }
+  .hang.right { left: auto; right: 5vw; }
+  .cards { display: grid; grid-template-columns: repeat(2, 144px); justify-content: center; gap: 14px; overflow: visible; flex-wrap: nowrap; }
+  .cards img { width: 144px; height: 216px; }
+}
+@media (max-aspect-ratio: 4/5) {
+  .brand { top: max(20px, 5vh); }
+  .brand .seal { width: 76px; height: 76px; }
+  .hang { top: max(var(--cards-top-p, 26vh), calc(5vh + 150px)); }
+  .menu { width: min(232px, 62vw); }
+  .wish { bottom: 10px; }
+  .corner { bottom: 26px; }
+}

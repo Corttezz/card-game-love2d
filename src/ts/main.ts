@@ -40,20 +40,22 @@ function layout() {
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   W = Math.round(innerWidth * dpr); H = Math.round(innerHeight * dpr);
   const portrait = innerWidth / innerHeight < 0.8;
-  k = portrait ? Math.max(1, Math.floor(W / 195)) : Math.max(1, Math.ceil(Math.max(W / 400, H / 256)));
+  // retrato: ~234 px da cena na largura: as duas velas ficam cortadas nas bordas (velas em x 84 e 308 da cena)
+  k = portrait ? Math.max(1, Math.floor(W / 234)) : Math.max(1, Math.ceil(Math.max(W / 400, H / 256)));
   cw = Math.ceil(W / k); ch = Math.ceil(H / k);
   cv.width = cw; cv.height = ch;
   cv.style.width = `${(cw * k) / dpr}px`; cv.style.height = `${(ch * k) / dpr}px`;
   ctx.imageSmoothingEnabled = false;
   ox = Math.round((cw - 400) / 2);
   // retrato: a capela mais perto (o livro ocupa a largura, velas cortadas nas bordas), com o livro a 3/4 da altura
-  oy = portrait ? Math.round(ch * 0.74 - 190) : Math.round((ch - 256) / 2);
+  // retrato: a capela apoiada embaixo (sobra uma faixa para a linha da Steam); paisagem: centrada
+  oy = portrait ? Math.round(ch - 256 - (44 * dpr) / k) : Math.round((ch - 256) / 2);
   sx = ox * k; sy = oy * k;
   // posição da cena na tela, para o CSS alinhar o menu e as cartas com ela
   root.style.setProperty('--book-y', `${(sy + 150 * k) / dpr}px`);
   root.style.setProperty('--scene-top', `${Math.max(0, sy) / dpr}px`);
-  root.style.setProperty('--menu-top-p', `${(sy + 56 * k) / dpr}px`);
-  root.style.setProperty('--cards-top-p', `${(sy - 12 * k) / dpr}px`);
+  root.style.setProperty('--menu-top-p', `${(sy + 22 * k) / dpr}px`);
+  root.style.setProperty('--cards-top-p', `${sy / dpr - 160}px`);
   draw(performance.now());
 }
 
@@ -81,6 +83,19 @@ function draw(now: number) {
   }
   if (img?.complete && img.naturalWidth) ctx.drawImage(img, ox, oy);
   const lit = 1 - dark;
+  if (lit > 0.01) {
+    // o feixe de luz da janela alta da capela (Menu:_drawLightShaft)
+    const cx = ox + 200, g = ctx.createLinearGradient(0, oy, 0, oy + 200);
+    g.addColorStop(0, `rgba(255,214,150,${0.10 * lit})`); g.addColorStop(1, 'rgba(255,214,150,0)');
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(cx - 14, oy); ctx.lineTo(cx + 14, oy); ctx.lineTo(cx + 46, oy + 200); ctx.lineTo(cx - 46, oy + 200); ctx.closePath(); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (dark > 0.01) {
+    // velas apagadas: as chamas somem antes do resto escurecer
+    ctx.fillStyle = `rgba(14,10,16,${Math.min(1, dark * 1.6)})`;
+    CANDLES.forEach(([ax, ay]) => ctx.fillRect(Math.round(ox + ax * 400 - 7), Math.round(oy + ay * 256 - 22), 14, 22));
+  }
   if (lit > 0.01) {
     ctx.globalCompositeOperation = 'lighter';
     CANDLES.forEach(([ax, ay], i) => {
@@ -131,7 +146,7 @@ function loadScene() {
   if (!cv) return;
   let n = 0;
   for (const f of ['menu', 'menu_normal', 'menu_1', 'menu_2']) {
-    const im = new Image(); im.src = `/img/v3/${f}.png`; imgs[f] = im;
+    const im = new Image(); im.src = `/img/v3/${f}.webp`; imgs[f] = im;
     im.onload = () => {
       if (f === 'menu') layout();
       if (++n === 4) { if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true }); }
@@ -144,6 +159,10 @@ function loadScene() {
 
 // ---------------- menu, painéis, sair ----------------
 const panels = $$<HTMLElement>('.panel');
+// fundo inerte quando um painel ou o Sair está aberto: o teclado não alcança o que não se vê
+const BG = () => $$<HTMLElement>('#main, .hang, .corner, .osd');
+const setInert = (els: HTMLElement[], on: boolean) => els.forEach((e) => { if (on) e.setAttribute('inert', ''); else e.removeAttribute('inert'); });
+setInert($$('#quit:not([data-static])'), true);
 let lastOpener: HTMLElement | null = null;
 function openPanel(id: string, opener?: HTMLElement | null) {
   if (id === 'quit') { quit(true); return; }
@@ -151,6 +170,7 @@ function openPanel(id: string, opener?: HTMLElement | null) {
   if (!p || !p.classList.contains('panel')) return;
   panels.forEach((x) => x.classList.toggle('open', x === p));
   document.body.classList.add('panel-open');
+  setInert(BG(), true);
   lastOpener = opener || null;
   const h = $('h2', p) as HTMLElement | null; const fr = $('.frame9', p) as HTMLElement | null;
   if (fr) fr.scrollTop = 0;
@@ -161,6 +181,7 @@ function closePanel() {
   if (!panels.some((p) => p.classList.contains('open'))) return;
   panels.forEach((p) => p.classList.remove('open'));
   document.body.classList.remove('panel-open');
+  setInert(BG(), false);
   $$<HTMLVideoElement>('.panel video').forEach((v) => v.pause());
   lastOpener?.focus();
   sfx('menu-close');
@@ -169,6 +190,7 @@ function quit(on: boolean) {
   darkTarget = on ? 1 : 0;
   document.body.classList.toggle('quitting', on);
   const q = $('#quit');
+  setInert(BG(), on); if (q) setInert([q], !on);
   if (on) { q?.classList.add('show'); setTimeout(() => ($('.seal-btn') as HTMLElement | null)?.focus(), 400); sfx('menu-close'); }
   else { q?.classList.remove('show'); ($('.mbtn[data-open="quit"]') as HTMLElement | null)?.focus(); sfx('menu-open'); }
   if (reduced()) { dark = darkTarget; draw(performance.now()); }
