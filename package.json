@@ -1,0 +1,15 @@
+{
+  "name": "runemoire-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node tools/build.mjs && wrangler dev",
+    "test": "node tools/test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12",
+    "playwright-core": "^1.65.0",
+    "wrangler": "^4.160.0"
+  }
+}

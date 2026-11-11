@@ -1,0 +1,173 @@
+/* ===================== sprites animados (steps) ===================== */
+.spr { --k: 1; display: inline-block; width: calc(var(--fw) * var(--k)); height: calc(var(--fh) * var(--k)); background-repeat: no-repeat;
+  background-size: calc(var(--fw) * var(--fn) * var(--k)) calc(var(--fh) * var(--k)); image-rendering: pixelated;
+  animation: sprite var(--dur, 1s) steps(var(--fn, 1)) infinite; flex: none; }
+@keyframes sprite { from { background-position-x: 0; } to { background-position-x: calc(var(--fw) * var(--fn) * var(--k) * -1); } }
+.card .art.spr { width: 64px; height: 64px; background-size: calc(64px * var(--fn)) 64px; animation-name: sprite64; }
+@keyframes sprite64 { to { background-position-x: calc(-64px * var(--fn)); } }
+.boss-stage .bs { --k: 2; position: relative; z-index: 1; margin-bottom: 10px; }
+@media (max-width: 560px) { .boss-stage .bs { --k: 1; } }
+.roster .en { --k: .75; }
+.roster figure { width: 96px; }
+.mech .token { --k: 1.5; }
+.frag .spr { margin: 6px auto; display: block; }
+.foe .sprite { --k: 2; }
+@media (max-width: 560px) { .foe .sprite { --k: 1; } }
+.hero .castle-anim { --k: var(--s); position: absolute; left: 0; bottom: 0; z-index: 3; pointer-events: none; }
+.hero .boss-peek { --k: var(--s); position: absolute; z-index: 1; left: 64%; bottom: 26%; transition: translate 1.1s steps(9), opacity .4s; }
+.hero .boss-peek.hide { translate: -60% 12%; opacity: 0; }
+@media (max-width: 720px) { .hero .castle-anim { --k: 1.5; } .hero .boss-peek { --k: 1; left: 62%; } }
+.hero .stage .castle { position: relative; }
+
+/* vídeo mudo atrás do herói */
+.hero .loop { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s; pointer-events: none; mix-blend-mode: soft-light; }
+.hero .loop.on { opacity: .55; }
+.hero .loop video { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; filter: saturate(.6) contrast(1.1); }
+.hero .biome-now { font: 13px var(--pixel); color: var(--text-dim); margin: 0; text-shadow: 0 2px 0 #000; }
+.hero .biome-now b { color: var(--accent); font-weight: normal; }
+.hero .copy h1 img { width: min(578px, 88vw); }
+@media (min-width: 1300px) { .hero .copy h1 img { width: 867px; } }
+body.locked { overflow: hidden; }
+
+/* ===================== capitular iluminada e epígrafes ===================== */
+.parch.dict .lead::first-letter, .klass > p:first-of-type::first-letter, .prose h1 + p::first-letter, .leaf .lore::first-letter {
+  float: left; font: 40px/1 var(--pixel); color: #f6e7c2; background: #8b1a1a; padding: 6px 7px 4px; margin: 4px 10px 0 0;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px #2a1d14, 4px 4px 0 4px #0005; text-shadow: 2px 2px 0 #3a0808;
+}
+.page .head .lead::first-letter { font: 1.25em var(--pixel); color: #e0584a; }
+.page .head .epi { font: italic 17px/1.5 var(--serif); color: var(--accent); margin: 0; max-width: 46ch; }
+.page .head .epi::before { content: '\201C'; }
+.page .head .epi::after { content: '\201D'; }
+
+/* ===================== mancha de tinta no hover ===================== */
+.btn, .acts button, .filters button { position: relative; isolation: isolate; overflow: hidden; }
+.btn::before, .acts button::before, .filters button::before {
+  content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; translate: -50% -50%; scale: 0;
+  background: radial-gradient(circle at 40% 45%, #2a1d14 0 30%, transparent 31%), radial-gradient(circle at 62% 58%, #2a1d14 0 26%, transparent 27%), radial-gradient(circle at 50% 50%, #2a1d14 0 38%, transparent 39%), radial-gradient(circle at 28% 66%, #2a1d14 0 9%, transparent 10%), radial-gradient(circle at 74% 30%, #2a1d14 0 7%, transparent 8%);
+  opacity: .25; transition: scale .32s steps(4);
+}
+.btn:hover::before, .btn:focus-visible::before, .acts button:hover::before, .filters button:hover::before { scale: 1; }
+.btn.ghost::before, .btn.steam::before, .acts button::before, .filters button::before { filter: invert(1); opacity: .14; }
+
+/* ===================== CTA Steam (texto, cor da Steam) ===================== */
+.btn.steam { background: #171a21; color: #c7d5e0; box-shadow: 0 0 0 3px #66c0f4, 0 6px 0 3px #0b0d11; gap: 10px; }
+.btn.steam .steam-ico { width: 22px; height: 22px; }
+.btn.steam small { font: 11px var(--pixel); color: #171a21; background: #66c0f4; padding: 3px 5px; }
+.btn.steam[aria-disabled='true'] { filter: none; cursor: var(--cursor-hand, pointer); }
+
+/* ===================== bordas de página rasgada (máscara SVG) ===================== */
+.book .page { background: #17131b; }
+.book .page:nth-child(even) { background: #1d1822; }
+.page::before { content: ''; position: absolute; left: 0; right: 0; top: -1px; height: 22px; background: #1d1822; pointer-events: none; z-index: 1;
+  -webkit-mask: url('/img/ui/torn.svg') 0 0 / 640px 22px repeat-x; mask: url('/img/ui/torn.svg') 0 0 / 640px 22px repeat-x; }
+.book .page:nth-child(even)::before { background: #17131b; }
+.hero::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 22px; background: #17131b; z-index: 7; pointer-events: none;
+  -webkit-mask: url('/img/ui/torn.svg') 0 0 / 640px 22px repeat-x; mask: url('/img/ui/torn.svg') 0 0 / 640px 22px repeat-x; transform: scaleY(-1); }
+.book .page:first-child::before { display: none; }
+
+/* ===================== prólogo: dicionário, recursos, embaralhar ===================== */
+.intro-grid { display: grid; gap: 28px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 980px) { .intro-grid { grid-template-columns: 1fr 1fr; } }
+.dict { position: relative; font-size: 19px; }
+.dict dfn { font: 28px var(--pixel); font-style: normal; color: var(--ink); }
+.dict .pron { font-family: var(--serif); color: var(--ink-soft); }
+.dict .ety { color: var(--ink-soft); font-size: 16px; font-style: italic; margin: 0; }
+.feats { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.feats li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+.feats li img { width: 32px; height: 32px; margin-top: 3px; }
+.feats b { font: 15px var(--pixel); color: var(--accent); letter-spacing: .06em; font-weight: normal; }
+.shuffle-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; margin-top: 34px; }
+.shuffle-row p { margin: 0; color: var(--text-dim); font-size: 16px; }
+.shuffle-out { display: grid; justify-items: center; gap: 8px; margin-top: 18px; }
+.shuffle-out .frag { max-width: 560px; text-align: center; }
+.shuffle-out > .kicker { font: 12px var(--pixel); color: var(--accent); margin: 0; }
+.secret-rune.s1 { right: 10px; bottom: 8px; }
+.secret-rune.s2 { right: 6px; top: 40px; }
+.secret-rune.s3 { right: 14px; bottom: 10px; }
+.secret-rune.s4 { position: relative; margin-left: 6px; align-self: center; }
+footer .secret-rune { position: relative; margin-top: 8px; }
+#trailers .wrap, .leaf .side.r { position: relative; }
+
+/* ===================== mesa e cartas: extras ===================== */
+.card { --w: 140px; aspect-ratio: auto; min-height: 214px; }
+.card .face { position: relative; inset: auto; min-height: 214px; height: 100%; gap: 2px; }
+.card .desc { font: 12px/1.3 var(--serif); text-align: center; padding: 0 2px; color: var(--ink-soft); }
+.card .kind.combo { color: #8b1a1a; font-weight: bold; }
+.card.glow .face { box-shadow: 0 0 0 3px var(--rim), 0 0 0 6px var(--ink), 0 8px 0 4px #0007, 0 0 14px 2px #9cc9ff66; }
+.table-actions { display: inline-flex; gap: 12px; flex-wrap: wrap; }
+.table .foe-name { font: 13px var(--pixel); color: var(--text-dim); }
+.foe.dead .sprite { animation: none; opacity: .25; filter: grayscale(1); }
+.combo-rules { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.combo-rules li { background: #0006; padding: 10px 12px; box-shadow: inset 0 0 0 2px #fff1; font-size: 16px; }
+.combo-rules b { font: 14px var(--pixel); color: var(--gold); font-weight: normal; display: block; }
+@media (max-width: 560px) { .card { --w: 104px; min-height: 186px; } .card .face { min-height: 186px; } .card .desc { display: none; } }
+
+/* ===================== bestiário: extras ===================== */
+.leaf .side.r { display: grid; gap: 10px; align-content: start; }
+.leaf h3 small { font: 13px var(--pixel); color: var(--ink-soft); }
+.bossname { font-size: 28px; margin: 0; }
+.epithet { font-style: italic; color: var(--ink-soft); margin: 0; }
+.lore { font-style: italic; }
+.parch .kicker { font: 12px var(--pixel); color: #8b1a1a; letter-spacing: .12em; text-transform: uppercase; margin: 0; }
+.boss-stage { background: #000; }
+.boss-stage img.bg { inset: 0; height: 100%; opacity: .65; }
+
+/* ===================== FAQ, imprensa, final, páginas simples ===================== */
+.wrap.narrow { width: min(860px, 100% - 32px); }
+.faq { display: grid; gap: 12px; }
+.faq details { padding: 4px 18px; }
+.faq summary { font: 15px/1.5 var(--pixel); padding: 12px 0; list-style: none; display: flex; gap: 10px; align-items: baseline; }
+.faq summary::before { content: '\2726'; color: #8b1a1a; }
+.faq details[open] summary::before { content: '\2727'; }
+.faq summary::-webkit-details-marker { display: none; }
+.final { text-align: center; }
+.final .ctas { display: flex; justify-content: center; margin-bottom: 18px; }
+.curses { padding-left: 1.1em; margin: 0; display: grid; gap: 6px; }
+.dim { color: var(--text-dim); }
+.small { font-size: 15px; color: var(--ink-soft); }
+.prose { font-size: 18px; }
+.prose h2 { font-size: 18px; color: var(--ink); margin-top: 1.2em; }
+.prose a { color: #7a3a12; }
+.unsub { display: grid; gap: 10px; justify-items: start; }
+.lorepage blockquote { margin: 0 0 18px; padding: 0 0 0 16px; border-left: 4px solid #8b1a1a; }
+.lorepage blockquote footer { font: 12px var(--pixel); color: var(--ink-soft); margin-top: 6px; }
+.lorepage .wall { width: 100%; height: auto; }
+canvas.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 99; image-rendering: pixelated; display: none; }
+canvas.confetti.on { display: block; }
+.hero canvas.weather { z-index: 4; }
+.hero .copy { z-index: 6; }
+
+/* ===================== ajustes do herói e do topo (rodada 2) ===================== */
+[hidden] { display: none !important; }
+.hero { --s: 2; }
+.hero .copy { padding-top: 92px; gap: 10px; }
+.hero .copy h1 img { width: min(578px, 88vw); height: auto; }
+.hero .castle-anim, .hero .boss-peek { --k: 2; }
+.hero .castle { width: calc(var(--cw, 214px) * 2); }
+.hero .notify { max-width: 640px; }
+.hero .notify .fine, .final .notify .fine { background: #0009; padding: 4px 10px; width: auto; }
+.bar nav a { white-space: nowrap; }
+.bar nav { display: none; }
+@media (min-width: 1500px) { .bar nav { display: flex; } }
+.langsel { max-width: 140px; }
+@media (max-width: 720px) {
+  .hero .copy { padding-top: 124px; }
+  .hero .castle { width: calc(var(--cw, 214px) * 1.5); }
+  .hero .castle-anim, .hero .boss-peek { --k: 1.5; }
+  .bar .tools { flex-wrap: wrap; justify-content: flex-end; gap: 6px; flex: 1; }
+  .bar .runes { order: 3; width: 100%; justify-content: space-between; }
+  .langsel { max-width: 110px; }
+  .hero .notify .btn { width: auto; }
+}
+@media (min-height: 1000px) and (min-width: 1700px) { .hero { --s: 3; } .hero .castle { width: calc(var(--cw, 214px) * 3); } .hero .castle-anim, .hero .boss-peek { --k: 3; } }
+
+/* herói = o mundo pintado do jogo: céu e montanhas do bioma cobrindo tudo, castelo no centro */
+.hero .backdrop { position: absolute; inset: 0 0 calc(var(--s) * 10px) 0; image-rendering: pixelated;
+  background: var(--mtn-front) 50% 100% / cover no-repeat, var(--mtn) 50% 100% / cover no-repeat; }
+.hero .celestial, .hero .clouds { display: none; }
+.hero .ground { height: calc(var(--s) * 12px); }
+.hero .loop { mix-blend-mode: overlay; -webkit-mask: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 70%); mask: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 70%); }
+.hero .loop.on { opacity: .3; }
+.hero .copy { text-shadow: 0 2px 0 #000; }
+.hero .copy::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 40px; translate: -50% 0; width: min(900px, 100%); height: calc(100% + 30px);
+  background: radial-gradient(ellipse at 50% 45%, #0009, transparent 68%); pointer-events: none; }
