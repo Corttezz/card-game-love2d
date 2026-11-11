@@ -72,7 +72,7 @@
  "fog": "Niebla de Intención",
  "fogText": "Aquí, las intenciones enemigas pueden ocultarse tras un \"?\". Planeas sin conocer el golpe.",
  "cardsKicker": "Capítulo V",
- "cardsTitle": "Cartas vivas",
+ "cardsTitle": "Cartas del juego",
  "cardsLead": "Cada carta está animada, igual que en el juego. Las cartas raras y legendarias brillan en el borde.",
  "all": "Todas",
  "jokersBoss": "Comodines de jefe",
@@ -240,5 +240,16 @@
  "laneLabel": "Orden de juego",
  "notifyLaunch": "Avísame en el lanzamiento",
  "steamSoonLine": "Próximamente en Steam",
- "pressShort": "Prensa"
+ "pressShort": "Prensa",
+ "wishSoon": "LISTA DE DESEOS EN STEAM: PRONTO",
+ "quitLine": "Las velas se apagaron. Toca el sello para encenderlas.",
+ "achName": "Primer Lector",
+ "achDesc": "Un correo cuando salga Runemoire. Nada más.",
+ "achPrompt": "Deja tu correo para desbloquear este logro.",
+ "onLabel": "SÍ",
+ "offLabel": "NO",
+ "flipCard": "Girar la carta",
+ "screensTitle": "Pantallas del juego",
+ "nf404": "Esta página fue arrancada del grimorio.",
+ "soundTitle": "Sonido"
 }

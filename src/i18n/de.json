@@ -72,7 +72,7 @@
  "fog": "Absichtsnebel",
  "fogText": "Hier können sich gegnerische Absichten hinter einem „?“ verstecken. Du planst, ohne den Schlag zu kennen.",
  "cardsKicker": "Kapitel V",
- "cardsTitle": "Lebende Karten",
+ "cardsTitle": "Karten aus dem Spiel",
  "cardsLead": "Jede Karte ist animiert, genau wie im Spiel. Seltene und legendäre Karten schimmern am Rand.",
  "all": "Alle",
  "jokersBoss": "Boss-Joker",
@@ -240,5 +240,16 @@
  "laneLabel": "Spielreihenfolge",
  "notifyLaunch": "Benachrichtige mich zum Start",
  "steamSoonLine": "Bald auf Steam",
- "pressShort": "Presse"
+ "pressShort": "Presse",
+ "wishSoon": "WUNSCHLISTE AUF STEAM: BALD",
+ "quitLine": "Die Kerzen sind erloschen. Berühre das Siegel, um sie neu zu entzünden.",
+ "achName": "Erster Leser",
+ "achDesc": "Eine E-Mail, wenn Runemoire erscheint. Sonst nichts.",
+ "achPrompt": "Hinterlasse deine E-Mail, um diese Errungenschaft freizuschalten.",
+ "onLabel": "AN",
+ "offLabel": "AUS",
+ "flipCard": "Karte umdrehen",
+ "screensTitle": "Bilder aus dem Spiel",
+ "nf404": "Diese Seite wurde aus dem Grimoire gerissen.",
+ "soundTitle": "Ton"
 }

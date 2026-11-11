@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import * as esbuild from 'esbuild';
-import { LANGS, renderHome, renderPrivacy, render404, renderUnsub, CASTLE_BIOME } from './page.mjs';
+import { LANGS, renderHome, renderPrivacy, render404, renderUnsub } from './page.mjs';
 
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const P = path.join(R, 'public');
@@ -16,13 +16,12 @@ fs.mkdirSync(D, { recursive: true });
 for (const f of fs.readdirSync(D)) fs.rmSync(path.join(D, f), { recursive: true, force: true });
 
 const GAME = JSON.parse(fs.readFileSync(path.join(R, 'src/data/game.json'), 'utf8'));
-const B = GAME.biomes.find((b) => b.id === CASTLE_BIOME);
 
 // 1. só o que a v2 usa
 const KEEP = [
-  'favicon.ico', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/brand/logo.png', 'img/brand/wordmark.png',
+  'favicon.ico', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/v3', 'img/gamecards', 'media/v3',
   'img/brand/seal_32.png', 'img/brand/seal_180.png', 'img/brand/seal_192.png', 'img/brand/seal_512.png',
-  B.castle2x.src, B.castleAnim.src, 'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
+  'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
   ...['en', 'pt_BR'].flatMap((l) => ['03_road_battle', '06_road_fork', '05_shop'].flatMap((s) => [`img/shots/${l}/${s}.webp`, `img/shots/${l}/${s}_s.webp`])),
 ].map((p) => p.replace(/^\//, ''));
 for (const rel of KEEP) {
@@ -31,10 +30,7 @@ for (const rel of KEEP) {
   fs.cpSync(src, path.join(D, rel), { recursive: true });
 }
 
-// 2. castelo do jogo em CSS (quadro parado em 2x no primeiro paint; a tira animada entra depois do load, lenta)
-const c = B.castleAnim;
-fs.writeFileSync(path.join(R, 'src/css/castle.css'), `/* gerado por tools/build.mjs: castelo de ${B.id} do jogo */\n` +
-  `:root{--castle-static:url(${B.castle2x.src});--castle-src:url(${c.src});--cw:${c.w}px;--ch:${c.h}px;--cfn:${c.frames};--cdur:${(c.frames / 2).toFixed(2)}s}\n`);
+// 2. JS e CSS
 const res = await esbuild.build({
   entryPoints: { app: path.join(R, 'src/ts/main.ts'), site: path.join(R, 'src/css/index.css') },
   bundle: true, minify: true, format: 'esm', target: ['es2020'], outdir: path.join(D, 'assets'), entryNames: '[name]-[hash]',
@@ -49,8 +45,8 @@ const readT = (code) => JSON.parse(fs.readFileSync(path.join(R, `src/i18n/${code
 const T = Object.fromEntries(LANGS.map((l) => [l.code, readT(l.code)]));
 for (const l of LANGS) for (const k of Object.keys(T.en)) if (!(k in T[l.code])) { console.warn(`[i18n] ${l.code} sem "${k}"`); T[l.code][k] = T.en[k]; }
 
-// 4. páginas (o castelo estático é a imagem principal do topo: preload)
-const ctx = { JS, CSS, GAME, preload: `<link rel="preload" as="image" href="${B.castle2x.src}" fetchpriority="high"><link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>` };
+// 4. páginas
+const ctx = { JS, CSS, GAME };
 const write = (rel, html) => { const f = path.join(D, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, html); };
 for (const l of LANGS) {
   const base = l.prefix ? `${l.prefix}/` : '';

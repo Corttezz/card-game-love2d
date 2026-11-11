@@ -1,12 +1,14 @@
-// runemoire.com v2: uma página só, minimalista, celular primeiro (pedido do Daniel, 10/11/2026).
-// Topo (logo do jogo, uma frase, um castelo do jogo, "Me avise"), trailer de gameplay ao clicar,
-// três capturas reais do jogo, rodapé de uma linha. Textos do jogo vêm de src/data/game.json.
+// runemoire.com v3: o site É a tela de título do jogo (Daniel, 11/11/2026, no modelo do inscryption.com).
+// Uma cena só, sem rolagem: a capela do menu do jogo (camadas do próprio jogo, velas vivas), as duas cartas
+// flutuando que viram, o selo e o logotipo, e o menu com os rótulos do jogo. Cada item abre um painel no estilo do jogo.
+// Sem JS os itens do menu são âncoras (#play, #collection, ...) e os painéis abrem por :target.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG = JSON.parse(fs.readFileSync(path.join(R, 'src/data/config.json'), 'utf8'));
+const UI = JSON.parse(fs.readFileSync(path.join(R, 'src/data/ui_game.json'), 'utf8'));
 
 export const LANGS = [
   { code: 'en', prefix: '', html: 'en', self: 'English', short: 'EN', og: 'en_US' },
@@ -19,92 +21,111 @@ const home = (l) => (l.prefix ? `/${l.prefix}/` : '/');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (s, v = {}) => String(s ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
 const loc = (o, l) => (o && typeof o === 'object' ? o[l.code] ?? o.en : o);
+const ui = (l, k) => UI[l.code]?.[k] ?? UI.en[k];
 
-// as três telas reais (capturas do próprio jogo, steam/store/screenshots): combate, mapa e loja
+// cartas renderizadas pelo próprio jogo (CardFrame, exportadas por tools/preview_cards em cada idioma)
+export const CARD_POOL = fs.readdirSync(path.join(R, 'public/img/gamecards/en')).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4)).sort();
+const COLLECTION_CARDS = ['warrior_strike', 'mage_zap', 'rogue_executioner', 'joker_001'];
 const SHOTS = ['03_road_battle', '06_road_fork', '05_shop'];
 const SHOT_ALT = {
-  '03_road_battle': { en: 'Combat: cards in hand against an enemy on the road', pt_BR: 'Combate: cartas na mão contra um inimigo na estrada', es: 'Combate: cartas en la mano contra un enemigo en el camino', fr: 'Combat : des cartes en main face à un ennemi sur la route', de: 'Kampf: Karten auf der Hand gegen einen Gegner auf der Straße' },
-  '06_road_fork': { en: 'The map: a fork in the road toward the castle', pt_BR: 'O mapa: uma bifurcação na estrada rumo ao castelo', es: 'El mapa: una bifurcación del camino hacia el castillo', fr: 'La carte : une bifurcation vers le château', de: 'Die Karte: eine Weggabelung zur Burg' },
-  '05_shop': { en: 'The shop: cards and upgrades for sale', pt_BR: 'A loja: cartas e melhorias à venda', es: 'La tienda: cartas y mejoras a la venta', fr: 'La boutique : cartes et améliorations à vendre', de: 'Der Laden: Karten und Verbesserungen' },
+  '03_road_battle': { en: 'Combat on the road', pt_BR: 'Combate na estrada', es: 'Combate en el camino', fr: 'Combat sur la route', de: 'Kampf auf der Straße' },
+  '06_road_fork': { en: 'The map: a fork in the road', pt_BR: 'O mapa: uma bifurcação', es: 'El mapa: una bifurcación', fr: 'La carte : une bifurcation', de: 'Die Karte: eine Weggabelung' },
+  '05_shop': { en: 'The shop', pt_BR: 'A loja', es: 'La tienda', fr: 'La boutique', de: 'Der Laden' },
 };
-export const CASTLE_BIOME = 'fields';
+const cardSrc = (l, id) => `/img/gamecards/${l.code}/${id}.png`;
 
 function head(t, l, ctx, { title, desc, path: p, noindex = false }) {
   const url = CONFIG.site + p;
   const alts = noindex ? '' : LANGS.map((x) => `<link rel="alternate" hreflang="${x.html}" href="${CONFIG.site}${home(x)}${p.replace(home(l), '')}">`).join('') +
     `<link rel="alternate" hreflang="x-default" href="${CONFIG.site}/${p.replace(home(l), '')}">`;
-  return `<!doctype html><html lang="${l.html}"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="${l.html}" class="no-js"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title><meta name="description" content="${esc(desc)}">
 ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" href="${url}">${alts}`}
-<meta name="theme-color" content="#0b0a0d"><meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0c0a10"><meta name="color-scheme" content="dark">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Runemoire"><meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${CONFIG.site}/img/og/og_${l.code}.png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="${l.og}"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/seal_32.png"><link rel="apple-touch-icon" href="/img/brand/seal_180.png">
-${ctx.preload || ''}<link rel="stylesheet" href="${ctx.CSS}"><script type="module" src="${ctx.JS}"></script>`;
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="/img/v3/menu.png" as="image" fetchpriority="high"><link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="${ctx.CSS}"><script type="module" src="${ctx.JS}"></script>`;
 }
 
-function foot(t, l, p = '') {
-  const langs = LANGS.map((x) => (x.code === l.code ? `<span aria-current="true">${x.short}</span>` : `<a href="${home(x)}${p}" lang="${x.html}" hreflang="${x.html}" title="${x.self}">${x.short}</a>`)).join(' ');
-  return `<footer class="foot"><nav aria-label="${esc(t.langLabel)}">${langs}</nav><a href="${home(l)}privacy/">${esc(t.privacy)}</a><a href="mailto:${CONFIG.contact}">${esc(t.pressShort)}: ${CONFIG.contact}</a></footer>`;
+const panel = (id, title, body, t, l, extra = '') => `<section class="panel" id="${id}" role="dialog" aria-modal="true" aria-labelledby="${id}-t"${extra}>
+<div class="frame9"><h2 id="${id}-t">${esc(title)}</h2><div class="pbody">${body}</div>
+<a class="back" href="#" data-close>${esc(ui(l, 'settings.back'))}</a></div></section>`;
+
+function sceneDom(t, l, G, { dark = false, line = '' } = {}) {
+  const hang = (side) => `<button class="hang ${side}" type="button" aria-label="${esc(t.flipCard)}" aria-pressed="false">
+<span class="inner"><img class="b" src="/img/v3/back.png" width="192" height="288" alt=""><img class="f" src="${cardSrc(l, 'warrior_strike')}" width="96" height="144" alt=""></span></button>`;
+  return `<canvas id="scene" aria-hidden="true"></canvas><div class="glowfx" aria-hidden="true"></div>
+${dark ? '' : hang('left') + hang('right')}
+<div class="osd" aria-hidden="true"><span>AV-1&nbsp; RUNEMOIRE</span><time id="clock"></time></div>
+<div class="quit" id="quit" ${dark ? 'data-static' : ''}><button class="seal-btn" type="button" aria-label="${esc(dark ? t.nfBack : t.quitLine)}"><img class="px" src="/img/v3/seal.png" width="113" height="113" alt=""></button>
+<p>${esc(line || t.quitLine)}</p>${dark ? `<a class="nfback" href="${home(l)}">${esc(t.nfBack)}</a>` : ''}</div>`;
 }
 
 export function renderHome(t, l, ctx) {
   const G = ctx.GAME;
-  const B = G.biomes.find((b) => b.id === CASTLE_BIOME);
   const shots = (l.code === 'pt_BR' ? G.shots.pt_BR : G.shots.en).filter((s) => SHOTS.includes(s.id)).sort((a, b) => SHOTS.indexOf(a.id) - SHOTS.indexOf(b.id));
-  const logo = G.brand.logo;
-  const body = `<main id="main">
-<header class="top">
-<h1><img class="px logo" src="${logo.src}" width="${logo.w * 2}" height="${logo.h * 2}" alt="Runemoire"></h1>
-<p class="line">${esc(loc(G.ui.subtitle, l))}</p>
-<i class="castle" role="img" aria-label="${esc(fmt(t.castleAlt, { biome: loc(B.name, l) }))}"></i>
-<form class="notify" method="post" action="/api/notify" novalidate>
-<label class="sr" for="email">${esc(t.notifyLabel)}</label>
-<input id="email" type="email" name="email" required autocomplete="email" inputmode="email" placeholder="${esc(t.notifyPlaceholder)}" aria-describedby="fine">
+  const items = [['play', 'menu.play'], ['collection', 'menu.collection'], ['achievements', 'menu.achievements'], ['settings', 'menu.settings'], ['quit', 'menu.quit']];
+  const langs = LANGS.map((x) => `<a href="${home(x)}" lang="${x.html}" hreflang="${x.html}"${x.code === l.code ? ' aria-current="true"' : ''}>${x.self}</a>`).join('');
+  const toggle = (id, label, on = false) => `<div class="opt"><span id="${id}-l">${esc(label)}</span><button class="sw" type="button" id="${id}" role="switch" aria-checked="${on}" aria-labelledby="${id}-l"><span class="on">${esc(t.onLabel)}</span><span class="off">${esc(t.offLabel)}</span></button></div>`;
+  const body = `${sceneDom(t, l, G)}
+<main class="title" id="main">
+<h1 class="brand"><img class="px seal" src="/img/v3/seal.png" width="113" height="113" alt=""><img class="px word" src="/img/v3/wordmark.png" width="578" height="96" alt="Runemoire"></h1>
+<p class="sr">${esc(loc(G.ui.subtitle, l))} ${esc(t.metaDesc)}</p>
+<nav class="menu" aria-label="Menu">${items.map(([id, k], i) => `<a class="mbtn" href="#${id}" data-open="${id}"${i === 0 ? ' data-sel' : ''}>${esc(ui(l, k))}</a>`).join('')}</nav>
+<p class="wish">${esc(t.wishSoon)}</p>
+</main>
+<a class="corner" href="${home(l)}privacy/">${esc(t.privacy)}</a>
+${panel('play', t.trailerPlay, `<div class="tv"><img src="/media/runemoire-gameplay.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async"><button class="vplay" type="button" data-src="/media/runemoire-gameplay.mp4" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span></span></button></div>`, t, l)}
+${panel('collection', ui(l, 'collection.title'), `<p class="sub">${esc(t.cardsTitle)}</p><div class="cards">${COLLECTION_CARDS.map((id) => `<img class="px" src="${cardSrc(l, id)}" width="192" height="288" alt="" loading="lazy" decoding="async">`).join('')}</div>
+<p class="sub">${esc(t.screensTitle)}</p><div class="screens">${shots.map((s) => `<img src="${s.thumb}" width="960" height="540" alt="${esc(SHOT_ALT[s.id][l.code] || SHOT_ALT[s.id].en)}" loading="lazy" decoding="async">`).join('')}</div>`, t, l)}
+${panel('achievements', ui(l, 'menu.achievements'), `<div class="ach"><img class="px icon" id="ach-icon" src="/img/v3/ach_locked.png" data-on="/img/v3/ach.png" width="128" height="128" alt=""><div><h3>${esc(t.achName)}</h3><p>${esc(t.achDesc)}</p></div></div>
+<p class="prompt">${esc(t.achPrompt)}</p>
+<form class="notify" method="post" action="/api/notify" novalidate><label class="sr" for="email">${esc(t.notifyLabel)}</label>
+<input id="email" type="email" name="email" required autocomplete="email" inputmode="email" placeholder="${esc(t.notifyPlaceholder)}">
 <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-<button type="submit">${esc(t.notifyLaunch)}</button>
-<p class="msg" role="status" aria-live="polite"></p>
-</form>
-<p class="soon" id="fine">${esc(t.steamSoonLine)} · <a href="${home(l)}privacy/">${esc(t.privacy)}</a></p>
-</header>
-<section class="trailer" aria-label="${esc(t.trailerPlay)}">
-<div class="frame"><img src="/media/runemoire-gameplay.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async">
-<button class="play" type="button" data-src="/media/runemoire-gameplay.mp4" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span aria-hidden="true"></span></button></div>
-</section>
-<section class="shots" aria-label="${esc(t.galleryTitle)}">
-${shots.map((s) => `<img src="${s.thumb}" srcset="${s.thumb} 960w, ${s.full} 1920w" sizes="(min-width: 1100px) 1040px, 100vw" width="1920" height="1080" alt="${esc(SHOT_ALT[s.id][l.code] || SHOT_ALT[s.id].en)}" loading="lazy" decoding="async">`).join('\n')}
-</section>
-</main>`;
-  const client = { lang: l.code, unsubPath: home(l) + 'unsubscribe/', t: { sending: t.sending, notifyOk: t.notifyOk, notifyBad: t.notifyBad, notifyRate: t.notifyRate, notifyNet: t.notifyNet, unsubLink: t.unsubLink } };
+<button class="mbtn sel" type="submit">${esc(t.notifyLaunch)}</button><p class="msg" role="status" aria-live="polite"></p></form>
+<p class="fine"><a href="${home(l)}privacy/">${esc(t.privacy)}</a></p>`, t, l)}
+${panel('settings', ui(l, 'settings.title'), `<div class="opt"><span>${esc(ui(l, 'settings.language'))}</span><span class="langs">${langs}</span></div>
+${toggle('opt-music', ui(l, 'settings.music'))}${toggle('opt-sfx', ui(l, 'settings.sfx'))}${toggle('opt-crt', ui(l, 'settings.crt_shader'), true)}${toggle('opt-motion', ui(l, 'settings.reduced_motion'))}
+<p class="fine"><a href="${home(l)}privacy/">${esc(t.privacy)}</a> · ${esc(t.pressShort)}: <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>`, t, l)}
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><img class="px" src="/img/v3/ach.png" width="64" height="64" alt=""><div><b>${esc(ui(l, 'achievements.toast_label'))}</b><strong>${esc(t.achName)}</strong><span>${esc(t.achDesc)}</span></div></div>`;
+  const client = { lang: l.code, unsubPath: home(l) + 'unsubscribe/', pool: CARD_POOL, cardBase: `/img/gamecards/${l.code}/`,
+    t: { sending: t.sending, notifyOk: t.notifyOk, notifyBad: t.notifyBad, notifyRate: t.notifyRate, notifyNet: t.notifyNet, unsubLink: t.unsubLink } };
   return head(t, l, ctx, { title: t.htmlTitle, desc: t.metaDesc, path: home(l) }) +
     `<script type="application/json" id="rm-data">${JSON.stringify(client).replace(/</g, '\\u003c')}</script>
 <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Runemoire', alternateName: 'Grimoire', description: t.metaDesc, url: CONFIG.site + home(l), genre: ['Roguelike', 'Deckbuilder'], gamePlatform: 'PC', author: { '@type': 'Person', name: 'Daniel Cortez' } }).replace(/</g, '\\u003c')}</script>
-</head><body>${body}${foot(t, l)}</body></html>`;
+</head><body class="crt">${body}</body></html>`;
 }
 
-function simple(t, l, ctx, { title, path: p, body, noindex = true, sub = '' }) {
+function simple(t, l, ctx, { title, path: p, body, noindex = true }) {
   const client = { lang: l.code, t: { unsubOk: t.unsubOk, unsubNone: t.unsubNone, unsubBad: t.unsubBad, sending: t.sending } };
   return head(t, l, ctx, { title: `${title} — Runemoire`, desc: t.metaDesc, path: p, noindex }) +
     `<script type="application/json" id="rm-data">${JSON.stringify(client).replace(/</g, '\\u003c')}</script>
-</head><body class="simple"><main id="main"><a class="back" href="${home(l)}"><img class="px" src="${ctx.GAME.brand.wordmark.src}" width="${ctx.GAME.brand.wordmark.w}" height="${ctx.GAME.brand.wordmark.h}" alt="Runemoire"></a>${body}</main>${foot(t, l, sub)}</body></html>`;
+</head><body class="simple"><main id="main"><div class="frame9 page"><a class="home" href="${home(l)}"><img class="px" src="/img/v3/wordmark.png" width="289" height="48" alt="Runemoire"></a>${body}
+<a class="back" href="${home(l)}">${esc(ui(l, 'settings.back'))}</a></div></main></body></html>`;
 }
 
 export function renderPrivacy(t, l, ctx) {
   const P = PRIVACY[l.code] || PRIVACY.en;
   const body = `<article class="prose"><h1>${esc(t.privTitle)}</h1>${P.map((x) => (x.startsWith('#') ? `<h2>${esc(x.slice(1))}</h2>` : `<p>${fmt(esc(x), { contact: `<a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a>` })}</p>`)).join('')}</article>`;
-  return simple(t, l, ctx, { title: t.privTitle, path: home(l) + 'privacy/', body, noindex: false, sub: 'privacy/' });
+  return simple(t, l, ctx, { title: t.privTitle, path: home(l) + 'privacy/', body, noindex: false });
 }
 
 export function renderUnsub(t, l, ctx) {
-  const body = `<article class="prose"><h1>${esc(t.unsubTitle)}</h1><form id="unsub"><button type="submit">${esc(t.unsubBtn)}</button><p class="msg" role="status" aria-live="polite"></p></form></article>`;
+  const body = `<article class="prose"><h1>${esc(t.unsubTitle)}</h1><form id="unsub"><button class="mbtn sel" type="submit">${esc(t.unsubBtn)}</button><p class="msg" role="status" aria-live="polite"></p></form></article>`;
   return simple(t, l, ctx, { title: t.unsubTitle, path: home(l) + 'unsubscribe/', body });
 }
 
+// 404: a mesma capela com as velas apagadas
 export function render404(t, l, ctx) {
-  const body = `<article class="prose nf"><h1>${esc(t.nfTitle)}</h1><p>${esc(t.nfText)}</p><p><a href="${home(l)}">${esc(t.nfBack)}</a></p></article>`;
-  return simple(t, l, ctx, { title: t.nfTitle, path: home(l) + '404', body });
+  return head(t, l, ctx, { title: `${t.nfTitle} — Runemoire`, desc: t.metaDesc, path: home(l) + '404', noindex: true }) +
+    `<script type="application/json" id="rm-data">${JSON.stringify({ lang: l.code, t: {} })}</script>
+</head><body class="crt dark nf"><h1 class="sr">${esc(t.nfTitle)}</h1>${sceneDom(t, l, ctx.GAME, { dark: true, line: t.nf404 })}</body></html>`;
 }
 
 const PRIVACY = {

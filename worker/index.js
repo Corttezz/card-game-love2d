@@ -26,7 +26,7 @@ const SEG = {
 
 const LANGS = ['en', 'pt_BR', 'es', 'fr', 'de'];
 const BIOMES = ['fields', 'highlands', 'abyss', 'frost', 'marsh', 'dusk', 'eclipse'];
-const VARIANTS = ['a', 'b', 'v2'];
+const VARIANTS = ['a', 'b', 'v2', 'v3'];
 
 // contador diário anônimo (sem IP, sem identificador): visitas por sessão e cadastros, por versão e idioma
 async function bump(env, variant, lang, col) {

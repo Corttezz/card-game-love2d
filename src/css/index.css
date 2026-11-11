@@ -1,3 +1,2 @@
-/* runemoire.com v2 — minimalista. castle.css é gerado no build com o castelo do jogo. */
-@import './castle.css';
-@import './v2.css';
+/* runemoire.com v3: a tela de título do jogo. */
+@import './v3.css';
