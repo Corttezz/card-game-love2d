@@ -210,7 +210,7 @@ return {
         eclipse_queen = {
             epithet = "a Senhora da Lua Negra",
             lore = "Reina sobre a corte do crepúsculo desde que a lua engoliu o sol. Sua força cresce e míngua com as fases da lua. Ferida até a metade, ela mesma se torna o eclipse.",
-            signature = "A lua gira em quatro fases: na Cheia, o golpe dela vale 50% a mais; na Nova, você fica Vulnerável. Abaixo da metade da vida, ela entra no Eclipse.",
+            signature = "A lua gira em quatro fases: na Cheia, o golpe dela vale 50% a mais; na Nova, ela fica Vulnerável no seu turno. Abaixo da metade da vida, ela entra no Eclipse.",
         },
     },
 }

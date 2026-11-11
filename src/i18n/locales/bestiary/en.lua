@@ -210,7 +210,7 @@ return {
         eclipse_queen = {
             epithet = "Lady of the Black Moon",
             lore = "She has ruled the twilight court since the moon swallowed the sun. Her strength waxes and wanes with the phases of the moon. Wounded to half, she becomes the eclipse herself.",
-            signature = "The moon turns through four phases: at Full Moon her blow is worth 50% more; at New Moon you become Vulnerable. Below half health, she enters the Eclipse.",
+            signature = "The moon turns through four phases: at Full Moon her blow is worth 50% more; at New Moon she is Vulnerable during your turn. Below half health, she enters the Eclipse.",
         },
     },
 }

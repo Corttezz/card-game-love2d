@@ -210,7 +210,7 @@ return {
         eclipse_queen = {
             epithet = "Herrin des schwarzen Mondes",
             lore = "Sie herrscht über den Hof der Dämmerung, seit der Mond die Sonne verschlang. Ihre Kraft wächst und schwindet mit den Phasen des Mondes. Bis zur Hälfte verwundet, wird sie selbst zur Finsternis.",
-            signature = "Der Mond durchläuft vier Phasen: Bei Vollmond zählt ihr Hieb 50 % mehr; bei Neumond wirst du Verwundbar. Unter der Hälfte ihres Lebens tritt sie in die Finsternis ein.",
+            signature = "Der Mond durchläuft vier Phasen: Bei Vollmond zählt ihr Hieb 50 % mehr; bei Neumond ist sie in deinem Zug verwundbar. Unter der Hälfte ihres Lebens tritt sie in die Finsternis ein.",
         },
     },
 }

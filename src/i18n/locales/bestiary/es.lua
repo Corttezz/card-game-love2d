@@ -210,7 +210,7 @@ return {
         eclipse_queen = {
             epithet = "la Señora de la Luna Negra",
             lore = "Reina sobre la corte del ocaso desde que la luna devoró al sol. Su fuerza crece y mengua con las fases de la luna. Herida hasta la mitad, ella misma se convierte en el eclipse.",
-            signature = "La luna gira en cuatro fases: en la Llena, su golpe vale un 50% más; en la Nueva, quedas Vulnerable. Por debajo de la mitad de su vida, entra en el Eclipse.",
+            signature = "La luna gira en cuatro fases: en la Llena, su golpe vale un 50% más; en la Nueva, ella queda Vulnerable durante tu turno. Por debajo de la mitad de su vida, entra en el Eclipse.",
         },
     },
 }
