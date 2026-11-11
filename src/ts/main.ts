@@ -364,10 +364,10 @@ function boot() {
   if (document.readyState === 'complete') setTimeout(startWeather, 300); else addEventListener('load', () => setTimeout(startWeather, 300), { once: true });
   for (const r of $$<HTMLButtonElement>('.rune[data-biome]')) r.addEventListener('click', () => { setBiome(r.dataset.biome!); playSfx('button-click'); });
   setBiome(initialBiome(), false);
-  opening(); lazyVis(); notifyForms(); steam(); langHint();
+  opening(); lazyVis(); notifyForms(); steam(); langHint(); secrets();
   // o resto não é urgente: espera o navegador ficar livre, para não travar o primeiro paint
   const later = (fn: () => void) => ('requestIdleCallback' in window ? (window as unknown as { requestIdleCallback: (f: () => void, o?: object) => void }).requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 400));
-  later(() => { trailers(); bestiary(); cards(); shuffle(); lightbox(); secrets(); });
+  later(() => { trailers(); bestiary(); cards(); shuffle(); lightbox(); });
   later(() => initTable(D.table as never, D.t, { sfx: (s) => ambient.sfx(s), tilt, confetti, sfxMap: D.sfx }));
   heroLoop();
   if (soundOn) addEventListener('pointerdown', () => ambient.play(current()?.music), { once: true });

@@ -294,3 +294,4 @@ canvas.confetti.on { display: block; }
   .card .name { font-size: 10px; } .card .name.long { font-size: 9px; }
   .roster figcaption, .jk figcaption, .card .kind { font-size: 12px; }
 }
+.secret-rune { width: auto; height: auto; min-width: 36px; min-height: 36px; display: inline-grid; place-items: center; }
