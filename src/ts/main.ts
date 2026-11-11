@@ -11,7 +11,7 @@ const root = document.documentElement;
 root.classList.remove('no-js'); root.classList.add('js');
 const osReduced = matchMedia('(prefers-reduced-motion: reduce)');
 
-// ---------------- som (desligado por padrão; liga nas Opções) ----------------
+// ---------------- som: efeitos do jogo ligados (o clique libera o áudio); música só nas Opções ----------------
 const SND = { music: false, sfx: true, a: null as HTMLAudioElement | null, menuOn: false };
 function sfx(n: string, vol = 1, rate = 1) {
   if (!SND.sfx) return;
@@ -93,10 +93,13 @@ addEventListener('keydown', (e) => {
 // ---------------- alvos transparentes sobre o que o jogo desenha ----------------
 const mbtns = $$<HTMLAnchorElement>('.menu .mbtn'), hangs = $$<HTMLButtonElement>('.hang'), priv = $<HTMLAnchorElement>('#priv');
 let menuLive = false, lastKey = '';
-function place(el: HTMLElement, x: number, y: number, w: number, h: number) {
-  // o jogo desenha no conteúdo; o CRT curva a imagem: o alvo vai para onde o retângulo aparece na tela
-  const [ax, ay] = game.crtOn ? game.crt.contentToScreen(x, y, game.W, game.H) : [x, y];
-  const [bx, by] = game.crtOn ? game.crt.contentToScreen(x + w, y + h, game.W, game.H) : [x + w, y + h];
+function place(el: HTMLElement, x: number, y: number, w: number, h: number, min = 0) {
+  // o jogo desenha no conteúdo; o CRT curva a imagem: o alvo vai para onde o retângulo aparece na tela (sem WebGL não há curva)
+  const bent = game.crtOn && game.glOk;
+  let [ax, ay] = bent ? game.crt.contentToScreen(x, y, game.W, game.H) : [x, y];
+  let [bx, by] = bent ? game.crt.contentToScreen(x + w, y + h, game.W, game.H) : [x + w, y + h];
+  if (bx - ax < min) { const c = (ax + bx) / 2; ax = c - min / 2; bx = c + min / 2; }
+  if (by - ay < min) { const c = (ay + by) / 2; ay = c - min / 2; by = c + min / 2; }
   el.style.left = `${ax}px`; el.style.top = `${ay}px`; el.style.width = `${bx - ax}px`; el.style.height = `${by - ay}px`;
 }
 function syncDom() {
@@ -108,11 +111,11 @@ function syncDom() {
     else main?.setAttribute('inert', '');
   }
   if (!live) return;
-  const key = `${game.W}x${game.H}:${game.crtOn}`;
+  const key = `${game.W}x${game.H}:${game.crtOn}:${game.glOk}`;
   if (key === lastKey) return;
   lastKey = key;
   game.menu.buttonRects().forEach((r, i) => mbtns[i] && place(mbtns[i], r.x, r.y, r.w, r.h));
-  game.menu.cardRects().forEach((r, i) => hangs[i] && place(hangs[i], r.x, r.y, r.w, r.h));
+  game.menu.cardRects().forEach((r, i) => hangs[i] && place(hangs[i], r.x, r.y, r.w, r.h, 48));
   const f = game.menu.footer.priv;
   if (priv && f[2]) place(priv, f[0] - 6, f[1] - 6, f[2] + 12, f[3] + 12);
 }
