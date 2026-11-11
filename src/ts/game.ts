@@ -183,7 +183,7 @@ export class Game {
   // ------------------------------------------------------------- som
   sfx(n: string, vol = 1, rate = 1) { this.hooks.sfx(n, vol, rate); }
   // ------------------------------------------------------------- o ciclo (passo fixo de 1/60 s, como as capturas do jogo)
-  acc = 0; last = 0;
+  acc = 0; last = 0; stillKey = '';
   frame(now: number) {
     const dt = this.last ? Math.min(0.25, (now - this.last) / 1000) : 1 / 60;
     this.last = now;
@@ -191,6 +191,11 @@ export class Game {
     let n = 0;
     while (this.acc >= 1 / 60 && n < 15) { this.step(1 / 60); this.acc -= 1 / 60; n++; }
     if (n === 15) this.acc = 0;
+    // a página com o computador desligado fica parada depois que ele aparece: não redesenha à toa
+    const still = this.mode === 'intro' && this.intro.phase === 'off' && this.intro.t > 0.6;
+    const key = `${this.W}x${this.H}:${this.work?.ready('crt') ? 1 : 0}`;
+    if (still && this.stillKey === key) return;
+    this.stillKey = still ? key : '';
     this.draw();
   }
   step(dt: number) {
@@ -221,16 +226,16 @@ export class Game {
     fx.begin(this.W, this.H);
     const t = fx.tex('scene', this.cv, false, true);
     const c = this.crt;
-    if (this.crtOn && c.enabled) {
+    if (this.crtOn && c.enabled && fx.ready('crt')) {
       fx.draw('crt', t, 0, 0, this.W, this.H, {
         time: this.time, resolution: [this.W, this.H], strength: c.strength, power: c.power, powerDir: c.dir,
         glitch: c.glitchAmount, glitchY: c.glitchBandY, degrade: c.degradeAmount, calmRect: [0, 0, 0, 0], calmRect2: [0, 0, 0, 0], caScale: 1,
       });
-    } else fx.draw('pass', t, 0, 0, this.W, this.H);
+    } else if (fx.ready('pass')) fx.draw('pass', t, 0, 0, this.W, this.H);
   }
   // CRTShader.renderTube: o conteúdo do tubo pelo crt.glsl no tamanho do próprio tubo (power vem do tubo ligando)
   tubePass(src: HTMLCanvasElement, power: number) {
-    const w = this.work; if (!w || !this.glOk) return null;
+    const w = this.work; if (!w || !this.glOk || !w.ready('crt')) return null;
     w.begin(src.width, src.height);
     const t = w.tex('tube', src, false, true);
     w.draw('crt', t, 0, 0, src.width, src.height, { time: this.time, resolution: [src.width, src.height], strength: Math.max(0.6, this.crt.strength > 0.01 ? this.crt.strength : 0.75),
@@ -239,7 +244,7 @@ export class Game {
   }
   // um passe de shader sobre uma imagem desenhada em (x, y, w, h) da tela: devolve o canvas para o drawImage
   shaderPass(name: string, texKey: string, x: number, y: number, w: number, h: number, u: Record<string, any>, color = [1, 1, 1, 1], tw = this.W, th = this.H, src?: number[]) {
-    const wk = this.work; if (!wk || !this.glOk || !wk.progs.has(name) || !wk.texs.has(texKey)) return null;
+    const wk = this.work; if (!wk || !this.glOk || !wk.ready(name) || !wk.texs.has(texKey)) return null;
     wk.begin(tw, th);
     const extra: Record<string, any> = {};
     for (const [k, v] of Object.entries(u)) extra[k] = typeof v === 'string' ? wk.texs.get(v)!.t : v;
@@ -338,21 +343,22 @@ export class Game {
       if (this.pageKey !== key || !this.page) {
         this.pageKey = key;
         const cv = this.page || document.createElement('canvas'); cv.width = W; cv.height = H; this.page = cv;
-        const x = cv.getContext('2d')!, id = x.createImageData(W, H), d = id.data;
+        // uma amostra por célula (o jogo pinta células de 'cell' px) e ampliada sem suavizar: mesmo resultado, 1/cell² do trabalho
         const P = PAL.PARCHMENT.map((v) => v * 255), D = PAL.PARCHMENT_DARK.map((v) => v * 255);
-        const cell = Math.max(2, Math.floor(Math.min(W, H) / 240));
-        for (let y = 0; y < H; y += cell) for (let xx = 0; xx < W; xx += cell) {
+        const cell = Math.max(2, Math.floor(Math.min(W, H) / 240)), cw = Math.ceil(W / cell), chh = Math.ceil(H / cell);
+        const small = document.createElement('canvas'); small.width = cw; small.height = chh;
+        const sx = small.getContext('2d')!, id = sx.createImageData(cw, chh), d = id.data;
+        for (let cy = 0; cy < chh; cy++) for (let cx = 0; cx < cw; cx++) {
+          const xx = cx * cell, y = cy * cell;
           const nx = (xx / W - 0.5) * 2, ny = (y / H - 0.5) * 2, dd = Math.sqrt(nx * nx + ny * ny);
           const v = Math.max(0, (dd - 0.55) / 0.75), step = Math.floor(v * 5) / 5, frac = v * 5 - Math.floor(v * 5);
-          const lvl = step + (BAYER[(y / cell) % 4][(xx / cell) % 4] < frac * 16 ? 0.2 : 0);
+          const lvl = step + (BAYER[cy % 4][cx % 4] < frac * 16 ? 0.2 : 0);
           let gg = Math.sin(xx * 12.9898 + y * 78.233) * 43758.5453; gg -= Math.floor(gg);
-          const a = Math.min(0.8, lvl * 0.55 + (gg > 0.93 ? 0.08 : 0));
-          for (let yy = y; yy < Math.min(H, y + cell); yy++) for (let x2 = xx; x2 < Math.min(W, xx + cell); x2++) {
-            const i = (yy * W + x2) * 4;
-            d[i] = P[0] + (D[0] - P[0]) * a; d[i + 1] = P[1] + (D[1] - P[1]) * a; d[i + 2] = P[2] + (D[2] - P[2]) * a; d[i + 3] = 255;
-          }
+          const a = Math.min(0.8, lvl * 0.55 + (gg > 0.93 ? 0.08 : 0)), i = (cy * cw + cx) * 4;
+          d[i] = P[0] + (D[0] - P[0]) * a; d[i + 1] = P[1] + (D[1] - P[1]) * a; d[i + 2] = P[2] + (D[2] - P[2]) * a; d[i + 3] = 255;
         }
-        x.putImageData(id, 0, 0);
+        sx.putImageData(id, 0, 0);
+        const x = cv.getContext('2d')!; x.imageSmoothingEnabled = false; x.drawImage(small, 0, 0, cw * cell, chh * cell);
       }
       g.drawImage(this.page, 0, 0);
     }
@@ -987,7 +993,8 @@ class MenuScene {
   }
   cardRects() {
     const { W, H } = this.g, cw = Math.floor(W * 0.12), ch = Math.floor(cw * 1.5);
-    return this.cards.map((c) => ({ x: W * c.ax - cw / 2, y: H * c.ay - ch / 2 - 14, w: cw, h: ch + 28 }));
+    const hw = Math.max(44, cw);
+    return this.cards.map((c) => ({ x: W * c.ax - hw / 2, y: H * c.ay - ch / 2 - 14, w: hw, h: ch + 28 }));
   }
   update(dt: number) {
     this.g.brand.update(dt, this.reduced);
@@ -1175,12 +1182,22 @@ class MenuScene {
   // rodapé no lugar e no estilo do jogo (_drawVersionFooter / _drawProfilePlaque): privacidade à esquerda, Steam à direita
   footer = { priv: [0, 0, 0, 0], wish: [0, 0, 0, 0] };
   drawFooter(g: Ctx) {
-    const a = this.alphaBg * 0.9; if (a <= 0.05) return;
-    const { W, H } = this.g, f = font(g, 10), y = H - 24;
+    const a0 = this.alphaBg; if (a0 <= 0.05) return;
+    const { W, H } = this.g;
+    // Menu:_drawVersionFooter: a versão do jogo no canto, como no jogo
+    let f = font(g, 9); const ver = 'v' + this.g.S.version;
+    g.fillStyle = rgba(PAL.PARCHMENT_DARK, a0 * 0.65); print(g, ver, 12, H - 22, f.asc);
+    const vw = g.measureText(ver).width;
+    // privacidade ao lado da versão e a linha da Steam à direita, no estilo da plaqueta de perfil (_drawProfilePlaque)
+    const a = a0 * 0.9; f = font(g, 10);
     const p = this.g.S.privacy, wsh = this.g.S.wish, pw = g.measureText(p).width, ww = g.measureText(wsh).width;
-    const put = (s: string, x: number) => { g.fillStyle = `rgba(0,0,0,${0.75 * a})`; print(g, s, x + 1, y + 1, f.asc); g.fillStyle = rgba(PAL.PARCHMENT, a); print(g, s, x, y, f.asc); };
-    put(p, 26); put(wsh, W - 26 - ww);
-    this.footer = { priv: [26, y, pw, f.h], wish: [W - 26 - ww, y, ww, f.h] };
+    const put = (s: string, x: number, y: number) => { g.fillStyle = `rgba(0,0,0,${0.75 * a})`; print(g, s, x + 1, y + 1, f.asc); g.fillStyle = rgba(PAL.PARCHMENT, a); print(g, s, x, y, f.asc); };
+    const px = 12 + vw + 14, y = H - 24;
+    const fits = px + pw + 24 + ww + 26 <= W;
+    // sem espaço no rodapé (celular em pé): a linha da Steam vai para o vão livre logo acima do primeiro botão
+    const wy = fits ? y : Math.round(Brand.buttonColumn(H)[0] - f.h - 14), wx = fits ? W - 26 - ww : Math.max(12, (W - ww) / 2);
+    put(p, px, y); if (wsh) put(wsh, wx, wy);
+    this.footer = { priv: [px, y, pw, f.h], wish: [wx, wy, ww, f.h] };
   }
   drawOsd(g: Ctx) {
     const t = this.osdTimer; let a = 1; if (t > 3.5) a = Math.max(0, 1 - (t - 3.5) / 0.8);

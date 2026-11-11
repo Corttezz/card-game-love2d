@@ -64,22 +64,36 @@ export class Fx {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   }
+  // compila sem travar a página: com KHR_parallel_shader_compile o driver compila em segundo plano e ready() só confere
+  pending = new Map<string, { p: WebGLProgram; vs: WebGLShader; fs: WebGLShader }>();
+  par: any = null;
   program(name: string, src: string) {
-    if (this.progs.has(name)) return;
+    if (this.progs.has(name) || this.pending.has(name)) return;
     const gl = this.gl;
-    const sh = (type: number, s: string) => {
-      const o = gl.createShader(type)!; gl.shaderSource(o, s); gl.compileShader(o);
-      if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(name + ': ' + gl.getShaderInfoLog(o));
-      return o;
-    };
+    if (this.par === null) this.par = gl.getExtension('KHR_parallel_shader_compile') || false;
+    const sh = (type: number, s: string) => { const o = gl.createShader(type)!; gl.shaderSource(o, s); gl.compileShader(o); return o; };
     const p = gl.createProgram()!;
-    gl.attachShader(p, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fsWrap(src)));
+    const vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, fsWrap(src));
+    gl.attachShader(p, vs); gl.attachShader(p, fs);
     gl.bindAttribLocation(p, 0, 'aPos'); gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(name + ': ' + gl.getProgramInfoLog(p));
+    this.pending.set(name, { p, vs, fs });
+  }
+  ready(name: string) {
+    if (this.progs.has(name)) return true;
+    const e = this.pending.get(name); if (!e) return false;
+    const gl = this.gl;
+    if (this.par && !gl.getProgramParameter(e.p, this.par.COMPLETION_STATUS_KHR)) return false;
+    this.pending.delete(name);
+    if (!gl.getProgramParameter(e.p, gl.LINK_STATUS)) {
+      console.warn('[runemoire] shader', name, gl.getShaderInfoLog(e.fs) || gl.getProgramInfoLog(e.p));
+      return false;
+    }
+    const p = e.p;
     const types = new Map<string, number>();
     const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
     for (let i = 0; i < n; i++) { const u = gl.getActiveUniform(p, i)!; types.set(u.name.replace(/\[0\]$/, ''), u.type); }
     this.progs.set(name, { p, loc: new Map(), types });
+    return true;
   }
   // textura de uma imagem/canvas; update = reenviar os pixels (canvas que muda a cada quadro)
   tex(key: string, src: TexImageSource, nearest = true, update = false) {

@@ -26,7 +26,7 @@ a { color: inherit; }
 
 /* a dica da página (IntroTube: fonte 16, tinta, pulso 0.78 + 0.22 sin 2.4t, 40 px acima da borda de baixo) */
 .hint { position: fixed; z-index: 4; left: 0; right: 0; bottom: 40px; margin: 0; text-align: center; font-size: 16px; line-height: 1.25; color: #1a0f08;
-  opacity: 0; animation: hintPulse 2.618s linear infinite; animation-delay: .6s; pointer-events: none; padding: 0 12px; }
+  opacity: .78; animation: hintPulse 2.618s linear infinite; pointer-events: none; padding: 0 12px; }
 @keyframes hintPulse { 0% { opacity: .78; } 25% { opacity: 1; } 75% { opacity: .56; } 100% { opacity: .78; } }
 .started .hint { display: none; }
 .nfback { position: fixed; z-index: 6; left: 50%; translate: -50% 0; bottom: 10px; color: #1a0f08; font-size: 16px; padding: 8px; }
@@ -36,7 +36,7 @@ a { color: inherit; }
 .in-menu .title { pointer-events: auto; }
 .title > *:not(.sr), .menu > * { position: absolute; }
 .menu { position: static; }
-.mbtn, .hang, .corner { opacity: 0; display: block; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; font: 16px 'Runic', monospace; color: transparent; overflow: hidden; }
+.title .mbtn, .title .hang, .title .corner { opacity: 0; display: block; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; font: 16px 'Runic', monospace; color: transparent; overflow: hidden; }
 .title .mbtn:focus-visible, .title .hang:focus-visible, .title .corner:focus-visible { opacity: 1; outline: 2px solid var(--amber-hi); outline-offset: 4px; }
 
 /* ===================== painéis no estilo do jogo (dentro da moldura de TV do CRT) =====================
@@ -123,3 +123,8 @@ body.simple { overflow: auto; background: radial-gradient(ellipse at 50% 30%, #2
 .prose h2 { font: 16px/1.3 'Runic', monospace; margin: 22px 0 8px; color: var(--ink); text-align: left; }
 .prose p { font: 17px/1.6 Georgia, 'Times New Roman', serif; margin: 0 0 10px; color: #3b2a1d; }
 @media (max-width: 600px) { .frame9.page { border-width: 40px; border-image-width: 40px; } }
+
+/* revisão: o campo e os textos nunca vazam do painel no celular */
+.notify input { min-width: 0; }
+.pbody .fine, .opt { overflow-wrap: anywhere; }
+@media (max-aspect-ratio: 4/5) { .opt { padding: 10px 2px; } .sw { min-width: 112px; } }

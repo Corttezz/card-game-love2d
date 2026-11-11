@@ -12,7 +12,7 @@ root.classList.remove('no-js'); root.classList.add('js');
 const osReduced = matchMedia('(prefers-reduced-motion: reduce)');
 
 // ---------------- som (desligado por padrão; liga nas Opções) ----------------
-const SND = { music: false, sfx: false, a: null as HTMLAudioElement | null, menuOn: false };
+const SND = { music: false, sfx: true, a: null as HTMLAudioElement | null, menuOn: false };
 function sfx(n: string, vol = 1, rate = 1) {
   if (!SND.sfx) return;
   const a = new Audio(`/media/v3b/${n}.mp3`); a.volume = Math.min(1, 0.6 * vol); a.playbackRate = rate; (a as any).preservesPitch = false;
@@ -34,9 +34,9 @@ const game = new Game(cv, out, D.boot, {
   onPhase: (p) => {
     ((window as any).__rmPhases ||= []).push(p);
     if (p === 'insert') root.classList.add('started');
-    if (p === 'boot') root.classList.add('on-crt');
+    if (p === 'boot' && game.glOk) root.classList.add('on-crt');
   },
-  onMenu: () => { ((window as any).__rmPhases ||= []).push('menu'); root.classList.add('on-crt', 'started'); },
+  onMenu: () => { ((window as any).__rmPhases ||= []).push('menu'); root.classList.add('started'); if (game.glOk) root.classList.add('on-crt'); },
   onDesk: () => { root.classList.remove('on-crt', 'started', 'in-menu'); main?.setAttribute('inert', ''); hit?.focus({ preventScroll: true }); },
 });
 game.reduced = osReduced.matches;
@@ -67,7 +67,8 @@ function loadRest() {
 if (HAS) game.loadIntro().then(() => { start(); });
 if (HAS) addEventListener('load', () => {
   const go = () => { game.initGL(); loadRest(); };
-  if ('requestIdleCallback' in window) (window as any).requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 300);
+  // a página parada não precisa de shader: o resto carrega depois, sem disputar a primeira pintura (o clique antecipa)
+  setTimeout(() => { if ('requestIdleCallback' in window) (window as any).requestIdleCallback(go, { timeout: 2000 }); else go(); }, 3000);
 }, { once: true });
 
 (window as any).__rmReady = () => loadRest();
