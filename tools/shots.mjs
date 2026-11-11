@@ -16,7 +16,7 @@ const report = [];
 for (const v of VIEWS) {
   for (const th of themes) {
     const ctx = await b.newContext({ viewport: { width: v.w, height: v.h }, deviceScaleFactor: v.m ? 3 : 1, isMobile: v.m, hasTouch: v.m, reducedMotion: 'no-preference' });
-    await ctx.addInitScript((t) => { localStorage.setItem('rm.opened', '1'); localStorage.setItem('rm.biome', t); localStorage.setItem('rm.langhint', '0'); }, th);
+    await ctx.addInitScript((t) => { localStorage.setItem('rm.opened', '1'); localStorage.setItem('rm.biome', t); localStorage.setItem('rm.langhint', '0'); sessionStorage.setItem('rm.viewed', '1'); }, th);
     const p = await ctx.newPage();
     const errs = [];
     p.on('console', (x) => { if (x.type() === 'error') errs.push(x.text()); });

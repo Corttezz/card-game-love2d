@@ -44,6 +44,9 @@ async function view(req, env) {
   let b = {};
   try { b = JSON.parse(await req.text()); } catch { /* sendBeacon vazio */ }
   if (!VARIANTS.includes(b.variant) || !LANGS.includes(b.lang)) return json({ ok: false, error: 'bad' }, 400);
+  // navegador sem janela e Lighthouse (testes, capturas, robôs) não contam como visita
+  const ua = req.headers.get('User-Agent') || '';
+  if (/HeadlessChrome|Chrome-Lighthouse|bot|crawler|spider/i.test(ua)) return json({ ok: true, counted: false });
   await bump(env, b.variant, b.lang, 'views');
   return json({ ok: true });
 }
