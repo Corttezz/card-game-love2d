@@ -16,7 +16,7 @@ os.makedirs(CACHE, exist_ok=True)
 done = []
 for root, _, files in os.walk(os.path.join(D, "img")):
     rel = os.path.relpath(root, D).replace("\\", "/")
-    if rel.startswith("img/og") or rel.startswith("img/brand"):
+    if rel.startswith("img/og") or rel.startswith("img/brand") or rel.startswith("img/v3b/raw"):
         continue
     for f in files:
         if not f.endswith(".png"):

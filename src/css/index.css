@@ -1,5 +1,2 @@
-/* ordem: base do site, partes, temas por bioma e sprites (gerados no build) */
-@import './site.css';
-@import './parts.css';
-@import './themes.css';
-@import './sprites.css';
+/* runemoire.com v3b: a abertura e a tela de título do jogo. */
+@import "./v3b.css";

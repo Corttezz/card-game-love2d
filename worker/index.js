@@ -1,9 +1,7 @@
 // Worker do runemoire.com: www -> raiz (301), cabeçalhos de segurança, cache e a API do "Me avise".
-import { GATE_HASH } from './gate-hash.js';
-
 const CSP = [
   "default-src 'none'",
-  `script-src 'self' '${GATE_HASH}' https://static.cloudflareinsights.com`,
+  "script-src 'self' https://static.cloudflareinsights.com",
   "style-src 'self'",
   "img-src 'self' data: blob:",
   "media-src 'self'",
@@ -28,10 +26,11 @@ const SEG = {
 
 const LANGS = ['en', 'pt_BR', 'es', 'fr', 'de'];
 const BIOMES = ['fields', 'highlands', 'abyss', 'frost', 'marsh', 'dusk', 'eclipse'];
-const VARIANTS = ['a', 'b'];
+const VARIANTS = ['a', 'b', 'v2', 'v3', 'v3b'];
 
 // contador diário anônimo (sem IP, sem identificador): visitas por sessão e cadastros, por versão e idioma
 async function bump(env, variant, lang, col) {
+  if (env.PREVIEW === '1') return; // prévia não entra na contagem
   const day = new Date().toISOString().slice(0, 10);
   await env.DB.prepare(`INSERT INTO stats_daily (day, variant, lang, ${col}) VALUES (?1, ?2, ?3, 1) ON CONFLICT(day, variant, lang) DO UPDATE SET ${col} = ${col} + 1`)
     .bind(day, variant, lang).run();
@@ -88,7 +87,7 @@ async function notify(req, env) {
   const now = new Date().toISOString();
   const biome = BIOMES.includes(b.biome) ? b.biome : null;
   const variant = VARIANTS.includes(b.variant) ? b.variant : null;
-  const source = ['hero', 'final'].includes(b.source) ? b.source : null;
+  const source = ['hero', 'final', 'achievements'].includes(b.source) ? b.source : null;
   // e-mail novo: grava e devolve o link de saída. Já cadastrado: só confirma, sem devolver o token
   // (senão qualquer um tiraria qualquer e-mail da lista); a pessoa sai pelo link original ou pelo contato.
   const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token, biome, variant, source) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(email) DO NOTHING')
@@ -134,6 +133,7 @@ export default {
     }
     const res = new Response(r.body, { status, headers: r.headers });
     for (const [k, v] of Object.entries(SEG)) res.headers.set(k, v);
+    if (env.PREVIEW === '1') res.headers.set('X-Robots-Tag', 'noindex, nofollow');
     if (p.startsWith('/assets/')) res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     else if (/^\/(img|media|fonts)\//.test(p)) res.headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=604800');
     else if (/\.(png|svg|ico|xml|txt|webmanifest|js|css)$/.test(p)) res.headers.set('Cache-Control', 'public, max-age=86400');

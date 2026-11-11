@@ -1,0 +1,15 @@
+{
+  // Prévia da v2 (minimalista): Worker separado em workers.dev, sem o domínio. O Daniel aprova antes da troca.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "runemoire-site-v2",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-11-01",
+  "account_id": "fb77e1546b266bb431061f99461d69df",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": "dist", "binding": "ASSETS", "run_worker_first": true, "html_handling": "auto-trailing-slash", "not_found_handling": "404-page" },
+  "d1_databases": [{ "binding": "DB", "database_name": "runemoire-site", "database_id": "af5fa93d-c911-4fe5-96ce-bd2b75f962ce", "migrations_dir": "migrations" }],
+  "ratelimits": [{ "name": "NOTIFY_LIMIT", "namespace_id": "4711", "simple": { "limit": 5, "period": 60 } }],
+  "vars": { "PREVIEW": "1", "FORCE_HTTPS": "0" },
+  "observability": { "enabled": true }
+}

@@ -1,336 +1,257 @@
-// Runemoire — o grimório vivo. Sem rastreador; só localStorage para lembrar bioma, som e runas achadas.
-import { Weather, type Style } from './weather';
-import { initTable } from './table';
-import { chiptune, Ambient } from './audio';
-import { confetti } from './confetti';
+// runemoire.com v3b: a abertura do jogo, igual à do jogo (src/ts/game.ts porta IntroTube, BootScene, MenuBrand, Menu e o crt.glsl).
+// O computador começa desligado; clicar na tela (ou qualquer tecla) insere a carta e liga tudo. Segundo clique/tecla pula, como no jogo.
+// Por cima do canvas ficam só alvos transparentes e acessíveis (menu, cartas, rodapé) e os painéis. Nada é guardado no aparelho.
+import { Game, BUTTON_ORDER, type Strings } from './game';
 
-type Biome = {
-  id: string; name: string; boss: string; castle: string; cw: number; bossImg: string; bossSpr: string; bw: number; bh: number; castleSpr: string;
-  weather: Style; color: string; celestial: { kind: string; x: number; y: number; r: number; color: string }; music?: string;
-};
-type Creature = { name: string; lore: string; spr: string; w: number; h: number; where: string };
-type Data = {
-  lang: string; biomes: Biome[]; eclipse: Biome; t: Record<string, string>; table: unknown; simple?: boolean;
-  shuffle?: { creatures: Creature[]; cards: string[] }; sfx?: Record<string, string>;
-};
-
+type Data = { lang: string; nf?: boolean; unsubPath?: string; pool?: string[]; cardBase?: string; boot: Strings; t: Record<string, string> };
 const $ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => r.querySelector(s) as T | null;
 const $$ = <T extends Element = HTMLElement>(s: string, r: ParentNode = document) => Array.from(r.querySelectorAll(s)) as T[];
-const D: Data = JSON.parse($('#rm-data')?.textContent || '{}');
-const store = {
-  get: (k: string) => { try { return localStorage.getItem('rm.' + k); } catch { return null; } },
-  set: (k: string, v: string) => { try { localStorage.setItem('rm.' + k, v); } catch { /* modo privado */ } },
-};
-const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('reduced');
-const sfxUrl = (k: string) => D.sfx?.[k];
+const D: Data = JSON.parse($('#rm-data')?.textContent || '{"t":{},"boot":{}}');
+const root = document.documentElement;
+root.classList.remove('no-js'); root.classList.add('js');
+const osReduced = matchMedia('(prefers-reduced-motion: reduce)');
 
-let toastT = 0;
-function toast(msg: string, ms = 3200) {
-  const el = $('#toast');
-  if (!el) return;
-  el.innerHTML = msg; el.classList.add('on');
-  clearTimeout(toastT); toastT = window.setTimeout(() => el.classList.remove('on'), ms);
+// ---------------- som: efeitos do jogo ligados (o clique libera o áudio); música só nas Opções ----------------
+const SND = { music: false, sfx: true, a: null as HTMLAudioElement | null, menuOn: false };
+function sfx(n: string, vol = 1, rate = 1) {
+  if (!SND.sfx) return;
+  const a = new Audio(`/media/v3b/${n}.mp3`); a.volume = Math.min(1, 0.6 * vol); a.playbackRate = rate; (a as any).preservesPitch = false;
+  a.play().catch(() => {});
+}
+function music(on: boolean) {
+  SND.menuOn = on;
+  if (on && SND.music) { if (!SND.a) { SND.a = new Audio('/media/v3/menu.mp3'); SND.a.loop = true; SND.a.volume = 0.35; } SND.a.play().catch(() => {}); }
+  else SND.a?.pause();
 }
 
-// ---------- som (só com opt-in) ----------
-const ambient = new Ambient();
-let soundOn = store.get('sound') === '1';
-const playSfx = (k: string) => { const u = sfxUrl(k); if (u) ambient.sfx(u); };
-function setSound(on: boolean) {
-  soundOn = on; store.set('sound', on ? '1' : '0');
-  const b = $('#sound');
-  if (b) { b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', on ? D.t.soundOff : D.t.soundOn); b.title = on ? D.t.soundOff : D.t.soundOn; }
-  if (on) ambient.play(current()?.music); else ambient.stop();
-}
+// ---------------- o jogo ----------------
+// páginas simples (privacidade, sair da lista) não têm a cena: o jogo nem começa
+const HAS = !!$('#cv');
+const cv = $<HTMLCanvasElement>('#cv') || document.createElement('canvas'), out = $<HTMLCanvasElement>('#crt') || document.createElement('canvas');
+const main = $('#main'), hit = $<HTMLButtonElement>('#screenhit');
+const game = new Game(cv, out, D.boot, {
+  sfx, music,
+  onPhase: (p) => {
+    ((window as any).__rmPhases ||= []).push(p);
+    if (p === 'insert') root.classList.add('started');
+    if (p === 'boot' && game.glOk) root.classList.add('on-crt');
+  },
+  onMenu: () => { ((window as any).__rmPhases ||= []).push('menu'); root.classList.add('started'); if (game.glOk) root.classList.add('on-crt'); },
+  onDesk: () => { root.classList.remove('on-crt', 'started', 'in-menu'); main?.setAttribute('inert', ''); hit?.focus({ preventScroll: true }); },
+});
+game.reduced = osReduced.matches;
+(window as any).__rm = game; // para os testes (tools/e2e.mjs) e as capturas lado a lado
+// ?manual: o relógio não anda sozinho; as capturas avançam o jogo em passos de 1/60 s (como a ferramenta do jogo)
+const MANUAL = new URLSearchParams(location.search).has('manual');
 
-// ---------- tema = bioma ----------
-let weather: Weather | null = null;
-const all = () => [...D.biomes, D.eclipse];
-const current = () => all().find((b) => b.id === document.documentElement.dataset.biome);
-function setBiome(id: string, save = true) {
-  const b = all().find((x) => x.id === id) || D.biomes[0];
-  const root = document.documentElement;
-  root.dataset.biome = b.id;
-  if (save) store.set('biome', b.id);
-  for (const r of $$('.rune[data-biome]')) r.setAttribute('aria-pressed', String(r.dataset.biome === b.id));
-  const castle = $('#castle');
-  if (castle) castle.setAttribute('aria-label', D.t.castleAlt.replace('{biome}', b.name));
-  const boss = $('#boss');
-  if (boss && save && !reduced()) { boss.classList.add('hide'); window.setTimeout(() => boss.classList.remove('hide'), 500); }
-  const lbl = $('#biome-name'); if (lbl) lbl.textContent = b.name;
-  weather?.set(b.weather, b.color);
-  if (soundOn) ambient.play(b.music);
-  const meta = $<HTMLMetaElement>('meta[name="theme-color"]'); if (meta) meta.content = getComputedStyle(root).getPropertyValue('--sky-0').trim();
-}
-function initialBiome() {
-  const saved = store.get('biome');
-  if (saved && (saved !== 'eclipse' || store.get('eclipse') === '1')) return saved;
-  const h = new Date().getHours(); // primeira visita: bioma pela hora local
-  return h < 5 ? 'frost' : h < 10 ? 'fields' : h < 14 ? 'highlands' : h < 17 ? 'marsh' : h < 20 ? 'dusk' : 'abyss';
-}
+function resize() { game.resize(innerWidth, innerHeight); }
+resize();
+addEventListener('resize', resize);
+addEventListener('pointermove', (e) => { game.mouse = [e.clientX, e.clientY]; }, { passive: true });
+game.mouse = [innerWidth / 2, innerHeight / 2];
 
-// ---------- abertura (o tomo) ----------
-function opening() {
-  const el = $('#opening');
-  if (!el) return;
-  const force = location.hash === '#tome';
-  if (document.documentElement.classList.contains('seen') || (store.get('opened') === '1' && !force)) { el.remove(); return; }
-  document.body.classList.add('locked');
-  const go = (withSound: boolean) => {
-    store.set('opened', '1');
-    if (withSound) { setSound(true); playSfx('menu-open'); }
-    el.classList.add('is-open');
-    window.setTimeout(() => el.classList.add('is-leaving'), reduced() ? 0 : 1100);
-    window.setTimeout(() => {
-      el.remove(); document.body.classList.remove('locked');
-      $('#main')?.focus({ preventScroll: true });
-      if (force) history.replaceState(null, '', location.pathname);
-    }, reduced() ? 0 : 1800);
-  };
-  // diálogo modal de verdade: o foco fica nos dois botões até abrir
-  el.addEventListener('keydown', (e) => {
-    if (e.key !== 'Tab') return;
-    const f = $$<HTMLButtonElement>('#open-sound, #open-silent');
-    const i = f.indexOf(document.activeElement as HTMLButtonElement);
-    e.preventDefault();
-    f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
-  });
-  $('#open-sound')?.addEventListener('click', () => go(true));
-  $('#open-silent')?.addEventListener('click', () => go(false));
-  el.addEventListener('keydown', (e) => { if (e.key === 'Escape') go(false); });
-  $<HTMLButtonElement>('#open-silent')?.focus();
+let raf = 0;
+function loop(now: number) {
+  raf = requestAnimationFrame(loop);
+  if (MANUAL) game.draw(); else game.frame(now);
+  syncDom();
 }
+function start() { cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); }
 
-// ---------- "Me avise" ----------
-function notifyForms() {
-  for (const f of $$<HTMLFormElement>('form.notify')) {
-    f.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msg = $('.msg', f)!; const btn = $<HTMLButtonElement>('button[type=submit]', f)!;
-      const fd = new FormData(f);
-      const email = String(fd.get('email') || '').trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.className = 'msg err'; msg.textContent = D.t.notifyBad; $('input[type=email]', f)?.focus(); return; }
-      msg.className = 'msg'; msg.textContent = D.t.sending; btn.disabled = true;
-      try {
-        const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), biome: document.documentElement.dataset.biome, variant: abVariant(), source: f.dataset.source }) });
-        const j = await r.json().catch(() => ({}));
-        if (r.ok && j.ok) {
-          msg.textContent = D.t.notifyOk + ' ';
-          if (j.token) { const a = document.createElement('a'); a.href = `${D.t.unsubPath}?t=${encodeURIComponent(j.token)}`; a.textContent = D.t.unsubLink; msg.append(a); }
-          f.reset(); playSfx('joker-tick');
-        } else { msg.classList.add('err'); msg.textContent = r.status === 429 ? D.t.notifyRate : D.t.notifyBad; }
-      } catch { msg.classList.add('err'); msg.textContent = D.t.notifyNet; }
-      btn.disabled = false;
-    });
+// ---------------- carga: o computador primeiro; shaders e o resto depois da carga (fora do caminho da primeira pintura) ----------------
+let restP: Promise<void> | null = null;
+function loadRest() {
+  if (!restP) restP = game.loadRest().then(() => { game.initGL(); game.initGLRest(); });
+  return restP;
+}
+if (HAS) game.loadIntro().then(() => { start(); });
+if (HAS) addEventListener('load', () => {
+  const go = () => { game.initGL(); loadRest(); };
+  // a página parada não precisa de shader: o resto carrega depois, sem disputar a primeira pintura (o clique antecipa)
+  setTimeout(() => { if ('requestIdleCallback' in window) (window as any).requestIdleCallback(go, { timeout: 2000 }); else go(); }, 3000);
+}, { once: true });
+
+(window as any).__rmReady = () => loadRest();
+(window as any).__rmPress = () => press();
+async function press() {
+  if (D.nf || !HAS) return;
+  if (game.mode === 'intro' && game.intro.phase === 'off') {
+    game.initGL();
+    if (game.reduced) { await loadRest(); game.skipAll(); return; }
+    loadRest();
   }
+  game.press();
 }
+hit?.addEventListener('click', () => { press(); });
+addEventListener('keydown', (e) => {
+  if (!HAS || e.altKey || e.ctrlKey || e.metaKey || e.key === 'Tab') return;
+  if (document.body.classList.contains('panel-open')) return;
+  const intro = game.mode !== 'menu' || game.menu.isIntroPlaying();
+  if (intro) { e.preventDefault(); press(); }
+});
 
-// ---------- A/B do botão "Me avise": a versão vem do gate (classe ab-a/ab-b); uma visita contada por sessão ----------
-function abVariant() { return document.documentElement.classList.contains('ab-b') ? 'b' : 'a'; }
-function countView() {
-  try {
-    if (sessionStorage.getItem('rm.viewed')) return;
-    sessionStorage.setItem('rm.viewed', '1');
-  } catch { return; }
-  const body = JSON.stringify({ variant: abVariant(), lang: D.lang });
-  if (navigator.sendBeacon) navigator.sendBeacon('/api/view', new Blob([body], { type: 'application/json' }));
-  else fetch('/api/view', { method: 'POST', body, keepalive: true }).catch(() => {});
+// ---------------- alvos transparentes sobre o que o jogo desenha ----------------
+const mbtns = $$<HTMLAnchorElement>('.menu .mbtn'), hangs = $$<HTMLButtonElement>('.hang'), priv = $<HTMLAnchorElement>('#priv');
+let menuLive = false, lastKey = '';
+function place(el: HTMLElement, x: number, y: number, w: number, h: number, min = 0) {
+  // o jogo desenha no conteúdo; o CRT curva a imagem: o alvo vai para onde o retângulo aparece na tela (sem WebGL não há curva)
+  const bent = game.crtOn && game.glOk;
+  let [ax, ay] = bent ? game.crt.contentToScreen(x, y, game.W, game.H) : [x, y];
+  let [bx, by] = bent ? game.crt.contentToScreen(x + w, y + h, game.W, game.H) : [x + w, y + h];
+  if (bx - ax < min) { const c = (ax + bx) / 2; ax = c - min / 2; bx = c + min / 2; }
+  if (by - ay < min) { const c = (ay + by) / 2; ay = c - min / 2; by = c + min / 2; }
+  el.style.left = `${ax}px`; el.style.top = `${ay}px`; el.style.width = `${bx - ax}px`; el.style.height = `${by - ay}px`;
 }
-
-// ---------- trailers: vídeo só sob demanda ----------
-function trailers() {
-  for (const b of $$<HTMLButtonElement>('.tv .play')) {
-    b.addEventListener('click', () => {
-      const shot = b.closest('.shot')!;
-      const v = document.createElement('video');
-      v.src = b.dataset.src!; v.controls = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto';
-      v.setAttribute('aria-label', b.dataset.label || '');
-      shot.replaceChildren(v); v.focus();
-      ambient.duck(true); v.addEventListener('pause', () => ambient.duck(false)); v.addEventListener('ended', () => ambient.duck(false));
-    });
+function syncDom() {
+  const live = game.mode === 'menu' && !game.menu.isIntroPlaying() && game.menu.buttonsReady();
+  if (live !== menuLive) {
+    menuLive = live;
+    root.classList.toggle('in-menu', live);
+    if (live) { main?.removeAttribute('inert'); if (document.activeElement === hit) (document.activeElement as HTMLElement).blur(); }
+    else main?.setAttribute('inert', '');
   }
-  const crt = $<HTMLButtonElement>('#crt');
-  crt?.addEventListener('click', () => {
-    const on = !document.body.classList.contains('crt');
-    document.body.classList.toggle('crt', on); crt.setAttribute('aria-pressed', String(on));
+  if (!live) return;
+  const key = `${game.W}x${game.H}:${game.crtOn}:${game.glOk}`;
+  if (key === lastKey) return;
+  lastKey = key;
+  game.menu.buttonRects().forEach((r, i) => mbtns[i] && place(mbtns[i], r.x, r.y, r.w, r.h));
+  game.menu.cardRects().forEach((r, i) => hangs[i] && place(hangs[i], r.x, r.y, r.w, r.h, 48));
+  const f = game.menu.footer.priv;
+  if (priv && f[2]) place(priv, f[0] - 6, f[1] - 6, f[2] + 12, f[3] + 12);
+}
+
+// ---------------- menu, painéis ----------------
+const panels = $$<HTMLElement>('.panel');
+let lastOpener: HTMLElement | null = null;
+function openPanel(id: string, opener?: HTMLElement | null) {
+  if (id === 'quit') { closePanel(); game.quit(); return; }
+  const p = document.getElementById(id);
+  if (!p || !p.classList.contains('panel')) return;
+  panels.forEach((x) => x.classList.toggle('open', x === p));
+  document.body.classList.add('panel-open');
+  main?.setAttribute('inert', '');
+  lastOpener = opener || null;
+  const h = $('h2', p) as HTMLElement | null, fr = $('.frame9', p) as HTMLElement | null;
+  if (fr) fr.scrollTop = 0;
+  if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  sfx('button-click');
+}
+function closePanel() {
+  if (!panels.some((p) => p.classList.contains('open'))) return;
+  panels.forEach((p) => p.classList.remove('open'));
+  document.body.classList.remove('panel-open');
+  if (menuLive) main?.removeAttribute('inert');
+  $$<HTMLVideoElement>('.panel video').forEach((v) => v.pause());
+  lastOpener?.focus();
+}
+function menu() {
+  mbtns.forEach((a, i) => {
+    const name = BUTTON_ORDER[i];
+    a.addEventListener('mouseenter', () => { game.menu.hover = name; });
+    a.addEventListener('mouseleave', () => { if (game.menu.hover === name) game.menu.hover = ''; });
+    a.addEventListener('focus', () => { game.menu.hover = name; });
+    a.addEventListener('blur', () => { if (game.menu.hover === name) game.menu.hover = ''; });
+    a.addEventListener('click', (e) => { e.preventDefault(); sfx('button-click'); openPanel(a.dataset.open!, a); });
   });
-}
-
-// ---------- herói: vídeo de gameplay mudo em loop, depois do primeiro paint ----------
-function heroLoop() {
-  const box = $('.hero .loop');
-  if (!box || reduced() || innerWidth < 720) return;
-  const conn = (navigator as unknown as { connection?: { saveData?: boolean } }).connection;
-  if (conn?.saveData) return;
-  const start = () => {
-    const v = document.createElement('video');
-    v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto';
-    v.poster = box.dataset.poster!; v.src = box.dataset.src!; v.setAttribute('aria-hidden', 'true'); v.tabIndex = -1;
-    box.append(v);
-    v.defaultPlaybackRate = 0.6; v.playbackRate = 0.6;
-    v.addEventListener('playing', () => box.classList.add('on'), { once: true });
-    v.play().catch(() => {});
-  };
-  if (document.readyState === 'complete') setTimeout(start, 600); else addEventListener('load', () => setTimeout(start, 600), { once: true });
-}
-
-// ---------- bestiário (abas = atos, a página vira) ----------
-function bestiary() {
-  const tabs = $$<HTMLButtonElement>('.acts [role=tab]');
-  const show = (i: number, focus = false) => {
-    tabs.forEach((t, j) => { t.setAttribute('aria-selected', String(i === j)); t.tabIndex = i === j ? 0 : -1; });
-    for (const p of $$<HTMLElement>('.spread [role=tabpanel]')) p.hidden = p.id !== tabs[i].getAttribute('aria-controls');
-    const leaf = $(`#${tabs[i].getAttribute('aria-controls')} .leaf`);
-    if (leaf && !reduced()) { leaf.classList.remove('turn'); void (leaf as HTMLElement).offsetWidth; leaf.classList.add('turn'); }
-    if (focus) tabs[i].focus();
-    playSfx('card-draw');
-  };
-  tabs.forEach((t, i) => {
-    t.addEventListener('click', () => show(i));
-    t.addEventListener('keydown', (e) => {
-      const k = e.key; let n = -1;
-      if (k === 'ArrowRight') n = (i + 1) % tabs.length; else if (k === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length; else if (k === 'Home') n = 0; else if (k === 'End') n = tabs.length - 1;
-      if (n >= 0) { e.preventDefault(); show(n, true); }
-    });
-  });
-}
-
-// ---------- cartas: filtro por raridade, tilt e holo ----------
-function cards() {
-  const btns = $$<HTMLButtonElement>('.filters button[data-r]');
-  for (const b of btns) b.addEventListener('click', () => {
-    for (const x of btns) x.setAttribute('aria-pressed', String(x === b));
-    const r = b.dataset.r!;
-    for (const c of $$<HTMLElement>('.gallery-cards .card')) c.hidden = r !== 'all' && (r === 'joker' ? c.dataset.type !== 'joker' : c.dataset.rarity !== r || c.dataset.type === 'joker');
-  });
-  // um só ouvinte para as 145 cartas (evita uma tarefa longa ao ligar a inclinação carta por carta)
-  const grid = $('.gallery-cards');
-  if (grid && !reduced() && !matchMedia('(hover: none)').matches) {
-    let last: HTMLElement | null = null;
-    grid.addEventListener('pointermove', (e) => {
-      const el = (e.target as HTMLElement).closest('.card') as HTMLElement | null;
-      if (last && last !== el) { last.style.removeProperty('--rx'); last.style.removeProperty('--ry'); }
-      last = el;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-      el.style.setProperty('--ry', (x * 18).toFixed(1) + 'deg'); el.style.setProperty('--rx', (-y * 18).toFixed(1) + 'deg');
-      el.style.setProperty('--ha', Math.round((x + y) * 180) + 'deg');
-    });
-    grid.addEventListener('pointerleave', () => { if (last) { last.style.removeProperty('--rx'); last.style.removeProperty('--ry'); } });
-  }
-}
-export function tilt(els: HTMLElement[]) {
-  if (reduced() || matchMedia('(hover: none)').matches) return;
-  for (const el of els) {
-    el.addEventListener('pointermove', (e) => {
-      const r = el.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-      el.style.setProperty('--ry', (x * 18).toFixed(1) + 'deg'); el.style.setProperty('--rx', (-y * 18).toFixed(1) + 'deg');
-      el.style.setProperty('--ha', Math.round((x + y) * 180) + 'deg');
-    });
-    el.addEventListener('pointerleave', () => { el.style.removeProperty('--rx'); el.style.removeProperty('--ry'); });
-  }
-}
-
-// ---------- embaralhar: carta, criatura ou fragmento de lore ao acaso ----------
-function shuffle() {
-  const btn = $('#shuffle'), out = $('#shuffle-out');
-  if (!btn || !out || !D.shuffle) return;
-  btn.addEventListener('click', () => {
-    out.classList.add('vis');
-    const S = D.shuffle!;
-    if (Math.random() < 0.4) {
-      const id = S.cards[Math.floor(Math.random() * S.cards.length)];
-      const src = $(`.gallery-cards .card[data-id="${id}"]`) || $(`.card[data-id="${id}"]`);
-      const k = src ? (src.cloneNode(true) as HTMLElement) : null;
-      out.replaceChildren();
-      const p = document.createElement('p'); p.className = 'kicker'; p.textContent = D.t.shuffleCard;
-      if (k) { k.removeAttribute('id'); k.hidden = false; out.append(p, k); tilt([k]); }
-    } else {
-      const c = S.creatures[Math.floor(Math.random() * S.creatures.length)];
-      out.innerHTML = `<div class="parch frag"><p class="kicker"></p><i class="spr ${c.spr} vis" aria-hidden="true"></i><h3></h3><p class="lore"></p></div>`;
-      ($('.kicker', out) as HTMLElement).textContent = `${D.t.loreTitle} · ${c.where}`;
-      ($('h3', out) as HTMLElement).textContent = c.name;
-      ($('.lore', out) as HTMLElement).textContent = c.lore;
-    }
-    playSfx('card-draw');
-  });
-}
-
-// ---------- galeria ----------
-function lightbox() {
-  const dlg = $<HTMLDialogElement>('#lightbox');
-  if (!dlg) return;
-  const im = $<HTMLImageElement>('img', dlg)!;
-  for (const b of $$<HTMLButtonElement>('.shots button')) b.addEventListener('click', () => { im.src = b.dataset.full!; im.alt = $('img', b)?.getAttribute('alt') || ''; dlg.showModal(); });
-  dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-}
-
-// ---------- sprites só carregam quando a página chega perto da tela ----------
-function lazyVis() {
-  const els = $$('.page, .lazyvis');
-  if (!('IntersectionObserver' in window)) { els.forEach((e) => e.classList.add('vis')); return; }
-  const io = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { e.target.classList.add('vis'); io.unobserve(e.target); } }, { rootMargin: '600px 0px' });
-  els.forEach((e) => io.observe(e));
-}
-
-// ---------- segredos ----------
-function secrets() {
-  const found = new Set((store.get('runes') || '').split(',').filter(Boolean));
-  const unlock = () => { const e = $('.rune[data-biome=eclipse]'); if (e) e.hidden = false; };
-  if (store.get('eclipse') === '1') unlock();
-  for (const b of $$<HTMLButtonElement>('.secret-rune')) {
-    const id = b.dataset.secret!;
-    if (found.has(id)) b.classList.add('found');
-    b.addEventListener('click', () => {
-      if (found.has(id)) return;
-      found.add(id); store.set('runes', [...found].join(',')); b.classList.add('found');
-      playSfx('joker-tick');
-      const r = b.getBoundingClientRect(); confetti(r.left, r.top);
-      if (found.size >= 5) {
-        store.set('eclipse', '1'); unlock(); setBiome('eclipse');
-        toast(D.t.eclipseUnlocked.replace('{link}', `<a href="${D.t.home}eclipse/">${D.t.eclipseLink}</a>`), 10000);
-      } else toast(D.t.runeFound.replace('{n}', String(found.size)));
-    });
-  }
-  const K = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'].join(',');
-  let buf: string[] = [];
   addEventListener('keydown', (e) => {
-    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    buf = [...buf, k].slice(-10); // janela das últimas 10 teclas: tolera teclas a mais antes da sequência
-    if (buf.join(',') === K) {
-      buf = [];
-      const on = document.body.classList.toggle('crt-all');
-      toast(on ? D.t.konamiOn : D.t.konamiOff);
-      if (on) chiptune();
+    if (e.key === 'Escape') { closePanel(); return; }
+    if (!menuLive || document.body.classList.contains('panel-open')) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const i = Math.max(0, mbtns.indexOf(document.activeElement as HTMLAnchorElement));
+      mbtns[(i + (e.key === 'ArrowDown' ? 1 : -1) + mbtns.length) % mbtns.length].focus();
     }
   });
-  console.log('%cRUNEMOIRE', 'font: 28px monospace; color: #e8b85a; text-shadow: 2px 2px 0 #2a1d14');
-  console.log(`%c${D.t.consoleMsg}`, 'font: 13px monospace; color: #c9b99b');
-}
-
-// ---------- CTA da Steam (a página ainda não existe: confete e aviso) ----------
-function steam() {
-  for (const a of $$<HTMLAnchorElement>('[data-confetti]')) {
-    const fire = (e: Event) => {
-      const r = a.getBoundingClientRect(); confetti(r.left + r.width / 2, r.top);
-      if (a.getAttribute('aria-disabled') === 'true') { e.preventDefault(); toast(D.t.steamSoon); }
-    };
-    a.addEventListener('click', fire);
-    a.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(e); } });
+  $$('[data-close]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); closePanel(); }));
+  panels.forEach((p) => p.addEventListener('click', (e) => { if (e.target === p) closePanel(); }));
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const p = panels.find((x) => x.classList.contains('open'));
+    if (!p) return;
+    const f = $$<HTMLElement>('a[href], button, input:not([tabindex="-1"]), video', p).filter((x) => x.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], lastEl = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastEl.focus(); }
+    else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); first.focus(); }
+  });
+  // link direto para um painel (#play, #settings...): a tela de título já aberta, sem a abertura
+  const h = location.hash.slice(1);
+  if (h && document.getElementById(h)?.classList.contains('panel')) {
+    loadRest().then(() => { game.skipAll(); setTimeout(() => openPanel(h), 50); });
   }
 }
 
-function langHint() {
-  const el = $('#langhint');
-  if (!el || store.get('langhint') === '0') return;
-  const want = (navigator.languages || [navigator.language]).map((l) => l.toLowerCase());
-  if (D.lang === 'en' && want.some((l) => l.startsWith(el.dataset.for!))) el.hidden = false;
-  $('button', el)?.addEventListener('click', () => { el.hidden = true; store.set('langhint', '0'); });
+// ---------------- as duas cartas: clicar vira e mostra uma carta real do jogo ----------------
+function hangingCards() {
+  const pool = D.pool || [];
+  let lastId = '';
+  hangs.forEach((b) => b.addEventListener('click', () => {
+    const c = game.menu.cards[Number(b.dataset.i)];
+    const on = c.flipTo < 0.5;
+    if (on && pool.length) {
+      let id = pool[Math.floor(Math.random() * pool.length)];
+      if (id === lastId && pool.length > 1) id = pool[(pool.indexOf(id) + 1) % pool.length];
+      lastId = id;
+      const im = new Image(); im.src = `${D.cardBase}${id}.png`; im.onload = () => { c.face = im; };
+    }
+    c.flipTo = on ? 1 : 0;
+    b.setAttribute('aria-pressed', String(on)); sfx('card-draw');
+  }));
 }
 
-// ---------- páginas simples ----------
+// ---------------- opções ----------------
+function settings() {
+  const sw = (id: string, fn: (on: boolean) => void) => {
+    const b = document.getElementById(id);
+    b?.addEventListener('click', () => { const on = b.getAttribute('aria-checked') !== 'true'; b.setAttribute('aria-checked', String(on)); fn(on); sfx('button-click'); });
+  };
+  sw('opt-music', (on) => { SND.music = on; music(SND.menuOn); });
+  sw('opt-sfx', (on) => { SND.sfx = on; });
+  sw('opt-crt', (on) => { game.crtOn = on; game.crt.enabled = on; lastKey = ''; });
+  const m = document.getElementById('opt-motion');
+  if (m && osReduced.matches) m.setAttribute('aria-checked', 'true');
+  sw('opt-motion', (on) => { game.reduced = on; document.body.classList.toggle('reduced', on); });
+}
+
+// ---------------- conquista: o "Me avise" ----------------
+function notify() {
+  const f = $<HTMLFormElement>('form.notify');
+  if (!f) return;
+  const msg = $('.msg', f)!, btn = $<HTMLButtonElement>('button[type=submit]', f)!;
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(f);
+    const email = String(fd.get('email') || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.className = 'msg err'; msg.textContent = D.t.notifyBad; $('input[type=email]', f)?.focus(); return; }
+    msg.className = 'msg'; msg.textContent = D.t.sending; btn.disabled = true;
+    try {
+      const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), variant: 'v3b', source: 'achievements' }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        msg.textContent = D.t.notifyOk + ' ';
+        if (j.token) { const a = document.createElement('a'); a.href = `${D.unsubPath}?t=${encodeURIComponent(j.token)}`; a.textContent = D.t.unsubLink; msg.append(a); }
+        f.reset();
+        const icon = $<HTMLImageElement>('#ach-icon'); if (icon) icon.src = icon.dataset.on!;
+        const toast = $('#toast');
+        if (toast) { toast.hidden = false; toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in'); setTimeout(() => { toast.classList.remove('in'); setTimeout(() => (toast.hidden = true), 600); }, 4800); }
+        sfx('button-click');
+      } else { msg.classList.add('err'); msg.textContent = r.status === 429 ? D.t.notifyRate : D.t.notifyBad; }
+    } catch { msg.classList.add('err'); msg.textContent = D.t.notifyNet; }
+    btn.disabled = false;
+  });
+}
+
+function trailer() {
+  const b = $<HTMLButtonElement>('.vplay');
+  b?.addEventListener('click', () => {
+    const v = document.createElement('video');
+    v.src = b.dataset.src!; v.controls = true; v.autoplay = true; v.playsInline = true;
+    v.setAttribute('aria-label', b.getAttribute('aria-label') || '');
+    b.closest('.vid')!.replaceChildren(v); v.focus();
+    if (SND.a) SND.a.pause();
+  });
+}
+
 function unsubscribe() {
   const f = $<HTMLFormElement>('#unsub');
   if (!f) return;
@@ -346,47 +267,7 @@ function unsubscribe() {
   });
 }
 
-function controls() {
-  $('#sound')?.addEventListener('click', () => setSound(!soundOn));
-  $('#sound')?.setAttribute('aria-pressed', String(soundOn));
-  const rm = $<HTMLButtonElement>('#motion');
-  const os = matchMedia('(prefers-reduced-motion: reduce)');
-  const apply = (on: boolean) => {
-    document.body.classList.toggle('reduced', on); rm?.setAttribute('aria-pressed', String(on || os.matches));
-    const c = current(); if (weather && c) weather.set(c.weather, c.color);
-    const loop = $('.hero .loop');
-    if (loop && (on || os.matches)) { loop.querySelector('video')?.remove(); loop.classList.remove('on'); } // para o vídeo na hora
-    else if (loop && !loop.querySelector('video')) heroLoop();
-  };
-  rm?.setAttribute('aria-pressed', String(os.matches));
-  if (store.get('reduced') === '1' || document.documentElement.classList.contains('reduced-pref')) apply(true);
-  rm?.addEventListener('click', () => { const on = !document.body.classList.contains('reduced'); store.set('reduced', on ? '1' : '0'); apply(on); });
-  $('#replay')?.addEventListener('click', (e) => { e.preventDefault(); store.set('opened', '0'); location.href = (location.pathname.match(/^\/(pt|es|fr|de)\//)?.[0] || '/') + '#tome'; if (location.hash === '#tome') location.reload(); });
-  const mb = $<HTMLButtonElement>('#menu'), nav = $('#nav');
-  mb?.addEventListener('click', () => { const open = mb.getAttribute('aria-expanded') !== 'true'; mb.setAttribute('aria-expanded', String(open)); nav?.classList.toggle('open', open); });
-  const closeMenu = () => { if (mb?.getAttribute('aria-expanded') === 'true') { mb.setAttribute('aria-expanded', 'false'); nav?.classList.remove('open'); mb.focus(); } };
-  addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
-  document.addEventListener('click', (e) => { if (nav?.classList.contains('open') && !(e.target as HTMLElement).closest('#nav, #menu')) closeMenu(); });
-  nav?.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('a')) { mb?.setAttribute('aria-expanded', 'false'); nav.classList.remove('open'); } });
-  $<HTMLSelectElement>('#lang')?.addEventListener('change', (e) => { location.href = (e.target as HTMLSelectElement).value + location.hash; });
-}
-
-function boot() {
-  controls();
-  if (D.simple) { unsubscribe(); document.documentElement.dataset.biome = document.documentElement.dataset.biome === 'eclipse' ? 'eclipse' : (store.get('biome') && store.get('biome') !== 'eclipse' ? store.get('biome')! : 'dusk'); return; }
-  const cv = $<HTMLCanvasElement>('#weather');
-  const startWeather = () => { if (!cv) return; weather = new Weather(cv); weather.load('/img/gen/fx'); const c = current(); if (c) weather.set(c.weather, c.color); };
-  const afterLoad = () => { startWeather(); document.documentElement.classList.add('anim'); };
-  if (document.readyState === 'complete') setTimeout(afterLoad, 300); else addEventListener('load', () => setTimeout(afterLoad, 300), { once: true });
-  for (const r of $$<HTMLButtonElement>('.rune[data-biome]')) r.addEventListener('click', () => { setBiome(r.dataset.biome!); playSfx('button-click'); });
-  setBiome(initialBiome(), false);
-  opening(); lazyVis(); notifyForms(); steam(); langHint(); secrets(); bestiary();
-  // o resto não é urgente: espera o navegador ficar livre, para não travar o primeiro paint
-  const later = (fn: () => void) => ('requestIdleCallback' in window ? (window as unknown as { requestIdleCallback: (f: () => void, o?: object) => void }).requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 400));
-  later(() => { trailers(); cards(); shuffle(); lightbox(); });
-  later(countView);
-  later(() => initTable(D.table as never, D.t, { sfx: (s) => ambient.sfx(s), tilt, confetti, sfxMap: D.sfx }));
-  heroLoop();
-  if (soundOn) addEventListener('pointerdown', () => ambient.play(current()?.music), { once: true });
-}
-boot();
+setTimeout(() => { menu(); hangingCards(); settings(); notify(); trailer(); unsubscribe(); }, 0);
+if ($('.title')) addEventListener('load', () => setTimeout(() => {
+  if (navigator.sendBeacon) navigator.sendBeacon('/api/view', new Blob([JSON.stringify({ variant: 'v3b', lang: D.lang })], { type: 'application/json' }));
+}, 500), { once: true });
