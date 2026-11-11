@@ -7886,7 +7886,7 @@
    "w": 289,
    "h": 48
   },
-  "r": "/img/brand/r_192.png"
+  "icon": "/img/brand/seal_192.png"
  },
  "scene": {
   "menu": {
@@ -8103,6 +8103,6 @@
  },
  "presskit": {
   "src": "/media/runemoire-presskit.zip",
-  "bytes": 7853450
+  "bytes": 7851116
  }
 }

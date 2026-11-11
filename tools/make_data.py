@@ -134,11 +134,23 @@ def main(inv_path):
     brand["logo"] = {"src": save(thresh(native), "img/brand/logo.png", optimize=True), "w": native.width, "h": native.height}
     brand["seal"] = copy_png("assets/branding/seal.png", "img/brand/seal.png")
     brand["wordmark"] = copy_png("assets/branding/wordmark.png", "img/brand/wordmark.png")
-    ri = Image.open(g("steam/store/community_icon_184x184.png")).convert("RGBA")
-    for s in (32, 48, 180, 192, 512):
-        save(ri.resize((s, s), Image.LANCZOS),f"img/brand/r_{s}.png", optimize=True)
-    ri.resize((48, 48), Image.LANCZOS).save(os.path.join(PUB, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
-    brand["r"] = "/img/brand/r_192.png"
+    # ícones do site só com a marca do jogo: o selo-bússola do menu (assets/branding/seal.png), sem o "R" (Daniel, 11/11)
+    seal = Image.open(g("assets/branding/seal.png")).convert("RGBA")
+    def seal_icon(size, bg=None):
+        k = size // seal.width
+        if k >= 1:
+            art = seal.resize((seal.width * k, seal.height * k), Image.NEAREST)  # escala inteira, sem borrar a pixel art
+        else:
+            art = seal.resize((size, size), Image.LANCZOS)  # menor que o original: reduzir é inevitável
+        canvas = Image.new("RGBA", (size, size), bg or (0, 0, 0, 0))
+        canvas.alpha_composite(art, ((size - art.width) // 2, (size - art.height) // 2))
+        return canvas
+    for s_ in (32, 48):
+        save(seal_icon(s_), f"img/brand/seal_{s_}.png", optimize=True)
+    for s_ in (180, 192, 512):
+        save(seal_icon(s_, (11, 10, 13, 255)), f"img/brand/seal_{s_}.png", optimize=True)
+    seal_icon(48).save(os.path.join(PUB, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
+    brand["icon"] = "/img/brand/seal_192.png"
     data["brand"] = brand
     data["scene"] = {"menu": copy_png("assets/sprites/scenes/menu.png", "img/scene/menu.png", th=False)}
 
@@ -310,7 +322,6 @@ def main(inv_path):
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         z.write("E:/dev/projects/card-game-trailer/build/trailer/brand_runemoire/logo_final.png", "logo/runemoire_logo_1920x1080.png")
         z.write(g("steam/store/library_logo_1280x720.png"), "logo/runemoire_logo_transparent_1280x720.png")
-        z.write(g("steam/store/community_icon_184x184.png"), "logo/runemoire_icon_R_184.png")
         z.write(g("assets/branding/seal.png"), "logo/runemoire_seal_113.png")
         z.write(g("steam/store/header_capsule_920x430.png"), "art/header_capsule_920x430.png")
         z.write(g("steam/store/library_hero_3840x1240.png"), "art/hero_3840x1240.png")
@@ -339,7 +350,7 @@ Six acts, six bosses with signature curses, three classes, 145 animated cards,
 an endless mode and ten Grimoire Seals. Formerly known as Grimoire.
 
 Contents
-  logo/         logo, transparent logo, R icon, seal
+  logo/         logo, transparent logo, seal
   art/          key art (capsules and hero)
   screenshots/  in-game screenshots, English and Brazilian Portuguese (1920x1080)
 

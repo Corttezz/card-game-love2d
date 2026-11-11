@@ -21,7 +21,7 @@ const B = GAME.biomes.find((b) => b.id === CASTLE_BIOME);
 // 1. só o que a v2 usa
 const KEEP = [
   'favicon.ico', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/brand/logo.png', 'img/brand/wordmark.png',
-  'img/brand/r_32.png', 'img/brand/r_180.png', 'img/brand/r_192.png', 'img/brand/r_512.png',
+  'img/brand/seal_32.png', 'img/brand/seal_180.png', 'img/brand/seal_192.png', 'img/brand/seal_512.png',
   B.castle2x.src, B.castleAnim.src, 'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
   ...['en', 'pt_BR'].flatMap((l) => ['03_road_battle', '06_road_fork', '05_shop'].flatMap((s) => [`img/shots/${l}/${s}.webp`, `img/shots/${l}/${s}_s.webp`])),
 ].map((p) => p.replace(/^\//, ''));
@@ -62,7 +62,7 @@ for (const l of LANGS) {
 const SITE = 'https://runemoire.com';
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${LANGS.flatMap((l) => ['', 'privacy/'].map((s) => `  <url><loc>${SITE}/${l.prefix ? l.prefix + '/' : ''}${s}</loc></url>`)).join('\n')}\n</urlset>\n`);
 write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /unsubscribe/\nDisallow: /*/unsubscribe/\nSitemap: ${SITE}/sitemap.xml\n`);
-write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0b0a0d', theme_color: '#0b0a0d', icons: [192, 512].map((s) => ({ src: `/img/brand/r_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
+write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0b0a0d', theme_color: '#0b0a0d', icons: [192, 512].map((s) => ({ src: `/img/brand/seal_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
 
 // 5. pixel art em WebP sem perda e troca das referências
 const conv = new Set(execFileSync('python', ['-X', 'utf8', path.join(R, 'tools/webp.py'), D], { encoding: 'utf8' }).split(/\r?\n/).map((x) => x.trim()).filter(Boolean));
