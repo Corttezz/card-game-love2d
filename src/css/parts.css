@@ -324,3 +324,7 @@ canvas.confetti.on { display: block; }
 .card .jbadge { position: static; justify-self: center; margin: 3px 0 0; font-size: 9px; }
 .skip { top: 0; transform: translateY(-110%); }
 .skip:focus { transform: none; top: 8px; }
+.card .name.long { overflow-wrap: break-word; font-size: 8px; }
+@media (max-width: 560px) { .card .name.long { font-size: 7px; } }
+.hero .scroll { white-space: nowrap; }
+.dl small { font-size: 11px; white-space: nowrap; }
