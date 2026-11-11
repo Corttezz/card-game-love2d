@@ -285,3 +285,12 @@ canvas.confetti.on { display: block; }
 .intro-grid { grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 980px) { .intro-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .feats li > span, .dict p { overflow-wrap: break-word; min-width: 0; }
+/* sol/lua do bioma direto do tema (sem deslocamento de layout depois do JS) */
+.hero .celestial.moon::after, .hero .celestial::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--sky-1); translate: 28% -12%; opacity: var(--moon, 0); }
+:root[data-biome="eclipse"] .hero .celestial { --cx: .5; --cy: .22; --cr: 22; --celestial: #f4e3a1; background: #05040a; box-shadow: 0 0 0 4px #f4e3a1, 0 0 30px 10px #f4e3a188; }
+/* texto legível no celular: regras das cartas e legendas com pelo menos 12 px */
+@media (max-width: 560px) {
+  .card .desc { font-size: 12px; line-height: 1.2; }
+  .card .name { font-size: 10px; } .card .name.long { font-size: 9px; }
+  .roster figcaption, .jk figcaption, .card .kind { font-size: 12px; }
+}

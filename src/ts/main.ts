@@ -57,12 +57,6 @@ function setBiome(id: string, save = true) {
   if (castle) castle.setAttribute('aria-label', D.t.castleAlt.replace('{biome}', b.name));
   const boss = $('#boss');
   if (boss && save && !reduced()) { boss.classList.add('hide'); window.setTimeout(() => boss.classList.remove('hide'), 500); }
-  const cel = $('#celestial');
-  if (cel) {
-    cel.className = 'celestial ' + b.celestial.kind;
-    cel.style.setProperty('--cx', String(b.celestial.x)); cel.style.setProperty('--cy', String(b.celestial.y));
-    cel.style.setProperty('--cr', String(b.celestial.r)); cel.style.setProperty('--celestial', b.celestial.color);
-  }
   const lbl = $('#biome-name'); if (lbl) lbl.textContent = b.name;
   weather?.set(b.weather, b.color);
   if (soundOn) ambient.play(b.music);
@@ -197,7 +191,22 @@ function cards() {
     const r = b.dataset.r!;
     for (const c of $$<HTMLElement>('.gallery-cards .card')) c.hidden = r !== 'all' && (r === 'joker' ? c.dataset.type !== 'joker' : c.dataset.rarity !== r || c.dataset.type === 'joker');
   });
-  tilt($$('.gallery-cards .card'));
+  // um só ouvinte para as 145 cartas (evita uma tarefa longa ao ligar a inclinação carta por carta)
+  const grid = $('.gallery-cards');
+  if (grid && !reduced() && !matchMedia('(hover: none)').matches) {
+    let last: HTMLElement | null = null;
+    grid.addEventListener('pointermove', (e) => {
+      const el = (e.target as HTMLElement).closest('.card') as HTMLElement | null;
+      if (last && last !== el) { last.style.removeProperty('--rx'); last.style.removeProperty('--ry'); }
+      last = el;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+      el.style.setProperty('--ry', (x * 18).toFixed(1) + 'deg'); el.style.setProperty('--rx', (-y * 18).toFixed(1) + 'deg');
+      el.style.setProperty('--ha', Math.round((x + y) * 180) + 'deg');
+    });
+    grid.addEventListener('pointerleave', () => { if (last) { last.style.removeProperty('--rx'); last.style.removeProperty('--ry'); } });
+  }
 }
 export function tilt(els: HTMLElement[]) {
   if (reduced() || matchMedia('(hover: none)').matches) return;

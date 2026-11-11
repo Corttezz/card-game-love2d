@@ -72,7 +72,7 @@ export function themesCss(GAME) {
     css += `:root[data-biome="${b.id}"]{${stops};--accent:${p.accent};--hills-far:${p.hillsFar};--hills-near:${p.hillsNear};--ground:${p.grassA};--cloud:${p.cloud};--fog:${p.fog};` +
       `--castle-src:url(${b.castleAnim.src});--cw:${b.castleAnim.w}px;--ch:${b.castleAnim.h}px;--cfn:${b.castleAnim.frames};--cdur:${(b.castleAnim.frames / b.castleAnim.fps).toFixed(2)}s;` +
       `--boss-src:url(${b.boss.idle.src});--bw:${b.boss.idle.w}px;--bh:${b.boss.idle.h}px;--bfn:${b.boss.idle.frames};--bdur:${(b.boss.idle.frames / b.boss.idle.fps).toFixed(2)}s;` +
-      `--mh:${b.mtn.h}px;--sky-img:${b.mtnTop || p.skyHorizon};--mtn:url(${b.mtn.src});--mtn-front:url(${(b.mtnFront || b.mtn).src});--cursor:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,pointer}\n`;
+      `--cx:${p.celestial.x};--cy:${p.celestial.y};--cr:${p.celestial.r};--celestial:${p.celestial.color};--moon:${p.celestial.kind === 'moon' ? 1 : 0};--mh:${b.mtn.h}px;--sky-img:${b.mtnTop || p.skyHorizon};--mtn:url(${b.mtn.src});--mtn-front:url(${(b.mtnFront || b.mtn).src});--cursor:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,pointer}\n`;
   }
   css += `:root[data-biome="eclipse"]{--sky-0:#05040a;--sky-1:#0d0918;--sky-2:#1a1030;--sky-3:#2a1640;--sky-4:#3b1d4a;--sky-5:#56284f;--accent:#f4e3a1;--hills-far:#120c1c;--hills-near:#0b0712;--ground:#140d1c;--cloud:#3b2f4f;--fog:#2a1640;` +
     `--mtn:url(${GAME.biomes[5].mtn.src});--mtn-front:url(${(GAME.biomes[5].mtnFront || GAME.biomes[5].mtn).src});--cursor:url(/img/gen/cursors/cursor_dusk.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_dusk.png) 1 1,pointer}\n` +
