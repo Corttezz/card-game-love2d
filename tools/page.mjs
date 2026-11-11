@@ -103,7 +103,7 @@ function foot(t, l, GAME) {
 <div><h2>${esc(t.footGame)}</h2><ul><li><a href="${h}#trailers">${esc(t.navTrailers)}</a></li><li><a href="${h}#bestiary">${esc(t.navBestiary)}</a></li><li><a href="${h}#press">${esc(t.navPress)}</a></li><li><a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></li></ul></div>
 <div><h2>${esc(t.footSite)}</h2><ul><li><a href="${h}privacy/">${esc(t.privacy)}</a></li><li><a href="${h}#tome" id="replay">${esc(t.replay)}</a></li>
 ${LANGS.map((x) => `<li><a href="${home(x)}" lang="${x.html}" hreflang="${x.html}">${x.self}</a></li>`).join('')}</ul></div>
-</div><div class="wrap legal"><p>${esc(t.credits)} ${esc(t.rights)}</p></div></footer>
+</div><div class="wrap legal"><p>${esc(t.credits)} ${esc(t.rights)}</p><p class="fontnote">Font: Grimoire Pixel, a modified Press Start 2P — <a href="/fonts/OFL.txt">SIL Open Font License 1.1</a>.</p></div></footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
 }
 
@@ -276,8 +276,8 @@ ${pageHead(t, 'press', t.pressKicker, t.pressTitle, t.epiPress, t.pressLead)}
 
   const opening = `<div class="opening" id="opening" hidden role="dialog" aria-modal="true" aria-labelledby="open-h">
 <div class="scene"><img class="px base" src="${G.scene.menu.src}" width="400" height="256" alt="">
-<img class="px tome" src="/img/gen/tome_closed.png" alt=""><div class="glow"></div></div>
-<div class="ask"><h2 id="open-h"><img class="px" src="${G.brand.logo.src}" width="${G.brand.logo.w * 2}" height="${G.brand.logo.h * 2}" alt="Runemoire"></h2>
+<img class="px tome" src="/img/gen/tome_closed.png" width="342" height="231" alt=""><div class="glow"></div></div>
+<div class="ask"><h2 id="open-h"><img class="px" src="${G.brand.logo.src}" width="${G.brand.logo.w}" height="${G.brand.logo.h}" alt="Runemoire"></h2>
 <p>${esc(t.openTitle)}. ${esc(t.openLead)}</p><div class="row"><button class="btn" id="open-sound" type="button">♪ ${esc(t.openSound)}</button><button class="btn ghost" id="open-silent" type="button">${esc(t.openSilent)}</button></div></div><div class="fade"></div></div>`;
 
   const hint = l.code === 'en' ? `<div class="langhint" id="langhint" data-for="pt" hidden lang="pt-BR"><span>${esc(fmt(T.pt_BR.langHint, { lang: '' }).replace(/\s*\.?$/, ''))} <a href="/pt/" hreflang="pt-BR">${other.self}</a>.</span><button type="button" aria-label="${esc(T.pt_BR.dismiss)}">×</button></div>` : '';
@@ -342,7 +342,7 @@ export function renderEclipse(t, l, ctx, T) {
   const body = `<article class="parch prose lorepage"><h1>${esc(t.eclipseTitle)}</h1>
 ${LANGS.map((x) => `<blockquote class="lore" lang="${x.html}"><p>${esc(loc(B.boss.lore, x))}</p><footer>— ${esc(loc(B.boss.name, x))}, ${esc(loc(B.boss.epithet, x))}</footer></blockquote>`).join('')}
 <img class="px wall" src="/img/gen/eclipse_wallpaper.png" width="688" height="384" alt="">
-<p><a class="btn" href="/img/gen/eclipse_wallpaper_1920.png" download>${esc(t.eclipseWall)}</a> <a href="/">${esc(t.eclipseBack)}</a></p></article>`;
+<p><a class="btn" href="/img/eclipse_wallpaper_3x.png" download>${esc(t.eclipseWall)}</a> <a href="/">${esc(t.eclipseBack)}</a></p></article>`;
   return simple(t, l, ctx, T, { title: t.eclipseTitle, path: '/eclipse/', body }).replace('<html lang="en" data-biome="fields">', '<html lang="en" data-biome="eclipse">');
 }
 

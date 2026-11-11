@@ -159,6 +159,7 @@ function heroLoop() {
     v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto';
     v.poster = box.dataset.poster!; v.src = box.dataset.src!; v.setAttribute('aria-hidden', 'true'); v.tabIndex = -1;
     box.append(v);
+    v.defaultPlaybackRate = 0.6; v.playbackRate = 0.6;
     v.addEventListener('playing', () => box.classList.add('on'), { once: true });
     v.play().catch(() => {});
   };

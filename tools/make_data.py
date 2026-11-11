@@ -136,7 +136,7 @@ def main(inv_path):
     brand["wordmark"] = copy_png("assets/branding/wordmark.png", "img/brand/wordmark.png")
     ri = Image.open(g("steam/store/community_icon_184x184.png")).convert("RGBA")
     for s in (32, 48, 180, 192, 512):
-        save(ri.resize((s, s), Image.LANCZOS if s < 184 else Image.NEAREST), f"img/brand/r_{s}.png", optimize=True)
+        save(ri.resize((s, s), Image.LANCZOS),f"img/brand/r_{s}.png", optimize=True)
     ri.resize((48, 48), Image.LANCZOS).save(os.path.join(PUB, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
     brand["r"] = "/img/brand/r_192.png"
     data["brand"] = brand
@@ -288,10 +288,11 @@ def main(inv_path):
     f.flavor = "woff2"
     f.save(os.path.join(PUB, "fonts/pixel.woff2"))
     SIZE["fonts/pixel.woff2"] = os.path.getsize(os.path.join(PUB, "fonts/pixel.woff2"))
-    lic = "\n".join(str(r) for r in f["name"].names if r.nameID in (0, 13, 14) and r.platformID == 3)
-    open(os.path.join(PUB, "fonts/OFL.txt"), "w", encoding="utf-8").write(
-        "Grimoire Pixel (fonte do jogo Runemoire): versão modificada da Press Start 2P.\n" + lic +
-        "\n\nSIL Open Font License 1.1: https://openfontlicense.org\n")
+    # aviso de licença completo (OFL 1.1), o mesmo trecho que o jogo distribui
+    notes = open(g("dist/THIRD_PARTY_NOTICES.txt"), encoding="utf-8").read()
+    start = notes.index("Font: Grimoire Pixel")
+    end = notes.find("\n====", start + 10)
+    open(os.path.join(PUB, "fonts/OFL.txt"), "w", encoding="utf-8").write(notes[start:end if end > 0 else None].strip() + "\n")
 
     # ---------- kit de imprensa (.zip) ----------
     zpath = os.path.join(PUB, "media/runemoire-presskit.zip")

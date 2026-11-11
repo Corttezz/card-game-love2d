@@ -30,7 +30,7 @@
 body.locked { overflow: hidden; }
 
 /* ===================== capitular iluminada e epígrafes ===================== */
-.parch.dict .lead::first-letter, .klass > p:first-of-type::first-letter, .prose h1 + p::first-letter, .leaf .lore::first-letter {
+.parch.dict .lead + p::first-letter, .klass > p:first-of-type::first-letter, .prose h1 + p::first-letter, .leaf .lore::first-letter {
   float: left; font: 40px/1 var(--pixel); color: #f6e7c2; background: #8b1a1a; padding: 6px 7px 4px; margin: 4px 10px 0 0;
   box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px #2a1d14, 4px 4px 0 4px #0005; text-shadow: 2px 2px 0 #3a0808;
 }
@@ -171,3 +171,31 @@ canvas.confetti.on { display: block; }
 .hero .copy { text-shadow: 0 2px 0 #000; }
 .hero .copy::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 40px; translate: -50% 0; width: min(900px, 100%); height: calc(100% + 30px);
   background: radial-gradient(ellipse at 50% 45%, #0009, transparent 68%); pointer-events: none; }
+
+/* rodada 3: nomes de carta longos, seletor de idioma, rodapé */
+.card .name { font-size: 11px; padding: 0 10px; overflow-wrap: anywhere; hyphens: auto; line-height: 1.25; }
+@media (max-width: 560px) { .card .name { font-size: 9px; padding: 0 6px; } }
+.langsel { max-width: 150px; }
+@media (max-width: 720px) { .langsel { max-width: 124px; font-size: 12px; } }
+.foot .fontnote { font-size: 13px; }
+
+/* abertura: cena do menu do jogo escurecida, tomo fechado em close; ao abrir, a cena acende no livro aberto */
+.opening .scene { position: absolute; inset: 0; width: auto; aspect-ratio: auto; }
+.opening .scene > img.base { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 80%; filter: brightness(.32) saturate(.7); transition: filter 1s steps(8); }
+.opening.is-open .scene > img.base { filter: none; }
+.opening .scene > img.tome { --ts: 3; position: absolute; inset: auto; left: 50%; top: 68%; bottom: auto; width: calc(114px * var(--ts)); height: auto; translate: -50% -50%; transform: none;
+  filter: drop-shadow(0 12px 0 #0009); transition: opacity .7s steps(6), scale .7s steps(6); animation: tomeBreath 3s steps(6) infinite; }
+.opening.is-open .scene > img.tome { opacity: 0; scale: 1.25; }
+@keyframes tomeBreath { 50% { translate: -50% calc(-50% - 4px); } }
+.opening .ask { top: 6%; gap: 12px; }
+.opening .ask h2 { margin: 0; }
+.opening .ask h2 img { width: 289px; height: auto; }
+.opening .ask p { background: #000a; padding: 6px 12px; color: var(--text); }
+@media (min-width: 900px) and (min-height: 800px) { .opening .ask h2 img { width: 578px; } }
+@media (max-width: 720px) { .opening .scene > img.tome { --ts: 2; top: 74%; } }
+.opening .ask { top: 3%; }
+.opening .scene > img.tome { top: 77%; }
+.opening .scene::after { content: ''; position: absolute; inset: 0; pointer-events: none; transition: opacity .9s steps(6);
+  background: radial-gradient(ellipse 26% 13% at 50% 77%, #050307f2 55%, transparent 100%); }
+.opening.is-open .scene::after { opacity: 0; }
+@media (max-width: 720px) { .opening .scene > img.tome { top: 80%; } .opening .scene::after { background: radial-gradient(ellipse 60% 10% at 50% 80%, #050307f2 55%, transparent 100%); } }

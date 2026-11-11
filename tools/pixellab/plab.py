@@ -167,6 +167,15 @@ SPECS["page_torn"] = (200, 140, True, P("ui", "parchment_texture.png"), [],
                       "worn, slightly crumpled with soft folds and creases, a few small brown burn marks "
                       "and one scorched corner, a couple of faint ink blots, no writing." + STYLE + SOLO)
 
+# round b: round a page came out tiny (single candidate at 200x140); 160x112 gives 4 candidates
+SPECS["page_torn2"] = (160, 112, True, P("ui", "parchment_texture.png"), [],
+                       "one large torn-out page of an old grimoire lying flat, landscape orientation, "
+                       "the page fills most of the canvas: aged sepia parchment, the left edge ragged and "
+                       "torn with paper fibres where it was ripped from the binding, the other edges worn, "
+                       "slightly crumpled with soft folds and creases, three or four small brown burn holes "
+                       "with charred rims and one scorched corner, a couple of faint ink blots, no writing."
+                       + STYLE + SOLO)
+
 SPECS["eclipse_wall"] = (688, 384, False, P("world", "dusk_castle.png"), [
     (P("world", "abyss_castle.png"), "castle shape and stone pixel style, drawn as a black silhouette"),
 ],
@@ -176,6 +185,10 @@ SPECS["eclipse_wall"] = (688, 384, False, P("world", "dusk_castle.png"), [
     "a few faint glowing violet runes floating in the air around the castle; dark mist at the foot of "
     "the cliff. Hand-drawn pixel art in the same style and pixel scale as the reference castle, 1 px "
     "dark outlines, limited palette, flat clustered shading, no smooth gradients, no text, no letters.")
+# round b: round a framed the scene inside a black rounded border; ask for full bleed
+SPECS["eclipse_wall2"] = SPECS["eclipse_wall"][:5] + (
+    SPECS["eclipse_wall"][5] + " Full-bleed scene: the sky, stars and cliffs fill the ENTIRE canvas "
+    "edge to edge, no border, no frame, no black margin, no vignette, no rounded corners.",)
 
 
 # ---------------------------------------------------------------- plumbing

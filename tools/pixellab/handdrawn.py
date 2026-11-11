@@ -1,6 +1,6 @@
 """Hand-drawn tiny weather particles (too small for PixelLab to draw crisply).
 
-  python handdrawn.py   -> writes art/gen/fx/{ember,spore_0,spore_1,raindrop}.png
+  python handdrawn.py   -> writes art/gen/fx/{ember,spore_0,spore_1,raindrop,snowflake_0,snowflake_1}.png
 """
 import os
 from PIL import Image
@@ -13,7 +13,9 @@ PAL = {
     # spore: dark moss rim, toxic green, light green, pale core
     "g": (38, 92, 34), "G": (96, 190, 58), "L": (170, 238, 96), "w": (234, 255, 196),
     # rain: dim blue, mid blue, pale highlight
-    "a": (86, 116, 160), "b": (150, 190, 230), "c": (214, 234, 255),
+    # snow: icy cyan arms, pale blue-white, white core
+    "c": (150, 205, 235), "s": (222, 240, 255), "S": (255, 255, 255),
+    "a": (86, 116, 160), "b": (150, 190, 230), "d": (214, 234, 255),
 }
 
 ART = {
@@ -37,9 +39,21 @@ ART = {
                  "ab",
                  "ab",
                  "ab",
-                 "bc",
-                 "bc",
-                 "bc"],
+                 "bd",
+                 "bd",
+                 "bd"],
+    "snowflake_0": ["...c...",
+                    ".c.s.c.",
+                    "..csc..",
+                    "cssSssc",
+                    "..csc..",
+                    ".c.s.c.",
+                    "...c..."],
+    "snowflake_1": ["c.s.c",
+                    ".csc.",
+                    "ssSss",
+                    ".csc.",
+                    "c.s.c"],
 }
 
 
