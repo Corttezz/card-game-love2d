@@ -229,7 +229,7 @@ ${pageHead(t, 'play', t.playKicker, t.playTitle, t.epiPlay, t.playLead)}
 <div class="table-wrap"><div class="table" id="table" data-ready="0">
 <div class="foe"><div class="intent" id="intent"><img class="px" src="/img/icons/intent_attack.png" width="32" height="32" alt="${esc(t.intent)}"><span id="intent-v"></span></div>
 <i class="spr sprite" id="foe-spr" aria-hidden="true"></i><div class="bar-hp" id="foe-hp"><i class="preview"></i><i class="cur"></i><b></b></div><span class="foe-name" id="foe-name"></span></div>
-<div><div class="lane" id="lane" aria-label="${esc(loc(G.ui.playCards, l))}"></div><p class="combo-callout" id="callout" aria-live="polite"></p></div>
+<div><div class="lane" id="lane" role="group" aria-label="${esc(loc(G.ui.playCards, l))}"></div><p class="combo-callout" id="callout" aria-live="polite"></p></div>
 <div><div class="hud"><span class="mana" id="mana" aria-label="${esc(t.mana)}"></span><span id="you-block"></span>
 </div>
 <div class="hand" id="hand" role="group" aria-label="${esc(loc(G.ui.playCards, l))}"></div>
