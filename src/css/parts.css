@@ -295,3 +295,32 @@ canvas.confetti.on { display: block; }
   .roster figcaption, .jk figcaption, .card .kind { font-size: 12px; }
 }
 .secret-rune { width: auto; height: auto; min-width: 36px; min-height: 36px; display: inline-grid; place-items: center; }
+/* A/B do texto do botão "Me avise" (versão escolhida pelo gate antes do primeiro paint) */
+.ab-b-t { display: none; }
+.ab-b .ab-a-t { display: none; }
+.ab-b .ab-b-t { display: inline; }
+
+/* ===================== revisão, rodada 2 ===================== */
+/* castelo: primeiro quadro estático (leve) no primeiro paint; a tira animada entra depois do load */
+.hero .castle { background: var(--castle-static) 0 0 / 100% 100% no-repeat; animation: none; }
+.anim .hero .castle { background: var(--castle-src) 0 0 / calc(var(--cw) * var(--cfn) * var(--s)) 100% no-repeat; animation: castleAnim var(--cdur) steps(var(--cfn)) infinite; }
+.reduced .hero .castle { animation: none; }
+/* imprensa no celular: nada vaza */
+.press { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 980px) { .press { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.facts { grid-template-columns: auto minmax(0, 1fr); }
+.facts dd, .dl a, .press a { overflow-wrap: anywhere; min-width: 0; }
+@media (max-width: 560px) { .facts { grid-template-columns: minmax(0, 1fr); gap: 2px; } .facts dt { font-size: 11px; margin-top: 8px; } .dl a { flex-wrap: wrap; } }
+/* coringas: raridade embaixo, selo curto no canto */
+.card .jbadge { position: absolute; right: -6px; top: 34px; z-index: 2; font: 9px var(--pixel); text-transform: uppercase; letter-spacing: .04em; padding: 3px 5px; background: #2a1d14; color: #f2e3bf; box-shadow: 0 0 0 2px var(--gold); }
+.card .jbadge.jokerBossTag { background: #8b1a1a; }
+.card .jbadge.jokerCounterTag { background: #1f5d3a; }
+.card .desc { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+/* menu de capítulos opaco */
+.bar nav.open { background: #0d0b10; }
+/* seletor de idioma e "vire a página" */
+@media (max-width: 720px) { .langsel { max-width: 150px; font-size: 11px; } }
+.hero .scroll { z-index: 8; bottom: 24px; background: #000a; padding: 4px 10px; }
+.card .jbadge { position: static; justify-self: center; margin: 3px 0 0; font-size: 9px; }
+.skip { top: 0; transform: translateY(-110%); }
+.skip:focus { transform: none; top: 8px; }

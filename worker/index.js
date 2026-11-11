@@ -27,6 +27,26 @@ const SEG = {
 };
 
 const LANGS = ['en', 'pt_BR', 'es', 'fr', 'de'];
+const BIOMES = ['fields', 'highlands', 'abyss', 'frost', 'marsh', 'dusk', 'eclipse'];
+const VARIANTS = ['a', 'b'];
+
+// contador diário anônimo (sem IP, sem identificador): visitas por sessão e cadastros, por versão e idioma
+async function bump(env, variant, lang, col) {
+  const day = new Date().toISOString().slice(0, 10);
+  await env.DB.prepare(`INSERT INTO stats_daily (day, variant, lang, ${col}) VALUES (?1, ?2, ?3, 1) ON CONFLICT(day, variant, lang) DO UPDATE SET ${col} = ${col} + 1`)
+    .bind(day, variant, lang).run();
+}
+
+async function view(req, env) {
+  if (req.method !== 'POST') return json({ ok: false, error: 'method' }, 405);
+  const ip = req.headers.get('CF-Connecting-IP') || 'local';
+  if (env.NOTIFY_LIMIT) { const { success } = await env.NOTIFY_LIMIT.limit({ key: 'view:' + ip }); if (!success) return json({ ok: true }); }
+  let b = {};
+  try { b = JSON.parse(await req.text()); } catch { /* sendBeacon vazio */ }
+  if (!VARIANTS.includes(b.variant) || !LANGS.includes(b.lang)) return json({ ok: false, error: 'bad' }, 400);
+  await bump(env, b.variant, b.lang, 'views');
+  return json({ ok: true });
+}
 const EMAIL = /^[^\s@<>"']{1,64}@[^\s@<>"']{1,190}\.[A-Za-z]{2,24}$/;
 
 function json(obj, status = 200) {
@@ -63,10 +83,15 @@ async function notify(req, env) {
   if (email.length > 254 || !EMAIL.test(email)) return json({ ok: false, error: 'email' }, 400);
   const t = token();
   const now = new Date().toISOString();
+  const biome = BIOMES.includes(b.biome) ? b.biome : null;
+  const variant = VARIANTS.includes(b.variant) ? b.variant : null;
+  const source = ['hero', 'final'].includes(b.source) ? b.source : null;
   // e-mail novo: grava e devolve o link de saída. Já cadastrado: só confirma, sem devolver o token
   // (senão qualquer um tiraria qualquer e-mail da lista); a pessoa sai pelo link original ou pelo contato.
-  const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(email) DO NOTHING')
-    .bind(email, lang, now, t).run();
+  const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token, biome, variant, source) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(email) DO NOTHING')
+    .bind(email, lang, now, t, biome, variant, source).run();
+  // e-mails @example.com (domínio reservado, usado nos testes) não entram na contagem
+  if (r.meta?.changes && !email.endsWith('@example.com')) await bump(env, variant || 'none', lang, 'signups');
   return json({ ok: true, token: r.meta?.changes ? t : null });
 }
 
@@ -93,6 +118,7 @@ export default {
     const p = url.pathname;
     if (p === '/api/notify') return notify(req, env);
     if (p === '/api/unsubscribe') return unsubscribe(req, env);
+    if (p === '/api/view') return view(req, env);
     if (p.startsWith('/api/')) return json({ ok: false, error: 'not_found' }, 404);
 
     let r = await env.ASSETS.fetch(req);

@@ -233,5 +233,9 @@
  "jokerBossTag": "Coringa de chefe",
  "jokerCounterTag": "Coringa-antídoto",
  "fontNote": "Fonte: Grimoire Pixel, versão modificada da Press Start 2P —",
- "eclipseWallAlt": "Um castelo negro num penhasco sob um eclipse total, com runas flutuando num céu violeta"
+ "eclipseWallAlt": "Um castelo negro num penhasco sob um eclipse total, com runas flutuando num céu violeta",
+ "notifyBtnB": "Me lembre no lançamento",
+ "jokerBossTagShort": "Chefe",
+ "jokerCounterTagShort": "Antídoto",
+ "laneLabel": "Ordem das jogadas"
 }

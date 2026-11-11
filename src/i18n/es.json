@@ -233,5 +233,9 @@
  "jokerBossTag": "Comodín de jefe",
  "jokerCounterTag": "Comodín antídoto",
  "fontNote": "Fuente: Grimoire Pixel, versión modificada de Press Start 2P —",
- "eclipseWallAlt": "Un castillo negro sobre un acantilado bajo un eclipse total, con runas flotando en un cielo violeta"
+ "eclipseWallAlt": "Un castillo negro sobre un acantilado bajo un eclipse total, con runas flotando en un cielo violeta",
+ "notifyBtnB": "Avísame en el lanzamiento",
+ "jokerBossTagShort": "Jefe",
+ "jokerCounterTagShort": "Antídoto",
+ "laneLabel": "Orden de juego"
 }

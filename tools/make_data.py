@@ -149,6 +149,10 @@ def main(inv_path):
         b = {"id": bid, "act": a["act"], "name": a["biome_name"], "actTitle": a["act_title"], "fog": bool(a["intent_fog"]),
              "weather": WEATHER[bid], "palette": pal[bid]}
         b["castle"] = copy_png(a["castle"]["static"]["path"], f"img/world/{bid}_castle.png")
+        # quadro estático já em 2x (vizinho mais próximo): é o elemento LCP do herói; em 2x ele conta pelo tamanho exibido
+        _c = thresh(Image.open(g(a["castle"]["static"]["path"])))
+        _c2 = _c.resize((_c.width * 2, _c.height * 2), Image.NEAREST)
+        b["castle2x"] = {"src": save(_c2, f"img/world/{bid}_castle_2x.png", optimize=True), "w": _c2.width, "h": _c2.height}
         b["castleAnim"] = strip(a["castle"]["anim"]["dir"], f"img/world/{bid}_castle_anim.png", fps=6)
         sb = a["sky_backdrop"]
         b["mtn"] = copy_png(sb["mountains"]["path"], f"img/world/{bid}_mountains.png", th=False)

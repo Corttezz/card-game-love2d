@@ -11,6 +11,7 @@ const errs = [];
 
 async function page(path = '/', opened = true) {
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } });
+  await ctx.addInitScript(() => { try { sessionStorage.setItem('rm.viewed', '1'); } catch {} });
   if (opened) await ctx.addInitScript(() => { if (!sessionStorage.getItem('x')) { localStorage.setItem('rm.opened', '1'); sessionStorage.setItem('x', '1'); } });
   const p = await ctx.newPage();
   p.on('console', (m) => { if (m.type() === 'error') errs.push(path + ' ' + m.text()); });
@@ -55,7 +56,7 @@ async function page(path = '/', opened = true) {
 // 2b. mesa no celular (390 px, alemão): tocar as cartas e o botão de encerrar sem nada por cima
 {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  await ctx.addInitScript(() => localStorage.setItem('rm.opened', '1'));
+  await ctx.addInitScript(() => { localStorage.setItem('rm.opened', '1'); sessionStorage.setItem('rm.viewed', '1'); });
   const p = await ctx.newPage();
   await p.goto(base + '/de/', { waitUntil: 'networkidle' });
   await p.evaluate(() => document.getElementById('table').scrollIntoView({ behavior: 'instant' }));

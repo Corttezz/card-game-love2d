@@ -233,5 +233,9 @@
  "jokerBossTag": "Joker de boss",
  "jokerCounterTag": "Joker antidote",
  "fontNote": "Police : Grimoire Pixel, version modifiée de Press Start 2P —",
- "eclipseWallAlt": "Un château noir sur une falaise sous une éclipse totale, des runes flottant dans un ciel violet"
+ "eclipseWallAlt": "Un château noir sur une falaise sous une éclipse totale, des runes flottant dans un ciel violet",
+ "notifyBtnB": "Prévenez-moi à la sortie",
+ "jokerBossTagShort": "Boss",
+ "jokerCounterTagShort": "Antidote",
+ "laneLabel": "Ordre de jeu"
 }

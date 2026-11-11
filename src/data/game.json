@@ -53,6 +53,11 @@
     "w": 214,
     "h": 184
    },
+   "castle2x": {
+    "src": "/img/world/fields_castle_2x.png",
+    "w": 428,
+    "h": 368
+   },
    "castleAnim": {
     "src": "/img/world/fields_castle_anim.png",
     "w": 214,
@@ -335,6 +340,11 @@
     "w": 198,
     "h": 182
    },
+   "castle2x": {
+    "src": "/img/world/highlands_castle_2x.png",
+    "w": 396,
+    "h": 364
+   },
    "castleAnim": {
     "src": "/img/world/highlands_castle_anim.png",
     "w": 198,
@@ -614,6 +624,11 @@
     "src": "/img/world/abyss_castle.png",
     "w": 202,
     "h": 169
+   },
+   "castle2x": {
+    "src": "/img/world/abyss_castle_2x.png",
+    "w": 404,
+    "h": 338
    },
    "castleAnim": {
     "src": "/img/world/abyss_castle_anim.png",
@@ -895,6 +910,11 @@
     "w": 218,
     "h": 215
    },
+   "castle2x": {
+    "src": "/img/world/frost_castle_2x.png",
+    "w": 436,
+    "h": 430
+   },
    "castleAnim": {
     "src": "/img/world/frost_castle_anim.png",
     "w": 218,
@@ -1175,6 +1195,11 @@
     "w": 212,
     "h": 178
    },
+   "castle2x": {
+    "src": "/img/world/marsh_castle_2x.png",
+    "w": 424,
+    "h": 356
+   },
    "castleAnim": {
     "src": "/img/world/marsh_castle_anim.png",
     "w": 212,
@@ -1450,6 +1475,11 @@
     "src": "/img/world/dusk_castle.png",
     "w": 224,
     "h": 194
+   },
+   "castle2x": {
+    "src": "/img/world/dusk_castle_2x.png",
+    "w": 448,
+    "h": 388
    },
    "castleAnim": {
     "src": "/img/world/dusk_castle_anim.png",

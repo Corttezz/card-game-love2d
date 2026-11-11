@@ -112,7 +112,7 @@ function notifyForms() {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.className = 'msg err'; msg.textContent = D.t.notifyBad; $('input[type=email]', f)?.focus(); return; }
       msg.className = 'msg'; msg.textContent = D.t.sending; btn.disabled = true;
       try {
-        const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website') }) });
+        const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), biome: document.documentElement.dataset.biome, variant: abVariant(), source: f.dataset.source }) });
         const j = await r.json().catch(() => ({}));
         if (r.ok && j.ok) {
           msg.textContent = D.t.notifyOk + ' ';
@@ -123,6 +123,18 @@ function notifyForms() {
       btn.disabled = false;
     });
   }
+}
+
+// ---------- A/B do botão "Me avise": a versão vem do gate (classe ab-a/ab-b); uma visita contada por sessão ----------
+function abVariant() { return document.documentElement.classList.contains('ab-b') ? 'b' : 'a'; }
+function countView() {
+  try {
+    if (sessionStorage.getItem('rm.viewed')) return;
+    sessionStorage.setItem('rm.viewed', '1');
+  } catch { return; }
+  const body = JSON.stringify({ variant: abVariant(), lang: D.lang });
+  if (navigator.sendBeacon) navigator.sendBeacon('/api/view', new Blob([body], { type: 'application/json' }));
+  else fetch('/api/view', { method: 'POST', body, keepalive: true }).catch(() => {});
 }
 
 // ---------- trailers: vídeo só sob demanda ----------
@@ -352,6 +364,9 @@ function controls() {
   $('#replay')?.addEventListener('click', (e) => { e.preventDefault(); store.set('opened', '0'); location.href = (location.pathname.match(/^\/(pt|es|fr|de)\//)?.[0] || '/') + '#tome'; if (location.hash === '#tome') location.reload(); });
   const mb = $<HTMLButtonElement>('#menu'), nav = $('#nav');
   mb?.addEventListener('click', () => { const open = mb.getAttribute('aria-expanded') !== 'true'; mb.setAttribute('aria-expanded', String(open)); nav?.classList.toggle('open', open); });
+  const closeMenu = () => { if (mb?.getAttribute('aria-expanded') === 'true') { mb.setAttribute('aria-expanded', 'false'); nav?.classList.remove('open'); mb.focus(); } };
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+  document.addEventListener('click', (e) => { if (nav?.classList.contains('open') && !(e.target as HTMLElement).closest('#nav, #menu')) closeMenu(); });
   nav?.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('a')) { mb?.setAttribute('aria-expanded', 'false'); nav.classList.remove('open'); } });
   $<HTMLSelectElement>('#lang')?.addEventListener('change', (e) => { location.href = (e.target as HTMLSelectElement).value + location.hash; });
 }
@@ -361,13 +376,15 @@ function boot() {
   if (D.simple) { unsubscribe(); document.documentElement.dataset.biome = document.documentElement.dataset.biome === 'eclipse' ? 'eclipse' : (store.get('biome') && store.get('biome') !== 'eclipse' ? store.get('biome')! : 'dusk'); return; }
   const cv = $<HTMLCanvasElement>('#weather');
   const startWeather = () => { if (!cv) return; weather = new Weather(cv); weather.load('/img/gen/fx'); const c = current(); if (c) weather.set(c.weather, c.color); };
-  if (document.readyState === 'complete') setTimeout(startWeather, 300); else addEventListener('load', () => setTimeout(startWeather, 300), { once: true });
+  const afterLoad = () => { startWeather(); document.documentElement.classList.add('anim'); };
+  if (document.readyState === 'complete') setTimeout(afterLoad, 300); else addEventListener('load', () => setTimeout(afterLoad, 300), { once: true });
   for (const r of $$<HTMLButtonElement>('.rune[data-biome]')) r.addEventListener('click', () => { setBiome(r.dataset.biome!); playSfx('button-click'); });
   setBiome(initialBiome(), false);
-  opening(); lazyVis(); notifyForms(); steam(); langHint(); secrets();
+  opening(); lazyVis(); notifyForms(); steam(); langHint(); secrets(); bestiary();
   // o resto não é urgente: espera o navegador ficar livre, para não travar o primeiro paint
   const later = (fn: () => void) => ('requestIdleCallback' in window ? (window as unknown as { requestIdleCallback: (f: () => void, o?: object) => void }).requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 400));
-  later(() => { trailers(); bestiary(); cards(); shuffle(); lightbox(); });
+  later(() => { trailers(); cards(); shuffle(); lightbox(); });
+  later(countView);
   later(() => initTable(D.table as never, D.t, { sfx: (s) => ambient.sfx(s), tilt, confetti, sfxMap: D.sfx }));
   heroLoop();
   if (soundOn) addEventListener('pointerdown', () => ambient.play(current()?.music), { once: true });

@@ -233,5 +233,9 @@
  "jokerBossTag": "Boss joker",
  "jokerCounterTag": "Counter joker",
  "fontNote": "Font: Grimoire Pixel, a modified version of Press Start 2P —",
- "eclipseWallAlt": "A black castle on a cliff under a total eclipse, runes floating in a violet sky"
+ "eclipseWallAlt": "A black castle on a cliff under a total eclipse, runes floating in a violet sky",
+ "notifyBtnB": "Remind me at launch",
+ "jokerBossTagShort": "Boss",
+ "jokerCounterTagShort": "Counter",
+ "laneLabel": "Play order"
 }

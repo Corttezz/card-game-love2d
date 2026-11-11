@@ -233,5 +233,9 @@
  "jokerBossTag": "Boss-Joker",
  "jokerCounterTag": "Konter-Joker",
  "fontNote": "Schrift: Grimoire Pixel, eine veränderte Fassung von Press Start 2P —",
- "eclipseWallAlt": "Eine schwarze Burg auf einer Klippe unter einer totalen Finsternis, Runen schweben am violetten Himmel"
+ "eclipseWallAlt": "Eine schwarze Burg auf einer Klippe unter einer totalen Finsternis, Runen schweben am violetten Himmel",
+ "notifyBtnB": "Erinnere mich zum Start",
+ "jokerBossTagShort": "Boss",
+ "jokerCounterTagShort": "Konter",
+ "laneLabel": "Spielreihenfolge"
 }
