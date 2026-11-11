@@ -40,7 +40,10 @@ a { color: inherit; }
 .tv.off-anim .tvin { animation: crtOff .55s ease-in both; }
 @keyframes crtOn { 0% { transform: scale(0, .004); filter: brightness(6); opacity: 1; } 18% { transform: scale(1, .004); filter: brightness(5); } 45% { transform: scale(1, 1.06); filter: brightness(1.8); } 70% { transform: scale(1, .98); filter: brightness(1.15); } 100% { transform: none; filter: none; } }
 @keyframes crtOff { 0% { transform: none; filter: none; } 45% { transform: scale(1, .004); filter: brightness(5); } 80% { transform: scale(.02, .004); filter: brightness(8); opacity: 1; } 100% { transform: scale(0, 0); opacity: 0; } }
-.tv.dive { transition: transform .9s cubic-bezier(.65, 0, .25, 1), border-radius .9s; }
+.tv.dive { transition: transform .9s cubic-bezier(.65, 0, .25, 1), clip-path .9s cubic-bezier(.65, 0, .25, 1); }
+/* o "blip" do CRT do jogo (CRTShader.blip) no começo do mergulho: um clarão curto que esconde a troca de composição */
+.tv.blip .tvin { animation: blip .22s steps(3) both; }
+@keyframes blip { 0% { filter: brightness(2.6) saturate(.4); } 60% { filter: brightness(1.5); } 100% { filter: none; } }
 .mode-dive .computer { transition: transform .9s cubic-bezier(.65, 0, .25, 1), opacity .7s ease-in .2s; }
 
 /* CRT do jogo, em CSS: linhas, vinheta, moldura arredondada, reflexo do vidro, faixa que desce e tremor leve */
@@ -67,7 +70,7 @@ a { color: inherit; }
 .brand .word { width: 578px; max-width: 92cqw; height: auto; filter: drop-shadow(0 4px 0 #000a); }
 
 /* menu do jogo */
-.menu { position: absolute; z-index: 2; left: 50%; top: 49cqh; translate: -50% 0; display: grid; gap: 6px; width: 256px; }
+.menu { position: absolute; z-index: 2; left: 50%; top: min(49cqh, var(--menu-top-l, 49cqh)); translate: -50% 0; display: grid; gap: 6px; width: 256px; }
 .mbtn { position: relative; display: flex; align-items: center; height: 34px; padding: 0 0 0 16px; font: 16px/1 'Runic', monospace; letter-spacing: .02em;
   color: var(--parch-l); text-decoration: none; background: rgba(13, 10, 8, .62); border: 0; border-left: 3px solid #996e22;
   box-shadow: inset 0 -1px 0 rgba(128, 92, 28, .45); text-shadow: 1px 1px 0 #000; cursor: pointer; white-space: nowrap; }
@@ -173,7 +176,8 @@ a { color: inherit; }
   .wish { bottom: 10px; font-size: 8px; }
   .corner { bottom: 26px; left: 50%; translate: -50% 0; padding: 4px 8px; font-size: 8px; }
   .osd { display: none; }
-  .frame9 { width: 100cqw; height: 100cqh; max-height: none; border-width: 40px; border-image-width: 40px; padding: 0 0 10px; }
+  .frame9 { width: 100cqw; height: auto; max-height: 100cqh; border-width: 40px; border-image-width: 40px; padding: 0 0 10px; }
+  #collection .frame9, #achievements .frame9 { height: 100cqh; }
   .panel .frame9 h2 { font-size: 16px; margin: 0 0 12px; }
   .screens { grid-template-columns: 1fr; }
   .cards { display: grid; grid-template-columns: repeat(2, 144px); justify-content: center; gap: 14px; }
@@ -190,13 +194,13 @@ a { color: inherit; }
   .brand { top: 10px; }
   .brand .seal, .osd, .corner { display: none; }
   .brand .word { width: 289px; }
-  .menu { top: auto; bottom: 40px; width: min(520px, 70cqw); grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+  .menu { top: max(64px, var(--menu-top-l, 50cqh)); bottom: auto; width: min(440px, 52cqw); grid-template-columns: 1fr 1fr; gap: 6px 14px; }
   .mbtn { height: 30px; }
   .menu .mbtn[data-sel]::before { display: none; }
   .hang { top: 22cqh; }
   .hang.left { left: 2cqw; }
   .hang.right { left: auto; right: 2cqw; }
-  .wish { bottom: 8px; font-size: 8px; }
+  .wish { top: 12px; bottom: auto; left: auto; right: 12px; translate: none; max-width: 22cqw; font-size: 8px; line-height: 1.8; white-space: normal; text-align: right; }
   .frame9 { max-height: 96cqh; border-width: 40px; border-image-width: 40px; }
 }
 
@@ -205,10 +209,12 @@ a { color: inherit; }
   .hang, .seal-btn img, .osd, .frame9, .hint, .crtfx::before, .crtfx .band { animation: none !important; }
   .hang .inner, .toast, .tv.dive, .mode-dive .computer { transition-duration: .01s !important; }
   .tv.on-anim .tvin, .tv.off-anim .tvin { animation-duration: .01s !important; }
+  .tv.blip .tvin { animation: none !important; }
   .osd { display: none; }
 }
-body.reduced .hang, body.reduced .seal-btn img, body.reduced .frame9, body.reduced .crtfx::before, body.reduced .crtfx .band { animation: none !important; }
-body.reduced .hang .inner, body.reduced .toast { transition-duration: .01s !important; }
+body.reduced .hang, body.reduced .seal-btn img, body.reduced .frame9, body.reduced .hint, body.reduced .crtfx::before, body.reduced .crtfx .band, body.reduced .tv.blip .tvin { animation: none !important; }
+body.reduced .hang .inner, body.reduced .toast, body.reduced .tv.dive, .mode-dive body.reduced .computer { transition-duration: .01s !important; }
+body.reduced .tv.on-anim .tvin, body.reduced .tv.off-anim .tvin { animation-duration: .01s !important; }
 body.reduced .osd { display: none; }
 
 /* ===================== páginas simples (privacidade, sair da lista) ===================== */

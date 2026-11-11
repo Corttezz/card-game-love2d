@@ -38,10 +38,17 @@ let cw = 0, ch = 0, ox = 0, oy = 0;
 const tv = $('#tv');
 // tamanho da tela em px de CSS (a tela pode estar dentro do monitor, em tamanho virtual, ou em tela cheia)
 const tvSize = () => ({ w: tv?.clientWidth || innerWidth, h: tv?.clientHeight || innerHeight });
+// no máximo um layout por quadro (imagens, resize e ResizeObserver chegam juntos na carga)
+let lq = 0;
+const schedule = () => { if (!lq) lq = requestAnimationFrame(() => { lq = 0; layout(); }); };
 function layout() {
   if (!cv || !ctx) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const { w: TW, h: TH } = tvSize();
+  // leituras de layout antes de qualquer escrita (evita layout forçado)
+  const brand = $('.brand'), menuEl = $('.menu');
+  const brandBottom = brand ? brand.offsetTop + brand.offsetHeight : 160;
+  const menuH = menuEl ? menuEl.offsetHeight : 190;
   W = Math.round(TW * dpr); H = Math.round(TH * dpr);
   const portrait = TW / TH < 0.8;
   // retrato: ~234 px da cena na largura: as duas velas ficam cortadas nas bordas (velas em x 84 e 308 da cena)
@@ -57,20 +64,21 @@ function layout() {
   const st = tv?.style || root.style;
   const menuTop = (sy + 22 * k) / dpr;
   st.setProperty('--menu-top-p', `${menuTop}px`);
-  placeCards(portrait, TW, TH, menuTop);
+  // paisagem: o menu termina acima da borda do livro aberto (topo do livro em y≈170 da cena)
+  const bookTop = (sy + 170 * k) / dpr;
+  st.setProperty('--menu-top-l', `${Math.round(bookTop - menuH - 10)}px`);
+  placeCards(portrait, TW, TH, menuTop, brandBottom);
   draw(performance.now());
 }
 
 // as cartas flutuantes nunca cruzam o menu: no retrato ficam centradas na faixa livre entre o logotipo e o menu,
 // num tamanho inteiro (verso 96 ou 64 px); sem espaço, somem. Na paisagem, 192 ou 144 px a 30% da altura (como no jogo).
-function placeCards(portrait: boolean, TW: number, TH: number, menuTop: number) {
+function placeCards(portrait: boolean, TW: number, TH: number, menuTop: number, bottom: number) {
   const st = tv?.style; if (!st) return;
   const cards = $$<HTMLElement>('.hang');
   if (!cards.length) return;
   let w = 0, top = 0;
   if (portrait) {
-    const brand = $('.brand');
-    const bottom = brand ? brand.offsetTop + brand.offsetHeight : 160;
     const band = menuTop - bottom - 20;
     w = band >= 156 ? 96 : band >= 108 ? 64 : 0;
     top = bottom + 10 + Math.max(0, (band - w * 1.5) / 2);
@@ -180,14 +188,14 @@ function loadScene() {
   for (const f of ['menu', 'menu_normal', 'menu_1', 'menu_2']) {
     const im = new Image(); im.src = `/img/v3/${f}.webp`; imgs[f] = im;
     im.onload = () => {
-      if (f === 'menu') layout();
+      if (f === 'menu') schedule();
       if (++n === 4) { if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true }); }
     };
   }
-  addEventListener('resize', layout);
-  if (tv && 'ResizeObserver' in window) new ResizeObserver(() => layout()).observe(tv);
+  addEventListener('resize', schedule);
+  if (tv && 'ResizeObserver' in window) new ResizeObserver(schedule).observe(tv);
   document.addEventListener('visibilitychange', start);
-  layout();
+  schedule();
 }
 
 // ---------------- menu, painéis, sair ----------------
@@ -264,18 +272,31 @@ function powerOn() {
 function dive() {
   if (!tv || mode !== 'desk') return;
   if (tv.classList.contains('off')) { powerOn(); return; }
-  const r = screenRect;
+  const r = screenRect, iw = innerWidth, ih = innerHeight;
   setMode('dive');
   tv.style.width = ''; tv.style.height = '';
-  tv.style.transform = `translate(${r.x}px, ${r.y}px) scale(${r.w / innerWidth}, ${r.h / innerHeight})`;
+  // escala uniforme (a tela cheia nunca sai achatada), centrada no buraco do monitor e recortada nele;
+  // o recorte abre até a janela inteira enquanto a escala volta a 1
+  const s = Math.max(r.w / iw, r.h / ih);
+  const tx = r.x + r.w / 2 - (iw * s) / 2, ty = r.y + r.h / 2 - (ih * s) / 2;
+  const L = (r.x - tx) / s, T = (r.y - ty) / s, cw2 = r.w / s, ch2 = r.h / s;
+  tv.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  tv.style.clipPath = `inset(${T}px ${iw - L - cw2}px ${ih - T - ch2}px ${L}px round ${12 / s}px)`;
   layout();
   void tv.offsetWidth;
-  tv.classList.add('dive');
+  tv.classList.add('dive', 'blip');
   tv.style.transform = 'none';
-  if (pcEl) { pcEl.style.transform = `scale(${(innerWidth / r.w) * 1.6})`; pcEl.style.opacity = '0'; }
+  tv.style.clipPath = 'inset(0px 0px 0px 0px round 0px)';
+  // o monitor cresce em volta da tela (o buraco sempre contém a imagem) e some
+  if (pcEl) {
+    const S = Math.max(iw / r.w, ih / r.h) * 1.25;
+    pcEl.style.transform = `translate(${iw / 2 - (r.x + r.w / 2)}px, ${ih / 2 - (r.y + r.h / 2)}px) scale(${S})`;
+    pcEl.style.opacity = '0';
+  }
   sfx('boot-card-whoosh');
+  setTimeout(() => tv.classList.remove('blip'), 220);
   const done = () => {
-    tv.classList.remove('dive'); tv.style.transform = '';
+    tv.classList.remove('dive'); tv.style.transform = ''; tv.style.clipPath = '';
     setMode('full'); setInert([tv], false);
     ($('.menu .mbtn[data-sel]') as HTMLElement | null)?.focus({ preventScroll: true });
   };
@@ -429,7 +450,9 @@ function unsubscribe() {
   });
 }
 
-desk(); loadScene(); menu(); hangingCards(); settings(); notify(); trailer(); clock(); unsubscribe();
+// só a mesa e a cena entram na primeira tarefa; o resto (eventos de menu, painéis, relógio) logo depois, sem travar a carga
+desk(); loadScene();
+setTimeout(() => { menu(); hangingCards(); settings(); notify(); trailer(); clock(); unsubscribe(); }, 0);
 if ($('.title')) addEventListener('load', () => setTimeout(() => {
   if (navigator.sendBeacon) navigator.sendBeacon('/api/view', new Blob([JSON.stringify({ variant: 'v3', lang: D.lang })], { type: 'application/json' }));
 }, 500), { once: true });

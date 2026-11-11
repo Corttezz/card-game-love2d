@@ -71,7 +71,7 @@ export function renderHome(t, l, ctx) {
   const G = ctx.GAME;
   const shots = (l.code === 'pt_BR' ? G.shots.pt_BR : G.shots.en).filter((s) => SHOTS.includes(s.id)).sort((a, b) => SHOTS.indexOf(a.id) - SHOTS.indexOf(b.id));
   const items = [['play', 'menu.play'], ['collection', 'menu.collection'], ['achievements', 'menu.achievements'], ['settings', 'menu.settings'], ['quit', 'menu.quit']];
-  const langs = LANGS.map((x) => `<a href="${home(x)}" lang="${x.html}" hreflang="${x.html}"${x.code === l.code ? ' aria-current="true"' : ''}>${x.self}</a>`).join('');
+  const langs = LANGS.map((x) => `<a href="${home(x)}#settings" lang="${x.html}" hreflang="${x.html}"${x.code === l.code ? ' aria-current="true"' : ''}>${x.self}</a>`).join('');
   const toggle = (id, label, on = false) => `<div class="opt"><span id="${id}-l">${esc(label)}</span><button class="sw" type="button" id="${id}" role="switch" aria-checked="${on}" aria-labelledby="${id}-l"><span class="on">${esc(t.onLabel)}</span><span class="off">${esc(t.offLabel)}</span></button></div>`;
   // a mesa: o quarto escuro (atrás), a tela no meio e o computador da abertura do jogo por cima (a moldura cobre as bordas da tela)
   const desk = `<div class="desk" id="desk" aria-hidden="true"></div>`;
