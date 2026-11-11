@@ -210,7 +210,7 @@ return {
         eclipse_queen = {
             epithet = "la Dame de la Lune Noire",
             lore = "Elle règne sur la cour du crépuscule depuis que la lune a avalé le soleil. Sa force croît et décroît avec les phases de la lune. Blessée à moitié, elle devient elle-même l'éclipse.",
-            signature = "La lune passe par quatre phases : à la Pleine Lune, son coup vaut 50 % de plus ; à la Nouvelle Lune, vous devenez Vulnérable. Sous la moitié de sa vie, elle entre dans l'Éclipse.",
+            signature = "La lune passe par quatre phases : à la Pleine Lune, son coup vaut 50 % de plus ; à la Nouvelle Lune, elle est Vulnérable pendant votre tour. Sous la moitié de sa vie, elle entre dans l'Éclipse.",
         },
     },
 }
