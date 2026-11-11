@@ -46,7 +46,7 @@ for _, l in ipairs(LOCALES) do
   if not ok then io.stderr:write("locale " .. l .. ": " .. tostring(m) .. "\n") os.exit(1) end
   local pick = {}
   for _, k in ipairs({ "menu", "acts", "classes", "combos", "seals", "seal_ui", "endless_curses", "endless", "bestiary",
-                       "boss_cinematics", "cards", "keyword", "play_button", "battle", "end_screen", "status", "enemy_kit", "card_info", "pack", "tutorial" }) do
+                       "boss_cinematics", "cards", "keyword", "play_button", "battle", "end_screen", "status", "enemy_kit", "card_info", "pack", "tutorial", "damage_preview", "rarity", "class_select" }) do
     pick[k] = m[k]
   end
   out.locales[l] = pick

@@ -218,7 +218,7 @@
  "classCards": "{n} cards of its own",
  "passive": "Passive",
  "cursesLead": "In the endless road, every cycle offers two curses; you must take one.",
- "sealsLead": "Ten seals, stacked one on top of the other. Win on one to break the next.",
+ "sealsLead": "Ten seals, stacked one on top of the other, unlocked per class. Win on one to break the next.",
  "endlessLead": "After the sixth act, the road loops through the biomes again, harder every cycle.",
  "tableEnemy": "A demo foe",
  "tableNote": "Demo numbers. Combo rules are the game's own.",
@@ -226,5 +226,12 @@
  "tableDeal": "You deal {n} damage.",
  "tableBlocked": "Your Block absorbs it all.",
  "comboTag": "COMBO",
- "tableLoseHint": "Tip: a card marked COMBO counts twice for Volley. Try playing it first."
+ "tableLoseHint": "Tip: a card marked COMBO counts twice for Volley. Try playing it first.",
+ "menu": "Chapters",
+ "jokersAll": "Jokers",
+ "joker": "Joker",
+ "jokerBossTag": "Boss joker",
+ "jokerCounterTag": "Counter joker",
+ "fontNote": "Font: Grimoire Pixel, a modified version of Press Start 2P —",
+ "eclipseWallAlt": "A black castle on a cliff under a total eclipse, runes floating in a violet sky"
 }

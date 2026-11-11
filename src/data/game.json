@@ -65,6 +65,7 @@
     "w": 375,
     "h": 104
    },
+   "mtnTop": "#c9e1e1",
    "mtnFront": {
     "src": "/img/world/fields_mountains_front.png",
     "w": 375,
@@ -346,6 +347,7 @@
     "w": 400,
     "h": 87
    },
+   "mtnTop": "#514fa9",
    "mtnFront": {
     "src": "/img/world/highlands_mountains_front.png",
     "w": 400,
@@ -625,6 +627,7 @@
     "w": 365,
     "h": 98
    },
+   "mtnTop": "#77455a",
    "mtnFront": {
     "src": "/img/world/abyss_mountains_front.png",
     "w": 365,
@@ -904,6 +907,7 @@
     "w": 359,
     "h": 112
    },
+   "mtnTop": "#d5edf9",
    "mtnFront": {
     "src": "/img/world/frost_mountains_front.png",
     "w": 359,
@@ -1183,6 +1187,7 @@
     "w": 343,
     "h": 111
    },
+   "mtnTop": "#96af94",
    "mtnFront": null,
    "hall": {
     "src": "/img/boss/marsh_hall.png",
@@ -1458,6 +1463,7 @@
     "w": 343,
     "h": 100
    },
+   "mtnTop": "#fb9a63",
    "mtnFront": {
     "src": "/img/world/dusk_mountains_front.png",
     "w": 343,
@@ -1485,11 +1491,11 @@
      "de": "Herrin der Schwarzen Sonne"
     },
     "signature": {
-     "en": "The moon turns through four phases: at Full Moon her blow is worth 50% more; at New Moon you become Vulnerable. Below half health, she enters the Eclipse.",
-     "pt_BR": "A lua gira em quatro fases: na Cheia, o golpe dela vale 50% a mais; na Nova, você fica Vulnerável. Abaixo da metade da vida, ela entra no Eclipse.",
-     "es": "La luna gira en cuatro fases: en la Llena, su golpe vale un 50% más; en la Nueva, quedas Vulnerable. Por debajo de la mitad de su vida, entra en el Eclipse.",
-     "fr": "La lune passe par quatre phases : à la Pleine Lune, son coup vaut 50 % de plus ; à la Nouvelle Lune, vous devenez Vulnérable. Sous la moitié de sa vie, elle entre dans l'Éclipse.",
-     "de": "Der Mond durchläuft vier Phasen: Bei Vollmond zählt ihr Hieb 50 % mehr; bei Neumond wirst du Verwundbar. Unter der Hälfte ihres Lebens tritt sie in die Finsternis ein."
+     "en": "The moon turns through four phases: at Full Moon her blow is worth 50% more; at New Moon she becomes Vulnerable. Below half health, she enters the Eclipse.",
+     "pt_BR": "A lua gira em quatro fases: na Cheia, o golpe dela vale 50% a mais; na Nova, ela fica Vulnerável. Abaixo da metade da vida, ela entra no Eclipse.",
+     "es": "La luna gira en cuatro fases: en la Llena, su golpe vale un 50% más; en la Nueva, queda Vulnerable. Por debajo de la mitad de su vida, entra en el Eclipse.",
+     "fr": "La lune passe par quatre phases : à la Pleine Lune, son coup vaut 50 % de plus ; à la Nouvelle Lune, elle devient Vulnérable. Sous la moitié de sa vie, elle entre dans l'Éclipse.",
+     "de": "Der Mond durchläuft vier Phasen: Bei Vollmond zählt ihr Hieb 50 % mehr; bei Neumond wird sie verwundbar. Unter der Hälfte ihres Lebens tritt sie in die Finsternis ein."
     },
     "lore": {
      "en": "She has ruled the twilight court since the moon swallowed the sun. Her strength waxes and wanes with the phases of the moon. Wounded to half, she becomes the eclipse herself.",
@@ -1731,7 +1737,7 @@
      }
     }
    ],
-   "cardCount": 37
+   "cardCount": 28
   },
   {
    "id": "mage",
@@ -1790,7 +1796,7 @@
      }
     }
    ],
-   "cardCount": 42
+   "cardCount": 35
   },
   {
    "id": "rogue",
@@ -1849,7 +1855,7 @@
      }
     }
    ],
-   "cardCount": 37
+   "cardCount": 30
   }
  ],
  "cards": [
@@ -7643,7 +7649,13 @@
    },
    "step": 3,
    "cap": 3,
-   "applies": "attack cards"
+   "desc": {
+    "en": "Each attack after the first in the same play: +3 damage per earlier attack (up to +9).",
+    "pt_BR": "Cada ataque depois do primeiro na mesma jogada: +3 de dano por ataque antes dele (até +9).",
+    "es": "Cada ataque después del primero en la misma jugada: +3 de daño por ataque anterior (hasta +9).",
+    "fr": "Chaque attaque après la première dans le même coup : +3 dégâts par attaque précédente (jusqu'à +9).",
+    "de": "Jeder Angriff nach dem ersten im selben Zug: +3 Schaden pro vorherigem Angriff (bis +9)."
+   }
   },
   {
    "id": "wall",
@@ -7656,7 +7668,13 @@
    },
    "step": 5,
    "cap": 3,
-   "applies": "defense cards"
+   "desc": {
+    "en": "Each defense after the first in the same play: +5 Block per earlier defense (up to +15).",
+    "pt_BR": "Cada defesa depois da primeira na mesma jogada: +5 de Bloqueio por defesa antes dela (até +15).",
+    "es": "Cada defensa después de la primera en la misma jugada: +5 de Bloqueo por defensa anterior (hasta +15).",
+    "fr": "Chaque défense après la première dans le même coup : +5 de Blocage par défense précédente (jusqu'à +15).",
+    "de": "Jede Verteidigung nach der ersten im selben Zug: +5 Block pro vorheriger Verteidigung (bis +15)."
+   }
   },
   {
    "id": "pair",
@@ -7669,7 +7687,13 @@
    },
    "step": 4,
    "cap": 2,
-   "applies": "attack/defense cards with the same id"
+   "desc": {
+    "en": "Copies of the SAME card in a play: each repeat gets +4 per earlier copy (up to +8).",
+    "pt_BR": "Cópias da MESMA carta na jogada: cada cópia repetida ganha +4 por cópia antes dela (até +8).",
+    "es": "Copias de la MISMA carta en la jugada: cada copia repetida gana +4 por copia anterior (hasta +8).",
+    "fr": "Copies de la MÊME carte dans le coup : chaque copie répétée gagne +4 par copie précédente (jusqu'à +8).",
+    "de": "Kopien DERSELBEN Karte im Zug: jede Wiederholung erhält +4 pro vorheriger Kopie (bis +8)."
+   }
   }
  ],
  "ui": {
@@ -7779,11 +7803,41 @@
    "de": "Verborgene Absicht"
   },
   "classSelect": {
-   "en": null,
-   "pt_BR": null,
-   "es": null,
-   "fr": null,
-   "de": null
+   "en": "CHOOSE YOUR ARCHETYPE",
+   "pt_BR": "ESCOLHA SEU ARQUÉTIPO",
+   "es": "ELIGE TU ARQUETIPO",
+   "fr": "CHOISIS TON ARCHÉTYPE",
+   "de": "WÄHLE DEINEN ARCHETYP"
+  },
+  "rarity": {
+   "common": {
+    "en": "Common",
+    "pt_BR": "Comum",
+    "es": "Común",
+    "fr": "Commune",
+    "de": "Gewöhnlich"
+   },
+   "uncommon": {
+    "en": "Uncommon",
+    "pt_BR": "Incomum",
+    "es": "Inusual",
+    "fr": "Peu commune",
+    "de": "Selten"
+   },
+   "rare": {
+    "en": "Rare",
+    "pt_BR": "Rara",
+    "es": "Rara",
+    "fr": "Rare",
+    "de": "Rar"
+   },
+   "legendary": {
+    "en": "Legendary",
+    "pt_BR": "Lendária",
+    "es": "Legendaria",
+    "fr": "Légendaire",
+    "de": "Legendär"
+   }
   }
  },
  "brand": {

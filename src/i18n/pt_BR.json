@@ -99,7 +99,7 @@
  "factLangs": "Idiomas",
  "factRelease": "Lançamento",
  "factContact": "Contato",
- "factGenreV": "Roguelike deckbuilder, pixel art",
+ "factGenreV": "Roguelike deckbuilder em pixel art",
  "factPlatformsV": "PC (Steam) — página em breve",
  "factReleaseV": "A anunciar",
  "downloads": "Downloads",
@@ -218,7 +218,7 @@
  "classCards": "{n} cartas exclusivas",
  "passive": "Passiva",
  "cursesLead": "Na estrada sem fim, cada ciclo oferece duas maldições; você precisa aceitar uma.",
- "sealsLead": "Dez selos, empilhados um sobre o outro. Vença em um para quebrar o próximo.",
+ "sealsLead": "Dez selos, um sobre o outro, liberados por classe. Vença em um para quebrar o próximo.",
  "endlessLead": "Depois do sexto ato, a estrada volta a percorrer os biomas, mais difícil a cada ciclo.",
  "tableEnemy": "Um inimigo de demonstração",
  "tableNote": "Números de demonstração. As regras de combo são as do jogo.",
@@ -226,5 +226,12 @@
  "tableDeal": "Você causa {n} de dano.",
  "tableBlocked": "Seu Bloqueio absorve tudo.",
  "comboTag": "COMBO",
- "tableLoseHint": "Dica: uma carta marcada com COMBO conta duas vezes para a Saraivada. Tente jogá-la primeiro."
+ "tableLoseHint": "Dica: uma carta marcada com COMBO conta duas vezes para a Saraivada. Tente jogá-la primeiro.",
+ "menu": "Capítulos",
+ "jokersAll": "Coringas",
+ "joker": "Coringa",
+ "jokerBossTag": "Coringa de chefe",
+ "jokerCounterTag": "Coringa-antídoto",
+ "fontNote": "Fonte: Grimoire Pixel, versão modificada da Press Start 2P —",
+ "eclipseWallAlt": "Um castelo negro num penhasco sob um eclipse total, com runas flutuando num céu violeta"
 }

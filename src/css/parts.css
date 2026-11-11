@@ -231,3 +231,57 @@ canvas.confetti.on { display: block; }
 .secret-rune { width: auto; }
 @media (max-width: 560px) { .card .face { padding-top: 22px; } }
 .card .face { padding-top: 18px; }
+
+/* ===================== rodada da revisão ===================== */
+/* menu de capítulos: inline em telas largas, botão nas outras */
+.bar .menu { display: inline-grid; }
+.bar nav { display: none; }
+.bar nav.open { display: grid; position: absolute; top: 100%; right: 8px; left: auto; background: #0d0b10f2; padding: 8px; gap: 2px; box-shadow: 0 0 0 2px var(--accent), 0 10px 0 #0008; min-width: 220px; z-index: 70; }
+.bar nav.open a { padding: 12px 10px; font-size: 14px; }
+@media (min-width: 1500px) { .bar nav, .bar nav.open { display: flex; position: static; background: none; box-shadow: none; padding: 0; min-width: 0; } .bar .menu { display: none; } }
+/* runas secretas: alvo de toque de 36 px, desenho pequeno */
+.secret-rune { padding: 8px; margin: -8px; }
+/* vídeo do herói um pouco mais presente */
+.hero .loop.on { opacity: .45; }
+/* nomes longos: hifenização do idioma da página e corte só como último recurso */
+.card .name { hyphens: auto; -webkit-hyphens: auto; }
+.card .name.long { overflow-wrap: anywhere; }
+/* mesa: ações abaixo da mão */
+.table .table-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+@media (max-width: 560px) {
+  .table { min-height: 0; padding: 10px; gap: 8px; }
+  .hand { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; justify-items: center; }
+  .lane .slot { width: 44px; height: 46px; font-size: 10px; }
+  .foe .intent { padding: 4px 8px; }
+  .card .desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 10px; line-height: 1.25; }
+  .card { min-height: 200px; } .card .face { min-height: 200px; }
+}
+@media (hover: none) {
+  button.card:hover { --lift: 0; }
+  button.card[aria-pressed='true'] { --lift: 0; }
+}
+/* herói: montanhas do bioma em escala inteira fixa (4x; 3x no celular) sobre o céu do jogo */
+.hero { background: linear-gradient(var(--sky-0), var(--sky-img, var(--sky-5)) calc(100% - var(--mh) * 4 - 40px)); }
+.hero .backdrop { inset: auto 0 calc(var(--s) * 10px) 0; height: calc(var(--mh) * 4); background-size: auto calc(var(--mh) * 4), auto calc(var(--mh) * 4); background-repeat: repeat-x; background-position: 50% 100%, 50% 100%; }
+.hero .celestial { display: block; z-index: 0; }
+.hero .clouds { display: block; height: 30%; top: 12%; opacity: .7; z-index: 0; }
+@media (max-width: 720px) {
+  .hero { background: linear-gradient(var(--sky-0), var(--sky-img, var(--sky-5)) calc(100% - var(--mh) * 3 - 30px)); }
+  .hero .backdrop { height: calc(var(--mh) * 3); background-size: auto calc(var(--mh) * 3), auto calc(var(--mh) * 3); }
+}
+@media (max-width: 560px) {
+  .table { grid-template-rows: auto auto auto; min-height: 0; }
+  .table .hud { margin-bottom: 18px; }
+  .combo-callout { min-height: 1.2em; font-size: 15px; margin: 4px 0 0; }
+}
+.table { grid-template-rows: auto auto auto; min-height: 0; }
+.table .hud { margin-bottom: 20px; }
+.table .t-sum { width: 100%; text-align: center; margin: 0; font: 13px/1.4 var(--pixel); color: var(--gold); min-height: 1.4em; }
+@media (min-width: 561px) { .table .t-sum { display: none; } }
+@media (max-width: 560px) {
+  .table .table-actions { position: sticky; bottom: 0; z-index: 4; background: #1d1510f2; padding: 8px 6px 10px; margin: 10px -10px -10px; box-shadow: 0 -3px 0 #5c4130; }
+  .table .table-actions .btn { min-height: 44px; padding: 10px 14px; font-size: 14px; }
+}
+.intro-grid { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 980px) { .intro-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.feats li > span, .dict p { overflow-wrap: break-word; min-width: 0; }

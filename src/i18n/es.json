@@ -99,7 +99,7 @@
  "factLangs": "Idiomas",
  "factRelease": "Lanzamiento",
  "factContact": "Contacto",
- "factGenreV": "Roguelike deckbuilder, pixel art",
+ "factGenreV": "Roguelike deckbuilder en pixel art",
  "factPlatformsV": "PC (Steam) — página próximamente",
  "factReleaseV": "Por anunciar",
  "downloads": "Descargas",
@@ -218,7 +218,7 @@
  "classCards": "{n} cartas propias",
  "passive": "Pasiva",
  "cursesLead": "En el camino infinito, cada ciclo ofrece dos maldiciones; debes tomar una.",
- "sealsLead": "Diez sellos, apilados uno sobre otro. Gana en uno para romper el siguiente.",
+ "sealsLead": "Diez sellos, uno sobre otro, desbloqueados por clase. Gana con uno para romper el siguiente.",
  "endlessLead": "Tras el sexto acto, el camino vuelve a recorrer los biomas, más difícil en cada ciclo.",
  "tableEnemy": "Un enemigo de prueba",
  "tableNote": "Números de demostración. Las reglas de combo son las del juego.",
@@ -226,5 +226,12 @@
  "tableDeal": "Infliges {n} de daño.",
  "tableBlocked": "Tu Bloqueo lo absorbe todo.",
  "comboTag": "COMBO",
- "tableLoseHint": "Consejo: una carta marcada con COMBO cuenta doble para Ráfaga. Prueba a jugarla primero."
+ "tableLoseHint": "Consejo: una carta marcada con COMBO cuenta doble para Ráfaga. Prueba a jugarla primero.",
+ "menu": "Capítulos",
+ "jokersAll": "Comodines",
+ "joker": "Comodín",
+ "jokerBossTag": "Comodín de jefe",
+ "jokerCounterTag": "Comodín antídoto",
+ "fontNote": "Fuente: Grimoire Pixel, versión modificada de Press Start 2P —",
+ "eclipseWallAlt": "Un castillo negro sobre un acantilado bajo un eclipse total, con runas flotando en un cielo violeta"
 }

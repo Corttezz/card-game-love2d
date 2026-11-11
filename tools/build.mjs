@@ -6,7 +6,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import * as esbuild from 'esbuild';
-import { LANGS, renderHome, renderPrivacy, render404, renderUnsub, renderEclipse, themesCss, spritesCss, gateCode } from './page.mjs';
+import { LANGS, renderHome, renderPrivacy, render404, renderUnsub, renderEclipse, themesCss, spritesCss, gateCode, setRarity } from './page.mjs';
 import { execFileSync } from 'child_process';
 
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,6 +44,7 @@ for (const l of LANGS) {
   for (const k of Object.keys(T.en)) if (!(k in T[l.code])) { console.warn(`[i18n] ${l.code} sem "${k}"`); T[l.code][k] = T.en[k]; }
 }
 const ctx = { JS, CSS, GAME, GATE: gateCode(GAME) };
+setRarity(GAME.ui.rarity);
 
 const write = (rel, html) => {
   const f = path.join(D, rel);
@@ -56,14 +57,14 @@ for (const l of LANGS) {
   write(`${base}privacy/index.html`, renderPrivacy(T[l.code], l, ctx, T));
   write(`${base}unsubscribe/index.html`, renderUnsub(T[l.code], l, ctx, T));
   write(`${base}404.html`, render404(T[l.code], l, ctx, T));
+  write(`${base}eclipse/index.html`, renderEclipse(T[l.code], l, ctx, T));
 }
-write('eclipse/index.html', renderEclipse(T.en, LANGS[0], ctx, T));
 
 // 4. sitemap e robots
 const SITE = 'https://runemoire.com';
 const urls = LANGS.flatMap((l) => ['', 'privacy/'].map((s) => `${SITE}/${l.prefix ? l.prefix + '/' : ''}${s}`));
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
-write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /eclipse/\nDisallow: /unsubscribe/\nSitemap: ${SITE}/sitemap.xml\n`);
+write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /eclipse/\nDisallow: /*/eclipse/\nDisallow: /unsubscribe/\nDisallow: /*/unsubscribe/\nSitemap: ${SITE}/sitemap.xml\n`);
 
 // 5. pixel art em WebP sem perda: converte e troca as referências nos HTML, CSS e JS gerados
 const conv = execFileSync('python', ['-X', 'utf8', path.join(R, 'tools/webp.py'), D], { encoding: 'utf8' }).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);

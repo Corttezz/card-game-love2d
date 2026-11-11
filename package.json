@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node tools/build.mjs",
-    "dev": "node tools/build.mjs && wrangler dev",
+    "dev": "node tools/build.mjs && wrangler dev --local --port 8788 --var FORCE_HTTPS:0",
     "test": "node tools/test.mjs"
   },
   "devDependencies": {

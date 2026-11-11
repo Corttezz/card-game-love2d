@@ -152,6 +152,9 @@ def main(inv_path):
         b["castleAnim"] = strip(a["castle"]["anim"]["dir"], f"img/world/{bid}_castle_anim.png", fps=6)
         sb = a["sky_backdrop"]
         b["mtn"] = copy_png(sb["mountains"]["path"], f"img/world/{bid}_mountains.png", th=False)
+        _m = Image.open(g(sb["mountains"]["path"])).convert("RGB")
+        _row = [_m.getpixel((x, 0)) for x in range(_m.width)]
+        b["mtnTop"] = "#%02x%02x%02x" % tuple(sum(px[i] for px in _row) // len(_row) for i in range(3))
         mf = sb.get("mountains_front")
         b["mtnFront"] = copy_png(mf["path"], f"img/world/{bid}_mountains_front.png") if mf and mf.get("path") else None
         b["hall"] = copy_png(a["boss_hall"]["path"], f"img/boss/{bid}_hall.png", th=False)
@@ -167,6 +170,19 @@ def main(inv_path):
         src, kind = TOKEN[bk]
         tp = os.path.join(GAME, "assets/sprites/characters/enemies", src)
         boss["token"] = strip(tp, f"img/boss/{bk}_token.png", fps=8) if kind == "strip_named" else copy_png(tp, f"img/boss/{bk}_token.png")
+        if bk == "eclipse_queen":
+            # BossMechanics.lua (shapeIntent, kind "moon"): na Lua Nova o status Vulnerável vai para a própria rainha.
+            # O texto do bestiário do jogo diz o contrário; o site segue o código. (Correção do texto do jogo: frente à parte.)
+            fix = {"en": ("at New Moon you become Vulnerable", "at New Moon she becomes Vulnerable"),
+                   "pt_BR": ("na Nova, você fica Vulnerável", "na Nova, ela fica Vulnerável"),
+                   "es": ("en la Nueva, quedas Vulnerable", "en la Nueva, queda Vulnerable"),
+                   "fr": ("à la Nouvelle Lune, vous devenez Vulnérable", "à la Nouvelle Lune, elle devient Vulnérable"),
+                   "de": ("bei Neumond wirst du Verwundbar", "bei Neumond wird sie verwundbar")}
+            for l, (old, new) in fix.items():
+                if boss["signature"].get(l) and old in boss["signature"][l]:
+                    boss["signature"][l] = boss["signature"][l].replace(old, new)
+                else:
+                    print("[aviso] texto da Lua Nova mudou no jogo:", l, file=sys.stderr)
         b["boss"] = boss
         roster = list(a.get("enemies", []))
         if a.get("mini_boss"):
@@ -194,7 +210,7 @@ def main(inv_path):
             "passiveName": L(locs, f"classes.{cid}.passive_name"), "passiveDesc": L(locs, f"classes.{cid}.passive_desc"),
             "emblem": copy_png(c["emblem"]["path"], f"img/class/{cid}.png"),
             "starter": [{"id": s, "name": L(locs, f"cards.{s}.name")} for s in starter[cid]],
-            "cardCount": sum(1 for x in raw_cards.values() if x.get("class") == cid),
+            "cardCount": sum(1 for x in raw_cards.values() if x.get("class") == cid and x.get("type") != "joker"),
         })
 
     # ---------- cartas ----------
@@ -228,7 +244,9 @@ def main(inv_path):
 
     # ---------- combos, selos, maldições ----------
     for cb in inv["combos"]["rules"]:
-        data["combos"].append({"id": cb["id"], "name": L(locs, f"combos.{cb['id']}"), "step": cb.get("step"), "cap": cb.get("cap"), "applies": cb.get("applies_to")})
+        desc = L(locs, f"damage_preview.combo_desc.{cb['id']}")
+        desc = {l: fill(v, {"v": cb.get("step"), "max": cb.get("step") * cb.get("cap")}) for l, v in desc.items()}
+        data["combos"].append({"id": cb["id"], "name": L(locs, f"combos.{cb['id']}"), "step": cb.get("step"), "cap": cb.get("cap"), "desc": desc})
     for i, s in enumerate(inv["endless_and_seals"]["seals"], 1):
         sid = s["id"]
         data["seals"].append({"n": i, "id": sid, "name": L(locs, f"seals.{sid}.name"), "desc": L(locs, f"seals.{sid}.desc")})
@@ -244,6 +262,7 @@ def main(inv_path):
         "yourTurn": L(locs, "battle.your_turn"), "enemyTurn": L(locs, "battle.enemy_turn"), "mana": L(locs, "tutorial.status.mana.name"),
         "damage": L(locs, "pack.chip_damage"), "hiddenIntent": L(locs, "status.intent_unknown.name"),
         "classSelect": L(locs, "class_select.title"),
+        "rarity": {r: L(locs, f"rarity.{r}") for r in ["common", "uncommon", "rare", "legendary"]},
     }
 
     # ---------- ícones e sprites de interface ----------

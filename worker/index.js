@@ -63,10 +63,11 @@ async function notify(req, env) {
   if (email.length > 254 || !EMAIL.test(email)) return json({ ok: false, error: 'email' }, 400);
   const t = token();
   const now = new Date().toISOString();
-  const r = await env.DB.prepare(
-    'INSERT INTO notify (email, lang, created_at, token) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(email) DO UPDATE SET lang = excluded.lang RETURNING token',
-  ).bind(email, lang, now, t).first();
-  return json({ ok: true, token: r?.token || t });
+  // e-mail novo: grava e devolve o link de saída. Já cadastrado: só confirma, sem devolver o token
+  // (senão qualquer um tiraria qualquer e-mail da lista); a pessoa sai pelo link original ou pelo contato.
+  const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(email) DO NOTHING')
+    .bind(email, lang, now, t).run();
+  return json({ ok: true, token: r.meta?.changes ? t : null });
 }
 
 async function unsubscribe(req, env) {
@@ -83,8 +84,10 @@ const PREFIX = { pt: 'pt', es: 'es', fr: 'fr', de: 'de' };
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
-    if (url.hostname === 'www.runemoire.com') {
-      url.hostname = 'runemoire.com';
+    // sempre HTTPS na raiz: http://, www e http://www vão direto para https://runemoire.com (um salto só)
+    if (env.FORCE_HTTPS !== '0' && (url.hostname === 'www.runemoire.com' || (url.protocol === 'http:' && url.hostname === 'runemoire.com'))) {
+      if (url.hostname === 'www.runemoire.com') url.hostname = 'runemoire.com';
+      url.protocol = 'https:';
       return Response.redirect(url.toString(), 301);
     }
     const p = url.pathname;

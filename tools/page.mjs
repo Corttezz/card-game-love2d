@@ -20,6 +20,19 @@ export const LANGS = [
 const pngSize = (rel) => { try { const b = fs.readFileSync(path.join(R, rel)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; } catch { return [32, 32]; } };
 const RUNE = pngSize('art/gen/runes/rune_fields.png');
 const runeImg = (id, h, cls = 'px') => { const k = h / RUNE[1]; return `<img class="${cls}" src="/img/gen/runes/rune_${id}.png" width="${Math.round(RUNE[0] * k)}" height="${h}" alt="">`; };
+let RAR = {};
+export const setRarity = (r) => { RAR = r; };
+const SHOT_ALT = {
+  '01_menu': { en: 'Main menu: the open grimoire between two candles', pt_BR: 'Menu principal: o grimório aberto entre duas velas', es: 'Menú principal: el grimorio abierto entre dos velas', fr: 'Menu principal : le grimoire ouvert entre deux bougies', de: 'Hauptmenü: das offene Grimoire zwischen zwei Kerzen' },
+  '02_class_select': { en: 'Choosing a class: Warrior, Mage or Rogue', pt_BR: 'Escolha de classe: Guerreiro, Mago ou Ladino', es: 'Elección de clase: Guerrero, Mago o Pícaro', fr: 'Choix de la classe : Guerrier, Mage ou Voleur', de: 'Klassenwahl: Krieger, Magier oder Schurke' },
+  '03_road_battle': { en: 'A battle on the road, with the castle at the end', pt_BR: 'Uma batalha na estrada, com o castelo ao fundo', es: 'Una batalla en el camino, con el castillo al fondo', fr: 'Un combat sur la route, le château au bout', de: 'Ein Kampf auf der Straße, die Burg am Ende' },
+  '04_boss_room': { en: 'The throne room of a boss', pt_BR: 'A sala do trono de um chefe', es: 'La sala del trono de un jefe', fr: 'La salle du trône d’un boss', de: 'Der Thronsaal eines Bosses' },
+  '05_shop': { en: 'The shop, with cards and jokers for sale', pt_BR: 'A loja, com cartas e coringas à venda', es: 'La tienda, con cartas y comodines a la venta', fr: 'La boutique, avec cartes et jokers à vendre', de: 'Der Laden mit Karten und Jokern' },
+  '06_road_fork': { en: 'A fork in the road: choosing the next path', pt_BR: 'Uma bifurcação: a escolha do próximo caminho', es: 'Una bifurcación: elegir el siguiente camino', fr: 'Une bifurcation : choisir le prochain chemin', de: 'Eine Weggabelung: der nächste Pfad' },
+  '07_collection': { en: 'The collection of living cards', pt_BR: 'A coleção de cartas vivas', es: 'La colección de cartas vivas', fr: 'La collection de cartes vivantes', de: 'Die Sammlung der lebenden Karten' },
+  '08_victory': { en: 'The victory screen at the end of a run', pt_BR: 'A tela de vitória no fim de uma partida', es: 'La pantalla de victoria al final de una partida', fr: 'L’écran de victoire en fin de partie', de: 'Der Siegesbildschirm am Ende eines Laufs' },
+};
+const shotAlt = (id, l) => (SHOT_ALT[id] && (SHOT_ALT[id][l.code] || SHOT_ALT[id].en)) || 'Runemoire';
 const home = (l) => (l.prefix ? `/${l.prefix}/` : '/');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -59,7 +72,7 @@ export function themesCss(GAME) {
     css += `:root[data-biome="${b.id}"]{${stops};--accent:${p.accent};--hills-far:${p.hillsFar};--hills-near:${p.hillsNear};--ground:${p.grassA};--cloud:${p.cloud};--fog:${p.fog};` +
       `--castle-src:url(${b.castleAnim.src});--cw:${b.castleAnim.w}px;--ch:${b.castleAnim.h}px;--cfn:${b.castleAnim.frames};--cdur:${(b.castleAnim.frames / b.castleAnim.fps).toFixed(2)}s;` +
       `--boss-src:url(${b.boss.idle.src});--bw:${b.boss.idle.w}px;--bh:${b.boss.idle.h}px;--bfn:${b.boss.idle.frames};--bdur:${(b.boss.idle.frames / b.boss.idle.fps).toFixed(2)}s;` +
-      `--mtn:url(${b.mtn.src});--mtn-front:url(${(b.mtnFront || b.mtn).src});--cursor:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,pointer}\n`;
+      `--mh:${b.mtn.h}px;--sky-img:${b.mtnTop || p.skyHorizon};--mtn:url(${b.mtn.src});--mtn-front:url(${(b.mtnFront || b.mtn).src});--cursor:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,pointer}\n`;
   }
   css += `:root[data-biome="eclipse"]{--sky-0:#05040a;--sky-1:#0d0918;--sky-2:#1a1030;--sky-3:#2a1640;--sky-4:#3b1d4a;--sky-5:#56284f;--accent:#f4e3a1;--hills-far:#120c1c;--hills-near:#0b0712;--ground:#140d1c;--cloud:#3b2f4f;--fog:#2a1640;` +
     `--mtn:url(${GAME.biomes[5].mtn.src});--mtn-front:url(${(GAME.biomes[5].mtnFront || GAME.biomes[5].mtn).src});--cursor:url(/img/gen/cursors/cursor_dusk.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_dusk.png) 1 1,pointer}\n` +
@@ -100,7 +113,7 @@ function bar(t, l, GAME, current = 'home') {
   const langs = LANGS.map((x) => `<option value="${home(x)}"${x.code === l.code ? ' selected' : ''} lang="${x.html}">${x.self}</option>`).join('');
   return `<a class="skip" href="#main">${esc(t.skip)}</a>
 <header class="bar"><a class="brand" href="${h}" aria-label="Runemoire"><img class="px" src="/img/brand/r_32.png" width="32" height="32" alt=""><span>RUNEMOIRE</span></a>
-<nav aria-label="${esc(t.navIntro)}">${nav.map(([id, n]) => `<a href="${current === 'home' ? '' : h}#${id}">${esc(n)}</a>`).join('')}</nav>
+<button class="iconbtn menu" id="menu" type="button" aria-expanded="false" aria-controls="nav"><span aria-hidden="true">☰</span><span class="sr">${esc(t.menu)}</span></button><nav id="nav" aria-label="${esc(t.menu)}">${nav.map(([id, n]) => `<a href="${current === 'home' ? '' : h}#${id}">${esc(n)}</a>`).join('')}</nav>
 <div class="tools"><div class="runes" role="group" aria-label="${esc(t.themeLabel)}">${runes}</div>
 <button class="iconbtn" id="motion" type="button" aria-pressed="false" title="${esc(t.motionLabel)}"><span aria-hidden="true">≋</span><span class="sr">${esc(t.motionLabel)}</span></button>
 <button class="iconbtn" id="sound" type="button" aria-pressed="false" aria-label="${esc(t.soundOn)}" title="${esc(t.soundOn)}"><span aria-hidden="true">♪</span></button>
@@ -115,7 +128,7 @@ function foot(t, l, GAME) {
 <div><h2>${esc(t.footGame)}</h2><ul><li><a href="${h}#trailers">${esc(t.navTrailers)}</a></li><li><a href="${h}#bestiary">${esc(t.navBestiary)}</a></li><li><a href="${h}#press">${esc(t.navPress)}</a></li><li><a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></li></ul></div>
 <div><h2>${esc(t.footSite)}</h2><ul><li><a href="${h}privacy/">${esc(t.privacy)}</a></li><li><a href="${h}#tome" id="replay">${esc(t.replay)}</a></li>
 ${LANGS.map((x) => `<li><a href="${home(x)}" lang="${x.html}" hreflang="${x.html}">${x.self}</a></li>`).join('')}</ul></div>
-</div><div class="wrap legal"><p>${esc(t.credits)} ${esc(t.rights)}</p><p class="fontnote">Font: Grimoire Pixel, a modified Press Start 2P — <a href="/fonts/OFL.txt">SIL Open Font License 1.1</a>.</p></div></footer>
+</div><div class="wrap legal"><p>${esc(t.credits)} ${esc(t.rights)}</p><p class="fontnote">${esc(t.fontNote)} <a href="/fonts/OFL.txt">SIL Open Font License 1.1</a>.</p></div></footer>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
 }
 
@@ -140,10 +153,10 @@ const cardHtml = (c, l, t, { button = false, extra = '' } = {}) => {
   const tag = button ? 'button' : 'article';
   const fx = c.rarity === 'legendary' ? ' holo' : c.rarity === 'rare' ? ' glow' : '';
   const val = c.atk ? `<span class="val">⚔ ${c.atk}</span>` : c.def ? `<span class="val">⛨ ${c.def}</span>` : '';
-  return `<${tag} class="card${fx}" data-rarity="${c.rarity}" data-id="${c.id}"${button ? ' type="button" aria-pressed="false"' : ''}${extra}>
+  return `<${tag} class="card${fx}" data-rarity="${c.rarity}" data-type="${c.type}" data-id="${c.id}"${button ? ' type="button" aria-pressed="false"' : ''}${extra}>
 <span class="face"><span class="cost" aria-label="${esc(t.mana)} ${c.cost}"><span>${c.cost}</span></span>${button ? '<span class="order"></span>' : ''}
 <span class="name${Math.max(...String(loc(c.name, l)).split(/\s+/).map((w) => w.length)) > 11 ? ' long' : ''}">${esc(loc(c.name, l))}</span><i class="art spr ${sprKey(c.icon.src)}" aria-hidden="true"></i>${val}
-<span class="desc">${esc(loc(c.desc, l))}</span><span class="kind">${esc(t['rarity_' + c.rarity])}</span></span></${tag}>`;
+<span class="desc">${esc(loc(c.desc, l))}</span><span class="kind">${esc(loc(RAR[c.rarity], l))}${c.type === 'joker' ? ' · ' + esc(c.jtag ? t[c.jtag] : t.joker) : ''}</span></span></${tag}>`;
 };
 
 export function renderHome(t, l, ctx, T) {
@@ -152,7 +165,7 @@ export function renderHome(t, l, ctx, T) {
   const h = home(l);
   const other = LANGS.find((x) => x.code === 'pt_BR');
   const vars = {
-    classes: G.classes.length, acts: B.length, first: loc(B[0].name, l), last: loc(B[5].actTitle, l),
+    classes: G.classes.length, acts: B.length, first: loc(B[0].name, l), last: loc(B[5].name, l),
     combos: G.combos.map((c) => loc(c.name, l)).join(', '), mechanics: B.map((b) => loc(b.boss.mechanic, l)).join(', '),
     cards: G.cardCounts.total, seals: G.seals.length, contact: CONFIG.contact,
   };
@@ -172,7 +185,7 @@ export function renderHome(t, l, ctx, T) {
       soundOn: t.soundOn, soundOff: t.soundOff, castleAlt: t.castleAlt, sending: t.sending, notifyOk: t.notifyOk, notifyBad: t.notifyBad, notifyRate: t.notifyRate,
       notifyNet: t.notifyNet, unsubLink: t.unsubLink, unsubPath: h + 'unsubscribe/', runeFound: t.runeFound, eclipseUnlocked: t.eclipseUnlocked, eclipseLink: t.eclipseLink,
       konamiOn: t.konamiOn, konamiOff: t.konamiOff, consoleMsg: t.consoleMsg, win: t.win, lose: t.lose, tableTake: t.tableTake, tableDeal: t.tableDeal, tableBlocked: t.tableBlocked,
-      tableLoseHint: t.tableLoseHint, combo: loc(G.ui.combo, l), shuffleCard: t.shuffleCard, shuffleCreature: t.shuffleCreature, loreTitle: t.loreTitle, mana: t.mana, steamSoon: t.steamSoon,
+      tableLoseHint: t.tableLoseHint, combo: loc(G.ui.combo, l), shuffleCard: t.shuffleCard, shuffleCreature: t.shuffleCreature, loreTitle: t.loreTitle, mana: t.mana, steamSoon: t.steamSoon, home: h,
     },
     table: tableData(G, l, t),
     shuffle: {
@@ -216,12 +229,13 @@ ${pageHead(t, 'play', t.playKicker, t.playTitle, t.epiPlay, t.playLead)}
 <div class="table-wrap"><div class="table" id="table" data-ready="0">
 <div class="foe"><div class="intent" id="intent"><img class="px" src="/img/icons/intent_attack.png" width="32" height="32" alt="${esc(t.intent)}"><span id="intent-v"></span></div>
 <i class="spr sprite" id="foe-spr" aria-hidden="true"></i><div class="bar-hp" id="foe-hp"><i class="preview"></i><i class="cur"></i><b></b></div><span class="foe-name" id="foe-name"></span></div>
-<div><div class="lane" id="lane" aria-label="${esc(t.playCards)}"></div><p class="combo-callout" id="callout" aria-live="polite"></p></div>
+<div><div class="lane" id="lane" aria-label="${esc(loc(G.ui.playCards, l))}"></div><p class="combo-callout" id="callout" aria-live="polite"></p></div>
 <div><div class="hud"><span class="mana" id="mana" aria-label="${esc(t.mana)}"></span><span id="you-block"></span>
-<span class="table-actions"><button class="btn ghost" type="button" id="t-reset">${esc(t.reset)}</button><button class="btn" type="button" id="t-end">${esc(t.endTurn)}</button></span></div>
-<div class="hand" id="hand" role="group" aria-label="${esc(t.playCards)}"></div><p class="log" id="t-log" aria-live="polite"></p></div></div>
+</div>
+<div class="hand" id="hand" role="group" aria-label="${esc(loc(G.ui.playCards, l))}"></div>
+<div class="table-actions"><p class="t-sum" id="t-sum" aria-hidden="true"></p><button class="btn ghost" type="button" id="t-reset">${esc(t.reset)}</button><button class="btn" type="button" id="t-end">${esc(t.endTurn)}</button></div><p class="log" id="t-log" aria-live="polite"></p></div></div>
 <p class="table-help">${esc(fmt(t.tableHelp, { mana: 3 }))} <small>${esc(t.tableNote)}</small></p>
-<ul class="combo-rules">${G.combos.map((c) => `<li><b>${esc(loc(c.name, l))}</b> ${comboRule(c, l)}</li>`).join('')}</ul></div></div></section>`;
+<ul class="combo-rules">${G.combos.map((c) => `<li><b>${esc(loc(c.name, l))}</b> ${esc(loc(c.desc, l))}</li>`).join('')}</ul></div></div></section>`;
 
   const classes = `<section class="page" id="classes" aria-labelledby="classes-h"><div class="wrap">
 ${pageHead(t, 'classes', t.classesKicker, t.classesTitle, t.epiClasses, t.classesLead)}
@@ -242,16 +256,17 @@ ${b.fog ? `<p class="fogbadge"><b>?</b> ${esc(loc(G.ui.fogName, l))}: ${esc(loc(
 <p class="kicker">${esc(t.roster)}</p><div class="roster">${b.enemies.map((e) => `<figure>${spr(e.idle, 1, 'en', loc(e.name, l))}<figcaption>${esc(loc(e.name, l))}</figcaption></figure>`).join('')}</div>
 ${i === 5 ? `<button class="secret-rune s3" type="button" data-secret="3" aria-label="${esc(t.rune)}">${runeImg(runeIds[2], 20)}</button>` : ''}</div></div></div>`).join('')}</div></div></div></section>`;
 
-  const regular = G.cards.filter((c) => c.type !== 'joker');
+  const bossJ = new Set(G.jokersBoss.map((j) => j.id)), counterJ = new Set(G.jokersCounter.map((j) => j.id));
   const order = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
-  regular.sort((a, b) => order[a.rarity] - order[b.rarity] || a.cost - b.cost);
+  // todas as 145 cartas do jogo: 100 cartas e 45 coringas (os de chefe e os antídotos marcados)
+  const regular = G.cards.map((c) => ({ ...c, jtag: bossJ.has(c.id) ? 'jokerBossTag' : counterJ.has(c.id) ? 'jokerCounterTag' : null }))
+    .sort((a, b) => (a.type === 'joker') - (b.type === 'joker') || order[a.rarity] - order[b.rarity] || a.cost - b.cost);
   const cards = `<section class="page" id="cards" aria-labelledby="cards-h"><div class="wrap">
 ${pageHead(t, 'cards', t.cardsKicker, t.cardsTitle, t.epiCards, t.cardsLead)}
-<div class="filters" role="group" aria-label="${esc(t.cardsTitle)}"><button type="button" data-r="all" aria-pressed="true">${esc(t.all)}</button>${['legendary', 'rare', 'uncommon', 'common'].map((r) => `<button type="button" data-r="${r}" aria-pressed="false">${esc(t['rarity_' + r])}</button>`).join('')}
+<div class="filters" role="group" aria-label="${esc(t.cardsTitle)}"><button type="button" data-r="all" aria-pressed="true">${esc(t.all)}</button>${['legendary', 'rare', 'uncommon', 'common'].map((r) => `<button type="button" data-r="${r}" aria-pressed="false">${esc(loc(G.ui.rarity[r], l))}</button>`).join('')}<button type="button" data-r="joker" aria-pressed="false">${esc(t.jokersAll)}</button>
 <button class="secret-rune s4" type="button" data-secret="4" aria-label="${esc(t.rune)}">${runeImg(runeIds[3], 20)}</button></div>
 <div class="gallery-cards lazyvis">${regular.map((c) => cardHtml(c, l, t)).join('')}</div>
-<div class="jokers"><div class="parch"><h3>${esc(t.jokersBoss)}</h3><p>${esc(t.jokersBossLead)}</p><div class="jk lazyvis">${G.jokersBoss.map((j) => `<figure title="${esc(loc(j.desc, l))}">${spr(j.icon, 1, 'jicon')}<figcaption>${esc(loc(j.name, l))}</figcaption></figure>`).join('')}</div></div>
-<div class="parch"><h3>${esc(t.jokersCounter)}</h3><p>${esc(t.jokersCounterLead)}</p><div class="jk lazyvis">${G.jokersCounter.map((j) => `<figure title="${esc(loc(j.desc, l))}">${spr(j.icon, 1, 'jicon')}<figcaption>${esc(loc(j.name, l))}</figcaption></figure>`).join('')}</div></div></div></div></section>`;
+<div class="jokers"><p class="parch"><b>${esc(t.jokersBoss)}.</b> ${esc(t.jokersBossLead)}</p><p class="parch"><b>${esc(t.jokersCounter)}.</b> ${esc(t.jokersCounterLead)}</p></div></div></section>`;
 
   const beyond = `<section class="page" id="beyond" aria-labelledby="beyond-h"><div class="wrap">
 ${pageHead(t, 'beyond', t.beyondKicker, t.beyondTitle, t.epiBeyond, t.beyondLead)}
@@ -262,7 +277,7 @@ ${pageHead(t, 'beyond', t.beyondKicker, t.beyondTitle, t.epiBeyond, t.beyondLead
   const shotsL = l.code === 'pt_BR' ? G.shots.pt_BR : G.shots.en;
   const gallery = `<section class="page" id="gallery" aria-labelledby="gallery-h"><div class="wrap">
 ${pageHead(t, 'gallery', t.galleryKicker, t.galleryTitle, t.epiGallery, t.galleryLead)}
-<div class="shots">${shotsL.map((s, i) => `<button type="button" data-full="${s.full}"><img src="${s.thumb}" width="960" height="540" alt="${esc(`Runemoire — ${i + 1}`)}" loading="lazy" decoding="async"></button>`).join('')}</div>
+<div class="shots">${shotsL.map((s, i) => `<button type="button" data-full="${s.full}"><img src="${s.thumb}" width="960" height="540" alt="${esc(shotAlt(s.id, l))}" loading="lazy" decoding="async"></button>`).join('')}</div>
 <dialog class="lightbox" id="lightbox"><form method="dialog"><button aria-label="${esc(t.close)}">×</button></form><img alt=""></dialog></div></section>`;
 
   const faq = `<section class="page" id="faq" aria-labelledby="faq-h"><div class="wrap narrow">
@@ -299,19 +314,6 @@ ${pageHead(t, 'press', t.pressKicker, t.pressTitle, t.epiPress, t.pressLead)}
 <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Runemoire', alternateName: 'Grimoire', description: t.metaDesc, url: CONFIG.site + h, genre: ['Roguelike', 'Deckbuilder'], gamePlatform: 'PC', inLanguage: LANGS.map((x) => x.html), author: { '@type': 'Person', name: 'Daniel Cortez' }, publisher: { '@type': 'Organization', name: 'DC Solutions' }, image: `${CONFIG.site}/img/og/og_${l.code}.png` }).replace(/</g, '\\u003c')}</script>
 </head><body>${opening}${bar(t, l, G)}<main id="main" tabindex="-1">${hero}<div class="book">${intro}${trailers}${play}${classes}${bestiary}${cards}${beyond}${gallery}${faq}${press}${final}</div></main>${foot(t, l, G)}${hint}
 <canvas class="confetti" id="confetti" aria-hidden="true"></canvas></body></html>`;
-}
-
-function comboRule(c, l) {
-  // regra exata do ComboSystem.lua: bônus = passo × min(cartas anteriores, teto)
-  const step = c.step, cap = c.cap, max = step * cap;
-  const unit = { volley: { en: 'damage', pt_BR: 'de dano', es: 'de daño', fr: 'dégâts', de: 'Schaden' }, wall: { en: 'Block', pt_BR: 'de Bloqueio', es: 'de Bloqueo', fr: 'de Blocage', de: 'Block' }, pair: { en: '', pt_BR: '', es: '', fr: '', de: '' } }[c.id];
-  const T = {
-    volley: { en: `+${step} damage for each attack played before it this turn (up to +${max}).`, pt_BR: `+${step} de dano para cada ataque jogado antes dele no turno (até +${max}).`, es: `+${step} de daño por cada ataque jugado antes en el turno (hasta +${max}).`, fr: `+${step} dégâts pour chaque attaque jouée avant elle ce tour (jusqu'à +${max}).`, de: `+${step} Schaden für jeden Angriff, der in diesem Zug davor gespielt wurde (bis +${max}).` },
-    wall: { en: `+${step} Block for each defense played before it this turn (up to +${max}).`, pt_BR: `+${step} de Bloqueio para cada defesa jogada antes dela no turno (até +${max}).`, es: `+${step} de Bloqueo por cada defensa jugada antes en el turno (hasta +${max}).`, fr: `+${step} de Blocage pour chaque défense jouée avant elle ce tour (jusqu'à +${max}).`, de: `+${step} Block für jede Verteidigung, die in diesem Zug davor gespielt wurde (bis +${max}).` },
-    pair: { en: `+${step} for each copy of the same card played before it (up to +${max}).`, pt_BR: `+${step} para cada cópia da mesma carta jogada antes dela (até +${max}).`, es: `+${step} por cada copia de la misma carta jugada antes (hasta +${max}).`, fr: `+${step} pour chaque copie de la même carte jouée avant elle (jusqu'à +${max}).`, de: `+${step} für jede Kopie derselben Karte, die davor gespielt wurde (bis +${max}).` },
-  };
-  void unit;
-  return esc(T[c.id][l.code] || T[c.id].en);
 }
 
 function tableData(G, l, t) {
@@ -351,11 +353,13 @@ export function render404(t, l, ctx, T) {
 
 export function renderEclipse(t, l, ctx, T) {
   const B = ctx.GAME.biomes[5];
+  const others = LANGS.filter((x) => x.code !== l.code);
   const body = `<article class="parch prose lorepage"><h1>${esc(t.eclipseTitle)}</h1>
-${LANGS.map((x) => `<blockquote class="lore" lang="${x.html}"><p>${esc(loc(B.boss.lore, x))}</p><footer>— ${esc(loc(B.boss.name, x))}, ${esc(loc(B.boss.epithet, x))}</footer></blockquote>`).join('')}
-<img class="px wall" src="/img/gen/eclipse_wallpaper.png" width="688" height="384" alt="">
-<p><a class="btn" href="/img/eclipse_wallpaper_3x.png" download>${esc(t.eclipseWall)}</a> <a href="/">${esc(t.eclipseBack)}</a></p></article>`;
-  return simple(t, l, ctx, T, { title: t.eclipseTitle, path: '/eclipse/', body }).replace('<html lang="en" data-biome="fields">', '<html lang="en" data-biome="eclipse" data-fixed>');
+<blockquote class="lore"><p>${esc(loc(B.boss.lore, l))}</p><footer>— ${esc(loc(B.boss.name, l))}, ${esc(loc(B.boss.epithet, l))}</footer></blockquote>
+<img class="px wall" src="/img/gen/eclipse_wallpaper.png" width="688" height="384" alt="${esc(t.eclipseWallAlt)}">
+<p><a class="btn" href="/img/eclipse_wallpaper_3x.png" download>${esc(t.eclipseWall)}</a> <a href="${home(l)}">${esc(t.eclipseBack)}</a></p>
+<p class="small">${others.map((x) => `<a href="${home(x)}eclipse/" lang="${x.html}" hreflang="${x.html}">${x.self}</a>`).join(' · ')}</p></article>`;
+  return simple(t, l, ctx, T, { title: t.eclipseTitle, path: home(l) + 'eclipse/', body }).replace(`<html lang="${l.html}" data-biome="fields">`, `<html lang="${l.html}" data-biome="eclipse" data-fixed>`);
 }
 
 const PRIVACY = {

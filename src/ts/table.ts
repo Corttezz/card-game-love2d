@@ -79,6 +79,8 @@ export function initTable(D: TableData, t: Record<string, string>, hooks: Hooks)
     hpEl.style.setProperty('--pv', String(Math.min(hp, dmg) / D.foe.hp));
     hpEl.querySelector('b')!.textContent = `${Math.max(0, hp)} / ${D.foe.hp}${dmg ? `  (−${dmg})` : ''}`;
     $('#you-block')!.textContent = blk ? `⛨ ${D.block} ${blk}` : '';
+    // resumo junto dos botões (no celular a barra de vida fica fora da tela enquanto se escolhe)
+    const sum = $('#t-sum'); if (sum) sum.textContent = order.length ? `⚔ ${dmg} → ${Math.max(0, hp - dmg)}/${D.foe.hp}${blk ? `  ⛨ ${blk}` : ''}${names.length ? '  · ' + names.join(' · ') : ''}` : '';
   }
   function toggle(idx: number) {
     if (busy) return;

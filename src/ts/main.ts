@@ -93,6 +93,14 @@ function opening() {
       if (force) history.replaceState(null, '', location.pathname);
     }, reduced() ? 0 : 1800);
   };
+  // diálogo modal de verdade: o foco fica nos dois botões até abrir
+  el.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const f = $$<HTMLButtonElement>('#open-sound, #open-silent');
+    const i = f.indexOf(document.activeElement as HTMLButtonElement);
+    e.preventDefault();
+    f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+  });
   $('#open-sound')?.addEventListener('click', () => go(true));
   $('#open-silent')?.addEventListener('click', () => go(false));
   el.addEventListener('keydown', (e) => { if (e.key === 'Escape') go(false); });
@@ -187,7 +195,7 @@ function cards() {
   for (const b of btns) b.addEventListener('click', () => {
     for (const x of btns) x.setAttribute('aria-pressed', String(x === b));
     const r = b.dataset.r!;
-    for (const c of $$<HTMLElement>('.gallery-cards .card')) c.hidden = r !== 'all' && c.dataset.rarity !== r;
+    for (const c of $$<HTMLElement>('.gallery-cards .card')) c.hidden = r !== 'all' && (r === 'joker' ? c.dataset.type !== 'joker' : c.dataset.rarity !== r || c.dataset.type === 'joker');
   });
   tilt($$('.gallery-cards .card'));
 }
@@ -261,17 +269,17 @@ function secrets() {
       const r = b.getBoundingClientRect(); confetti(r.left, r.top);
       if (found.size >= 5) {
         store.set('eclipse', '1'); unlock(); setBiome('eclipse');
-        toast(D.t.eclipseUnlocked.replace('{link}', `<a href="/eclipse/">${D.t.eclipseLink}</a>`), 10000);
+        toast(D.t.eclipseUnlocked.replace('{link}', `<a href="${D.t.home}eclipse/">${D.t.eclipseLink}</a>`), 10000);
       } else toast(D.t.runeFound.replace('{n}', String(found.size)));
     });
   }
-  const K = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
-  let i = 0;
+  const K = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'].join(',');
+  let buf: string[] = [];
   addEventListener('keydown', (e) => {
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    i = k === K[i] ? i + 1 : k === K[0] ? 1 : 0;
-    if (i === K.length) {
-      i = 0;
+    buf = [...buf, k].slice(-10); // janela das últimas 10 teclas: tolera teclas a mais antes da sequência
+    if (buf.join(',') === K) {
+      buf = [];
       const on = document.body.classList.toggle('crt-all');
       toast(on ? D.t.konamiOn : D.t.konamiOff);
       if (on) chiptune();
@@ -321,13 +329,21 @@ function controls() {
   $('#sound')?.addEventListener('click', () => setSound(!soundOn));
   $('#sound')?.setAttribute('aria-pressed', String(soundOn));
   const rm = $<HTMLButtonElement>('#motion');
+  const os = matchMedia('(prefers-reduced-motion: reduce)');
   const apply = (on: boolean) => {
-    document.body.classList.toggle('reduced', on); rm?.setAttribute('aria-pressed', String(on));
+    document.body.classList.toggle('reduced', on); rm?.setAttribute('aria-pressed', String(on || os.matches));
     const c = current(); if (weather && c) weather.set(c.weather, c.color);
+    const loop = $('.hero .loop');
+    if (loop && (on || os.matches)) { loop.querySelector('video')?.remove(); loop.classList.remove('on'); } // para o vídeo na hora
+    else if (loop && !loop.querySelector('video')) heroLoop();
   };
+  rm?.setAttribute('aria-pressed', String(os.matches));
   if (store.get('reduced') === '1' || document.documentElement.classList.contains('reduced-pref')) apply(true);
   rm?.addEventListener('click', () => { const on = !document.body.classList.contains('reduced'); store.set('reduced', on ? '1' : '0'); apply(on); });
   $('#replay')?.addEventListener('click', (e) => { e.preventDefault(); store.set('opened', '0'); location.href = (location.pathname.match(/^\/(pt|es|fr|de)\//)?.[0] || '/') + '#tome'; if (location.hash === '#tome') location.reload(); });
+  const mb = $<HTMLButtonElement>('#menu'), nav = $('#nav');
+  mb?.addEventListener('click', () => { const open = mb.getAttribute('aria-expanded') !== 'true'; mb.setAttribute('aria-expanded', String(open)); nav?.classList.toggle('open', open); });
+  nav?.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('a')) { mb?.setAttribute('aria-expanded', 'false'); nav.classList.remove('open'); } });
   $<HTMLSelectElement>('#lang')?.addEventListener('change', (e) => { location.href = (e.target as HTMLSelectElement).value + location.hash; });
 }
 

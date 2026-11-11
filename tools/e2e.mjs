@@ -52,6 +52,21 @@ async function page(path = '/', opened = true) {
   await ctx.close();
 }
 
+// 2b. mesa no celular (390 px, alemão): tocar as cartas e o botão de encerrar sem nada por cima
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ctx.addInitScript(() => localStorage.setItem('rm.opened', '1'));
+  const p = await ctx.newPage();
+  await p.goto(base + '/de/', { waitUntil: 'networkidle' });
+  await p.evaluate(() => document.getElementById('table').scrollIntoView({ behavior: 'instant' }));
+  await p.waitForSelector('#table[data-ready="1"]');
+  for (const i of [1, 0, 3, 2]) await p.tap(`#hand button.card[data-idx="${i}"]`, { timeout: 5000 });
+  ok('celular: resumo de dano visível junto dos botões', /38/.test(await p.textContent('#t-sum')), await p.textContent('#t-sum'));
+  await p.tap('#t-end', { timeout: 5000 }); await p.waitForTimeout(2500);
+  ok('celular: Encerrar Turno tocável e vitória', /Sieg|Seite/i.test(await p.textContent('#t-log')), (await p.textContent('#t-log')).slice(0, 60));
+  await ctx.close();
+}
+
 // 3. temas, segredos, Konami, embaralhar
 {
   const { ctx, p } = await page('/');
