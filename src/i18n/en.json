@@ -237,5 +237,8 @@
  "notifyBtnB": "Remind me at launch",
  "jokerBossTagShort": "Boss",
  "jokerCounterTagShort": "Counter",
- "laneLabel": "Play order"
+ "laneLabel": "Play order",
+ "notifyLaunch": "Notify me at launch",
+ "steamSoonLine": "Coming soon to Steam",
+ "pressShort": "Press"
 }

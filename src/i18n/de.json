@@ -237,5 +237,8 @@
  "notifyBtnB": "Erinnere mich zum Start",
  "jokerBossTagShort": "Boss",
  "jokerCounterTagShort": "Konter",
- "laneLabel": "Spielreihenfolge"
+ "laneLabel": "Spielreihenfolge",
+ "notifyLaunch": "Benachrichtige mich zum Start",
+ "steamSoonLine": "Bald auf Steam",
+ "pressShort": "Presse"
 }

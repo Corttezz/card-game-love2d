@@ -237,5 +237,8 @@
  "notifyBtnB": "Avísame en el lanzamiento",
  "jokerBossTagShort": "Jefe",
  "jokerCounterTagShort": "Antídoto",
- "laneLabel": "Orden de juego"
+ "laneLabel": "Orden de juego",
+ "notifyLaunch": "Avísame en el lanzamiento",
+ "steamSoonLine": "Próximamente en Steam",
+ "pressShort": "Prensa"
 }

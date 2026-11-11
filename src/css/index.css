@@ -1,5 +1,3 @@
-/* ordem: base do site, partes, temas por bioma e sprites (gerados no build) */
-@import './site.css';
-@import './parts.css';
-@import './themes.css';
-@import './sprites.css';
+/* runemoire.com v2 — minimalista. castle.css é gerado no build com o castelo do jogo. */
+@import './castle.css';
+@import './v2.css';
