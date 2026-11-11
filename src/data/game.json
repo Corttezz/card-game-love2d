@@ -1521,11 +1521,11 @@
      "de": "Herrin der Schwarzen Sonne"
     },
     "signature": {
-     "en": "The moon turns through four phases: at Full Moon her blow is worth 50% more; at New Moon she becomes Vulnerable. Below half health, she enters the Eclipse.",
-     "pt_BR": "A lua gira em quatro fases: na Cheia, o golpe dela vale 50% a mais; na Nova, ela fica Vulnerável. Abaixo da metade da vida, ela entra no Eclipse.",
-     "es": "La luna gira en cuatro fases: en la Llena, su golpe vale un 50% más; en la Nueva, queda Vulnerable. Por debajo de la mitad de su vida, entra en el Eclipse.",
-     "fr": "La lune passe par quatre phases : à la Pleine Lune, son coup vaut 50 % de plus ; à la Nouvelle Lune, elle devient Vulnérable. Sous la moitié de sa vie, elle entre dans l'Éclipse.",
-     "de": "Der Mond durchläuft vier Phasen: Bei Vollmond zählt ihr Hieb 50 % mehr; bei Neumond wird sie verwundbar. Unter der Hälfte ihres Lebens tritt sie in die Finsternis ein."
+     "en": "The moon turns through four phases: at Full Moon her blow is worth 50% more; at New Moon she is Vulnerable during your turn. Below half health, she enters the Eclipse.",
+     "pt_BR": "A lua gira em quatro fases: na Cheia, o golpe dela vale 50% a mais; na Nova, ela fica Vulnerável no seu turno. Abaixo da metade da vida, ela entra no Eclipse.",
+     "es": "La luna gira en cuatro fases: en la Llena, su golpe vale un 50% más; en la Nueva, ella queda Vulnerable durante tu turno. Por debajo de la mitad de su vida, entra en el Eclipse.",
+     "fr": "La lune passe par quatre phases : à la Pleine Lune, son coup vaut 50 % de plus ; à la Nouvelle Lune, elle est Vulnérable pendant votre tour. Sous la moitié de sa vie, elle entre dans l'Éclipse.",
+     "de": "Der Mond durchläuft vier Phasen: Bei Vollmond zählt ihr Hieb 50 % mehr; bei Neumond ist sie in deinem Zug verwundbar. Unter der Hälfte ihres Lebens tritt sie in die Finsternis ein."
     },
     "lore": {
      "en": "She has ruled the twilight court since the moon swallowed the sun. Her strength waxes and wanes with the phases of the moon. Wounded to half, she becomes the eclipse herself.",

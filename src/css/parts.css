@@ -328,3 +328,11 @@ canvas.confetti.on { display: block; }
 @media (max-width: 560px) { .card .name.long { font-size: 7px; } }
 .hero .scroll { white-space: nowrap; }
 .dl small { font-size: 11px; white-space: nowrap; }
+
+/* capitular das aberturas de capítulo: a mesma da ficha do bestiário, ocupando 2 linhas */
+.page .head .lead { text-align: left; max-width: 62ch; justify-self: center; }
+.page .head .lead::first-letter {
+  float: left; font: 38px/1 var(--pixel); color: #f6e7c2; background: #8b1a1a; padding: 7px 8px 5px; margin: 6px 12px 0 0;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px #2a1d14, 4px 4px 0 4px #0005; text-shadow: 2px 2px 0 #3a0808;
+}
+@media (max-width: 560px) { .page .head .lead::first-letter { font-size: 34px; padding: 6px 7px 4px; margin: 5px 10px 0 0; } }

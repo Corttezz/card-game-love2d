@@ -174,19 +174,6 @@ def main(inv_path):
         src, kind = TOKEN[bk]
         tp = os.path.join(GAME, "assets/sprites/characters/enemies", src)
         boss["token"] = strip(tp, f"img/boss/{bk}_token.png", fps=8) if kind == "strip_named" else copy_png(tp, f"img/boss/{bk}_token.png")
-        if bk == "eclipse_queen":
-            # BossMechanics.lua (shapeIntent, kind "moon"): na Lua Nova o status Vulnerável vai para a própria rainha.
-            # O texto do bestiário do jogo diz o contrário; o site segue o código. (Correção do texto do jogo: frente à parte.)
-            fix = {"en": ("at New Moon you become Vulnerable", "at New Moon she becomes Vulnerable"),
-                   "pt_BR": ("na Nova, você fica Vulnerável", "na Nova, ela fica Vulnerável"),
-                   "es": ("en la Nueva, quedas Vulnerable", "en la Nueva, queda Vulnerable"),
-                   "fr": ("à la Nouvelle Lune, vous devenez Vulnérable", "à la Nouvelle Lune, elle devient Vulnérable"),
-                   "de": ("bei Neumond wirst du Verwundbar", "bei Neumond wird sie verwundbar")}
-            for l, (old, new) in fix.items():
-                if boss["signature"].get(l) and old in boss["signature"][l]:
-                    boss["signature"][l] = boss["signature"][l].replace(old, new)
-                else:
-                    print("[aviso] texto da Lua Nova mudou no jogo:", l, file=sys.stderr)
         b["boss"] = boss
         roster = list(a.get("enemies", []))
         if a.get("mini_boss"):
