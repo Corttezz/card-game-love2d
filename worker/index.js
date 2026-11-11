@@ -1,12 +1,14 @@
 // Worker do runemoire.com: www -> raiz (301), cabeçalhos de segurança, cache e a API do "Me avise".
+import { GATE_HASH } from './gate-hash.js';
+
 const CSP = [
   "default-src 'none'",
-  "script-src 'self'",
+  `script-src 'self' '${GATE_HASH}' https://static.cloudflareinsights.com`,
   "style-src 'self'",
   "img-src 'self' data: blob:",
   "media-src 'self'",
   "font-src 'self'",
-  "connect-src 'self'",
+  "connect-src 'self' https://cloudflareinsights.com",
   "manifest-src 'self'",
   "base-uri 'none'",
   "form-action 'self'",
@@ -100,8 +102,9 @@ export default {
     }
     const res = new Response(r.body, { status, headers: r.headers });
     for (const [k, v] of Object.entries(SEG)) res.headers.set(k, v);
-    if (p.startsWith('/assets/') || p.startsWith('/media/')) res.headers.set('Cache-Control', 'public, max-age=2592000, immutable');
-    else if (/\.(png|svg|ico|xml|txt|webmanifest)$/.test(p)) res.headers.set('Cache-Control', 'public, max-age=86400');
+    if (p.startsWith('/assets/')) res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    else if (/^\/(img|media|fonts)\//.test(p)) res.headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=604800');
+    else if (/\.(png|svg|ico|xml|txt|webmanifest|js|css)$/.test(p)) res.headers.set('Cache-Control', 'public, max-age=86400');
     else res.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
     return res;
   },

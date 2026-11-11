@@ -51,8 +51,8 @@ export function initTable(D: TableData, t: Record<string, string>, hooks: Hooks)
     b.innerHTML = `<span class="face"><span class="cost"><span>${c.cost}</span></span><span class="order"></span><span class="name"></span><i class="art spr ${c.spr}" aria-hidden="true"></i>
 <span class="val">${c.atk ? '⚔ ' + c.atk : '⛨ ' + c.def}</span><span class="desc"></span>${c.combo ? `<span class="kind combo">${D.comboTag}</span>` : '<span class="kind"></span>'}</span>`;
     (b.querySelector('.name') as HTMLElement).textContent = c.name;
+    if (Math.max(...c.name.split(/\s+/).map((w) => w.length)) > 11) b.querySelector('.name')!.classList.add('long');
     (b.querySelector('.desc') as HTMLElement).textContent = c.desc;
-    b.setAttribute('aria-label', `${c.name}. ${c.desc} ${t.mana} ${c.cost}.`);
     b.addEventListener('click', () => toggle(idx));
     return b;
   };

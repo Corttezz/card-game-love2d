@@ -6,7 +6,8 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import * as esbuild from 'esbuild';
-import { LANGS, renderHome, renderPrivacy, render404, renderUnsub, renderEclipse, themesCss, spritesCss } from './page.mjs';
+import { LANGS, renderHome, renderPrivacy, render404, renderUnsub, renderEclipse, themesCss, spritesCss, gateCode } from './page.mjs';
+import { execFileSync } from 'child_process';
 
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const D = path.join(R, 'dist');
@@ -42,7 +43,7 @@ for (const l of LANGS) {
   // chave faltando num idioma: cai no inglês, e o build avisa
   for (const k of Object.keys(T.en)) if (!(k in T[l.code])) { console.warn(`[i18n] ${l.code} sem "${k}"`); T[l.code][k] = T.en[k]; }
 }
-const ctx = { JS, CSS, GAME };
+const ctx = { JS, CSS, GAME, GATE: gateCode(GAME) };
 
 const write = (rel, html) => {
   const f = path.join(D, rel);
@@ -64,7 +65,29 @@ const urls = LANGS.flatMap((l) => ['', 'privacy/'].map((s) => `${SITE}/${l.prefi
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /eclipse/\nDisallow: /unsubscribe/\nSitemap: ${SITE}/sitemap.xml\n`);
 
-// 5. relatório de peso: carga inicial = HTML + CSS + JS + imagens do primeiro quadro
+// 5. pixel art em WebP sem perda: converte e troca as referências nos HTML, CSS e JS gerados
+const conv = execFileSync('python', ['-X', 'utf8', path.join(R, 'tools/webp.py'), D], { encoding: 'utf8' }).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+const swap = new Set(conv);
+const texts = [];
+(function walk(dir) { for (const f of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, f.name); if (f.isDirectory()) { if (f.name !== 'img' && f.name !== 'media') walk(p); } else if (/\.(html|css|js)$/.test(f.name)) texts.push(p); } })(D);
+for (const f of texts) {
+  const src = fs.readFileSync(f, 'utf8');
+  const out = src.replace(/\/img\/[A-Za-z0-9_\-/]+\.png/g, (u) => (swap.has(u) ? u.slice(0, -4) + '.webp' : u));
+  if (out !== src) fs.writeFileSync(f, out);
+}
+console.log('webp:', conv.length, 'imagens');
+
+// hash do script inline (gate), já com os caminhos finais, para a CSP do Worker
+const gateFinal = fs.readFileSync(path.join(D, 'index.html'), 'utf8').match(/<script>(\(function[\s\S]*?)<\/script>/)[1];
+const GATE_HASH = 'sha256-' + crypto.createHash('sha256').update(gateFinal).digest('base64');
+fs.writeFileSync(path.join(R, 'worker/gate-hash.js'), `// gerado por tools/build.mjs\nexport const GATE_HASH = '${GATE_HASH}';\n`);
+for (const l of LANGS) {
+  const f = path.join(D, l.prefix ? l.prefix + '/index.html' : 'index.html');
+  const g2 = fs.readFileSync(f, 'utf8').match(/<script>(\(function[\s\S]*?)<\/script>/)[1];
+  if (g2 !== gateFinal) throw new Error('gate diferente em ' + f);
+}
+
+// 6. relatório de peso: carga inicial = HTML + CSS + JS + imagens do primeiro quadro
 const size = (rel) => fs.statSync(path.join(D, rel.replace(/^\//, ''))).size;
 const kb = (n) => (n / 1024).toFixed(1) + ' KB';
 console.log('JS', JS, kb(size(JS)), '| CSS', CSS, kb(size(CSS)), '| index.html', kb(size('index.html')));

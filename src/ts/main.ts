@@ -53,15 +53,10 @@ function setBiome(id: string, save = true) {
   root.dataset.biome = b.id;
   if (save) store.set('biome', b.id);
   for (const r of $$('.rune[data-biome]')) r.setAttribute('aria-pressed', String(r.dataset.biome === b.id));
-  const castle = $<HTMLImageElement>('#castle');
-  if (castle) { castle.src = b.castle; castle.style.setProperty('--cw', b.cw + 'px'); castle.alt = D.t.castleAlt.replace('{biome}', b.name); }
-  const ca = $('#castle-anim');
-  if (ca) { ca.className = `spr castle-anim ${b.castleSpr} vis`; ca.style.setProperty('--cw', b.cw + 'px'); }
+  const castle = $('#castle');
+  if (castle) castle.setAttribute('aria-label', D.t.castleAlt.replace('{biome}', b.name));
   const boss = $('#boss');
-  if (boss) {
-    boss.classList.add('hide');
-    window.setTimeout(() => { boss.className = `spr boss-peek ${b.bossSpr} vis hide`; boss.style.setProperty('--bw', b.bw + 'px'); requestAnimationFrame(() => boss.classList.remove('hide')); }, reduced() ? 0 : 450);
-  }
+  if (boss && save && !reduced()) { boss.classList.add('hide'); window.setTimeout(() => boss.classList.remove('hide'), 500); }
   const cel = $('#celestial');
   if (cel) {
     cel.className = 'celestial ' + b.celestial.kind;
@@ -85,8 +80,7 @@ function opening() {
   const el = $('#opening');
   if (!el) return;
   const force = location.hash === '#tome';
-  if (store.get('opened') === '1' && !force) { el.remove(); return; }
-  el.hidden = false;
+  if (document.documentElement.classList.contains('seen') || (store.get('opened') === '1' && !force)) { el.remove(); return; }
   document.body.classList.add('locked');
   const go = (withSound: boolean) => {
     store.set('opened', '1');
@@ -331,7 +325,7 @@ function controls() {
     document.body.classList.toggle('reduced', on); rm?.setAttribute('aria-pressed', String(on));
     const c = current(); if (weather && c) weather.set(c.weather, c.color);
   };
-  if (store.get('reduced') === '1') apply(true);
+  if (store.get('reduced') === '1' || document.documentElement.classList.contains('reduced-pref')) apply(true);
   rm?.addEventListener('click', () => { const on = !document.body.classList.contains('reduced'); store.set('reduced', on ? '1' : '0'); apply(on); });
   $('#replay')?.addEventListener('click', (e) => { e.preventDefault(); store.set('opened', '0'); location.href = (location.pathname.match(/^\/(pt|es|fr|de)\//)?.[0] || '/') + '#tome'; if (location.hash === '#tome') location.reload(); });
   $<HTMLSelectElement>('#lang')?.addEventListener('change', (e) => { location.href = (e.target as HTMLSelectElement).value + location.hash; });
@@ -341,11 +335,16 @@ function boot() {
   controls();
   if (D.simple) { unsubscribe(); document.documentElement.dataset.biome = document.documentElement.dataset.biome === 'eclipse' ? 'eclipse' : (store.get('biome') && store.get('biome') !== 'eclipse' ? store.get('biome')! : 'dusk'); return; }
   const cv = $<HTMLCanvasElement>('#weather');
-  if (cv) { weather = new Weather(cv); weather.load('/img/gen/fx'); }
+  const startWeather = () => { if (!cv) return; weather = new Weather(cv); weather.load('/img/gen/fx'); const c = current(); if (c) weather.set(c.weather, c.color); };
+  if (document.readyState === 'complete') setTimeout(startWeather, 300); else addEventListener('load', () => setTimeout(startWeather, 300), { once: true });
   for (const r of $$<HTMLButtonElement>('.rune[data-biome]')) r.addEventListener('click', () => { setBiome(r.dataset.biome!); playSfx('button-click'); });
   setBiome(initialBiome(), false);
-  opening(); notifyForms(); trailers(); heroLoop(); bestiary(); cards(); shuffle(); lightbox(); lazyVis(); secrets(); steam(); langHint();
-  initTable(D.table as never, D.t, { sfx: (s) => ambient.sfx(s), tilt, confetti, sfxMap: D.sfx });
+  opening(); lazyVis(); notifyForms(); steam(); langHint();
+  // o resto não é urgente: espera o navegador ficar livre, para não travar o primeiro paint
+  const later = (fn: () => void) => ('requestIdleCallback' in window ? (window as unknown as { requestIdleCallback: (f: () => void, o?: object) => void }).requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 400));
+  later(() => { trailers(); bestiary(); cards(); shuffle(); lightbox(); secrets(); });
+  later(() => initTable(D.table as never, D.t, { sfx: (s) => ambient.sfx(s), tilt, confetti, sfxMap: D.sfx }));
+  heroLoop();
   if (soundOn) addEventListener('pointerdown', () => ambient.play(current()?.music), { once: true });
 }
 boot();

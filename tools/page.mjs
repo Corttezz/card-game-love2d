@@ -5,6 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const GATE_SRC = fs.readFileSync(path.join(R, 'src/gate.js'), 'utf8').trim();
+export const gateCode = (G) => GATE_SRC.replace('__CASTLES__', JSON.stringify(Object.fromEntries([...G.biomes.map((b) => [b.id, b.castleAnim.src]), ['eclipse', G.biomes[5].castleAnim.src]])));
 const CONFIG = JSON.parse(fs.readFileSync(path.join(R, 'src/data/config.json'), 'utf8'));
 
 export const LANGS = [
@@ -14,6 +16,10 @@ export const LANGS = [
   { code: 'fr', prefix: 'fr', html: 'fr', self: 'Français', og: 'fr_FR' },
   { code: 'de', prefix: 'de', html: 'de', self: 'Deutsch', og: 'de_DE' },
 ];
+// tamanho real de um PNG (cabeçalho IHDR), para width/height corretos e sem distorção
+const pngSize = (rel) => { try { const b = fs.readFileSync(path.join(R, rel)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; } catch { return [32, 32]; } };
+const RUNE = pngSize('art/gen/runes/rune_fields.png');
+const runeImg = (id, h, cls = 'px') => { const k = h / RUNE[1]; return `<img class="${cls}" src="/img/gen/runes/rune_${id}.png" width="${Math.round(RUNE[0] * k)}" height="${h}" alt="">`; };
 const home = (l) => (l.prefix ? `/${l.prefix}/` : '/');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -51,11 +57,16 @@ export function themesCss(GAME) {
     const p = b.palette;
     const stops = [0, 0.18, 0.38, 0.58, 0.78, 1].map((t, i) => `--sky-${i}:${mix(p.skyTop, p.skyHorizon, t)}`).join(';');
     css += `:root[data-biome="${b.id}"]{${stops};--accent:${p.accent};--hills-far:${p.hillsFar};--hills-near:${p.hillsNear};--ground:${p.grassA};--cloud:${p.cloud};--fog:${p.fog};` +
+      `--castle-src:url(${b.castleAnim.src});--cw:${b.castleAnim.w}px;--ch:${b.castleAnim.h}px;--cfn:${b.castleAnim.frames};--cdur:${(b.castleAnim.frames / b.castleAnim.fps).toFixed(2)}s;` +
+      `--boss-src:url(${b.boss.idle.src});--bw:${b.boss.idle.w}px;--bh:${b.boss.idle.h}px;--bfn:${b.boss.idle.frames};--bdur:${(b.boss.idle.frames / b.boss.idle.fps).toFixed(2)}s;` +
       `--mtn:url(${b.mtn.src});--mtn-front:url(${(b.mtnFront || b.mtn).src});--cursor:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_${b.id}.png) 1 1,pointer}\n`;
   }
   css += `:root[data-biome="eclipse"]{--sky-0:#05040a;--sky-1:#0d0918;--sky-2:#1a1030;--sky-3:#2a1640;--sky-4:#3b1d4a;--sky-5:#56284f;--accent:#f4e3a1;--hills-far:#120c1c;--hills-near:#0b0712;--ground:#140d1c;--cloud:#3b2f4f;--fog:#2a1640;` +
     `--mtn:url(${GAME.biomes[5].mtn.src});--mtn-front:url(${(GAME.biomes[5].mtnFront || GAME.biomes[5].mtn).src});--cursor:url(/img/gen/cursors/cursor_dusk.png) 1 1,auto;--cursor-hand:url(/img/gen/cursors/cursor_dusk.png) 1 1,pointer}\n` +
-    `:root[data-biome="eclipse"] .hero .hills,:root[data-biome="eclipse"] .hero .castle{filter:brightness(.35) saturate(.4) hue-rotate(220deg)}\n`;
+    `:root[data-biome="eclipse"] .hero .backdrop,:root[data-biome="eclipse"] .hero .castle{filter:brightness(.4) saturate(.5) hue-rotate(210deg)}\n`;
+  const D5 = GAME.biomes[5];
+  css += `:root[data-biome="eclipse"]{--castle-src:url(${D5.castleAnim.src});--cw:${D5.castleAnim.w}px;--ch:${D5.castleAnim.h}px;--cfn:${D5.castleAnim.frames};--cdur:${(D5.castleAnim.frames / D5.castleAnim.fps).toFixed(2)}s;` +
+    `--boss-src:url(${D5.boss.idle.src});--bw:${D5.boss.idle.w}px;--bh:${D5.boss.idle.h}px;--bfn:${D5.boss.idle.frames};--bdur:${(D5.boss.idle.frames / D5.boss.idle.fps).toFixed(2)}s}\n`;
   return css;
 }
 
@@ -76,18 +87,19 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/r_32.png">
 <link rel="apple-touch-icon" href="/img/brand/r_180.png"><link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="${ctx.CSS}">
+<script>${ctx.GATE}</script>
+<link rel="stylesheet" href="${ctx.CSS}"><noscript><link rel="stylesheet" href="/noscript.css"></noscript>
 <script type="module" src="${ctx.JS}"></script>`;
 }
 
 function bar(t, l, GAME, current = 'home') {
-  const runes = GAME.biomes.map((b) => `<button class="rune" type="button" data-biome="${b.id}" aria-pressed="false" title="${esc(loc(b.name, l))}" aria-label="${esc(loc(b.name, l))}"><img class="px" src="/img/gen/runes/rune_${b.id}.png" width="32" height="32" alt=""></button>`).join('') +
-    `<button class="rune" type="button" data-biome="eclipse" aria-pressed="false" hidden title="${esc(t.eclipseName)}" aria-label="${esc(t.eclipseName)}"><img class="px" src="/img/gen/runes/rune_eclipse.png" width="32" height="32" alt=""></button>`;
+  const runes = GAME.biomes.map((b) => `<button class="rune" type="button" data-biome="${b.id}" aria-pressed="false" title="${esc(loc(b.name, l))}" aria-label="${esc(loc(b.name, l))}">${runeImg(b.id, 32)}</button>`).join('') +
+    `<button class="rune" type="button" data-biome="eclipse" aria-pressed="false" hidden title="${esc(t.eclipseName)}" aria-label="${esc(t.eclipseName)}">${runeImg('eclipse', 32)}</button>`;
   const nav = [['intro', t.navIntro], ['trailers', t.navTrailers], ['play', t.navPlay], ['classes', t.navClasses], ['bestiary', t.navBestiary], ['cards', t.navCards], ['beyond', t.navBeyond], ['faq', t.navFaq], ['press', t.navPress]];
   const h = home(l);
   const langs = LANGS.map((x) => `<option value="${home(x)}"${x.code === l.code ? ' selected' : ''} lang="${x.html}">${x.self}</option>`).join('');
   return `<a class="skip" href="#main">${esc(t.skip)}</a>
-<header class="bar"><a class="brand" href="${h}"><img class="px" src="/img/brand/r_32.png" width="32" height="32" alt=""><span>RUNEMOIRE</span></a>
+<header class="bar"><a class="brand" href="${h}" aria-label="Runemoire"><img class="px" src="/img/brand/r_32.png" width="32" height="32" alt=""><span>RUNEMOIRE</span></a>
 <nav aria-label="${esc(t.navIntro)}">${nav.map(([id, n]) => `<a href="${current === 'home' ? '' : h}#${id}">${esc(n)}</a>`).join('')}</nav>
 <div class="tools"><div class="runes" role="group" aria-label="${esc(t.themeLabel)}">${runes}</div>
 <button class="iconbtn" id="motion" type="button" aria-pressed="false" title="${esc(t.motionLabel)}"><span aria-hidden="true">≋</span><span class="sr">${esc(t.motionLabel)}</span></button>
@@ -99,7 +111,7 @@ function foot(t, l, GAME) {
   const h = home(l);
   return `<footer class="foot"><div class="wrap cols">
 <div><img class="px seal" src="${GAME.brand.seal.src}" width="64" height="64" alt="${esc(t.footSeal)}"><p>${esc(loc(GAME.ui.subtitle, l))}</p>
-<button class="secret-rune" type="button" data-secret="5" aria-label="${esc(t.rune)}"><img class="px" src="/img/gen/runes/rune_eclipse.png" width="20" height="20" alt=""></button></div>
+<button class="secret-rune" type="button" data-secret="5" aria-label="${esc(t.rune)}">${runeImg('eclipse', 20)}</button></div>
 <div><h2>${esc(t.footGame)}</h2><ul><li><a href="${h}#trailers">${esc(t.navTrailers)}</a></li><li><a href="${h}#bestiary">${esc(t.navBestiary)}</a></li><li><a href="${h}#press">${esc(t.navPress)}</a></li><li><a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></li></ul></div>
 <div><h2>${esc(t.footSite)}</h2><ul><li><a href="${h}privacy/">${esc(t.privacy)}</a></li><li><a href="${h}#tome" id="replay">${esc(t.replay)}</a></li>
 ${LANGS.map((x) => `<li><a href="${home(x)}" lang="${x.html}" hreflang="${x.html}">${x.self}</a></li>`).join('')}</ul></div>
@@ -130,7 +142,7 @@ const cardHtml = (c, l, t, { button = false, extra = '' } = {}) => {
   const val = c.atk ? `<span class="val">⚔ ${c.atk}</span>` : c.def ? `<span class="val">⛨ ${c.def}</span>` : '';
   return `<${tag} class="card${fx}" data-rarity="${c.rarity}" data-id="${c.id}"${button ? ' type="button" aria-pressed="false"' : ''}${extra}>
 <span class="face"><span class="cost" aria-label="${esc(t.mana)} ${c.cost}"><span>${c.cost}</span></span>${button ? '<span class="order"></span>' : ''}
-<span class="name">${esc(loc(c.name, l))}</span><i class="art spr ${sprKey(c.icon.src)}" aria-hidden="true"></i>${val}
+<span class="name${Math.max(...String(loc(c.name, l)).split(/\s+/).map((w) => w.length)) > 11 ? ' long' : ''}">${esc(loc(c.name, l))}</span><i class="art spr ${sprKey(c.icon.src)}" aria-hidden="true"></i>${val}
 <span class="desc">${esc(loc(c.desc, l))}</span><span class="kind">${esc(t['rarity_' + c.rarity])}</span></span></${tag}>`;
 };
 
@@ -173,7 +185,7 @@ export function renderHome(t, l, ctx, T) {
   const hero = `<section class="hero vis" id="top" aria-labelledby="hero-h">
 <div class="sky-fx" aria-hidden="true"><div class="celestial" id="celestial"></div><div class="clouds"></div></div>
 <div class="backdrop" aria-hidden="true"></div><div class="loop" aria-hidden="true" data-src="/media/hero-loop.mp4" data-poster="/media/hero-loop.jpg"></div><div class="ground" aria-hidden="true"></div>
-<div class="stage"><i class="spr boss-peek" id="boss" aria-hidden="true"></i><img class="px castle" id="castle" src="${B[0].castle.src}" width="${B[0].castle.w}" height="${B[0].castle.h}" alt="${esc(fmt(t.castleAlt, { biome: loc(B[0].name, l) }))}" fetchpriority="high"><i class="spr castle-anim" id="castle-anim" aria-hidden="true"></i></div>
+<div class="stage"><i class="boss-peek" id="boss" aria-hidden="true"></i><i class="castle" id="castle" role="img" aria-label="${esc(fmt(t.castleAlt, { biome: loc(B[0].name, l) }))}"></i></div>
 <canvas class="weather px" id="weather" aria-hidden="true"></canvas>
 <div class="copy"><h1 id="hero-h"><img class="px" src="${G.brand.wordmark.src}" width="${G.brand.wordmark.w * 2}" height="${G.brand.wordmark.h * 2}" alt="Runemoire"></h1>
 <p class="tagline">${esc(loc(G.ui.subtitle, l))}</p>
@@ -186,8 +198,8 @@ ${pageHead(t, 'intro', t.introKicker, t.introTitle, t.epiIntro)}
 <div class="intro-grid"><div class="parch dict">
 <p class="lead"><dfn>${esc(t.dictWord)}</dfn> <span class="pron">${esc(t.dictPron)}</span> <i>${esc(t.dictPos)}</i></p>
 <p>${esc(t.dictDef)}</p><p class="ety">${esc(t.dictEty)}</p>
-<button class="secret-rune s1" type="button" data-secret="1" aria-label="${esc(t.rune)}"><img class="px" src="/img/gen/runes/rune_${runeIds[0]}.png" width="20" height="20" alt=""></button></div>
-<ul class="feats">${feats.map(([v, x], i) => `<li><img class="px" src="/img/gen/runes/rune_${runeIds[i]}.png" width="32" height="32" alt=""><span><b>${esc(t[v])}</b> ${esc(fmt(t[x], vars))}</span></li>`).join('')}</ul></div>
+<button class="secret-rune s1" type="button" data-secret="1" aria-label="${esc(t.rune)}">${runeImg(runeIds[0], 20)}</button></div>
+<ul class="feats">${feats.map(([v, x], i) => `<li>${runeImg(runeIds[i], 32)}<span><b>${esc(t[v])}</b> ${esc(fmt(t[x], vars))}</span></li>`).join('')}</ul></div>
 <div class="shuffle-row"><button class="btn ghost" id="shuffle" type="button" aria-describedby="shuffle-h">${esc(t.shuffle)}</button><p id="shuffle-h">${esc(t.shuffleHint)}</p></div>
 <div class="shuffle-out" id="shuffle-out" aria-live="polite"></div></div></section>`;
 
@@ -197,7 +209,7 @@ ${pageHead(t, 'trailers', t.trailersKicker, t.trailersTitle, t.epiTrailers, t.tr
 ${[['trailer', t.trailerCine], ['gameplay', t.trailerPlay]].map(([f, label]) => `<figure class="tv"><div class="shot"><img src="/media/runemoire-${f}.jpg" width="1280" height="720" alt="" loading="lazy" decoding="async">
 <button class="play" type="button" data-src="/media/runemoire-${f}.mp4" data-label="${esc(label)}" aria-label="${esc(t.play)}: ${esc(label)}"><span>${esc(t.play)}</span></button></div>
 <figcaption><span>${esc(label)}</span>${f === 'trailer' ? `<button class="iconbtn" id="crt" type="button" aria-pressed="false" title="${esc(t.crtLabel)}">${esc(t.crt)}</button>` : ''}</figcaption></figure>`).join('')}
-</div><button class="secret-rune s2" type="button" data-secret="2" aria-label="${esc(t.rune)}"><img class="px" src="/img/gen/runes/rune_${runeIds[1]}.png" width="20" height="20" alt=""></button></div></section>`;
+</div><button class="secret-rune s2" type="button" data-secret="2" aria-label="${esc(t.rune)}">${runeImg(runeIds[1], 20)}</button></div></section>`;
 
   const play = `<section class="page" id="play" aria-labelledby="play-h"><div class="wrap">
 ${pageHead(t, 'play', t.playKicker, t.playTitle, t.epiPlay, t.playLead)}
@@ -219,16 +231,16 @@ ${pageHead(t, 'classes', t.classesKicker, t.classesTitle, t.epiClasses, t.classe
 
   const bestiary = `<section class="page" id="bestiary" aria-labelledby="bestiary-h"><div class="wrap">
 ${pageHead(t, 'bestiary', t.bestiaryKicker, t.bestiaryTitle, t.epiBestiary, t.bestiaryLead)}
-<div class="bestiary"><div class="acts" role="tablist" aria-label="${esc(t.bestiaryTitle)}">${B.map((b, i) => `<button role="tab" type="button" id="tab-${b.id}" aria-controls="act-${b.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}"><img class="px" src="/img/gen/runes/rune_${b.id}.png" width="24" height="24" alt="">${esc(fmt(t.act, { n: b.act }))}</button>`).join('')}</div>
+<div class="bestiary"><div class="acts" role="tablist" aria-label="${esc(t.bestiaryTitle)}">${B.map((b, i) => `<button role="tab" type="button" id="tab-${b.id}" aria-controls="act-${b.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${runeImg(b.id, 24)}${esc(fmt(t.act, { n: b.act }))}</button>`).join('')}</div>
 <div class="spread">${B.map((b, i) => `<div role="tabpanel" id="act-${b.id}" aria-labelledby="tab-${b.id}" ${i ? 'hidden' : ''} data-biome-page="${b.id}">
 <div class="leaf"><div class="parch side l"><h3>${esc(fmt(t.act, { n: b.act }))} · ${esc(loc(b.actTitle, l))} <small>— ${esc(loc(b.name, l))}</small></h3>
 <div class="boss-stage b-${b.id}"><img class="px bg" src="${b.hall.src}" width="${b.hall.w}" height="${b.hall.h}" alt="" loading="lazy" decoding="async">${spr(b.boss.idle, 2, 'bs', loc(b.boss.name, l))}<div class="fog"></div></div></div>
 <div class="parch side r"><p class="kicker">${esc(t.boss)}</p><h3 class="bossname">${esc(loc(b.boss.name, l))}</h3><p class="epithet">${esc(loc(b.boss.epithet, l))}</p>
-<div class="mech"><div class="sig">${b.boss.token.frames ? spr(b.boss.token, 1, 'token') : `<img class="px" src="${b.boss.token.src}" width="48" height="48" alt="">`}<p><b>${esc(t.signature)} · ${esc(loc(b.boss.mechanic, l))}.</b> ${esc(loc(b.boss.signature, l))}</p></div>
+<div class="mech"><div class="sig">${b.boss.token.frames ? spr(b.boss.token, 1, 'token') : `<img class="px" src="${b.boss.token.src}" width="${b.boss.token.w * (b.boss.token.h > 40 ? 1 : 1.5)}" height="${b.boss.token.h * (b.boss.token.h > 40 ? 1 : 1.5)}" alt="">`}<p><b>${esc(t.signature)} · ${esc(loc(b.boss.mechanic, l))}.</b> ${esc(loc(b.boss.signature, l))}</p></div>
 <p class="lore">${esc(loc(b.boss.lore, l))}</p>
 ${b.fog ? `<p class="fogbadge"><b>?</b> ${esc(loc(G.ui.fogName, l))}: ${esc(loc(G.ui.fogDesc, l))}</p>` : ''}</div>
 <p class="kicker">${esc(t.roster)}</p><div class="roster">${b.enemies.map((e) => `<figure>${spr(e.idle, 1, 'en', loc(e.name, l))}<figcaption>${esc(loc(e.name, l))}</figcaption></figure>`).join('')}</div>
-${i === 5 ? `<button class="secret-rune s3" type="button" data-secret="3" aria-label="${esc(t.rune)}"><img class="px" src="/img/gen/runes/rune_${runeIds[2]}.png" width="20" height="20" alt=""></button>` : ''}</div></div></div>`).join('')}</div></div></div></section>`;
+${i === 5 ? `<button class="secret-rune s3" type="button" data-secret="3" aria-label="${esc(t.rune)}">${runeImg(runeIds[2], 20)}</button>` : ''}</div></div></div>`).join('')}</div></div></div></section>`;
 
   const regular = G.cards.filter((c) => c.type !== 'joker');
   const order = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
@@ -236,7 +248,7 @@ ${i === 5 ? `<button class="secret-rune s3" type="button" data-secret="3" aria-l
   const cards = `<section class="page" id="cards" aria-labelledby="cards-h"><div class="wrap">
 ${pageHead(t, 'cards', t.cardsKicker, t.cardsTitle, t.epiCards, t.cardsLead)}
 <div class="filters" role="group" aria-label="${esc(t.cardsTitle)}"><button type="button" data-r="all" aria-pressed="true">${esc(t.all)}</button>${['legendary', 'rare', 'uncommon', 'common'].map((r) => `<button type="button" data-r="${r}" aria-pressed="false">${esc(t['rarity_' + r])}</button>`).join('')}
-<button class="secret-rune s4" type="button" data-secret="4" aria-label="${esc(t.rune)}"><img class="px" src="/img/gen/runes/rune_${runeIds[3]}.png" width="20" height="20" alt=""></button></div>
+<button class="secret-rune s4" type="button" data-secret="4" aria-label="${esc(t.rune)}">${runeImg(runeIds[3], 20)}</button></div>
 <div class="gallery-cards lazyvis">${regular.map((c) => cardHtml(c, l, t)).join('')}</div>
 <div class="jokers"><div class="parch"><h3>${esc(t.jokersBoss)}</h3><p>${esc(t.jokersBossLead)}</p><div class="jk lazyvis">${G.jokersBoss.map((j) => `<figure title="${esc(loc(j.desc, l))}">${spr(j.icon, 1, 'jicon')}<figcaption>${esc(loc(j.name, l))}</figcaption></figure>`).join('')}</div></div>
 <div class="parch"><h3>${esc(t.jokersCounter)}</h3><p>${esc(t.jokersCounterLead)}</p><div class="jk lazyvis">${G.jokersCounter.map((j) => `<figure title="${esc(loc(j.desc, l))}">${spr(j.icon, 1, 'jicon')}<figcaption>${esc(loc(j.name, l))}</figcaption></figure>`).join('')}</div></div></div></div></section>`;
@@ -274,7 +286,7 @@ ${pageHead(t, 'press', t.pressKicker, t.pressTitle, t.epiPress, t.pressLead)}
 <div class="head"><h2 id="final-h">${esc(t.finalTitle)}</h2><p class="lead">${esc(t.finalLead)}</p></div>
 <div class="ctas">${steamBtn(t, 'bottom')}</div>${notifyForm(t, l, 'n2')}</div></section>`;
 
-  const opening = `<div class="opening" id="opening" hidden role="dialog" aria-modal="true" aria-labelledby="open-h">
+  const opening = `<div class="opening" id="opening" role="dialog" aria-modal="true" aria-labelledby="open-h">
 <div class="scene"><img class="px base" src="${G.scene.menu.src}" width="400" height="256" alt="">
 <img class="px tome" src="/img/gen/tome_closed.png" width="342" height="231" alt=""><div class="glow"></div></div>
 <div class="ask"><h2 id="open-h"><img class="px" src="${G.brand.logo.src}" width="${G.brand.logo.w}" height="${G.brand.logo.h}" alt="Runemoire"></h2>
@@ -343,13 +355,13 @@ export function renderEclipse(t, l, ctx, T) {
 ${LANGS.map((x) => `<blockquote class="lore" lang="${x.html}"><p>${esc(loc(B.boss.lore, x))}</p><footer>— ${esc(loc(B.boss.name, x))}, ${esc(loc(B.boss.epithet, x))}</footer></blockquote>`).join('')}
 <img class="px wall" src="/img/gen/eclipse_wallpaper.png" width="688" height="384" alt="">
 <p><a class="btn" href="/img/eclipse_wallpaper_3x.png" download>${esc(t.eclipseWall)}</a> <a href="/">${esc(t.eclipseBack)}</a></p></article>`;
-  return simple(t, l, ctx, T, { title: t.eclipseTitle, path: '/eclipse/', body }).replace('<html lang="en" data-biome="fields">', '<html lang="en" data-biome="eclipse">');
+  return simple(t, l, ctx, T, { title: t.eclipseTitle, path: '/eclipse/', body }).replace('<html lang="en" data-biome="fields">', '<html lang="en" data-biome="eclipse" data-fixed>');
 }
 
 const PRIVACY = {
-  en: ['#What we collect', 'Only if you sign up for the launch notice: your email address, the language of the page and the date. Nothing else. No cookies, no ads, no third-party trackers.', '#Why', 'To send you one email when Runemoire launches. We will not sell or share your address.', '#Where it is stored', 'In a Cloudflare D1 database in the account of the developer. Cloudflare processes requests to keep the site online and safe.', '#Your rights (LGPD / GDPR)', 'You can leave the list at any time with the link shown after you sign up, or by writing to {contact}. We erase your email on request and after the launch email is sent.', '#On your device', 'The site remembers your chosen biome, sound and motion settings and the runes you found, in your browser\'s local storage. It never leaves your device.', '#Contact', '{contact}'],
-  pt_BR: ['#O que coletamos', 'Só se você pedir o aviso de lançamento: seu e-mail, o idioma da página e a data. Mais nada. Sem cookies, sem anúncios, sem rastreadores de terceiros.', '#Para quê', 'Para mandar um e-mail quando o Runemoire for lançado. Não vendemos nem compartilhamos seu endereço.', '#Onde fica guardado', 'Num banco Cloudflare D1, na conta do desenvolvedor. A Cloudflare processa as requisições para manter o site no ar e seguro.', '#Seus direitos (LGPD / GDPR)', 'Você pode sair da lista quando quiser, pelo link que aparece depois do cadastro, ou escrevendo para {contact}. Apagamos seu e-mail a pedido e depois do e-mail de lançamento.', '#No seu aparelho', 'O site lembra o bioma, o som e o movimento que você escolheu e as runas que achou, no armazenamento local do navegador. Isso nunca sai do seu aparelho.', '#Contato', '{contact}'],
-  es: ['#Qué recopilamos', 'Solo si pides el aviso de lanzamiento: tu correo, el idioma de la página y la fecha. Nada más. Sin cookies, sin anuncios, sin rastreadores de terceros.', '#Para qué', 'Para enviarte un correo cuando Runemoire salga. No vendemos ni compartimos tu dirección.', '#Dónde se guarda', 'En una base de datos Cloudflare D1, en la cuenta del desarrollador. Cloudflare procesa las solicitudes para mantener el sitio en línea y seguro.', '#Tus derechos (RGPD)', 'Puedes salir de la lista cuando quieras con el enlace que aparece tras registrarte, o escribiendo a {contact}. Borramos tu correo a petición y después del correo de lanzamiento.', '#En tu dispositivo', 'El sitio recuerda el bioma, el sonido y el movimiento que elegiste y las runas que encontraste, en el almacenamiento local del navegador. Nunca sale de tu dispositivo.', '#Contacto', '{contact}'],
-  fr: ['#Ce que nous collectons', 'Seulement si tu demandes l\'avis de sortie : ton e-mail, la langue de la page et la date. Rien d\'autre. Pas de cookies, pas de publicité, pas de traceurs tiers.', '#Pourquoi', 'Pour t\'envoyer un e-mail à la sortie de Runemoire. Nous ne vendons ni ne partageons ton adresse.', '#Où c\'est stocké', 'Dans une base Cloudflare D1, sur le compte du développeur. Cloudflare traite les requêtes pour garder le site en ligne et sûr.', '#Tes droits (RGPD)', 'Tu peux quitter la liste à tout moment avec le lien affiché après l\'inscription, ou en écrivant à {contact}. Nous effaçons ton e-mail sur demande et après l\'e-mail de sortie.', '#Sur ton appareil', 'Le site retient le biome, le son et le mouvement choisis et les runes trouvées, dans le stockage local du navigateur. Rien ne quitte ton appareil.', '#Contact', '{contact}'],
-  de: ['#Was wir erheben', 'Nur wenn du dich für die Release-Nachricht einträgst: deine E-Mail-Adresse, die Sprache der Seite und das Datum. Sonst nichts. Keine Cookies, keine Werbung, keine Tracker von Dritten.', '#Wozu', 'Um dir eine E-Mail zu schicken, wenn Runemoire erscheint. Wir verkaufen oder teilen deine Adresse nicht.', '#Wo es gespeichert wird', 'In einer Cloudflare-D1-Datenbank im Konto des Entwicklers. Cloudflare verarbeitet Anfragen, um die Seite online und sicher zu halten.', '#Deine Rechte (DSGVO)', 'Du kannst die Liste jederzeit über den Link nach der Anmeldung verlassen oder an {contact} schreiben. Wir löschen deine E-Mail auf Wunsch und nach der Release-E-Mail.', '#Auf deinem Gerät', 'Die Seite merkt sich gewähltes Biom, Ton- und Bewegungseinstellungen und gefundene Runen im lokalen Speicher deines Browsers. Nichts davon verlässt dein Gerät.', '#Kontakt', '{contact}'],
+  en: ['#What we collect', 'Only if you sign up for the launch notice: your email address, the language of the page and the date. Nothing else. No cookies, no ads, no advertising trackers.', '#Why', 'To send you one email when Runemoire launches. We will not sell or share your address.', '#Where it is stored', 'In a Cloudflare D1 database in the account of the developer. Cloudflare processes requests to keep the site online and safe.', '#Your rights (LGPD / GDPR)', 'You can leave the list at any time with the link shown after you sign up, or by writing to {contact}. We erase your email on request and after the launch email is sent.', '#Visit statistics', 'We count visits with Cloudflare Web Analytics, which sets no cookies and does not identify you.', '#On your device', 'The site remembers your chosen biome, sound and motion settings and the runes you found, in your browser\'s local storage. It never leaves your device.', '#Contact', '{contact}'],
+  pt_BR: ['#O que coletamos', 'Só se você pedir o aviso de lançamento: seu e-mail, o idioma da página e a data. Mais nada. Sem cookies, sem anúncios, sem rastreadores de publicidade.', '#Para quê', 'Para mandar um e-mail quando o Runemoire for lançado. Não vendemos nem compartilhamos seu endereço.', '#Onde fica guardado', 'Num banco Cloudflare D1, na conta do desenvolvedor. A Cloudflare processa as requisições para manter o site no ar e seguro.', '#Seus direitos (LGPD / GDPR)', 'Você pode sair da lista quando quiser, pelo link que aparece depois do cadastro, ou escrevendo para {contact}. Apagamos seu e-mail a pedido e depois do e-mail de lançamento.', '#Estatísticas de visita', 'Contamos as visitas com o Cloudflare Web Analytics, que não usa cookies e não identifica você.', '#No seu aparelho', 'O site lembra o bioma, o som e o movimento que você escolheu e as runas que achou, no armazenamento local do navegador. Isso nunca sai do seu aparelho.', '#Contato', '{contact}'],
+  es: ['#Qué recopilamos', 'Solo si pides el aviso de lanzamiento: tu correo, el idioma de la página y la fecha. Nada más. Sin cookies, sin anuncios, sin rastreadores publicitarios.', '#Para qué', 'Para enviarte un correo cuando Runemoire salga. No vendemos ni compartimos tu dirección.', '#Dónde se guarda', 'En una base de datos Cloudflare D1, en la cuenta del desarrollador. Cloudflare procesa las solicitudes para mantener el sitio en línea y seguro.', '#Tus derechos (RGPD)', 'Puedes salir de la lista cuando quieras con el enlace que aparece tras registrarte, o escribiendo a {contact}. Borramos tu correo a petición y después del correo de lanzamiento.', '#Estadísticas de visitas', 'Contamos las visitas con Cloudflare Web Analytics, que no usa cookies ni te identifica.', '#En tu dispositivo', 'El sitio recuerda el bioma, el sonido y el movimiento que elegiste y las runas que encontraste, en el almacenamiento local del navegador. Nunca sale de tu dispositivo.', '#Contacto', '{contact}'],
+  fr: ['#Ce que nous collectons', 'Seulement si tu demandes l\'avis de sortie : ton e-mail, la langue de la page et la date. Rien d\'autre. Pas de cookies, pas de publicité, pas de traceurs publicitaires.', '#Pourquoi', 'Pour t\'envoyer un e-mail à la sortie de Runemoire. Nous ne vendons ni ne partageons ton adresse.', '#Où c\'est stocké', 'Dans une base Cloudflare D1, sur le compte du développeur. Cloudflare traite les requêtes pour garder le site en ligne et sûr.', '#Tes droits (RGPD)', 'Tu peux quitter la liste à tout moment avec le lien affiché après l\'inscription, ou en écrivant à {contact}. Nous effaçons ton e-mail sur demande et après l\'e-mail de sortie.', '#Statistiques de visite', 'Nous comptons les visites avec Cloudflare Web Analytics, sans cookies et sans identifier personne.', '#Sur ton appareil', 'Le site retient le biome, le son et le mouvement choisis et les runes trouvées, dans le stockage local du navigateur. Rien ne quitte ton appareil.', '#Contact', '{contact}'],
+  de: ['#Was wir erheben', 'Nur wenn du dich für die Release-Nachricht einträgst: deine E-Mail-Adresse, die Sprache der Seite und das Datum. Sonst nichts. Keine Cookies, keine Werbung, keine Werbe-Tracker.', '#Wozu', 'Um dir eine E-Mail zu schicken, wenn Runemoire erscheint. Wir verkaufen oder teilen deine Adresse nicht.', '#Wo es gespeichert wird', 'In einer Cloudflare-D1-Datenbank im Konto des Entwicklers. Cloudflare verarbeitet Anfragen, um die Seite online und sicher zu halten.', '#Deine Rechte (DSGVO)', 'Du kannst die Liste jederzeit über den Link nach der Anmeldung verlassen oder an {contact} schreiben. Wir löschen deine E-Mail auf Wunsch und nach der Release-E-Mail.', '#Besuchsstatistik', 'Wir zählen Besuche mit Cloudflare Web Analytics, ohne Cookies und ohne dich zu identifizieren.', '#Auf deinem Gerät', 'Die Seite merkt sich gewähltes Biom, Ton- und Bewegungseinstellungen und gefundene Runen im lokalen Speicher deines Browsers. Nichts davon verlässt dein Gerät.', '#Kontakt', '{contact}'],
 };
