@@ -55,7 +55,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <meta property="og:type" content="${ogType}"><meta property="og:site_name" content="Runemoire"><meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${/^https?:/.test(ogImage) ? ogImage : CONFIG.site + ogImage}">${extra}
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="${l.og}"><meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/seal_32.png"><link rel="apple-touch-icon" href="/img/brand/seal_180.png">
+<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/icon_32.png"><link rel="apple-touch-icon" href="/img/brand/icon_180.png">
 <link rel="manifest" href="/site.webmanifest">
 ${preload ? '<link rel="preload" href="/img/v3b/computer.png" as="image" fetchpriority="high">' : ''}<link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
 ${styleTag(ctx)}<script src="/js/clarity.js" async></script>${script ? `<script type="module" src="${ctx.JS}"></script>` : ''}`;

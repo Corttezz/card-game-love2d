@@ -21,7 +21,7 @@ const GAME = JSON.parse(fs.readFileSync(path.join(R, 'src/data/game.json'), 'utf
 // 1. só o que a v2 usa
 const KEEP = [
   'favicon.ico', 'js/clarity.js', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/blog', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
-  'img/brand/seal_32.png', 'img/brand/seal_180.png', 'img/brand/seal_192.png', 'img/brand/seal_512.png',
+  'img/brand/icon_32.png', 'img/brand/icon_180.png', 'img/brand/icon_192.png', 'img/brand/icon_512.png',
   'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
   ...['en', 'pt_BR'].flatMap((l) => ['03_road_battle', '06_road_fork', '05_shop'].flatMap((s) => [`img/shots/${l}/${s}.webp`, `img/shots/${l}/${s}_s.webp`])),
 ].map((p) => p.replace(/^\//, ''));
@@ -98,7 +98,7 @@ write('llms.txt', [
 ].join('\n'));
 // /unsubscribe/ fica liberado no robots para o Google ler o noindex da página
 write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
-write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0c0a10', theme_color: '#0c0a10', icons: [192, 512].map((s) => ({ src: `/img/brand/seal_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
+write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0c0a10', theme_color: '#0c0a10', icons: [192, 512].map((s) => ({ src: `/img/brand/icon_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
 
 // 5. pixel art em WebP sem perda e troca das referências
 const conv = new Set(execFileSync('python', ['-X', 'utf8', path.join(R, 'tools/webp.py'), D], { encoding: 'utf8' }).split(/\r?\n/).map((x) => x.trim()).filter(Boolean));
@@ -116,7 +116,7 @@ const conv = new Set(execFileSync('python', ['-X', 'utf8', path.join(R, 'tools/w
 // uma arte OG só (as 5 por idioma eram o mesmo arquivo) e o apple-touch-icon na raiz (cópia do selo de 180 px)
 fs.copyFileSync(path.join(P, 'img/og/og_en.png'), path.join(D, 'img/og/og.png'));
 for (const f of fs.readdirSync(path.join(D, 'img/og'))) if (f !== 'og.png') fs.rmSync(path.join(D, 'img/og', f));
-fs.copyFileSync(path.join(P, 'img/brand/seal_180.png'), path.join(D, 'apple-touch-icon.png'));
+fs.copyFileSync(path.join(P, 'img/brand/icon_180.png'), path.join(D, 'apple-touch-icon.png'));
 
 // CSP: o CSS embutido entra no style-src pelo hash (o mesmo bloco em todas as páginas)
 const styles = new Set();
