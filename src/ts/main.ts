@@ -28,7 +28,7 @@ function music(on: boolean) {
 // páginas simples (privacidade, sair da lista) não têm a cena: o jogo nem começa
 const HAS = !!$('#cv');
 const cv = $<HTMLCanvasElement>('#cv') || document.createElement('canvas'), out = $<HTMLCanvasElement>('#crt') || document.createElement('canvas');
-const main = $('#main'), hit = $<HTMLButtonElement>('#screenhit');
+const main = $('#title'), hit = $<HTMLButtonElement>('#screenhit');
 const game = new Game(cv, out, D.boot, {
   sfx, music,
   onPhase: (p) => {
@@ -57,6 +57,8 @@ function loop(now: number) {
   syncDom();
 }
 function start() { cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); }
+// aba oculta: o loop para (sem trabalho de fundo); volta ao aparecer
+document.addEventListener('visibilitychange', () => { if (document.hidden) cancelAnimationFrame(raf); else if (HAS && raf) start(); });
 
 // ---------------- carga: o computador primeiro; shaders e o resto depois da carga (fora do caminho da primeira pintura) ----------------
 let restP: Promise<void> | null = null;
@@ -86,8 +88,13 @@ hit?.addEventListener('click', () => { press(); });
 addEventListener('keydown', (e) => {
   if (!HAS || e.altKey || e.ctrlKey || e.metaKey || e.key === 'Tab') return;
   if (document.body.classList.contains('panel-open')) return;
+  // lendo o texto de baixo da cena: as teclas rolam a página normalmente
+  if (scrollY >= innerHeight / 2) return;
   const intro = game.mode !== 'menu' || game.menu.isIntroPlaying();
-  if (intro) { e.preventDefault(); press(); }
+  if (intro) { e.preventDefault(); press(); return; }
+  // na tela de título o Espaço não rola para o texto (no jogo ele não faz nada); botões e campos seguem normais
+  const tag = (document.activeElement as HTMLElement | null)?.tagName || '';
+  if (e.key === ' ' && !['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) e.preventDefault();
 });
 
 // ---------------- alvos transparentes sobre o que o jogo desenha ----------------
@@ -162,6 +169,8 @@ function menu() {
       mbtns[(i + (e.key === 'ArrowDown' ? 1 : -1) + mbtns.length) % mbtns.length].focus();
     }
   });
+  // o botão "Me avise" do texto depois da cena abre o mesmo painel
+  $$<HTMLAnchorElement>('.about [data-open]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openPanel(a.dataset.open!, a); }));
   $$('[data-close]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); closePanel(); }));
   panels.forEach((p) => p.addEventListener('click', (e) => { if (e.target === p) closePanel(); }));
   addEventListener('keydown', (e) => {

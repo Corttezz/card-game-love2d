@@ -46,7 +46,8 @@ const T = Object.fromEntries(LANGS.map((l) => [l.code, readT(l.code)]));
 for (const l of LANGS) for (const k of Object.keys(T.en)) if (!(k in T[l.code])) { console.warn(`[i18n] ${l.code} sem "${k}"`); T[l.code][k] = T.en[k]; }
 
 // 4. páginas
-const ctx = { JS, CSS, GAME };
+const CSSTEXT = fs.readFileSync(path.join(D, CSS.slice(1)), 'utf8').trim();
+const ctx = { JS, CSS, GAME, CSSTEXT };
 const write = (rel, html) => { const f = path.join(D, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, html); };
 for (const l of LANGS) {
   const base = l.prefix ? `${l.prefix}/` : '';
@@ -56,9 +57,19 @@ for (const l of LANGS) {
   write(`${base}404.html`, render404(T[l.code], l, ctx));
 }
 const SITE = 'https://runemoire.com';
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${LANGS.flatMap((l) => ['', 'privacy/'].map((s) => `  <url><loc>${SITE}/${l.prefix ? l.prefix + '/' : ''}${s}</loc></url>`)).join('\n')}\n</urlset>\n`);
-write('robots.txt', `User-agent: *\nAllow: /\nDisallow: /unsubscribe/\nDisallow: /*/unsubscribe/\nSitemap: ${SITE}/sitemap.xml\n`);
-write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0b0a0d', theme_color: '#0b0a0d', icons: [192, 512].map((s) => ({ src: `/img/brand/seal_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
+// lastmod real: a data do último commit que mexeu no conteúdo da página (nunca o horário do build)
+const gitDay = (...paths) => { try { return execFileSync('git', ['log', '-1', '--format=%cs', '--', ...paths], { cwd: R, encoding: 'utf8' }).trim(); } catch { return ''; } };
+const HOME_SRC = ['tools/page.mjs', 'src/css', 'src/ts', 'src/data'];
+const locUrl = (l, s) => `${SITE}/${l.prefix ? l.prefix + '/' : ''}${s}`;
+const xurl = (l, s) => {
+  const mod = s ? gitDay('tools/page.mjs', `src/i18n/${l.code}.json`) : gitDay(...HOME_SRC, `src/i18n/${l.code}.json`);
+  const alts = LANGS.map((x) => `<xhtml:link rel="alternate" hreflang="${x.html}" href="${locUrl(x, s)}"/>`).join('') + `<xhtml:link rel="alternate" hreflang="x-default" href="${locUrl(LANGS[0], s)}"/>`;
+  return `  <url><loc>${locUrl(l, s)}</loc>${mod ? `<lastmod>${mod}</lastmod>` : ''}${alts}</url>`;
+};
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${LANGS.flatMap((l) => ['', 'privacy/'].map((s) => xurl(l, s))).join('\n')}\n</urlset>\n`);
+// /unsubscribe/ fica liberado no robots para o Google ler o noindex da página
+write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
+write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0c0a10', theme_color: '#0c0a10', icons: [192, 512].map((s) => ({ src: `/img/brand/seal_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
 
 // 5. pixel art em WebP sem perda e troca das referências
 const conv = new Set(execFileSync('python', ['-X', 'utf8', path.join(R, 'tools/webp.py'), D], { encoding: 'utf8' }).split(/\r?\n/).map((x) => x.trim()).filter(Boolean));
@@ -72,6 +83,24 @@ const conv = new Set(execFileSync('python', ['-X', 'utf8', path.join(R, 'tools/w
     if (o !== s) fs.writeFileSync(p, o);
   }
 })(D);
+
+// uma arte OG só (as 5 por idioma eram o mesmo arquivo) e o apple-touch-icon na raiz (cópia do selo de 180 px)
+fs.copyFileSync(path.join(P, 'img/og/og_en.png'), path.join(D, 'img/og/og.png'));
+for (const f of fs.readdirSync(path.join(D, 'img/og'))) if (f !== 'og.png') fs.rmSync(path.join(D, 'img/og', f));
+fs.copyFileSync(path.join(P, 'img/brand/seal_180.png'), path.join(D, 'apple-touch-icon.png'));
+
+// CSP: o CSS embutido entra no style-src pelo hash (o mesmo bloco em todas as páginas)
+const styles = new Set();
+(function scan(dir) {
+  for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, f.name);
+    if (f.isDirectory()) { if (!['img', 'media', 'fonts', 'assets'].includes(f.name)) scan(p); continue; }
+    if (f.name.endsWith('.html')) for (const m of fs.readFileSync(p, 'utf8').matchAll(/<style>([\s\S]*?)<\/style>/g)) styles.add(m[1]);
+  }
+})(D);
+const hashes = [...styles].map((c) => `'sha256-${crypto.createHash('sha256').update(c, 'utf8').digest('base64')}'`);
+fs.writeFileSync(path.join(R, 'worker/csp.gen.js'), `// gerado por tools/build.mjs: hash do CSS embutido nas páginas (style-src da CSP)\nexport const STYLE_HASHES = ${JSON.stringify(hashes.join(' '))};\n`);
+console.log('style hashes', hashes.length);
 
 const size = (rel) => fs.statSync(path.join(D, rel.replace(/^\//, ''))).size;
 const kb = (n) => (n / 1024).toFixed(1) + ' KB';

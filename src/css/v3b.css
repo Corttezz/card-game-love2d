@@ -128,3 +128,21 @@ body.simple { overflow: auto; background: radial-gradient(ellipse at 50% 30%, #2
 .notify input { min-width: 0; }
 .pbody .fine, .opt { overflow-wrap: anywhere; }
 @media (max-aspect-ratio: 4/5) { .opt { padding: 10px 2px; } .sw { min-width: 112px; } }
+
+/* ===================== texto do jogo depois da cena (SEO, 13/11): a primeira pintura continua a abertura =====================
+   A cena fica fixa; rolando, o livro sobe por cima dela. Sem barra de rolagem, para a tela inicial ficar igual. */
+html:has(> body.crt:not(.nf)) { scrollbar-width: none; }
+html:has(> body.crt:not(.nf))::-webkit-scrollbar, body.crt:not(.nf)::-webkit-scrollbar { display: none; }
+body.crt:not(.nf) { overflow: hidden auto; height: auto; min-height: 100%; }
+.about { position: relative; z-index: 7; margin-top: 100vh; margin-top: 100dvh; display: grid; place-items: center; padding: 32px 8px 56px;
+  background: radial-gradient(ellipse at 50% 0%, #241c26, var(--night) 70%); }
+.about .frame9.page { animation: none; }
+.about h1 { margin: -20px 0 8px; }
+.about h3 { font: 16px/1.4 'Runic', monospace; margin: 18px 0 6px; color: var(--ink); }
+.about .sub { font: 16px/1.4 'Runic', monospace; margin: 0 0 16px; color: #5a4128; }
+.about .state { font-family: 'Runic', monospace; font-size: 14px; line-height: 1.8; color: var(--ink); }
+.about .mbtn { display: inline-flex; height: auto; min-height: 44px; padding: 10px 18px; line-height: 1.5; white-space: normal; }
+.about video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #000; box-shadow: 0 0 0 4px var(--ink); }
+.about .fine { font: 14px/1.8 'Runic', monospace; margin: 18px 0 0; color: #5a4128; overflow-wrap: anywhere; }
+.about .fine a, .simple .fine a { color: #3b2716; }
+.simple .fine { font: 14px/1.8 'Runic', monospace; margin: 18px 0 0; color: #5a4128; }
