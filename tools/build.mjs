@@ -89,7 +89,7 @@ write('llms.txt', [
   `- [Home (English)](${SITE}/): the game's own title screen, with a text summary, the gameplay trailer and an FAQ below it`,
   ...LANGS.slice(1).map((l) => `- [Home (${l.self})](${SITE}/${l.prefix}/)`),
   `- [Gameplay trailer (MP4, 69 s)](${SITE}/media/runemoire-gameplay.mp4)`,
-  `- [Privacy](${SITE}/privacy/): only the email left for the launch notice is stored; usage analytics with Microsoft Clarity, without cookies`, '',
+  `- [Privacy](${SITE}/privacy/): only the email left for the launch notice is stored; usage analytics with Microsoft Clarity (session recordings and heatmaps)`, '',
   '## Blog', '',
   `- [Blog hub](${SITE}/blog/)${POSTS.length ? '' : ': first posts coming soon'}`,
   ...POSTS.map((p) => `- [${p.title}](${SITE}/blog/${p.slug}/): ${p.desc}`), '',

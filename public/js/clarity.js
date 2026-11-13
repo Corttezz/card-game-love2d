@@ -1,5 +1,5 @@
 // Microsoft Clarity (projeto zd7sboppd4): só no domínio real, nunca em robôs/testes automatizados.
-// Carrega depois do load (não atrasa a primeira pintura) e roda sem cookies (consentv2 negado): a privacidade promete nada no aparelho.
+// Carrega depois do load (não atrasa a primeira pintura); consentv2 negado = sem cookies _clck/_clsk em runemoire.com (clarity.ms/bing.com ainda gravam os deles).
 (function () {
   if (location.hostname !== 'runemoire.com' || navigator.webdriver) return;
   var go = function () {
