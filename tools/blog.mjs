@@ -35,6 +35,27 @@ function front(src, file) {
 const pick = (fm, ...keys) => { for (const k of keys) if (fm[k] != null && fm[k] !== '') return fm[k]; return undefined; };
 const FAQ_H2 = /^(faq|frequently asked questions|questions|perguntas frequentes|common questions)\b/i;
 
+// largura e altura de PNG/JPEG/WebP, para a capa ter width/height (evita a página pular ao carregar)
+function imgSize(f) {
+  const b = fs.readFileSync(f);
+  if (b.readUInt32BE(0) === 0x89504e47) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+  if (b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') {
+    const k = b.toString('ascii', 12, 16);
+    if (k === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+    if (k === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+    if (k === 'VP8L') { const v = b.readUInt32LE(21); return { w: 1 + (v & 0x3fff), h: 1 + ((v >> 14) & 0x3fff) }; }
+  }
+  if (b[0] === 0xff && b[1] === 0xd8) {
+    for (let i = 2; i < b.length - 9;) {
+      if (b[i] !== 0xff) { i++; continue; }
+      const m = b[i + 1];
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { w: b.readUInt16BE(i + 7), h: b.readUInt16BE(i + 5) };
+      i += 2 + b.readUInt16BE(i + 2);
+    }
+  }
+  return null;
+}
+
 function parsePost(file) {
   const { fm, body } = front(fs.readFileSync(file, 'utf8'), path.basename(file));
   const slug = String(pick(fm, 'slug') || path.basename(file, '.md'));
@@ -62,9 +83,10 @@ function parsePost(file) {
   // capa: "/caminho/arquivo.png | texto alternativo" vira a capa; texto sem caminho (sugestão) usa a arte do jogo
   const cv = String(pick(fm, 'cover', 'imagem', 'image') || '');
   const cm = /^(\/[^\s|]+)\s*(?:\|\s*(.+))?$/.exec(cv);
-  p.cover = cm ? { src: cm[1], alt: (cm[2] || pick(fm, 'cover_alt', 'imagem_alt') || p.title).trim(), w: null, h: null }
+  p.cover = cm ? { src: cm[1], alt: (cm[2] || pick(fm, 'cover_alt', 'imagem_alt') || p.title).trim().replace(/^alt\s*:\s*/i, ''), w: null, h: null }
     : { src: OG, alt: 'Runemoire: the title screen of the game', w: 1200, h: 630 };
   if (cm && !fs.existsSync(path.join(R, 'public', cm[1]))) throw new Error(`${path.basename(file)}: capa ${cm[1]} não existe em public/`);
+  if (cm) Object.assign(p.cover, imgSize(path.join(R, 'public', cm[1])) || {});
 
   // corpo: tira comentários (<!-- verificar: ... -->), o H1 vem do arquivo (ou do title)
   let md = body.replace(/<!--[\s\S]*?-->/g, '').trim();

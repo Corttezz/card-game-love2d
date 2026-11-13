@@ -6,7 +6,7 @@ idioma: "en"
 palavra_chave: "games like balatro and slay the spire"
 categoria: "Guides"
 data: "2026-11-13"
-imagem: "Spread of fanned-out pixel art cards over a dark wooden table with a glowing rune | alt: Pixel art deckbuilder cards fanned out for a list of games like Balatro and Slay the Spire"
+imagem: "/img/blog/games-like-balatro-and-slay-the-spire.jpg | Fan of glowing rune cards spread on a wooden table next to a candle and a few coins"
 links_internos: ["/", "/blog/", "/privacy/"]
 cta: "/"
 ---
