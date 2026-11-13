@@ -20,7 +20,7 @@ const GAME = JSON.parse(fs.readFileSync(path.join(R, 'src/data/game.json'), 'utf
 
 // 1. só o que a v2 usa
 const KEEP = [
-  'favicon.ico', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/blog', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
+  'favicon.ico', 'js/clarity.js', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/blog', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
   'img/brand/seal_32.png', 'img/brand/seal_180.png', 'img/brand/seal_192.png', 'img/brand/seal_512.png',
   'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
   ...['en', 'pt_BR'].flatMap((l) => ['03_road_battle', '06_road_fork', '05_shop'].flatMap((s) => [`img/shots/${l}/${s}.webp`, `img/shots/${l}/${s}_s.webp`])),
@@ -89,7 +89,7 @@ write('llms.txt', [
   `- [Home (English)](${SITE}/): the game's own title screen, with a text summary, the gameplay trailer and an FAQ below it`,
   ...LANGS.slice(1).map((l) => `- [Home (${l.self})](${SITE}/${l.prefix}/)`),
   `- [Gameplay trailer (MP4, 69 s)](${SITE}/media/runemoire-gameplay.mp4)`,
-  `- [Privacy](${SITE}/privacy/): only the email left for the launch notice is stored; no cookies or trackers`, '',
+  `- [Privacy](${SITE}/privacy/): only the email left for the launch notice is stored; usage analytics with Microsoft Clarity, without cookies`, '',
   '## Blog', '',
   `- [Blog hub](${SITE}/blog/)${POSTS.length ? '' : ': first posts coming soon'}`,
   ...POSTS.map((p) => `- [${p.title}](${SITE}/blog/${p.slug}/): ${p.desc}`), '',

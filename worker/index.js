@@ -2,12 +2,12 @@
 import { STYLE_HASHES } from './csp.gen.js';
 const CSP = [
   "default-src 'none'",
-  "script-src 'self' https://static.cloudflareinsights.com",
+  "script-src 'self' https://static.cloudflareinsights.com https://www.clarity.ms https://scripts.clarity.ms",
   `style-src 'self' ${STYLE_HASHES}`.trim(),
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://*.clarity.ms https://c.bing.com",
   "media-src 'self'",
   "font-src 'self'",
-  "connect-src 'self' https://cloudflareinsights.com",
+  "connect-src 'self' https://cloudflareinsights.com https://*.clarity.ms https://c.bing.com",
   "manifest-src 'self'",
   "base-uri 'none'",
   "form-action 'self'",
