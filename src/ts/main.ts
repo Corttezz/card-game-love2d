@@ -239,7 +239,7 @@ function notify() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.className = 'msg err'; msg.textContent = D.t.notifyBad; $('input[type=email]', f)?.focus(); return; }
     msg.className = 'msg'; msg.textContent = D.t.sending; btn.disabled = true;
     try {
-      const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), variant: 'v3b', source: 'achievements' }) });
+      const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), variant: f.dataset.variant || 'v3b', source: f.dataset.source || 'achievements' }) });
       const j = await r.json().catch(() => ({}));
       if (r.ok && j.ok) {
         msg.textContent = D.t.notifyOk + ' ';
@@ -248,7 +248,7 @@ function notify() {
         const icon = $<HTMLImageElement>('#ach-icon'); if (icon) icon.src = icon.dataset.on!;
         const toast = $('#toast');
         if (toast) { toast.hidden = false; toast.classList.remove('in'); void toast.offsetWidth; toast.classList.add('in'); setTimeout(() => { toast.classList.remove('in'); setTimeout(() => (toast.hidden = true), 600); }, 4800); }
-        sfx('button-click');
+        if (HAS) sfx('button-click');
       } else { msg.classList.add('err'); msg.textContent = r.status === 429 ? D.t.notifyRate : D.t.notifyBad; }
     } catch { msg.classList.add('err'); msg.textContent = D.t.notifyNet; }
     btn.disabled = false;

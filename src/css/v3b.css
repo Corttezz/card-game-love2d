@@ -146,3 +146,21 @@ body.crt:not(.nf) { overflow: hidden auto; height: auto; min-height: 100%; }
 .about .fine { font: 14px/1.8 'Runic', monospace; margin: 18px 0 0; color: #5a4128; overflow-wrap: anywhere; }
 .about .fine a, .simple .fine a { color: #3b2716; }
 .simple .fine { font: 14px/1.8 'Runic', monospace; margin: 18px 0 0; color: #5a4128; }
+
+/* ===================== blog (só inglês): páginas simples com a moldura do jogo ===================== */
+.blog .crumbs { font: 14px/1.6 'Runic', monospace; color: #5a4128; margin: 0 0 14px; }
+.blog .crumbs a, .blog .prose a, .blog article a { color: #3b2716; }
+.blog .meta { font: 14px/1.6 'Runic', monospace; color: #5a4128; margin: 0 0 14px; }
+.blog .cover { width: 100%; height: auto; margin: 0 0 18px; box-shadow: 0 0 0 4px var(--ink); image-rendering: pixelated; }
+.blog article img:not(.cover) { max-width: 100%; height: auto; }
+.blog .prose h1 { overflow-wrap: anywhere; }
+.blog .prose h3 { font: 16px/1.4 'Runic', monospace; margin: 18px 0 6px; color: var(--ink); }
+.blog .prose ul, .blog .prose ol { font: 17px/1.6 Georgia, 'Times New Roman', serif; color: #3b2a1d; padding-left: 22px; margin: 0 0 12px; }
+.blog .prose blockquote { margin: 0 0 12px; padding-left: 14px; border-left: 4px solid var(--gold-d); }
+.blog .prose code { font-family: ui-monospace, monospace; font-size: 15px; }
+.blog .posts { list-style: none; padding: 0; margin: 0 0 8px; }
+.blog .posts li { padding: 14px 0; border-bottom: 2px solid #0002; }
+.blog .posts h2 { margin: 0 0 4px; }
+.blog .cta { margin: 28px 0 0; padding: 18px 0 0; border-top: 2px solid #0003; }
+.blog .cta .mbtn { display: inline-flex; height: auto; min-height: 44px; padding: 10px 18px; line-height: 1.5; white-space: normal; }
+.blog .foot { margin-top: 26px; }

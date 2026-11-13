@@ -8,6 +8,7 @@ import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import * as esbuild from 'esbuild';
 import { LANGS, renderHome, renderPrivacy, render404, renderUnsub } from './page.mjs';
+import { loadPosts, renderPost, renderHub } from './blog.mjs';
 
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const P = path.join(R, 'public');
@@ -56,6 +57,14 @@ for (const l of LANGS) {
   write(`${base}unsubscribe/index.html`, renderUnsub(T[l.code], l, ctx));
   write(`${base}404.html`, render404(T[l.code], l, ctx));
 }
+// blog (só inglês): posts de content/posts; a amostra de content/sample só na prévia (BLOG_SAMPLE=1)
+const POSTS = loadPosts({ sample: process.env.BLOG_SAMPLE === '1' });
+for (const p of POSTS) write(`blog/${p.slug}/index.html`, renderPost(p, T.en, ctx));
+write('blog/index.html', renderHub(POSTS, T.en, ctx));
+console.log('blog', POSTS.length, 'post(s):', POSTS.map((p) => p.slug).join(', ') || '(vazio)');
+// IndexNow: o arquivo da chave fica na raiz (servido pelo Worker como os outros arquivos)
+const CONF = JSON.parse(fs.readFileSync(path.join(R, 'src/data/config.json'), 'utf8'));
+if (CONF.indexnowKey) write(`${CONF.indexnowKey}.txt`, CONF.indexnowKey);
 const SITE = 'https://runemoire.com';
 // lastmod real: a data do último commit que mexeu no conteúdo da página (nunca o horário do build)
 const gitDay = (...paths) => { try { return execFileSync('git', ['log', '-1', '--format=%cs', '--', ...paths], { cwd: R, encoding: 'utf8' }).trim(); } catch { return ''; } };
@@ -66,7 +75,10 @@ const xurl = (l, s) => {
   const alts = LANGS.map((x) => `<xhtml:link rel="alternate" hreflang="${x.html}" href="${locUrl(x, s)}"/>`).join('') + `<xhtml:link rel="alternate" hreflang="x-default" href="${locUrl(LANGS[0], s)}"/>`;
   return `  <url><loc>${locUrl(l, s)}</loc>${mod ? `<lastmod>${mod}</lastmod>` : ''}${alts}</url>`;
 };
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${LANGS.flatMap((l) => ['', 'privacy/'].map((s) => xurl(l, s))).join('\n')}\n</urlset>\n`);
+// blog: o hub só entra no sitemap quando há post; cada post com a data de atualização do frontmatter
+const blogUrls = POSTS.length ? [`  <url><loc>${SITE}/blog/</loc><lastmod>${POSTS.map((p) => p.updated).sort().pop()}</lastmod></url>`,
+  ...POSTS.map((p) => `  <url><loc>${SITE}/blog/${p.slug}/</loc><lastmod>${p.updated}</lastmod></url>`)] : [];
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${LANGS.flatMap((l) => ['', 'privacy/'].map((s) => xurl(l, s))).concat(blogUrls).join('\n')}\n</urlset>\n`);
 // /unsubscribe/ fica liberado no robots para o Google ler o noindex da página
 write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
 write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0c0a10', theme_color: '#0c0a10', icons: [192, 512].map((s) => ({ src: `/img/brand/seal_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));
