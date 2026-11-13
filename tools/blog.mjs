@@ -13,7 +13,7 @@ const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG = JSON.parse(fs.readFileSync(path.join(R, 'src/data/config.json'), 'utf8'));
 const S = CONFIG.site;
 const EN = LANGS[0];
-const SEAL = `${S}/img/brand/seal_512.png`;
+const SEAL = `${S}/img/brand/icon_512.png`;
 
 // ---------------- leitura ----------------
 function front(src, file) {

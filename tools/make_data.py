@@ -150,7 +150,7 @@ def main(inv_path):
     for s_ in (180, 192, 512):
         save(seal_icon(s_, (11, 10, 13, 255)), f"img/brand/seal_{s_}.png", optimize=True)
     seal_icon(48).save(os.path.join(PUB, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
-    brand["icon"] = "/img/brand/seal_192.png"
+    brand["icon"] = "/img/brand/icon_192.png"
     data["brand"] = brand
     data["scene"] = {"menu": copy_png("assets/sprites/scenes/menu.png", "img/scene/menu.png", th=False)}
 
