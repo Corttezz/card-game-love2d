@@ -9,3 +9,5 @@ ENV_FILE="${CF_ENV_FILE:-$HOME/.config/iqnorth/cloudflare.env}"
 node tools/build.mjs
 set -a; . "$ENV_FILE"; set +a
 npx wrangler deploy 2>&1 | grep -v -i "token"
+# IndexNow: só as URLs do blog novas ou alteradas (a chave é pública, servida em /<chave>.txt)
+node tools/indexnow.mjs || echo "indexnow falhou (o deploy está no ar)"

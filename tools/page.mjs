@@ -18,8 +18,8 @@ export const LANGS = [
   { code: 'fr', prefix: 'fr', html: 'fr', self: 'Français', short: 'FR', og: 'fr_FR' },
   { code: 'de', prefix: 'de', html: 'de', self: 'Deutsch', short: 'DE', og: 'de_DE' },
 ];
-const home = (l) => (l.prefix ? `/${l.prefix}/` : '/');
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const home = (l) => (l.prefix ? `/${l.prefix}/` : '/');
+export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (s, v = {}) => String(s ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
 const loc = (o, l) => (o && typeof o === 'object' ? o[l.code] ?? o.en : o);
 const ui = (l, k) => UI[l.code]?.[k] ?? UI.en[k];
@@ -37,23 +37,23 @@ const cardSrc = (l, id) => `/img/gamecards/${l.code}/${id}.png`;
 
 // o trailer de gameplay (o mesmo do painel Jogar, no site desde a v1): duração do arquivo e data de publicação
 const TRAILER = { src: '/media/runemoire-gameplay.mp4', poster: '/media/runemoire-gameplay.jpg', uploadDate: '2026-11-10', duration: 'PT1M9S' };
-const OG = '/img/og/og.png'; // uma arte só nos 5 idiomas (eram 5 cópias idênticas)
+export const OG = '/img/og/og.png'; // uma arte só nos 5 idiomas (eram 5 cópias idênticas)
 const LANG_TAGS = LANGS.map((x) => x.html);
 const cardName = (G, l, id) => { const c = (G.cards || []).find((x) => x.id === id); return c ? loc(c.name, l) : 'Runemoire'; };
 // o CSS vai embutido no <head> (sem pedido bloqueante); o hash dele entra no style-src da CSP (worker/csp.gen.js)
 const styleTag = (ctx) => (ctx.CSSTEXT != null ? `<style>${ctx.CSSTEXT}</style>` : `<link rel="stylesheet" href="${ctx.CSS}">`);
 
-function head(t, l, ctx, { title, desc, path: p, noindex = false, script = true, preload = true }) {
+export function head(t, l, ctx, { title, desc, path: p, noindex = false, script = true, preload = true, alts: withAlts = true, ogType = 'website', ogImage = OG, extra = '' }) {
   const url = CONFIG.site + p;
-  const alts = noindex ? '' : LANGS.map((x) => `<link rel="alternate" hreflang="${x.html}" href="${CONFIG.site}${home(x)}${p.replace(home(l), '')}">`).join('') +
+  const alts = noindex || !withAlts ? '' : LANGS.map((x) => `<link rel="alternate" hreflang="${x.html}" href="${CONFIG.site}${home(x)}${p.replace(home(l), '')}">`).join('') +
     `<link rel="alternate" hreflang="x-default" href="${CONFIG.site}/${p.replace(home(l), '')}">`;
   return `<!doctype html><html lang="${l.html}" class="no-js"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title><meta name="description" content="${esc(desc)}">
 ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" href="${url}">${alts}`}
 <meta name="theme-color" content="#0c0a10"><meta name="color-scheme" content="dark">
-<meta property="og:type" content="website"><meta property="og:site_name" content="Runemoire"><meta property="og:title" content="${esc(title)}">
-<meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${CONFIG.site}${OG}">
+<meta property="og:type" content="${ogType}"><meta property="og:site_name" content="Runemoire"><meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${/^https?:/.test(ogImage) ? ogImage : CONFIG.site + ogImage}">${extra}
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="${l.og}"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/seal_32.png"><link rel="apple-touch-icon" href="/img/brand/seal_180.png">
 <link rel="manifest" href="/site.webmanifest">
@@ -135,7 +135,7 @@ function about(t, l, G) {
 <h2>${esc(t.trailerPlay)}</h2>
 <video controls preload="none" playsinline poster="${TRAILER.poster}" width="1280" height="720" aria-label="${esc(t.trailerPlay)}"><source src="${TRAILER.src}" type="video/mp4"></video>
 <h2>${esc(t.faqTitle)}</h2>${faq}
-<p class="fine">${dc} · <a href="${home(l)}privacy/">${esc(t.privacy)}</a> · <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>
+<p class="fine">${dc} · <a href="/blog/">Blog</a> · <a href="${home(l)}privacy/">${esc(t.privacy)}</a> · <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>
 <p class="fine langs">${langs}</p>
 </div></main>`;
 }
