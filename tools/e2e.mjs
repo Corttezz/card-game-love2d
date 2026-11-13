@@ -40,8 +40,9 @@ const open = async (p, w = 1440, h = 900, skip = true) => {
 const LBL = { '/': 'PLAY', '/pt/': 'JOGAR', '/es/': 'JUGAR', '/fr/': 'JOUER', '/de/': 'SPIELEN' };
 for (const [p, word] of Object.entries(LBL)) for (const w of [1440, 390]) {
   const { ctx, pg } = await open(p, w, w < 600 ? 844 : 900);
-  const noScroll = await pg.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1 && document.documentElement.scrollWidth <= innerWidth + 1);
-  const live = await pg.evaluate(() => document.documentElement.classList.contains('in-menu') && !document.getElementById('main').hasAttribute('inert'));
+  // a cena ocupa a primeira tela inteira; o texto (SEO) só começa depois dela, sem rolagem lateral
+  const noScroll = await pg.evaluate(() => scrollY === 0 && document.documentElement.scrollWidth <= innerWidth + 1 && document.getElementById('main').getBoundingClientRect().top >= innerHeight - 1);
+  const live = await pg.evaluate(() => document.documentElement.classList.contains('in-menu') && !document.getElementById('title').hasAttribute('inert'));
   ok(`pular com clique/tecla e chegar ao título ${p} ${w}`, live && (await pg.textContent('.menu')).includes(word) && noScroll, word);
   await ctx.close();
 }
@@ -55,8 +56,14 @@ for (const [p, word] of Object.entries(LBL)) for (const w of [1440, 390]) {
   }
   await pg.click('.menu a[data-open="collection"]', { force: true });
   ok('coleção mostra 4 cartas do jogo e 3 telas', (await pg.$$('#collection .cards img')).length === 4 && (await pg.$$('#collection .screens img')).length === 3);
-  ok('fundo inerte com painel aberto', await pg.evaluate(() => document.getElementById('main').hasAttribute('inert')));
+  ok('fundo inerte com painel aberto', await pg.evaluate(() => document.getElementById('title').hasAttribute('inert')));
   await pg.keyboard.press('Escape');
+  // texto visível depois da cena: H1, trailer em <video>, link externo; o "Me avise" de lá abre o painel
+  await pg.evaluate(() => document.getElementById('main').scrollIntoView());
+  ok('texto depois da cena visível com H1 e trailer', await pg.isVisible('#main h1') && await pg.isVisible('#main video') && !!(await pg.$('#main a[href="https://dcsolutions.app/"]')));
+  await pg.click('#main a[data-open="achievements"]');
+  ok('Me avise do texto abre o painel', await pg.isVisible('#achievements.open'));
+  await pg.keyboard.press('Escape'); await pg.evaluate(() => scrollTo(0, 0));
   await pg.click('.menu a[data-open="play"]', { force: true }); await pg.click('.vplay'); await pg.waitForTimeout(800);
   ok('trailer só carrega ao clicar', !!(await pg.$('#play video')));
   await pg.keyboard.press('Escape');

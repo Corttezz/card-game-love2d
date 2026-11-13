@@ -1,8 +1,9 @@
 // Worker do runemoire.com: www -> raiz (301), cabeçalhos de segurança, cache e a API do "Me avise".
+import { STYLE_HASHES } from './csp.gen.js';
 const CSP = [
   "default-src 'none'",
   "script-src 'self' https://static.cloudflareinsights.com",
-  "style-src 'self'",
+  `style-src 'self' ${STYLE_HASHES}`.trim(),
   "img-src 'self' data: blob:",
   "media-src 'self'",
   "font-src 'self'",
@@ -117,7 +118,11 @@ export default {
       url.protocol = 'https:';
       return Response.redirect(url.toString(), 301);
     }
+    // a prévia em workers.dev também só em HTTPS (o host já manda noindex e canonical para o domínio)
+    if (url.protocol === 'http:' && url.hostname.endsWith('.workers.dev')) { url.protocol = 'https:'; return Response.redirect(url.toString(), 301); }
     const p = url.pathname;
+    // /index.html e /pt/index.html vão direto para a pasta, num salto só e permanente
+    if (/(^|\/)index\.html$/.test(p)) { url.pathname = p.replace(/index\.html$/, '').replace(/\/{2,}/g, '/') || '/'; return Response.redirect(url.toString(), 301); }
     if (p === '/api/notify') return notify(req, env);
     if (p === '/api/unsubscribe') return unsubscribe(req, env);
     if (p === '/api/view') return view(req, env);
@@ -125,6 +130,14 @@ export default {
 
     let r = await env.ASSETS.fetch(req);
     let status = r.status;
+    // a barra final (auto-trailing-slash) vem como 307 dos assets: vira 301, com destino absoluto e sem barra dupla
+    if (status === 307 || status === 308) {
+      const to = new URL(r.headers.get('Location') || '/', url);
+      to.pathname = to.pathname.replace(/\/{2,}/g, '/');
+      const red = new Response(null, { status: 301, headers: { Location: to.toString() } });
+      for (const [k, v] of Object.entries(SEG)) red.headers.set(k, v);
+      return red;
+    }
     if (status === 404) {
       const seg = p.split('/')[1];
       const nf = PREFIX[seg] ? `/${seg}/404` : '/404';
@@ -133,6 +146,8 @@ export default {
     }
     const res = new Response(r.body, { status, headers: r.headers });
     for (const [k, v] of Object.entries(SEG)) res.headers.set(k, v);
+    const ct = res.headers.get('Content-Type') || '';
+    if (/^text\/html/i.test(ct) && !/charset/i.test(ct)) res.headers.set('Content-Type', 'text/html; charset=utf-8');
     if (env.PREVIEW === '1') res.headers.set('X-Robots-Tag', 'noindex, nofollow');
     if (p.startsWith('/assets/')) res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     else if (/^\/(img|media|fonts)\//.test(p)) res.headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=604800');
