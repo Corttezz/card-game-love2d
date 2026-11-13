@@ -154,6 +154,8 @@ export default {
     else if (/^\/(img|media|fonts)\//.test(p)) res.headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=604800');
     else if (/\.(png|svg|ico|xml|txt|webmanifest|js|css)$/.test(p)) res.headers.set('Cache-Control', 'public, max-age=86400');
     else res.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+    // 404 nunca fica um dia no cache (um arquivo novo, como /llms.txt, aparece no próximo minuto)
+    if (status === 404) res.headers.set('Cache-Control', 'public, max-age=60');
     return res;
   },
 };
