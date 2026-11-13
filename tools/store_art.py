@@ -301,66 +301,14 @@ def build():
 
 
 def community_icon():
-    """Selo de cera da UI (seal_common, 32px) + a inicial do logotipo, montados
-    numa grade NATIVA de 46px e só então x4 — o pixel do selo e o da letra
-    saem do MESMO tamanho (selo x6 com letra x4 lia como duas resoluções)."""
-    N = 46
-    seal = Image.open(os.path.join(ROOT, "assets/sprites/ui/seal_common.png")).convert("RGBA")
-    seal = seal.crop(seal.getbbox())
-    base = Image.new("RGBA", (N, N), (26, 16, 14, 255))
-    k = max(1, (N - 2) // seal.width)
-    seal = seal.resize((seal.width * k, seal.height * k), Image.NEAREST)
-    base.alpha_composite(seal, ((N - seal.width) // 2, (N - seal.height) // 2))
-    g = glyph_mask(TITLE[0])
-    g = np.kron(g, np.ones((3, 2), bool))
-    pad = 2
-    m = np.zeros((g.shape[0] + 2 * pad, g.shape[1] + 2 * pad), bool)
-    m[pad:-pad, pad:-pad] = g
-    o1 = dilate(m) & ~m
-    rgba = np.zeros(m.shape + (4,), np.uint8)
-    rgba[o1] = INK + (255,)
-    ys, xs = np.nonzero(m)
-    for y, x in zip(ys, xs):
-        t = (y - ys.min()) / max(1, ys.max() - ys.min())
-        c = GOLD[min(len(GOLD) - 1, int(t * len(GOLD)))]
-        if not m[y - 1, x]:
-            c = tuple(min(255, v + 34) for v in c)
-        elif not m[y + 1, x]:
-            c = tuple(int(v * 0.62) for v in c)
-        rgba[y, x] = c + (255,)
-    gl = Image.fromarray(rgba)
-    gl = gl.crop(gl.getbbox())
-    base.alpha_composite(gl, ((N - gl.width) // 2, (N - gl.height) // 2))
-    return base.resize((184, 184), Image.NEAREST)
-
-
-# ---------------------------------------------------------------------------
-# SCREENSHOTS 1920x1080 DO JOGO REAL
-# ---------------------------------------------------------------------------
-# (arquivo final, args do love, env extra, arquivo gerado no save dir)
-# TOOL_WINDOW abre a janela de captura em 1920x1080 antes do tool;
-# TOOL_LOCALE / *_LOCALE escolhem o idioma ({loc}).
-SHOTS = [
-    ("01_menu", ["screenshot_menu_v2"], {}, "menu_v2_osd.png"),
-    ("02_class_select", ["screenshot_class_select"],
-     {"CS_SIZES": "1920x1080"}, "class_select_1920x1080_pick.png"),
-    ("03_road_battle", ["test_one", "screenshot_damage_preview"],
-     {"PREVIEW_W": "1920", "PREVIEW_H": "1080", "PREVIEW_LOCALE": "{loc}"},
-     "dmgprev_1920x1080_{loc}_sel3.png"),
-    ("04_boss_room", ["screenshot_enemy_scene", "3_boss"],
-     {"ENEMY_SCENE_VIRTUAL": "1920x1080", "ENEMY_SCENE_CLEAN": "1",
-      "ENEMY_SCENE_INTENT": "kind=strong,perHit=24,hits=1", "TOOL_WINDOW": ""},
-     "enemy_scene_3_boss_intent_strong_1920x1080.png"),
-    ("05_shop", ["screenshot_shop"], {"SHOP_LOCALE": "{loc}"},
-     "shop_1_repouso.png"),
-    ("06_road_fork", ["screenshot_worldroad", "b1_forkhover"],
-     {"STORE_NOTOPBAR": "1"}, "worldroad_screenshot.png"),
-    ("07_collection", ["screenshot_collection", "warrior_bash"],
-     {"STORE_REVEAL": "1"}, "collection_grid.png"),
-    ("08_victory", ["test_one", "screenshot_end_screens", "{loc}"], {},
-     "end_victory_{loc}_1920x1080.png"),
-]
-
+    """Ícone da comunidade 184x184: o ícone do jogo com acabamento (rodada 3,
+    aprovado pelo Daniel em 13/11/2026), assets/branding/icon_1024.png reduzido.
+    A Steam mostra quadrado: os cantos arredondados viram a cor da borda do ícone."""
+    src = Image.open(os.path.join(ROOT, "assets/branding/icon_1024.png")).convert("RGBA")
+    edge = src.getpixel((src.width // 2, src.height // 40))[:3]
+    base = Image.new("RGBA", src.size, edge + (255,))
+    base.alpha_composite(src)
+    return base.convert("RGB").resize((184, 184), Image.LANCZOS)
 
 def shots(locales=("en", "pt_BR")):
     for loc in locales:
