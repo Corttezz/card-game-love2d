@@ -44,26 +44,30 @@ game.reduced = osReduced.matches;
 // ?manual: o relógio não anda sozinho; as capturas avançam o jogo em passos de 1/60 s (como a ferramenta do jogo)
 const MANUAL = new URLSearchParams(location.search).has('manual');
 
-function resize() { game.resize(innerWidth, innerHeight); }
+function resize() { game.resize(innerWidth, innerHeight); wake(); }
 resize();
 addEventListener('resize', resize);
 addEventListener('pointermove', (e) => { game.mouse = [e.clientX, e.clientY]; }, { passive: true });
 game.mouse = [innerWidth / 2, innerHeight / 2];
 
-let raf = 0;
+// o loop dorme enquanto o computador desligado está parado (o jogo já não redesenha nesse estado) e acorda no clique,
+// tecla, mudança de tamanho, volta da aba ou fim da carga dos shaders
+let raf = 0, sleeping = false;
 function loop(now: number) {
-  raf = requestAnimationFrame(loop);
   if (MANUAL) game.draw(); else game.frame(now);
   syncDom();
+  if (!MANUAL && game.stillKey) { sleeping = true; return; }
+  raf = requestAnimationFrame(loop);
 }
-function start() { cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); }
+function start() { sleeping = false; cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); }
+function wake() { if (sleeping && !document.hidden) { game.last = 0; start(); } }
 // aba oculta: o loop para (sem trabalho de fundo); volta ao aparecer
-document.addEventListener('visibilitychange', () => { if (document.hidden) cancelAnimationFrame(raf); else if (HAS && raf) start(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) cancelAnimationFrame(raf); else if (HAS && raf) { game.last = 0; start(); } });
 
 // ---------------- carga: o computador primeiro; shaders e o resto depois da carga (fora do caminho da primeira pintura) ----------------
 let restP: Promise<void> | null = null;
 function loadRest() {
-  if (!restP) restP = game.loadRest().then(() => { game.initGL(); game.initGLRest(); });
+  if (!restP) restP = game.loadRest().then(() => { game.initGL(); game.initGLRest(); wake(); });
   return restP;
 }
 if (HAS) game.loadIntro().then(() => { start(); });
@@ -77,6 +81,7 @@ if (HAS) addEventListener('load', () => {
 (window as any).__rmPress = () => press();
 async function press() {
   if (D.nf || !HAS) return;
+  wake();
   if (game.mode === 'intro' && game.intro.phase === 'off') {
     game.initGL();
     if (game.reduced) { await loadRest(); game.skipAll(); return; }
