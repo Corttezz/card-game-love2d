@@ -79,6 +79,23 @@ const xurl = (l, s) => {
 const blogUrls = POSTS.length ? [`  <url><loc>${SITE}/blog/</loc><lastmod>${POSTS.map((p) => p.updated).sort().pop()}</lastmod></url>`,
   ...POSTS.map((p) => `  <url><loc>${SITE}/blog/${p.slug}/</loc><lastmod>${p.updated}</lastmod></url>`)] : [];
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${LANGS.flatMap((l) => ['', 'privacy/'].map((s) => xurl(l, s))).concat(blogUrls).join('\n')}\n</urlset>\n`);
+// /llms.txt: resumo do jogo e das páginas principais para assistentes de IA (texto puro, inglês)
+write('llms.txt', [
+  '# Runemoire', '',
+  '> Runemoire is a pixel-art roguelike deckbuilder for PC (Windows, Steam page coming soon) by Daniel Cortez / DC Solutions. Formerly known as Grimoire.', '',
+  'Pick the Warrior, Mage or Rogue, walk a cursed road of six acts and fight with a deck you build along the way. Stack passive jokers into chain combos, read each enemy’s intent and break the signature curse of every boss, then push into Endless and climb Seals 1 to 10.', '',
+  `Facts: 3 classes, 6 acts and biomes, 42 creatures, ${GAME.cardCounts?.total ?? 145} cards, 37 achievements, 5 languages (English, Brazilian Portuguese, Spanish, French, German). Release date and price: not announced.`, '',
+  '## Key pages', '',
+  `- [Home (English)](${SITE}/): the game's own title screen, with a text summary, the gameplay trailer and an FAQ below it`,
+  ...LANGS.slice(1).map((l) => `- [Home (${l.self})](${SITE}/${l.prefix}/)`),
+  `- [Gameplay trailer (MP4, 69 s)](${SITE}/media/runemoire-gameplay.mp4)`,
+  `- [Privacy](${SITE}/privacy/): only the email left for the launch notice is stored; no cookies or trackers`, '',
+  '## Blog', '',
+  `- [Blog hub](${SITE}/blog/)${POSTS.length ? '' : ': first posts coming soon'}`,
+  ...POSTS.map((p) => `- [${p.title}](${SITE}/blog/${p.slug}/): ${p.desc}`), '',
+  '## Contact', '',
+  `- Press and questions: ${CONF.contact}`, '',
+].join('\n'));
 // /unsubscribe/ fica liberado no robots para o Google ler o noindex da página
 write('robots.txt', `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);
 write('site.webmanifest', JSON.stringify({ name: 'Runemoire', short_name: 'Runemoire', start_url: '/', display: 'standalone', background_color: '#0c0a10', theme_color: '#0c0a10', icons: [192, 512].map((s) => ({ src: `/img/brand/seal_${s}.png`, sizes: `${s}x${s}`, type: 'image/png' })) }));

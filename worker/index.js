@@ -148,7 +148,7 @@ export default {
     const res = new Response(r.body, { status, headers: r.headers });
     for (const [k, v] of Object.entries(SEG)) res.headers.set(k, v);
     const ct = res.headers.get('Content-Type') || '';
-    if (/^text\/html/i.test(ct) && !/charset/i.test(ct)) res.headers.set('Content-Type', 'text/html; charset=utf-8');
+    if (/^text\/(html|plain)/i.test(ct) && !/charset/i.test(ct)) res.headers.set('Content-Type', ct.split(';')[0] + '; charset=utf-8');
     if (env.PREVIEW === '1') res.headers.set('X-Robots-Tag', 'noindex, nofollow');
     if (p.startsWith('/assets/')) res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     else if (/^\/(img|media|fonts)\//.test(p)) res.headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=604800');
