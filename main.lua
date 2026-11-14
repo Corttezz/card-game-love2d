@@ -66,10 +66,34 @@ local currentState = "boot"
 local smokeSystem
 local audioSystem
 
+local function drawRunScreen()
+    GameplayScene.draw()
+    if topBar then
+        local IF = require("src.ui.InputFocus")
+        IF.push(IF.CHROME)
+        topBar:draw()
+        IF.pop()
+    end
+end
+
 local function startGame(classId, seal)
+    local ActIntro = require("src.scenes.ActIntroScene")
+    local introUnder
+    if ActIntro.available(1) then
+        local prev = currentState
+        introUnder = ActIntro.snapshot(function()
+            require("src.ui.UiScale").reset()
+            require("src.ui.UiScale").setChromeScaled(true)
+            if prev == "classSelection" and classSelectionScreen then
+                classSelectionScreen:draw()
+            elseif prev == "menu" and menu then
+                menu:draw()
+            end
+        end)
+    end
     currentState = "playing"
 
-    if FlashShader and FlashShader.trigger then FlashShader.trigger(0.5, 0.4) end
+    if FlashShader and FlashShader.trigger and not introUnder then FlashShader.trigger(0.5, 0.4) end
 
     game:startNewRun(classId, { seal = seal or 0 })
 
@@ -77,11 +101,10 @@ local function startGame(classId, seal)
     game:checkpointRun()
     gameUI:show()
     classSelectionScreen:hide()
-    local ActIntro = require("src.scenes.ActIntroScene")
     if ActIntro.start(1, function()
             currentState = "playing"
             GameplayScene.requestArrival()
-        end) then
+        end, { under = introUnder, after = drawRunScreen }) then
         currentState = "actIntro"
     else
         GameplayScene.requestArrival()
@@ -260,6 +283,24 @@ local function onNodeChosen(node, index)
     end
 end
 
+local function drawTopBar()
+    if not topBar then return end
+    local IF = require("src.ui.InputFocus")
+    IF.push(IF.CHROME)
+    topBar:draw()
+    IF.pop()
+end
+
+local function drawForkScreen()
+    if require("src.ui.WorldRoad").isForkActive() then
+        GameplayScene.drawWorldOnly()
+    else
+        GameplayScene.draw()
+        mapScreen:draw()
+    end
+    drawTopBar()
+end
+
 showMapSelection = function()
     game.runManager:journalEnd({
         hp = game.player and game.player.health,
@@ -268,6 +309,20 @@ showMapSelection = function()
     })
 
     local actStatus
+    local ActIntro = require("src.scenes.ActIntroScene")
+    local run = game.runManager.currentRun
+    local introUnder
+    if run and not game.runManager:getPendingNodes()
+       and (run.floorInAct or 0) + 1 > require("src.systems.MapManager").FLOORS_PER_ACT
+       and (run.actNumber or 1) < (require("src.core.Config").TotalActs or 3)
+       and ActIntro.available((run.actNumber or 1) + 1) then
+        local from = currentState
+        introUnder = ActIntro.snapshot(function()
+            GameplayScene.drawWorldOnly()
+            if from == "cardReward" and cardRewardScreen then cardRewardScreen:draw() end
+            drawTopBar()
+        end)
+    end
     if not game.runManager:getPendingNodes() then
         local status = game.runManager:advanceFloorInAct()
         actStatus = status
@@ -278,7 +333,7 @@ showMapSelection = function()
         game.runManager:generateNextNodes(3)
     end
     local pending = game.runManager:getPendingNodes()
-    local GameplayScene = require("src.scenes.GameplayScene")
+    run = game.runManager.currentRun
     local WorldRoad = require("src.ui.WorldRoad")
     if GameplayScene.SCENE_MODE == "worldroad"
        and WorldRoad.showFork(pending, onNodeChosen) then
@@ -288,10 +343,9 @@ showMapSelection = function()
         currentState = "mapSelection"
     end
     setRunStage("fork")
-    if actStatus == "act_complete" then
-        local run = game.runManager.currentRun
-        local ActIntro = require("src.scenes.ActIntroScene")
-        if run and ActIntro.start(run.actNumber, function() currentState = "mapSelection" end) then
+    if actStatus == "act_complete" and run then
+        if ActIntro.start(run.actNumber, function() currentState = "mapSelection" end,
+                { under = introUnder, after = drawForkScreen }) then
             currentState = "actIntro"
         end
     end
@@ -1489,7 +1543,8 @@ function love.update(dt)
     end
     FloatingText.update(dt)
     require("src.ui.CoinBurst").update(dt)
-    require("src.ui.AchievementToast").update(dt); require("src.systems.SteamBridge").update()
+    if currentState ~= "actIntro" then require("src.ui.AchievementToast").update(dt) end
+    require("src.systems.SteamBridge").update()
     require("src.systems.Tutorial").update(dt, currentState, game)
     if audioSystem then audioSystem:update(dt) end
     do
@@ -1640,17 +1695,19 @@ function love.draw()
         IF.push(IF.SCENE)
     end
 
-    require("src.ui.StatusTooltip").draw()
+    if currentState ~= "actIntro" then
+        require("src.ui.StatusTooltip").draw()
 
-    local fxScaled = currentState ~= "boot"
-    if fxScaled then require("src.ui.UiScale").begin() end
-    CardParticles.draw()
+        local fxScaled = currentState ~= "boot"
+        if fxScaled then require("src.ui.UiScale").begin() end
+        CardParticles.draw()
 
-    require("src.ui.CoinBurst").draw()
-    FloatingText.draw()
-    if fxScaled then require("src.ui.UiScale").finish() end
+        require("src.ui.CoinBurst").draw()
+        FloatingText.draw()
+        if fxScaled then require("src.ui.UiScale").finish() end
 
-    FlashShader.draw()
+        FlashShader.draw()
+    end
 
     ScreenShake.pop()
 
@@ -1704,7 +1761,7 @@ function love.draw()
     end
     IF.push("tutorialTip"); require("src.systems.Tutorial").draw(); IF.pop()
 
-    require("src.ui.AchievementToast").draw()
+    if currentState ~= "actIntro" then require("src.ui.AchievementToast").draw() end
     require("src.systems.CheatMode").draw()
 
     require("src.ui.NavCursor").draw()

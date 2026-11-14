@@ -318,6 +318,11 @@ function CRTShader.beginScene()
     love.graphics.clear(0, 0, 0, 1)
 end
 
+function CRTShader.lastScene()
+    if not shader or not enabled or not sceneCanvas then return nil end
+    return sceneCanvas
+end
+
 function CRTShader.endScene(target)
     if not shader or not enabled then return end
     love.graphics.setCanvas(target)

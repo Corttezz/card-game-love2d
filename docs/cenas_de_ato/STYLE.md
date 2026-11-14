@@ -24,6 +24,10 @@ Pedido do Daniel (14/11): "mini cenas antes de começar cada ato ... uma cena to
 - A música do ato entra em fade de 2,5 s no início da cena (a trilha nova de cada ato).
 - 2–3 SFX ambiente por cena (ElevenLabs sound-generation): a cama do bioma (vento no capim e nas folhas no ato 1), um detalhe vivo (corvos ao longe) e um "selo" suave quando o título termina de escrever (um sino ou harpa curto e grave).
 
+## Transição no jogo (um movimento só, 14/11/2026)
+Ordem: a tela de onde se vem (recompensas do chefe, ou menu/seleção de classe na run nova) escurece em 0,6 s (retrato tirado na hora, `ActIntro.snapshot`) → a cena sobe do preto com o ambiente do bioma → a música do ato entra a partir de 1 s (`ActIntro.MUSIC_AT`; o MusicDirector segura o silêncio antes) → título letra a letra a partir de 1,5 s e o sino no fim do nome → o detalhe vivo (corvos, coruja etc.) em 4,3 s, longe do sino → no fim a cena se funde direto na tela seguinte (encruzilhada ou início da estrada), sem passar pelo preto. Pular continua valendo (o fim vira uma fusão de 0,35 s); entrada e os primeiros 0,25 s ignoram clique, tecla e botão (o clique que fechou as recompensas não pula a cena). Durante a cena não aparecem partículas, textos flutuantes nem o flash de início de run.
+Captura: `lovec . test_one record_act_transition <0..6>` (0 = run nova; N = chefe do ato N até a encruzilhada do N+1; 6 = fim do jogo) e `python tools/act_transition_video.py <pasta> <saida.mp4>` (vídeo com o som remontado das fontes do jogo e um relatório de pretos, cortes secos e entradas de som).
+
 ## Regras de jogo
 - Aparece ao começar o ato 1 (nova run) e depois do chefe de cada ato, antes do próximo.
 - Opção "Cenas de abertura de ato" (aba Vídeo, ligada por padrão; a aba Jogo já está no limite de 6 linhas). Desligada, ou se a arte falhar ao carregar: a cena não aparece e o jogo segue direto. Com `reducedMotion`, a cena aparece parada (sem deriva da câmera, folhas e poeira).

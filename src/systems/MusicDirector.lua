@@ -159,6 +159,12 @@ function MusicDirector.pick(state, run, nodeType, inHall, introPlaying)
     end
     if state == "roundEval" then return nil end
 
+    if state == "actIntro" then
+        local okAI, AI = pcall(require, "src.scenes.ActIntroScene")
+        if okAI and AI.holdsMusic and AI.holdsMusic() then return MusicDirector.SILENCE end
+        return MusicDirector.actTrack(run)
+    end
+
     if state == "rest" then return "musicRest" end
 
     if state == "mapSelection" and MusicDirector.forkOffersBoss(run) then

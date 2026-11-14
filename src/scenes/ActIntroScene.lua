@@ -11,6 +11,8 @@ ActIntro.MARGIN = 12
 ActIntro.DRIFT = 9
 ActIntro.TITLE_AT, ActIntro.CPS = 1.5, 16
 ActIntro.SKIP_GRACE = 0.25
+ActIntro.LEAD = 0.6
+ActIntro.MUSIC_AT = 1.0
 
 local DATA
 local cache = {}
@@ -128,12 +130,57 @@ local function initParticles(D)
     S.fog2 = D.fog2 and makeFog(D.fog2, 8.7) or nil
 end
 
-function ActIntro.start(act, onDone)
+function ActIntro.snapshot(drawFn)
+    local g = love.graphics
+    local okL, last = pcall(function() return require("src.ui.CRTShader").lastScene() end)
+    if okL and last then
+        local okC, cv = pcall(function()
+            local c = g.newCanvas(last:getDimensions())
+            local prev = g.getCanvas()
+            g.push("all")
+            g.setCanvas(c)
+            g.clear(0, 0, 0, 1)
+            g.origin()
+            g.setShader()
+            g.setBlendMode("replace")
+            g.setColor(1, 1, 1, 1)
+            g.draw(last, 0, 0)
+            g.pop()
+            g.setCanvas(prev)
+            return c
+        end)
+        if okC and cv then return cv end
+    end
+    if not drawFn then return nil end
+    local ok, cv = pcall(function()
+        local W, H = g.getDimensions()
+        local c = g.newCanvas(W, H)
+        local prev = g.getCanvas()
+        g.push("all")
+        g.setCanvas(c)
+        g.clear(0, 0, 0, 1)
+        g.origin()
+        g.setColor(1, 1, 1, 1)
+        drawFn()
+        g.pop()
+        g.setCanvas(prev)
+        return c
+    end)
+    if not ok then
+        Debug.warn("[ActIntro] snapshot falhou: " .. tostring(cv))
+        return nil
+    end
+    return cv
+end
+
+function ActIntro.start(act, onDone, opts)
     if not ActIntro.available(act) then return false end
+    opts = opts or {}
     local ok, err = pcall(function()
         local A = load(act)
-        S = { active = true, act = act, A = A, D = A.D, t = 0, onDone = onDone, played = {}, chimed = false,
-              still = reducedMotion() }
+        local lead = opts.under and ActIntro.LEAD or 0
+        S = { active = true, act = act, A = A, D = A.D, t = -lead, lead = lead, under = opts.under,
+              after = opts.after, onDone = onDone, played = {}, chimed = false, still = reducedMotion() }
         registerSounds(A.D)
         initParticles(A.D)
         local kicker = I18n.t("act_intro.kicker", { n = roman(act) }, "ACT " .. roman(act))
@@ -151,6 +198,7 @@ end
 
 function ActIntro.isActive() return S.active end
 function ActIntro.time() return S.t or 0 end
+function ActIntro.holdsMusic() return S.active and (S.t or 0) < ActIntro.MUSIC_AT end
 
 local function finish()
     if not S.active then return end
@@ -160,7 +208,6 @@ local function finish()
         if src and src.stop and S.loops and S.loops[code] then pcall(src.stop, src) end
     end
     S = { active = false }
-    if audio and audio.fadeGroup then pcall(audio.fadeGroup, audio, "ambient", 0, 0.6) end
     if cb then cb() end
 end
 ActIntro.finish = finish
@@ -189,6 +236,8 @@ function ActIntro.update(dt)
     if not S.active then return end
     S.t = S.t + dt
     local t = S.t
+    if t < 0 then return end
+    if S.under then S.under = nil end
     local audio = _G.audioSystem
     S.loops = S.loops or {}
     for _, s in ipairs(S.D.sfx or {}) do
@@ -431,10 +480,27 @@ local function drawTitle(W, H, a)
     g.setColor(1, 1, 1, 1)
 end
 
+local function drawLead(W, H)
+    local g = love.graphics
+    local k = math.max(0, math.min(1, 1 + S.t / math.max(1e-6, S.lead)))
+    k = k * k * (3 - 2 * k)
+    g.push("all")
+    g.setColor(0, 0, 0, 1)
+    g.rectangle("fill", 0, 0, W, H)
+    if S.under then
+        g.setColor(1, 1, 1, 1)
+        g.draw(S.under, 0, 0, 0, W / S.under:getWidth(), H / S.under:getHeight())
+    end
+    g.setColor(0, 0, 0, k)
+    g.rectangle("fill", 0, 0, W, H)
+    g.pop()
+end
+
 function ActIntro.draw()
     if not S.active then return end
     local g = love.graphics
     local W, H = g.getDimensions()
+    if S.t < 0 then return drawLead(W, H) end
     local s, vw, vh = ensureCanvas(W, H)
     local prev = g.getCanvas()
     g.push("all")
@@ -445,12 +511,21 @@ function ActIntro.draw()
     g.pop()
     g.setCanvas(prev)
     local a = alphaAt(S.t)
+    local endAt = S.skipAt and (S.skipAt + 0.35) or ActIntro.DURATION
+    local outLen = S.skipAt and 0.35 or ActIntro.FADE_OUT
+    local cross = S.after and S.t > endAt - outLen
     g.push("all")
     g.setColor(0, 0, 0, 1)
     g.rectangle("fill", 0, 0, W, H)
+    if cross then
+        g.push("all")
+        local okA, errA = pcall(S.after)
+        g.pop()
+        if not okA then S.after = nil; Debug.warn("[ActIntro] destino: " .. tostring(errA)) end
+    end
     local cw, ch = canvas:getDimensions()
     local k = math.max(W / cw, H / ch)
-    g.setColor(a, a, a, 1)
+    if cross then g.setColor(1, 1, 1, a) else g.setColor(a, a, a, 1) end
     g.draw(canvas, math.floor((W - cw * k) / 2), math.floor((H - ch * k) / 2), 0, k, k)
     vigMesh = vigMesh or g.newMesh({ { 0, 0, 0, 0, 0, 0, 0, 1 }, { 1, 0, 0, 0, 0, 0, 0, 0 },
                                      { 1, 1, 0, 0, 0, 0, 0, 0 }, { 0, 1, 0, 0, 0, 0, 0, 1 } }, "fan", "static")
