@@ -35,7 +35,9 @@
     box.className = 'consent';
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-label', T[3]);
+    box.setAttribute('aria-describedby', 'consent-text');
     var p = document.createElement('p');
+    p.id = 'consent-text';
     p.textContent = T[0] + ' ';
     var a = document.createElement('a');
     a.href = (lang === 'en' ? '/' : '/' + lang + '/') + 'privacy/';
