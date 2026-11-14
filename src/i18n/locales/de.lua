@@ -38,6 +38,7 @@ return {
         on          = "AN",
         off         = "AUS",
         reduced_motion = "Weniger Bewegung",
+        act_intros = "Akt-Einleitungsszenen",
         music_react = "Kulisse reagiert auf Musik",
         close       = "SCHLIESSEN",
         tab_audio   = "Audio",
@@ -1453,4 +1454,10 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.de").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.de").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.de").endless,
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua): nome do bioma, não o nome antigo do ato
+    act_intro = {
+        kicker = "AKT {n}",
+        act1_name = "Verfallene Felder",
+        act1_sub = "Wo der lange Weg beginnt",
+    },
 }

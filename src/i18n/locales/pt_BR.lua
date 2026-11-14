@@ -35,6 +35,7 @@ return {
         lighting  = "Iluminação",
         screenshake = "Tremor de tela",
         reduced_motion  = "Movimento reduzido",
+        act_intros = "Cenas de abertura de ato",
         music_react  = "Cenário reage à música",
         language        = "Idioma",
         on              = "LIGADO",
@@ -1469,4 +1470,10 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.pt_BR").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.pt_BR").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.pt_BR").endless,
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua): nome do bioma, não o nome antigo do ato
+    act_intro = {
+        kicker = "ATO {n}",
+        act1_name = "Campos Arruinados",
+        act1_sub = "Onde a longa estrada começa",
+    },
 }

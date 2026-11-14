@@ -38,6 +38,7 @@ return {
         on          = "ON",
         off         = "OFF",
         reduced_motion = "Mouvement réduit",
+        act_intros = "Scènes d'ouverture d'acte",
         music_react = "Le décor réagit à la musique",
         close       = "FERMER",
         tab_audio   = "Audio",
@@ -1453,4 +1454,10 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.fr").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.fr").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.fr").endless,
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua): nome do bioma, não o nome antigo do ato
+    act_intro = {
+        kicker = "ACTE {n}",
+        act1_name = "Champs en Ruine",
+        act1_sub = "Là où commence la longue route",
+    },
 }

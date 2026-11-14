@@ -77,7 +77,16 @@ local function startGame(classId, seal)
     game:checkpointRun()
     gameUI:show()
     classSelectionScreen:hide()
-    GameplayScene.requestArrival()
+    -- cena de abertura do ato 1 (docs/cenas_de_ato/STYLE.md); sem cena, segue direto para a viagem
+    local ActIntro = require("src.scenes.ActIntroScene")
+    if ActIntro.start(1, function()
+            currentState = "playing"
+            GameplayScene.requestArrival()
+        end) then
+        currentState = "actIntro"
+    else
+        GameplayScene.requestArrival()
+    end
 
     if smokeSystem then
         SmokeConfig.applyToSystem(smokeSystem, "act1")
@@ -259,8 +268,10 @@ showMapSelection = function()
         gold = game.economySystem and game.economySystem.currentGold,
     })
 
+    local actStatus
     if not game.runManager:getPendingNodes() then
         local status = game.runManager:advanceFloorInAct()
+        actStatus = status
         if status == "endless_start" then
             game:addMessage(I18n.t("messages.endless_unlocked", nil,
                 "Modo Endless desbloqueado!"), "success")
@@ -278,6 +289,15 @@ showMapSelection = function()
         currentState = "mapSelection"
     end
     setRunStage("fork")
+    -- chefe do ato morto: cena de abertura do PRÓXIMO ato antes da encruzilhada. O Continuar nunca passa
+    -- aqui (os caminhos já existem), então a cena não reabre num jogo carregado.
+    if actStatus == "act_complete" then
+        local run = game.runManager.currentRun
+        local ActIntro = require("src.scenes.ActIntroScene")
+        if run and ActIntro.start(run.actNumber, function() currentState = "mapSelection" end) then
+            currentState = "actIntro"
+        end
+    end
 end
 _G.__showMapSelection = function() showMapSelection() end
 
@@ -1498,6 +1518,8 @@ function love.update(dt)
     IF.push(IF.SCENE)
     if currentState == "boot" then
         BootScene.update(dt)
+    elseif currentState == "actIntro" then
+        require("src.scenes.ActIntroScene").update(dt)
     elseif currentState == "menu" then
         menu:update(dt)
     elseif currentState == "playing" then
@@ -1567,6 +1589,8 @@ function love.draw()
 
     if currentState == "boot" then
         BootScene.draw()
+    elseif currentState == "actIntro" then
+        require("src.scenes.ActIntroScene").draw()
     elseif currentState == "menu" then
         menu:draw()
     elseif currentState == "classSelection" then
@@ -1741,6 +1765,10 @@ function love.keypressed(key)
         BootScene.keypressed(key)
         return
     end
+    if currentState == "actIntro" then
+        require("src.scenes.ActIntroScene").keypressed(key)
+        return
+    end
     if currentState == "menu" and menu:skipIntro() then return end
 
     do
@@ -1872,6 +1900,10 @@ end
 
 function love.gamepadpressed(joystick, button)
     local NC = require("src.ui.NavCursor")
+    if currentState == "actIntro" then
+        require("src.scenes.ActIntroScene").gamepadpressed(button)
+        return
+    end
     if currentState == "menu" and menu:skipIntro() then return end
     if button == "start" or button == "back" then
         NC.noteDevice("pad")
@@ -1948,6 +1980,10 @@ function love.mousepressed(x, y, button)
     if require("src.systems.CheatMode").mousepressed(x, y, button) then return end
     if currentState == "boot" then
         BootScene.mousepressed(x, y, button)
+        return
+    end
+    if currentState == "actIntro" then
+        require("src.scenes.ActIntroScene").mousepressed(x, y, button)
         return
     end
     if currentState == "menu" and menu:skipIntro() then return end

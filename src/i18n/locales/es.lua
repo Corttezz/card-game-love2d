@@ -38,6 +38,7 @@ return {
         on          = "ON",
         off         = "OFF",
         reduced_motion = "Movimiento reducido",
+        act_intros = "Escenas de apertura de acto",
         music_react = "El escenario reacciona a la música",
         close       = "CERRAR",
         tab_audio   = "Audio",
@@ -1453,4 +1454,10 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.es").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.es").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.es").endless,
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua): nome do bioma, não o nome antigo do ato
+    act_intro = {
+        kicker = "ACTO {n}",
+        act1_name = "Campos en Ruinas",
+        act1_sub = "Donde comienza el largo camino",
+    },
 }
