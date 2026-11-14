@@ -51,7 +51,7 @@ EXCLUDE_NAMES = {"Thumbs.db", ".DS_Store", "desktop.ini"}
 # Diretorios de asset sem nenhuma referencia no codigo (o relatorio do build
 # lista candidatos novos a cada execucao). Vazio desde a limpeza de Out/2026,
 # que apagou do repo o que estava aqui (tileset act1_catacumbs).
-EXCLUDE_PREFIXES = ()
+EXCLUDE_PREFIXES = ("audio/music/legacy/",)  # trilhas antigas guardadas, fora do pacote
 # Arquivos fora do runtime que a SUITE le (so entram na copia de verificacao,
 # nunca no pacote): test_achievements confere icones/metadados Steam.
 VERIFY_EXTRA_PREFIXES = ("tools/", "steam/achievements/")

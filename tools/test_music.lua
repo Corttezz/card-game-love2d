@@ -457,9 +457,10 @@ function M.loopPoints(t)
             end
         end
 
-        local semLoop = audio.sources["musicAct1"]
-        t:falsy("faixa sem dados de loop segue sem ponto de loop", audio:getLoopPoints("musicAct1"))
-        audio:playMusic("musicAct1")
+        -- os atos ganharam pontos de loop (14/11/2026); a loja segue no loop nativo
+        local semLoop = audio.sources["musicShop"]
+        t:falsy("faixa sem dados de loop segue sem ponto de loop", audio:getLoopPoints("musicShop"))
+        audio:playMusic("musicShop")
         pump(0.2)
         t:truthy("faixa sem dados de loop segue com loop nativo", semLoop.template.looping)
         audio:stopMusic()
