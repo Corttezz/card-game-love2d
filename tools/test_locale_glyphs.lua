@@ -71,6 +71,41 @@ function M.run()
         if not utf8.len(out) then bad = bad + 1 end
     end
     t:eq("truncar texto acentuado nunca gera UTF-8 invalido", bad, 0)
+
+    -- circunflexo e til das minusculas descolados do corpo (tools/font_lower_accents.py):
+    -- colado, o "â" de "Pântano" lia como "å" no titulo da cena do ato 5
+    local okR, big = pcall(love.graphics.newFont, "assets/fonts/pixel.ttf", 64)
+    if okR then
+        local cv = love.graphics.newCanvas(96, 160)
+        local function hasGap(ch)
+            love.graphics.setCanvas(cv)
+            love.graphics.clear(0, 0, 0, 0)
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.setFont(big)
+            love.graphics.print(ch, 8, 40)
+            love.graphics.setCanvas()
+            local d = cv:newImageData()
+            local w, h = d:getDimensions()
+            local seenInk, inGap = false, false
+            for y = 0, h - 1 do
+                local on = false
+                for x = 0, w - 1 do
+                    local _, _, _, a = d:getPixel(x, y)
+                    if a > 0.5 then on = true; break end
+                end
+                if on and not seenInk then seenInk = true
+                elseif not on and seenInk then inGap = true
+                elseif on and inGap then return true end
+            end
+            return false
+        end
+        for _, ch in ipairs({ "â", "ê", "î", "ô", "û", "ã", "õ", "ñ" }) do
+            t:truthy("'" .. ch .. "': acento separado da letra por uma linha vazia", hasGap(ch))
+        end
+        t:falsy("sonda: 'a' sem acento nao tem linha vazia (prova que a medida funciona)", hasGap("a"))
+    else
+        t:truthy("rasterizador da fonte do jogo", false)
+    end
     return t:done()
 end
 
