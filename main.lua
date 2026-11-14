@@ -77,7 +77,6 @@ local function startGame(classId, seal)
     game:checkpointRun()
     gameUI:show()
     classSelectionScreen:hide()
-    -- cena de abertura do ato 1 (docs/cenas_de_ato/STYLE.md); sem cena, segue direto para a viagem
     local ActIntro = require("src.scenes.ActIntroScene")
     if ActIntro.start(1, function()
             currentState = "playing"
@@ -289,8 +288,6 @@ showMapSelection = function()
         currentState = "mapSelection"
     end
     setRunStage("fork")
-    -- chefe do ato morto: cena de abertura do PRÓXIMO ato antes da encruzilhada. O Continuar nunca passa
-    -- aqui (os caminhos já existem), então a cena não reabre num jogo carregado.
     if actStatus == "act_complete" then
         local run = game.runManager.currentRun
         local ActIntro = require("src.scenes.ActIntroScene")

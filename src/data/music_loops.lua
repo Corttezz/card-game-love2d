@@ -1,5 +1,4 @@
 return {
-    -- atos: ElevenLabs Music, clima Celtic/Medieval Fantasy (Daniel, 14/11/2026); tools/music_looppoints.py
     musicAct1 = { loopStart = 16.250000, loopEnd = 101.250000 },
     musicAct2 = { loopStart = 16.500000, loopEnd = 106.500000 },
     musicAct3 = { loopStart = 22.250000, loopEnd = 107.750000 },

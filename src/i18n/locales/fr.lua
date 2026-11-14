@@ -1454,7 +1454,6 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.fr").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.fr").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.fr").endless,
-    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua); o nome vem de acts.actN
     act_intro = {
         kicker = "ACTE {n}",
         act1_sub = "Là où commence la longue route",
