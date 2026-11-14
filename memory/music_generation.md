@@ -727,3 +727,13 @@ Cues regeradas (`python tools/music_cues.py carrion_king`: 47 hits, 5 swells,
 `Rei-Carnica - inicio corrigido.mp3` (pasta fora do git). O trecho do
 crossfade continua existindo no meio do loop (agora em 82,3 a 84,8 s), onde o
 dono já o aprovou; só o primeiro contato mudou.
+
+## Trilha dos atos no clima Celtic/Medieval Fantasy (14/11/2026)
+
+Pedido do Daniel (13/11, referência "Forest of Light", https://youtu.be/LCfEqudu4pc): músicas mais trabalhadas, clima medieval/celta. Piloto do ato 1 com 2 variações; o Daniel escolheu a v2 (alaúde e harpa, violino solitário, flauta grave, uilleann pipes, chuva, rio, grilos; melancólico e misterioso), que virou a referência de todos os atos. Atos 2–6: 1 versão cada, mesma família, cor por bioma.
+
+- Geração: Music API do ElevenLabs (`POST /v1/music`, `music_v1`, `force_instrumental`, 110 s) no Starter pago do Daniel. Licença (Music Terms 09/10/2026, Exhibit A, Starter): "All online and offline commercial use permitted, except film, TV, radio, and Studio Games"; o Runemoire é Indie Game (< US$ 500 mil de receita do jogo). Custo real: ~1.375 créditos por faixa de 110 s. O Starter tem 17 min de geração por mês.
+- Prompts: um parágrafo em inglês com os mesmos instrumentos e "no percussion, no lyrics, constant mood with no intro and no outro, built to loop seamlessly"; muda só o bioma, o tom, o BPM e a camada de ambiente. Sem nome de artista nem de música (proibido pelos Music Terms, 2.1).
+- Loop: `tools/music_looppoints.py` procura o par início/fim mais parecido (nível + timbre em 24 bandas), cruza a[j:j+xf] → a[i:i+xf] e grava no formato do jogo (início natural, `loopStart/loopEnd` em `src/data/music_loops.lua`, 6 s de cauda além do `loopEnd`). Crossfade por ato: 10/8/8/10/4/8 s. Validar com `lovec . check_loop`.
+- Volume: as 6 normalizadas a -19,5 LUFS (as antigas dos atos ficavam entre -18,9 e -20,4; loja -19,6; descanso -21,2; chefes ~-16). O volume 0,6 do `MusicDirector` não mudou.
+- As faixas antigas (20 s) estão em `audio/music/legacy/`, fora do pacote (`EXCLUDE_PREFIXES` do `build_release.py`).
