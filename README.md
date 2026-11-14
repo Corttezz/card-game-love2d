@@ -15,6 +15,7 @@ npm install
 bash tools/deploy_preview.sh   # prévia em workers.dev
 node tools/e2e.mjs <url>       # teste ponta a ponta
 node tools/consent_e2e.mjs     # aceite do Clarity na prévia (?cc=DE simula o país)
+node tools/utm_e2e.mjs [url]   # origem da visita (UTM): captura, primeira vence, D1, saída apaga
 bash tools/deploy.sh           # produção, só a partir da main local
 ```
 

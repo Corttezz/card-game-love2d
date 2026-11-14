@@ -4,6 +4,19 @@
 // Europa (UE/EEE, Reino Unido, Suíça; Daniel, 14/11/2026): o Worker marca <html data-consent="eu"> pelo país (CF-IPCountry).
 // Para esses visitantes o Clarity só carrega depois do "Aceitar"; quem recusa não é gravado. A escolha fica no localStorage
 // (rm_consent = yes/no), não em cookie. O resto do mundo segue como antes. Na prévia (workers.dev) só roda com ?cc= (teste).
+// Origem da visita (padrão de UTM, 14/11/2026): utm_* e fbclid da primeira chegada ficam no localStorage (rm_utm) e vão
+// com o cadastro do "Me avise". Primeira origem vence: visita depois, com ou sem UTM, não sobrescreve. Não vai ao Clarity.
+(function () {
+  try {
+    if (localStorage.getItem('rm_utm')) return;
+    var q = new URLSearchParams(location.search), o = {}, n = 0;
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'].forEach(function (k) {
+      var v = (q.get(k) || '').trim().slice(0, k === 'fbclid' ? 255 : 120);
+      if (v) { o[k] = v; n++; }
+    });
+    if (n) { o.at = new Date().toISOString(); localStorage.setItem('rm_utm', JSON.stringify(o)); }
+  } catch (e) {}
+})();
 (function () {
   var host = location.hostname;
   var test = /\.workers\.dev$/.test(host) && /[?&]cc=/.test(location.search);

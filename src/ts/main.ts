@@ -228,6 +228,10 @@ function settings() {
 }
 
 // ---------------- conquista: o "Me avise" ----------------
+// origem da primeira visita, guardada por public/js/clarity.js
+function firstTouch(): Record<string, string> | null {
+  try { const o = JSON.parse(localStorage.getItem('rm_utm') || 'null'); return o && typeof o === 'object' ? o : null; } catch { return null; }
+}
 function notify() {
   const f = $<HTMLFormElement>('form.notify');
   if (!f) return;
@@ -239,7 +243,7 @@ function notify() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.className = 'msg err'; msg.textContent = D.t.notifyBad; $('input[type=email]', f)?.focus(); return; }
     msg.className = 'msg'; msg.textContent = D.t.sending; btn.disabled = true;
     try {
-      const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), variant: f.dataset.variant || 'v3b', source: f.dataset.source || 'achievements' }) });
+      const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), variant: f.dataset.variant || 'v3b', source: f.dataset.source || 'achievements', utm: firstTouch() }) });
       const j = await r.json().catch(() => ({}));
       if (r.ok && j.ok) {
         msg.textContent = D.t.notifyOk + ' ';

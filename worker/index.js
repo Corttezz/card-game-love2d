@@ -81,6 +81,16 @@ function token() {
   return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// origem da primeira visita (padrão de UTM): só texto simples e curto; o resto vira null
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'];
+export function cleanUtm(u) {
+  const o = u && typeof u === 'object' ? u : {};
+  return UTM_KEYS.map((k) => {
+    const v = typeof o[k] === 'string' ? o[k].trim() : '';
+    return /^[A-Za-z0-9._~+%-]+$/.test(v) && v.length <= (k === 'fbclid' ? 255 : 120) ? v : null;
+  });
+}
+
 async function notify(req, env) {
   if (req.method !== 'POST') return json({ ok: false, error: 'method' }, 405);
   const ip = req.headers.get('CF-Connecting-IP') || 'local';
@@ -102,8 +112,8 @@ async function notify(req, env) {
   const source = ['hero', 'final', 'achievements'].includes(b.source) || /^blog:[a-z0-9-]{1,80}$/.test(String(b.source || '')) ? b.source : null;
   // e-mail novo: grava e devolve o link de saída. Já cadastrado: só confirma, sem devolver o token
   // (senão qualquer um tiraria qualquer e-mail da lista); a pessoa sai pelo link original ou pelo contato.
-  const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token, biome, variant, source) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(email) DO NOTHING')
-    .bind(email, lang, now, t, biome, variant, source).run();
+  const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token, biome, variant, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13) ON CONFLICT(email) DO NOTHING')
+    .bind(email, lang, now, t, biome, variant, source, ...cleanUtm(b.utm)).run();
   // e-mails @example.com (domínio reservado, usado nos testes) não entram na contagem
   if (r.meta?.changes && !email.endsWith('@example.com')) await bump(env, variant || 'none', lang, 'signups');
   return json({ ok: true, token: r.meta?.changes ? t : null });
