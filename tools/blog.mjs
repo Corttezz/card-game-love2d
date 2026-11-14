@@ -135,7 +135,7 @@ const publisher = { '@type': 'Organization', '@id': `${S}/#org`, name: 'DC Solut
 
 function notifyForm(t, source) {
   return `<section class="cta" id="notify" aria-labelledby="notify-t"><h2 id="notify-t">${esc(t.notifyTitle)}</h2><p>${esc(t.achDesc)}</p>
-<form class="notify" method="post" action="/api/notify" novalidate data-source="${esc(source)}" data-variant="blog"><label class="sr" for="email">${esc(t.notifyLabel)}</label>
+<form class="notify" method="post" action="/api/notify" novalidate data-source="${esc(source)}" data-variant="blog" data-clarity-mask="true"><label class="sr" for="email">${esc(t.notifyLabel)}</label>
 <input id="email" type="email" name="email" required autocomplete="email" inputmode="email" placeholder="${esc(t.notifyPlaceholder)}">
 <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
 <button class="mbtn sel" type="submit">${esc(t.notifyLaunch)}</button><p class="msg" role="status" aria-live="polite"></p></form>
