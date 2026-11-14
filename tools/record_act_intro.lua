@@ -1,8 +1,3 @@
--- Grava a cena de abertura de um ato sem janela visível, quadro a quadro, com relógio fixo.
--- uso: CARDGAME_IDENTITY=card-game-cenas TOOL_WINDOW=1920x1080 lovec . test_one record_act_intro <ato>[:fps[:stills]]
---   stills = lista de segundos separados por vírgula, ex.: 1.2,3.5,6.0 (só PNGs, sem vídeo)
--- Saída (pasta do save da identidade): act_intro_rec/act<N>/frames/%05d.png + events.json (momento de cada som),
--- ou act_intro_rec/act<N>/still_<t>.png. O tools/act_intro_video.sh monta o mp4 com música e SFX.
 local M = {}
 
 function M.run(arg)
@@ -21,7 +16,6 @@ function M.run(arg)
     I18n.init(); I18n.setLocale(os.getenv("TOOL_LOCALE") or "pt_BR", true)
     _G.gameSettings = _G.gameSettings or {}
     _G.ACT_INTRO_FORCE = true
-    -- áudio falso: só registra quando cada som começaria (o vídeo mixa os arquivos reais depois)
     local events, clock = {}, 0
     local fake = { sources = {}, groups = { ambient = 1, sfx = 1, music = 1 } }
     function fake:loadSound(code, path, opts) self.sources[code] = { path = path, opts = opts } end

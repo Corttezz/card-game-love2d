@@ -1,5 +1,3 @@
--- Trava da cena de abertura de ato (src/scenes/ActIntroScene.lua, docs/cenas_de_ato/STYLE.md).
--- uso: CARDGAME_IDENTITY=card-game-test-cenas lovec . test_one test_act_intro
 local TK = require("tools.testkit")
 local FA = require("tools.fake_audio")
 
@@ -32,7 +30,7 @@ local function unit(t)
 
     t:truthy("ato 1 tem cena", AI.available(1))
     t:falsy("ato sem dados nao tem cena (7)", AI.available(7))
-    for n = 2, 6 do   -- os 6 atos têm cena, cada um com o nome do bioma e 2 SFX próprios
+    for n = 2, 6 do
         t:truthy("ato " .. n .. " tem cena", AI.available(n))
         local Dn = require("src.data.act_intros")[n]
         t:eq("ato " .. n .. ": 2 SFX", Dn and #Dn.sfx, 2)
@@ -59,7 +57,6 @@ local function unit(t)
     t:falsy("ferramenta sem janela pula a cena sem a forca", AI.available(1))
     _G.ACT_INTRO_FORCE = true
 
-    -- arte faltando nunca segura a run
     local D = require("src.data.act_intros")
     local saveDir = D[1].dir
     D[1].dir = "assets/sprites/act_intro/nao_existe/"
@@ -69,7 +66,6 @@ local function unit(t)
     D[1].dir = saveDir
     AI._resetCache()
 
-    -- cena inteira
     local A = fakeAudio(); _G.audioSystem = A
     local done = 0
     t:truthy("start abre a cena", AI.start(1, function() done = done + 1 end))
@@ -100,7 +96,6 @@ local function unit(t)
     t:truthy("o vento sai com o fade (ganho ~0 no fim)", A.lastGain and A.lastGain.actIntro1Wind ~= nil
         and A.lastGain.actIntro1Wind < 0.1)
 
-    -- pular
     A = fakeAudio(); _G.audioSystem = A
     done = 0
     AI.start(1, function() done = done + 1 end)
@@ -112,7 +107,6 @@ local function unit(t)
     t:eq("pular chama o fim uma vez", done, 1)
     t:falsy("tecla depois do fim nao faz nada", AI.keypressed("space"))
 
-    -- movimento reduzido: cena parada (sem deriva, sem particulas), mas aparece
     _G.gameSettings.reducedMotion = true
     AI.start(1, function() end)
     t:truthy("movimento reduzido: cena parada", AI._state().still)
@@ -124,7 +118,6 @@ local function unit(t)
     _G.ACT_INTRO_FORCE = nil
 end
 
--- fluxo real pelo main.lua: run nova -> cena do ato 1 -> viagem; chefe do ato -> cena do proximo -> encruzilhada
 local function flow(t)
     local CheatMode = require("src.systems.CheatMode")
     FA.install()
@@ -143,7 +136,6 @@ local function flow(t)
     local AI = require("src.scenes.ActIntroScene")
     AI._resetCache()
 
-    -- sem a forca (como em toda outra ferramenta/teste): segue direto
     _G.ACT_INTRO_FORCE = nil
     require("src.ui.InputFocus").hideAll()
     api.startGame("warrior", 0)
@@ -161,7 +153,6 @@ local function flow(t)
     t:eq("pular leva para a run", api.state(), "playing")
     step(30)
 
-    -- fim do ato 1: ultimo andar + sem caminhos pendentes -> advanceFloorInAct = act_complete
     local D = require("src.data.act_intros")
     AI._resetCache()
     local run = api.game().runManager.currentRun
@@ -176,7 +167,6 @@ local function flow(t)
     t:eq("a cena termina sozinha na encruzilhada", api.state(), "mapSelection")
     t:truthy("caminhos do ato 2 prontos", api.game().runManager:getPendingNodes() ~= nil)
 
-    -- ato sem cena (registro do 3 retirado só neste teste): segue direto para a encruzilhada
     local save3 = D[3]
     D[3] = nil
     run.floorInAct = require("src.systems.MapManager").FLOORS_PER_ACT

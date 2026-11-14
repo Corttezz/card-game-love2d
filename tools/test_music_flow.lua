@@ -785,7 +785,6 @@ local function scenarioFocus()
     local code, src = first.code, first.src
     local loops, plays = {}, {}
     for _, x in ipairs(snapshot().all) do
-        -- loop nativo ou por pontos (music_loops: setLooping(false) + seek na mesma fonte)
         if x.src.looping or a:getLoopPoints(x.code) then loops[#loops + 1] = x.src; plays[x.src] = x.src.plays end
     end
     t:truthy(scene .. ": ao menos a musica esta em loop antes do teste", #loops >= 1)

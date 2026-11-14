@@ -72,8 +72,6 @@ function M.run()
     end
     t:eq("truncar texto acentuado nunca gera UTF-8 invalido", bad, 0)
 
-    -- circunflexo e til das minusculas descolados do corpo (tools/font_lower_accents.py):
-    -- colado, o "â" de "Pântano" lia como "å" no titulo da cena do ato 5
     local okR, big = pcall(love.graphics.newFont, "assets/fonts/pixel.ttf", 64)
     if okR then
         local cv = love.graphics.newCanvas(96, 160)

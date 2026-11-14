@@ -1,12 +1,8 @@
--- Cenas de abertura de ato (docs/cenas_de_ato/STYLE.md). Um registro por ato; ato sem registro = sem cena.
--- Arte em assets/sprites/act_intro/act<N>/ (camadas da pintura do PixelLab + loops), SFX em audio/sfx/act_intro/.
--- Coordenadas na tela virtual da cena (480x270).
 return {
     [1] = {
         dir = "assets/sprites/act_intro/act1/",
-        -- profundidade de cada camada no parallax (0 = parada, 1 = acompanha a câmera)
         parallax = { far = 0.15, ground = 0.55, traveler = 0.6, arch = 1.25 },
-        light = { 1.0, 0.86, 0.58 },           -- cor dos raios e da poeira (sol do entardecer)
+        light = { 1.0, 0.86, 0.58 },
         rays = { from = { 372, 112 }, count = 4, alpha = 0.075 },
         fog = { y = 138, h = 26, color = { 0.93, 0.80, 0.62 }, alpha = 0.42, speed = 3.0 },
         fog2 = { y = 196, h = 30, color = { 0.80, 0.70, 0.55 }, alpha = 0.18, speed = 5.0 },
@@ -22,10 +18,7 @@ return {
             { code = "actIntro1Crows", file = "audio/sfx/act_intro/act1_crows.mp3", at = 2.2, volume = 0.6 },
         },
     },
-    -- Atos 2-6: mesma série. O loop do viajante é o do ato 1 (animDir); onde o viajante da pintura é menor,
-    -- ele fica parado na camada do chão (traveler = false). Arco com parallax menor: a máscara por luminância
-    -- tem bordas retas por dentro, e a diferença pequena de deriva esconde a emenda.
-    [2] = { -- Colinas da Torre: noite de lua, torre em ruína, névoa nos vales, vagalumes
+    [2] = {
         dir = "assets/sprites/act_intro/act2/", animDir = "assets/sprites/act_intro/act1/",
         parallax = { far = 0.15, ground = 0.55, traveler = 0.6, arch = 0.9 },
         traveler = { x = 315, y = 172 }, travelerTint = { 0.70, 0.76, 0.95 },
@@ -43,7 +36,7 @@ return {
             { code = "actIntro2Owl", file = "audio/sfx/act_intro/act2_owl.mp3", at = 2.4, volume = 0.6 },
         },
     },
-    [3] = { -- Estrada do Abismo: sol vermelho, abismo, brasas subindo e cinza caindo
+    [3] = {
         dir = "assets/sprites/act_intro/act3/", animDir = "assets/sprites/act_intro/act1/",
         parallax = { far = 0.15, ground = 0.55, traveler = 0.6, arch = 0.9 },
         traveler = { x = 303, y = 183 }, travelerTint = { 0.95, 0.70, 0.62 },
@@ -63,7 +56,7 @@ return {
             { code = "actIntro3Rocks", file = "audio/sfx/act_intro/act3_rocks.mp3", at = 2.6, volume = 0.6 },
         },
     },
-    [4] = { -- Geleira Espectral: neve caindo, almas azuladas, sol pálido
+    [4] = {
         dir = "assets/sprites/act_intro/act4/", animDir = "assets/sprites/act_intro/act1/",
         parallax = { far = 0.15, ground = 0.55, traveler = 0.55, arch = 0.85 },
         traveler = false,
@@ -84,7 +77,7 @@ return {
             { code = "actIntro4Ice", file = "audio/sfx/act_intro/act4_ice.mp3", at = 2.3, volume = 0.6 },
         },
     },
-    [5] = { -- Pântano da Podridão: lua verde, luzes do pântano, esporos, névoa baixa
+    [5] = {
         dir = "assets/sprites/act_intro/act5/", animDir = "assets/sprites/act_intro/act1/",
         parallax = { far = 0.15, ground = 0.55, traveler = 0.55, arch = 0.9 },
         traveler = false,
@@ -104,7 +97,7 @@ return {
             { code = "actIntro5Bubble", file = "audio/sfx/act_intro/act5_bubble.mp3", at = 2.0, volume = 0.6 },
         },
     },
-    [6] = { -- Campos do Crepúsculo: sol em eclipse, folhas de outono, brasas douradas, corvos
+    [6] = {
         dir = "assets/sprites/act_intro/act6/", animDir = "assets/sprites/act_intro/act1/",
         parallax = { far = 0.15, ground = 0.55, traveler = 0.55, arch = 0.85 },
         traveler = false,
@@ -122,6 +115,5 @@ return {
             { code = "actIntro6Bell", file = "audio/sfx/act_intro/act6_bell.mp3", at = 2.4, volume = 0.6 },
         },
     },
-    -- sino/harpa quando o nome do ato termina de escrever (o mesmo nos 6 atos)
     chime = { code = "actIntroChime", file = "audio/sfx/act_intro/title_chime.mp3", volume = 0.75 },
 }
