@@ -134,22 +134,8 @@ def main(inv_path):
     brand["logo"] = {"src": save(thresh(native), "img/brand/logo.png", optimize=True), "w": native.width, "h": native.height}
     brand["seal"] = copy_png("assets/branding/seal.png", "img/brand/seal.png")
     brand["wordmark"] = copy_png("assets/branding/wordmark.png", "img/brand/wordmark.png")
-    # ícones do site só com a marca do jogo: o selo-bússola do menu (assets/branding/seal.png), sem o "R" (Daniel, 11/11)
-    seal = Image.open(g("assets/branding/seal.png")).convert("RGBA")
-    def seal_icon(size, bg=None):
-        k = size // seal.width
-        if k >= 1:
-            art = seal.resize((seal.width * k, seal.height * k), Image.NEAREST)  # escala inteira, sem borrar a pixel art
-        else:
-            art = seal.resize((size, size), Image.LANCZOS)  # menor que o original: reduzir é inevitável
-        canvas = Image.new("RGBA", (size, size), bg or (0, 0, 0, 0))
-        canvas.alpha_composite(art, ((size - art.width) // 2, (size - art.height) // 2))
-        return canvas
-    for s_ in (32, 48):
-        save(seal_icon(s_), f"img/brand/seal_{s_}.png", optimize=True)
-    for s_ in (180, 192, 512):
-        save(seal_icon(s_, (11, 10, 13, 255)), f"img/brand/seal_{s_}.png", optimize=True)
-    seal_icon(48).save(os.path.join(PUB, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
+    # ícones do site: arquivos fixos do pacote de ícones com acabamento (13/11/2026, aprovado pelo Daniel) em
+    # public/img/brand/icon_{32,180,192,512}.png e public/favicon.ico (16 px antigo, 32/48 novos). Não gerar aqui.
     brand["icon"] = "/img/brand/icon_192.png"
     data["brand"] = brand
     data["scene"] = {"menu": copy_png("assets/sprites/scenes/menu.png", "img/scene/menu.png", th=False)}
