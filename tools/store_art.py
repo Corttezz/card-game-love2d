@@ -296,7 +296,7 @@ def build():
     arr = (arr * 0.45 + gray * 0.55) * 0.42
     save(Image.fromarray(arr.clip(0, 255).astype(np.uint8)),
          "page_background_1438x810.png")
-    # --- ícone da comunidade 184x184: inicial do logotipo sobre selo -----------
+    # --- ícone da comunidade 184x184: o ícone do jogo com acabamento -----------
     save(community_icon(), "community_icon_184x184.png")
 
 
