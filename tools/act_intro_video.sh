@@ -21,7 +21,8 @@ mix = ["[m]"]
 for i, e in enumerate(ev["events"]):
     inputs += ["-stream_loop", "-1" if e["loop"] else "0", "-i", e["path"]]
     k = len(mix) + 1
-    v = vol.get(e["code"], 0.6)
+    # atos 2-6: cama em loop no grupo ambiente (0,9); detalhe vivo no grupo sfx (0,6 x 0,7)
+    v = vol.get(e["code"], 0.9 if e["loop"] else 0.6 * 0.7)
     ms = int(e["t"] * 1000)
     chain = f"[{k}:a]atrim=0:{dur - e['t']:.3f},volume={v}"
     if e["loop"]:   # o ambiente acompanha o fade da imagem

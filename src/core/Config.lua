@@ -74,7 +74,7 @@ Config.Game = {
 
 Config.Acts = {
     {
-        number = 1, name = "Catacumbas", floors = 8,
+        number = 1, name = "Campos Arruinados", floors = 8,
         enemyHP    = function(f) return 8 + f * 6 end,
         enemyDmg   = function(f) return 3 + f * 1.2 end,
         bossHP = 110, bossDmg = 12,
@@ -83,7 +83,7 @@ Config.Acts = {
         interActHeal = 0.30,
     },
     {
-        number = 2, name = "Torre de Pedra", floors = 8,
+        number = 2, name = "Colinas da Torre", floors = 8,
         enemyHP    = function(f) return 60 + f * 10 end,
         enemyDmg   = function(f) return 9 + f * 1.5 end,
         bossHP = 220, bossDmg = 18,
@@ -92,7 +92,7 @@ Config.Acts = {
         interActHeal = 0.40,
     },
     {
-        number = 3, name = "Abismo", floors = 8,
+        number = 3, name = "Estrada do Abismo", floors = 8,
         enemyHP    = function(f) return 150 + f * 15 end,
         enemyDmg   = function(f) return 18 + f * 2.5 end,
         bossHP = 420, bossDmg = 26,
@@ -102,7 +102,7 @@ Config.Acts = {
     },
 
     {
-        number = 4, name = "Cidadela Gelada", floors = 8,
+        number = 4, name = "Geleira Espectral", floors = 8,
         enemyHP    = function(f) return 250 + f * 22 end,
         enemyDmg   = function(f) return 22 + f * 3.0 end,
         bossHP = 600, bossDmg = 33,
@@ -111,7 +111,7 @@ Config.Acts = {
         interActHeal = 0.40,
     },
     {
-        number = 5, name = "Coracao Putrido", floors = 8,
+        number = 5, name = "Pantano da Podridao", floors = 8,
         enemyHP    = function(f) return 380 + f * 32 end,
         enemyDmg   = function(f) return 27 + f * 3.5 end,
         bossHP = 880, bossDmg = 38,
@@ -120,7 +120,7 @@ Config.Acts = {
         interActHeal = 0.40,
     },
     {
-        number = 6, name = "Corte do Eclipse", floors = 8,
+        number = 6, name = "Campos do Crepusculo", floors = 8,
         enemyHP    = function(f) return 560 + f * 45 end,
         enemyDmg   = function(f) return 32 + f * 4.0 end,
         bossHP = 1200, bossDmg = 46,

@@ -187,12 +187,12 @@ return {
     },
 
     acts = {
-        act1      = "Catacombs",
-        act2      = "Stone Tower",
-        act3      = "The Abyss",
-        act4      = "Frozen Citadel",
-        act5      = "Rotting Heart",
-        act6      = "Eclipse Court",
+        act1      = "Ruined Fields",
+        act2      = "Tower Hills",
+        act3      = "Abyss Road",
+        act4      = "Spectral Glacier",
+        act5      = "Rotting Marsh",
+        act6      = "Dusk Fields",
         endless   = "Endless",
         endless_n = "Endless #{n}",
         fallback  = "Act {n}",
@@ -1454,10 +1454,14 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.en").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.en").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.en").endless,
-    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua): nome do bioma, não o nome antigo do ato
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua); o nome vem de acts.actN
     act_intro = {
         kicker = "ACT {n}",
-        act1_name = "Ruined Fields",
         act1_sub = "Where the long road begins",
+        act2_sub = "Beneath the tower, the moon keeps watch",
+        act3_sub = "The road descends into the fire",
+        act4_sub = "Where even the dead feel the cold",
+        act5_sub = "Still water keeps its secrets",
+        act6_sub = "The end of the long road",
     },
 }

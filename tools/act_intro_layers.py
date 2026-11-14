@@ -23,6 +23,17 @@ ACT = {
         "lantern": (285, 151),              # brilho da lanterna do oratório (pinta luz por cima)
         "sun": (365, 115),
     },
+    # atos 2-6: mesma série (a pintura do ato 1 foi a referência de estilo); arco por luminância (contraluz)
+    2: {"horizon": 150, "arch_zone": (125, 120, 60), "arch_lum": (170, 20, 310, 90),
+        "traveler": (313, 168, 342, 224), "lantern": (0, 0), "sun": (415, 80)},
+    3: {"horizon": 150, "arch_zone": (125, 120, 60), "arch_lum": (170, 20, 310, 90),
+        "traveler": (301, 181, 332, 232), "lantern": (270, 160), "sun": (350, 100)},
+    4: {"horizon": 130, "arch_zone": (125, 120, 60), "arch_lum": (170, 20, 310, 90), "lum_k": 0.42, "fill_holes": False,
+        "traveler": (261, 163, 288, 199), "keep_traveler": True, "lantern": (0, 0), "sun": (330, 120)},
+    5: {"horizon": 140, "arch_zone": (125, 120, 60), "arch_lum": (170, 20, 310, 90),
+        "traveler": (261, 159, 290, 199), "keep_traveler": True, "lantern": (283, 130), "sun": (360, 72)},
+    6: {"horizon": 140, "arch_zone": (125, 120, 60), "arch_lum": (170, 110, 310, 135), "lum_k": 0.40, "fill_holes": False,
+        "traveler": (269, 165, 290, 207), "keep_traveler": True, "lantern": (0, 0), "sun": (320, 125)},
 }
 
 
@@ -59,15 +70,42 @@ def arch_mask(c, zone):
     return nd.binary_opening(m, iterations=1)
 
 
+def arch_mask_lum(c, zone, sky_box, k=0.62, fill=True):
+    """Arco em contraluz: o que é bem mais escuro que o céu e encosta na borda da tela."""
+    L = c.astype(int) @ np.array([0.3, 0.59, 0.11])
+    x0, y0, x1, y1 = sky_box
+    thr = np.median(L[y0:y1, x0:x1]) * k
+    H, W = L.shape
+    ys, xs = np.mgrid[0:H, 0:W]
+    left, right, top = zone
+    m = (L < thr) & ((xs < left) | (xs > W - right) | (ys < top))
+    m = nd.binary_opening(m, iterations=1)
+    lab, _ = nd.label(m)
+    border = set(np.unique(np.r_[lab[0, :], lab[:, 0], lab[:, -1]])) - {0}
+    m = np.isin(lab, list(border))
+    m = nd.binary_closing(m, iterations=2)
+    return nd.binary_fill_holes(m) if fill else m
+
+
 def main(act):
     P = ACT[act]
     src = os.path.join(ROOT, "tools", "preview_out", "cenas_ato", f"ato{act}", "raw", "master__0.png")
-    c = np.array(Image.open(src).convert("RGB").crop(P["crop"]))
+    full = np.array(Image.open(src).convert("RGB")).astype(int)
+    if "crop" in P:
+        box = P["crop"]
+    else:   # o modelo deixa uma margem de cor lisa: a área útil é o que difere do canto
+        diff = np.abs(full - full[3, 3]).sum(2) > 12
+        ys, xs = np.where(diff)
+        box = (xs.min(), ys.min(), xs.min() + 480, ys.min() + min(270, ys.max() + 1 - ys.min()))
+    c = np.array(Image.open(src).convert("RGB").crop(box))
     if c.shape[0] < 270:                     # a cena é 480x270 (escala inteira em 1080p): repete a última linha
         c = np.pad(c, ((0, 270 - c.shape[0]), (0, 0), (0, 0)), mode="edge")
     H, W = c.shape[:2]
     rgba = np.dstack([c, np.full((H, W), 255, np.uint8)])
-    arch = arch_mask(c, P["arch_zone"])
+    if "arch_lum" in P:
+        arch = arch_mask_lum(c, P["arch_zone"], P["arch_lum"], P.get("lum_k", 0.62), P.get("fill_holes", True))
+    else:
+        arch = arch_mask(c, P["arch_zone"])
     tx0, ty0, tx1, ty1 = P["traveler"]
     # viajante: contorno preto de 1 px fechado; o interior é o personagem (capuz, manto, mochila, cajado)
     box = c[ty0:ty1, tx0:tx1].astype(int)
@@ -81,7 +119,10 @@ def main(act):
         keep = [i + 1 for i, s_ in enumerate(sizes) if s_ >= 12]
         tm = np.isin(lab, keep)
     trav[ty0:ty1, tx0:tx1] = tm
-    hole = arch | nd.binary_dilation(trav, iterations=1)
+    if P.get("keep_traveler"):     # viajante menor que o loop do ato 1: fica parado na camada do chão
+        hole = arch
+    else:
+        hole = arch | nd.binary_dilation(trav, iterations=1)
     back = fill_behind(c, hole)
     hz = P["horizon"]
     out = os.path.join(ROOT, "assets", "sprites", "act_intro", f"act{act}")

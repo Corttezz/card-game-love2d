@@ -199,12 +199,12 @@ return {
     },
 
     acts = {
-        act1      = "Catacumbas",
-        act2      = "Torre de Pedra",
-        act3      = "Abismo",
-        act4      = "Cidadela Gelada",
-        act5      = "Coração Pútrido",
-        act6      = "Corte do Eclipse",
+        act1      = "Campos Arruinados",
+        act2      = "Colinas da Torre",
+        act3      = "Estrada do Abismo",
+        act4      = "Geleira Espectral",
+        act5      = "Pântano da Podridão",
+        act6      = "Campos do Crepúsculo",
         endless   = "Sem Fim",
         endless_n = "Sem Fim #{n}",
         fallback  = "Ato {n}",
@@ -1470,10 +1470,14 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.pt_BR").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.pt_BR").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.pt_BR").endless,
-    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua): nome do bioma, não o nome antigo do ato
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua); o nome vem de acts.actN
     act_intro = {
         kicker = "ATO {n}",
-        act1_name = "Campos Arruinados",
         act1_sub = "Onde a longa estrada começa",
+        act2_sub = "Sob a torre, a lua vigia",
+        act3_sub = "O caminho desce para o fogo",
+        act4_sub = "Onde até os mortos têm frio",
+        act5_sub = "A água parada guarda segredos",
+        act6_sub = "O fim da longa estrada",
     },
 }

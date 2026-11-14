@@ -42,10 +42,11 @@ local function load(act)
     local ok, res = pcall(function()
         local r = { D = D }
         for _, k in ipairs({ "far", "ground", "arch" }) do r[k] = newImage(D.dir .. k .. ".png") end
-        local anims = love.filesystem.load(D.dir .. "anims.lua")()
+        local adir = D.animDir or D.dir   -- o viajante é o mesmo nos 6 atos: atos 2-6 usam os loops do ato 1
+        local anims = love.filesystem.load(adir .. "anims.lua")()
         r.anims = anims
-        r.traveler = newImage(D.dir .. anims.traveler.file)
-        r.crow = newImage(D.dir .. anims.crow.file)
+        r.traveler = newImage(adir .. anims.traveler.file)
+        r.crow = newImage(adir .. anims.crow.file)
         r.quads = {}
         for _, k in ipairs({ "traveler", "crow" }) do
             local a, img = anims[k], r[k]
@@ -120,10 +121,19 @@ local function initParticles(D)
                         sw = r(4, 9), c = D.leaves.colors[1 + math.floor(r(0, #D.leaves.colors - 0.001))],
                         delay = r(0, 4.5), front = i % 3 == 0 }
     end
-    local b = D.dust and D.dust.box
+    local b = D.dust and D.dust.box or { 0, 0, 1, 1 }
     for i = 1, (D.dust and D.dust.count or 0) do
         S.dust[i] = { x = r(b[1], b[3]), y = r(b[2], b[4]), vx = r(-1.5, 2.5), vy = r(-2.0, 0.6),
                       ph = r(0, 6.28), sp = r(1.2, 3.0) }
+    end
+    S.fx = {}
+    for k, f in ipairs(D.fx or {}) do
+        local list = {}
+        for i = 1, f.count do
+            list[i] = { x = r(-20, ActIntro.VW + 20), y = r(f.ymin or -10, f.ymax or ActIntro.VH), ph = r(0, 6.28),
+                        sp = r(0.7, 1.3), size = (f.size or 1) * (r(0, 1) < 0.25 and 2 or 1) }
+        end
+        S.fx[k] = list
     end
     S.fog = D.fog and makeFog(D.fog, 3.1) or nil
     S.fog2 = D.fog2 and makeFog(D.fog2, 8.7) or nil
@@ -139,10 +149,10 @@ function ActIntro.start(act, onDone)
               still = reducedMotion() }
         registerSounds(A.D)
         initParticles(A.D)
-        local kicker = I18n.t(A.D.title.kicker, { n = roman(act) }, "ACT " .. roman(act))
+        local kicker = I18n.t("act_intro.kicker", { n = roman(act) }, "ACT " .. roman(act))
         S.kicker = kicker
-        S.name = I18n.t(A.D.title.name, nil, "")
-        S.sub = I18n.t(A.D.title.sub, nil, "")
+        S.name = require("src.systems.ActSystem").getActName(act)   -- o mesmo nome do HUD, mapa e resumo
+        S.sub = I18n.t("act_intro.act" .. act .. "_sub", nil, "")
     end)
     if not ok then
         Debug.warn("[ActIntro] falha ao abrir a cena: " .. tostring(err))
@@ -225,6 +235,17 @@ function ActIntro.update(dt)
                 if l.y > ActIntro.VH + 4 then l.y = -6; l.x = l.x - 60 end
             end
         end
+        for k, f in ipairs(S.D.fx or {}) do
+            local vx, vy = f.vx or 0, f.vy or 0
+            for _, q in ipairs(S.fx[k]) do
+                q.x = q.x + (vx * q.sp + math.sin(t * (f.sway or 0.8) + q.ph) * (f.swayAmp or 0)) * dt
+                q.y = q.y + vy * q.sp * dt
+                local y0, y1 = f.ymin or -10, f.ymax or ActIntro.VH
+                if vy > 0 and q.y > y1 then q.y = y0; q.x = q.x + 37 % ActIntro.VW end
+                if vy < 0 and q.y < y0 then q.y = y1; q.x = (q.x * 1.37 + 53) % (ActIntro.VW + 40) - 20 end
+                if q.x > ActIntro.VW + 30 then q.x = -25 elseif q.x < -30 then q.x = ActIntro.VW + 25 end
+            end
+        end
         for _, p in ipairs(S.dust) do
             p.x = p.x + (p.vx + math.sin(t * 0.7 + p.ph) * 1.2) * dt
             p.y = p.y + (p.vy + math.cos(t * 0.5 + p.ph) * 0.8) * dt
@@ -299,10 +320,15 @@ local function drawScene(s)
         g.setColor(1, 1, 1, 1)
     end
     -- viajante (loop do manto ao vento)
-    do
+    if D.traveler ~= false then   -- false: o viajante da própria pintura fica na camada do chão
         local a = A.anims.traveler
         local fr = S.still and 1 or (math.floor(t * a.fps) % a.frames + 1)
-        g.draw(A.traveler, A.quads.traveler[fr], a.x + off(P.traveler) + m, a.y)
+        local tp = D.traveler or { x = a.x, y = a.y }
+        local tint = D.travelerTint or { 1, 1, 1 }
+        local sc = tp.scale or 1
+        g.setColor(tint[1], tint[2], tint[3], 1)
+        g.draw(A.traveler, A.quads.traveler[fr], tp.x + off(P.traveler) + m, tp.y, 0, sc, sc)
+        g.setColor(1, 1, 1, 1)
     end
     fog(S.fog2, D.fog2, P.ground)
     -- raios de luz e poeira dourada (aditivo, entre o mundo e o arco)
@@ -351,9 +377,46 @@ local function drawScene(s)
         end
         g.setColor(1, 1, 1, 1)
     end
+    local function fxLayer(front)
+        if S.still then return end
+        for k, f in ipairs(D.fx or {}) do
+            if (f.front or false) == front then
+                local c = f.color
+                local ox = off(front and P.arch or P.ground) + m
+                if f.kind == "rain" then
+                    g.setColor(c[1], c[2], c[3], f.alpha)
+                    g.setLineWidth(1 / s)
+                    for _, q in ipairs(S.fx[k]) do
+                        local x, y = q.x + ox, q.y
+                        g.line(x, y, x - (f.vx or 0) * 0.05, y - (f.vy or 0) * 0.05)
+                    end
+                elseif f.kind == "glow" then           -- brasas, luzes do pântano, almas: ponto + halo aditivo
+                    g.setBlendMode("add")
+                    for _, q in ipairs(S.fx[k]) do
+                        local tw = 0.55 + 0.45 * math.sin(t * (f.twinkle or 2) * q.sp + q.ph)
+                        local x, y = math.floor(q.x + ox), math.floor(q.y)
+                        g.setColor(c[1], c[2], c[3], f.alpha * 0.35 * tw)
+                        g.circle("fill", x + 0.5, y + 0.5, (f.halo or 2.5) * q.size)
+                        g.setColor(c[1], c[2], c[3], f.alpha * tw)
+                        g.rectangle("fill", x, y, q.size, q.size)
+                    end
+                    g.setBlendMode("alpha")
+                else                                    -- "snow" e "mote": pixel simples
+                    for _, q in ipairs(S.fx[k]) do
+                        local tw = f.twinkle and (0.6 + 0.4 * math.sin(t * f.twinkle * q.sp + q.ph)) or 1
+                        g.setColor(c[1], c[2], c[3], f.alpha * tw)
+                        g.rectangle("fill", math.floor(q.x + ox), math.floor(q.y), q.size, q.size)
+                    end
+                end
+            end
+        end
+        g.setColor(1, 1, 1, 1)
+    end
+    fxLayer(false)
     leaves(false)
     img(A.arch, P.arch)
     leaves(true)
+    fxLayer(true)
     g.pop()
 end
 

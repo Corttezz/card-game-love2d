@@ -6,7 +6,6 @@ return {
         dir = "assets/sprites/act_intro/act1/",
         -- profundidade de cada camada no parallax (0 = parada, 1 = acompanha a câmera)
         parallax = { far = 0.15, ground = 0.55, traveler = 0.6, arch = 1.25 },
-        title = { kicker = "act_intro.kicker", name = "act_intro.act1_name", sub = "act_intro.act1_sub" },
         light = { 1.0, 0.86, 0.58 },           -- cor dos raios e da poeira (sol do entardecer)
         rays = { from = { 372, 112 }, count = 4, alpha = 0.075 },
         fog = { y = 138, h = 26, color = { 0.93, 0.80, 0.62 }, alpha = 0.42, speed = 3.0 },
@@ -21,6 +20,106 @@ return {
         sfx = {
             { code = "actIntro1Wind", file = "audio/sfx/act_intro/act1_wind.mp3", at = 0.0, volume = 0.9, loop = true },
             { code = "actIntro1Crows", file = "audio/sfx/act_intro/act1_crows.mp3", at = 2.2, volume = 0.6 },
+        },
+    },
+    -- Atos 2-6: mesma série. O loop do viajante é o do ato 1 (animDir); onde o viajante da pintura é menor,
+    -- ele fica parado na camada do chão (traveler = false). Arco com parallax menor: a máscara por luminância
+    -- tem bordas retas por dentro, e a diferença pequena de deriva esconde a emenda.
+    [2] = { -- Colinas da Torre: noite de lua, torre em ruína, névoa nos vales, vagalumes
+        dir = "assets/sprites/act_intro/act2/", animDir = "assets/sprites/act_intro/act1/",
+        parallax = { far = 0.15, ground = 0.55, traveler = 0.6, arch = 0.9 },
+        traveler = { x = 315, y = 172 }, travelerTint = { 0.70, 0.76, 0.95 },
+        light = { 0.78, 0.84, 1.0 },
+        rays = { from = { 415, 80 }, count = 3, alpha = 0.05 },
+        fog = { y = 150, h = 28, color = { 0.62, 0.66, 0.85 }, alpha = 0.38, speed = 2.5 },
+        fog2 = { y = 205, h = 30, color = { 0.45, 0.48, 0.68 }, alpha = 0.18, speed = 4.0 },
+        crows = { { at = 2.0, y = 66, scale = 0.375, speed = 26, from = -20 } },
+        fx = {
+            { kind = "glow", count = 14, vx = 3, vy = -2, ymin = 150, ymax = 240, sway = 0.7, swayAmp = 6,
+              color = { 0.80, 0.95, 0.55 }, alpha = 0.7, halo = 2.5, twinkle = 1.6 },
+        },
+        sfx = {
+            { code = "actIntro2Wind", file = "audio/sfx/act_intro/act2_wind.mp3", at = 0.0, volume = 0.9, loop = true },
+            { code = "actIntro2Owl", file = "audio/sfx/act_intro/act2_owl.mp3", at = 2.4, volume = 0.6 },
+        },
+    },
+    [3] = { -- Estrada do Abismo: sol vermelho, abismo, brasas subindo e cinza caindo
+        dir = "assets/sprites/act_intro/act3/", animDir = "assets/sprites/act_intro/act1/",
+        parallax = { far = 0.15, ground = 0.55, traveler = 0.6, arch = 0.9 },
+        traveler = { x = 303, y = 183 }, travelerTint = { 0.95, 0.70, 0.62 },
+        light = { 1.0, 0.45, 0.32 },
+        rays = { from = { 348, 108 }, count = 4, alpha = 0.06 },
+        fog = { y = 150, h = 26, color = { 0.80, 0.40, 0.32 }, alpha = 0.32, speed = 3.0 },
+        fog2 = { y = 210, h = 30, color = { 0.50, 0.30, 0.26 }, alpha = 0.18, speed = 5.0 },
+        lantern = { x = 287, y = 162, color = { 1.0, 0.60, 0.30 } },
+        fx = {
+            { kind = "glow", count = 22, vx = 4, vy = -14, ymin = 120, ymax = 270, sway = 1.2, swayAmp = 5,
+              color = { 1.0, 0.55, 0.22 }, alpha = 0.8, halo = 2, twinkle = 3 },
+            { kind = "mote", count = 30, vx = 6, vy = 9, sway = 0.8, swayAmp = 4,
+              color = { 0.62, 0.56, 0.54 }, alpha = 0.55, front = true },
+        },
+        sfx = {
+            { code = "actIntro3Wind", file = "audio/sfx/act_intro/act3_wind.mp3", at = 0.0, volume = 0.9, loop = true },
+            { code = "actIntro3Rocks", file = "audio/sfx/act_intro/act3_rocks.mp3", at = 2.6, volume = 0.6 },
+        },
+    },
+    [4] = { -- Geleira Espectral: neve caindo, almas azuladas, sol pálido
+        dir = "assets/sprites/act_intro/act4/", animDir = "assets/sprites/act_intro/act1/",
+        parallax = { far = 0.15, ground = 0.55, traveler = 0.55, arch = 0.85 },
+        traveler = false,
+        light = { 0.85, 0.93, 1.0 },
+        rays = { from = { 330, 120 }, count = 4, alpha = 0.06 },
+        fog = { y = 130, h = 26, color = { 0.88, 0.94, 1.0 }, alpha = 0.40, speed = 3.0 },
+        fog2 = { y = 200, h = 30, color = { 0.75, 0.85, 0.95 }, alpha = 0.20, speed = 5.0 },
+        fx = {
+            { kind = "mote", count = 70, vx = 5, vy = 16, sway = 0.9, swayAmp = 6,
+              color = { 0.95, 0.97, 1.0 }, alpha = 0.85 },
+            { kind = "mote", count = 24, vx = 8, vy = 26, sway = 0.9, swayAmp = 8, size = 2,
+              color = { 0.95, 0.97, 1.0 }, alpha = 0.9, front = true },
+            { kind = "glow", count = 6, vx = 3, vy = -3, ymin = 140, ymax = 220, sway = 0.5, swayAmp = 10,
+              color = { 0.55, 0.85, 1.0 }, alpha = 0.55, halo = 3.5, twinkle = 1.2 },
+        },
+        sfx = {
+            { code = "actIntro4Wind", file = "audio/sfx/act_intro/act4_wind.mp3", at = 0.0, volume = 0.9, loop = true },
+            { code = "actIntro4Ice", file = "audio/sfx/act_intro/act4_ice.mp3", at = 2.3, volume = 0.6 },
+        },
+    },
+    [5] = { -- Pântano da Podridão: lua verde, luzes do pântano, esporos, névoa baixa
+        dir = "assets/sprites/act_intro/act5/", animDir = "assets/sprites/act_intro/act1/",
+        parallax = { far = 0.15, ground = 0.55, traveler = 0.55, arch = 0.9 },
+        traveler = false,
+        light = { 0.80, 0.95, 0.55 },
+        rays = { from = { 368, 72 }, count = 3, alpha = 0.045 },
+        fog = { y = 140, h = 28, color = { 0.62, 0.72, 0.50 }, alpha = 0.42, speed = 2.0 },
+        fog2 = { y = 200, h = 34, color = { 0.45, 0.55, 0.38 }, alpha = 0.24, speed = 3.5 },
+        lantern = { x = 287, y = 140, color = { 0.85, 1.0, 0.45 } },
+        fx = {
+            { kind = "glow", count = 12, vx = 2, vy = -1, ymin = 140, ymax = 230, sway = 0.6, swayAmp = 8,
+              color = { 0.65, 1.0, 0.45 }, alpha = 0.75, halo = 3, twinkle = 1.4 },
+            { kind = "mote", count = 26, vx = 2, vy = -4, sway = 0.7, swayAmp = 5,
+              color = { 0.75, 0.82, 0.55 }, alpha = 0.45 },
+        },
+        sfx = {
+            { code = "actIntro5Swamp", file = "audio/sfx/act_intro/act5_swamp.mp3", at = 0.0, volume = 0.9, loop = true },
+            { code = "actIntro5Bubble", file = "audio/sfx/act_intro/act5_bubble.mp3", at = 2.0, volume = 0.6 },
+        },
+    },
+    [6] = { -- Campos do Crepúsculo: sol em eclipse, folhas de outono, brasas douradas, corvos
+        dir = "assets/sprites/act_intro/act6/", animDir = "assets/sprites/act_intro/act1/",
+        parallax = { far = 0.15, ground = 0.55, traveler = 0.55, arch = 0.85 },
+        traveler = false,
+        light = { 1.0, 0.70, 0.45 },
+        rays = { from = { 320, 126 }, count = 4, alpha = 0.07 },
+        fog = { y = 140, h = 22, color = { 0.95, 0.70, 0.55 }, alpha = 0.30, speed = 3.0 },
+        leaves = { count = 18, colors = { { 0.85, 0.45, 0.18 }, { 0.72, 0.30, 0.15 }, { 0.92, 0.62, 0.25 } } },
+        dust = { count = 36, box = { 180, 80, 300, 170 } },
+        crows = {
+            { at = 1.8, y = 92, scale = 0.375, speed = 30, from = -20 },
+            { at = 2.6, y = 104, scale = 0.375, speed = 26, from = -24 },
+        },
+        sfx = {
+            { code = "actIntro6Wind", file = "audio/sfx/act_intro/act6_wind.mp3", at = 0.0, volume = 0.9, loop = true },
+            { code = "actIntro6Bell", file = "audio/sfx/act_intro/act6_bell.mp3", at = 2.4, volume = 0.6 },
         },
     },
     -- sino/harpa quando o nome do ato termina de escrever (o mesmo nos 6 atos)

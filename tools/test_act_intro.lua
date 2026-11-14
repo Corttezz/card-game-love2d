@@ -32,6 +32,22 @@ local function unit(t)
 
     t:truthy("ato 1 tem cena", AI.available(1))
     t:falsy("ato sem dados nao tem cena (7)", AI.available(7))
+    for n = 2, 6 do   -- os 6 atos têm cena, cada um com o nome do bioma e 2 SFX próprios
+        t:truthy("ato " .. n .. " tem cena", AI.available(n))
+        local Dn = require("src.data.act_intros")[n]
+        t:eq("ato " .. n .. ": 2 SFX", Dn and #Dn.sfx, 2)
+        _G.audioSystem = fakeAudio()
+        local ok = AI.start(n, function() end)
+        t:truthy("ato " .. n .. ": abre", ok)
+        local okd = true
+        for _ = 1, 20 do AI.update(DT) end
+        local cv = love.graphics.newCanvas(love.graphics.getDimensions())
+        love.graphics.setCanvas(cv); okd = pcall(AI.draw); love.graphics.setCanvas()
+        t:truthy("ato " .. n .. ": desenha", okd)
+        t:eq("ato " .. n .. ": nome do bioma no titulo", AI._state().name,
+            require("src.systems.ActSystem").getActName(n))
+        AI.finish()
+    end
     t:falsy("ato nil nao tem cena", AI.available(nil))
     _G.gameSettings.actIntros = false
     t:falsy("opcao desligada: sem cena", AI.available(1))
@@ -147,8 +163,6 @@ local function flow(t)
 
     -- fim do ato 1: ultimo andar + sem caminhos pendentes -> advanceFloorInAct = act_complete
     local D = require("src.data.act_intros")
-    D[2] = D[2] or D[1]          -- só neste teste: o ato 2 usa a arte do 1 (a dele vem depois da aprovação)
-    local injected = D[2] == D[1]
     AI._resetCache()
     local run = api.game().runManager.currentRun
     run.floorInAct = require("src.systems.MapManager").FLOORS_PER_ACT
@@ -161,14 +175,17 @@ local function flow(t)
     while api.state() == "actIntro" and secs < 15 do step(1); secs = secs + DT end
     t:eq("a cena termina sozinha na encruzilhada", api.state(), "mapSelection")
     t:truthy("caminhos do ato 2 prontos", api.game().runManager:getPendingNodes() ~= nil)
-    if injected then D[2] = nil end
 
-    -- ato sem cena (3, por enquanto): segue direto para a encruzilhada
+    -- ato sem cena (registro do 3 retirado só neste teste): segue direto para a encruzilhada
+    local save3 = D[3]
+    D[3] = nil
     run.floorInAct = require("src.systems.MapManager").FLOORS_PER_ACT
     run.pendingNodes = nil
     AI._resetCache()
     api.showMapSelection()
     t:eq("ato sem arte: direto na encruzilhada", api.state(), "mapSelection")
+    D[3] = save3
+    AI._resetCache()
 
     api.returnToMenu(); step(10)
     _G.ACT_INTRO_FORCE = nil

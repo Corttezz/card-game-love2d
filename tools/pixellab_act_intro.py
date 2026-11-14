@@ -37,6 +37,26 @@ ACT = {
                 "distance, seen from behind, looking at the land ahead. The left third of the sky is calm and empty."),
         },
     },
+    2: {
+        "light": 'cold silver moonlight from a moon high on the right, deep blue-violet night',
+        "specs": {"master": ("pro", 688, 384, False, "Wide establishing shot of misty highland hills at night seen from under the arch of old twisted pine and yew trees. Gnarled dark trunks on the far left and far right edges, their needled branches arching across the whole top of the frame like a natural doorway, dark and backlit in the foreground. Through the arch: a worn flagstone path starts at the bottom center-right and climbs into the distance across heather-covered hills and scattered standing stones, a broken wooden signpost beside the path, far away a tall ruined sorcerer's watchtower on a crag with one faint violet window light, layered blue-grey hills fading into mist, a deep blue-violet night sky with a few stars and a pale moon on the right, thin drifting clouds, soft cold rim light on the branches, low fog in the valleys. A single small cloaked and hooded traveler with a backpack and a plain wooden walking stick stands on the path in the middle distance, seen from behind, looking at the land ahead. The left third of the sky is calm and empty.")},
+    },
+    3: {
+        "light": 'a huge swollen blood-red sun sinking low behind the chasm on the right, smoky crimson air',
+        "specs": {"master": ("pro", 688, 384, False, 'Wide establishing shot of a road descending toward a vast dark chasm seen from under the arch of charred dead trees. Blackened twisted trunks on the far left and far right edges, their bare thorny branches arching across the whole top of the frame like a natural doorway, very dark and backlit in the foreground. Through the arch: a cracked stone road starts at the bottom center-right and winds down between jagged dark rocks and toppled stone pillars toward a deep abyss, an old iron lantern post with a dim red flame beside the road, far away the broken edge of the chasm with glowing cracks and distant ruined spires, a smoky crimson and rust sky with a swollen red sun low on the right, drifting ash, red haze in the depths. Dark fantasy, ominous, still with the same calm composition. A single small cloaked and hooded traveler with a backpack and a plain wooden walking stick stands on the path in the middle distance, seen from behind, looking at the land ahead. The left third of the sky is calm and empty.')},
+    },
+    4: {
+        "light": 'pale cold white winter sun high on the right through thin cloud, blue-grey frozen air',
+        "specs": {"master": ("pro", 688, 384, False, 'Wide establishing shot of a spectral frozen glacier valley seen from under the arch of old snow-laden fir trees. Dark fir trunks on the far left and far right edges, their heavy snow-covered branches arching across the whole top of the frame like a natural doorway, dark and backlit in the foreground. Through the arch: a snowy stone path with half-buried flagstones starts at the bottom center-right and winds into the distance across a frozen plain, a leaning frost-covered waymarker stone with a faint pale blue glow beside the path, far away a vast pale blue glacier wall with icy spires and a frozen ruined citadel, a cold blue-grey and pearl sky with a pale white sun on the right, faint ghostly wisps in the air, light falling snow, cold mist on the ground. A single small cloaked and hooded traveler with a backpack and a plain wooden walking stick stands on the path in the middle distance, seen from behind, looking at the land ahead. The left third of the sky is calm and empty.')},
+    },
+    5: {
+        "light": 'a sickly yellow-green moon high on the right, murky green night haze',
+        "specs": {"master": ("pro", 688, 384, False, 'Wide establishing shot of a rotting swamp at night seen from under the arch of drooping dead willow and mangrove trees. Twisted mossy trunks on the far left and far right edges, their hanging moss-draped branches arching across the whole top of the frame like a natural doorway, dark and backlit in the foreground. Through the arch: a path of old wooden planks and mossy stepping stones starts at the bottom center-right and winds into the distance over still dark water, reeds and rotting stumps, a crooked post with a small hanging lantern giving a dim green-yellow glow beside the path, far away a sunken ruined shrine and dead trees in thick mist, a murky green and olive night sky with a sickly pale moon on the right, a few faint glowing marsh lights over the water, heavy low mist. A single small cloaked and hooded traveler with a backpack and a plain wooden walking stick stands on the path in the middle distance, seen from behind, looking at the land ahead. The left third of the sky is calm and empty.')},
+    },
+    6: {
+        "light": 'a huge low setting sun partly covered by a dark eclipse disc in the center-right sky, deep amber and violet dusk',
+        "specs": {"master": ("pro", 688, 384, False, 'Wide establishing shot of vast twilight fields at the end of the journey seen from under the arch of old autumn trees. Gnarled dark trunks on the far left and far right edges, their branches heavy with amber and crimson autumn leaves arching across the whole top of the frame like a natural doorway, dark and backlit in the foreground. Through the arch: a long stone road starts at the bottom center-right and runs far into the distance between rolling fields of tall amber grass and old stone markers, a ruined stone archway gate beside the road, far away a dark spired eclipse palace on the horizon, a dramatic amber, rose and violet dusk sky with a huge low sun on the center-right partly covered by a dark eclipse disc ringed with light, long light shafts, drifting leaves. Grave and bittersweet, the end of a long road. A single small cloaked and hooded traveler with a backpack and a plain wooden walking stick stands on the path in the middle distance, seen from behind, looking at the land ahead. The left third of the sky is calm and empty.')},
+    },
 }
 
 
@@ -61,19 +81,26 @@ def queue(act, names, extra=None):
     os.makedirs(os.path.join(OUT(act), "raw"), exist_ok=True)
     J = load_jobs(act)
     spec = ACT[act]
-    style = b64(os.path.join(OUT(act), "style_ref.png"))
+    series = act != 1    # atos 2-6: a pintura do ato 1 é a referência da SÉRIE (composição e traço), não da paleta
+    style = b64(os.path.join(OUT(1), "raw", "master__0.png") if series else os.path.join(OUT(act), "style_ref.png"))
     for name in names:
         tool, w, h, nobg, desc = (extra or {}).get(name) or spec["specs"][name]
         desc = desc + " Lighting: " + spec["light"] + "." + DIORAMA + SUFFIX
         refs = [{"base64": style, "usage": "style only: pixel scale, palette, outline weight and shading of this "
                                            "game's world art; do not copy its layout or any character"}]
+        if series:
+            refs = [{"base64": style, "usage": "same series: keep this exact framing (tree arch on the sides and top, "
+                     "path from bottom center-right, small traveler from behind, calm empty sky on the left), the same "
+                     "pixel scale, outline weight and shading; use a completely different biome, palette and light "
+                     "as described"}]
         master = os.path.join(OUT(act), "master.png")
         if name != "master" and os.path.exists(master):
             refs.insert(0, {"base64": b64(master), "usage": "this is the full scene: draw ONLY the requested part of it, "
                                                             "same perspective, scale, colors and lighting"})
         if tool == "pro":
             args = {"description": desc, "width": w, "height": h, "no_background": nobg,
-                    "style_image_base64": style, "style_copy": ["color_palette", "outline", "detail", "shading"],
+                    "style_image_base64": style,
+                    "style_copy": ["outline", "detail", "shading"] if series else ["color_palette", "outline", "detail", "shading"],
                     "reference_images": refs}
             text = call("create_image_pro", args)
         else:

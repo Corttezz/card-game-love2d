@@ -35,4 +35,11 @@ Pedido do Daniel (14/11): "mini cenas antes de começar cada ato ... uma cena to
 2. `python tools/act_intro_layers.py <ato>`: separa a pintura em `far` (céu e montanhas), `ground`, `arch` (máscara por cor das árvores ligadas à borda) e o recorte do viajante, e preenche o que fica atrás com a cor vizinha. Ajustes por ato no dicionário `ACT`.
 3. `python tools/pixellab_act_intro.py anim_traveler <ato>` e `crow <ato>`: loops curtos no `animate_image` (manto ao vento, 8 quadros; corvo, 6). Custo: ~3 gerações. `python tools/act_intro_anims.py <ato>` limpa e encaixa.
 4. SFX: ElevenLabs sound-generation (cama de ambiente em loop + 1 detalhe vivo + o sino do título, igual nos 6), normalizados a -25/-24/-21 LUFS.
-5. Vídeo: `lovec . test_one record_act_intro <ato>` (quadros PNG, relógio fixo, `TOOL_WINDOW=1920x1080`) e `bash tools/act_intro_video.sh <ato> <saida.mp4>` (música do ato e SFX nos volumes do jogo).
+5. Atos 2–6 (14/11/2026): a pintura mestra usa a do ato 1 como referência de estilo ("mesma série"). O arco sai por luminância (contraluz: `arch_lum`, `lum_k`, `fill_holes` no `ACT`), com parallax do arco menor (0,85–0,9) para esconder a borda reta da máscara. O viajante é o loop do ato 1 (`animDir`, com `travelerTint` do bioma); onde o da pintura é menor (atos 4–6), ele fica parado no chão (`traveler = false`). Elementos vivos por `fx` (`glow` = brasas, vagalumes, almas; `mote` = neve, cinza, esporos), névoa, corvos e lanterna.
+   - 2 Colinas da Torre: noite de lua, vagalumes, névoa, corvo; vento + coruja.
+   - 3 Estrada do Abismo: sol vermelho, brasas subindo, cinza caindo, lanterna; vento + pedras rolando.
+   - 4 Geleira Espectral: neve em dois planos, almas azuis, névoa; vento gelado + gelo rachando.
+   - 5 Pântano da Podridão: lua verde, luzes do pântano, esporos, lanterna; pântano + bolhas.
+   - 6 Campos do Crepúsculo: eclipse, folhas de outono, poeira dourada, corvos; vento + sino distante.
+   - O nome no título é sempre `acts.actN` (nome do bioma, igual ao do bestiário); `act_intro.actN_sub` é o subtítulo.
+6. Vídeo: `lovec . test_one record_act_intro <ato>` (quadros PNG, relógio fixo, `TOOL_WINDOW=1920x1080`) e `bash tools/act_intro_video.sh <ato> <saida.mp4>` (música do ato e SFX nos volumes do jogo).
