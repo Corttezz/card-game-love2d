@@ -15,7 +15,7 @@ return {
         },
         sfx = {
             { code = "actIntro1Wind", file = "audio/sfx/act_intro/act1_wind.mp3", at = 0.0, volume = 0.9, loop = true },
-            { code = "actIntro1Crows", file = "audio/sfx/act_intro/act1_crows.mp3", at = 2.2, volume = 0.6 },
+            { code = "actIntro1Crows", file = "audio/sfx/act_intro/act1_crows.mp3", at = 4.3, volume = 0.6 },
         },
     },
     [2] = {
@@ -33,7 +33,7 @@ return {
         },
         sfx = {
             { code = "actIntro2Wind", file = "audio/sfx/act_intro/act2_wind.mp3", at = 0.0, volume = 0.9, loop = true },
-            { code = "actIntro2Owl", file = "audio/sfx/act_intro/act2_owl.mp3", at = 2.4, volume = 0.6 },
+            { code = "actIntro2Owl", file = "audio/sfx/act_intro/act2_owl.mp3", at = 4.3, volume = 0.6 },
         },
     },
     [3] = {
@@ -53,7 +53,7 @@ return {
         },
         sfx = {
             { code = "actIntro3Wind", file = "audio/sfx/act_intro/act3_wind.mp3", at = 0.0, volume = 0.9, loop = true },
-            { code = "actIntro3Rocks", file = "audio/sfx/act_intro/act3_rocks.mp3", at = 2.6, volume = 0.6 },
+            { code = "actIntro3Rocks", file = "audio/sfx/act_intro/act3_rocks.mp3", at = 4.3, volume = 0.6 },
         },
     },
     [4] = {
@@ -74,7 +74,7 @@ return {
         },
         sfx = {
             { code = "actIntro4Wind", file = "audio/sfx/act_intro/act4_wind.mp3", at = 0.0, volume = 0.9, loop = true },
-            { code = "actIntro4Ice", file = "audio/sfx/act_intro/act4_ice.mp3", at = 2.3, volume = 0.6 },
+            { code = "actIntro4Ice", file = "audio/sfx/act_intro/act4_ice.mp3", at = 4.3, volume = 0.6 },
         },
     },
     [5] = {
@@ -94,7 +94,7 @@ return {
         },
         sfx = {
             { code = "actIntro5Swamp", file = "audio/sfx/act_intro/act5_swamp.mp3", at = 0.0, volume = 0.9, loop = true },
-            { code = "actIntro5Bubble", file = "audio/sfx/act_intro/act5_bubble.mp3", at = 2.0, volume = 0.6 },
+            { code = "actIntro5Bubble", file = "audio/sfx/act_intro/act5_bubble.mp3", at = 4.3, volume = 0.6 },
         },
     },
     [6] = {
@@ -112,7 +112,7 @@ return {
         },
         sfx = {
             { code = "actIntro6Wind", file = "audio/sfx/act_intro/act6_wind.mp3", at = 0.0, volume = 0.9, loop = true },
-            { code = "actIntro6Bell", file = "audio/sfx/act_intro/act6_bell.mp3", at = 2.4, volume = 0.6 },
+            { code = "actIntro6Bell", file = "audio/sfx/act_intro/act6_bell.mp3", at = 4.3, volume = 0.6 },
         },
     },
     chime = { code = "actIntroChime", file = "audio/sfx/act_intro/title_chime.mp3", volume = 0.75 },
