@@ -189,6 +189,7 @@ function M.run(arg)
     if not okLoad then print("[record_act_transition] boot falhou: " .. tostring(errLoad)); return false end
     CheatMode.activate({ isolate = false })
     CheatMode.panelOpen = false
+    require("src.ui.UnlockReveal").dtOverride = DT
     if _G.gameSettings then _G.gameSettings.tipsEnabled = false end
     local notes
     local ok, err = pcall(function()
