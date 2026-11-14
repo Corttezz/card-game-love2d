@@ -10,7 +10,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import store_art
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ICON = os.path.join(ROOT, "assets", "branding", "icon.png")
+# Matéria-prima do selo do menu: o ícone ANTIGO (chapado, fundo ouro), lido do histórico do git.
+# O assets/branding/icon.png atual é o ícone com acabamento (13/11/2026) e não serve de fonte
+# (cantos transparentes e degradê quebram o recorte por inundação abaixo).
+ICON_REF = "9f31dda4:assets/branding/icon.png"
 OUT = os.path.join(ROOT, "assets", "branding")
 DATA = os.path.join(ROOT, "src", "data", "menu_brand.lua")
 REF = os.path.join(ROOT, "tools", "preview_out", "menu_logo", "ref")
@@ -31,7 +34,9 @@ def bayer(h, w):
 
 
 def load_seal():
-    a = np.array(Image.open(ICON).convert("RGB").resize((128, 128), Image.NEAREST)).astype(int)
+    import io, subprocess
+    raw = subprocess.run(["git", "-C", ROOT, "show", ICON_REF], capture_output=True, check=True).stdout
+    a = np.array(Image.open(io.BytesIO(raw)).convert("RGB").resize((128, 128), Image.NEAREST)).astype(int)
     lum = a.mean(2)
     H, W = lum.shape
     bg = np.zeros((H, W), bool)
