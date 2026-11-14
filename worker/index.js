@@ -26,6 +26,16 @@ const SEG = {
 };
 
 const LANGS = ['en', 'pt_BR', 'es', 'fr', 'de'];
+// Europa (UE/EEE, Reino Unido, Suíça): o Clarity pede aceite antes (public/js/clarity.js). Sem país conhecido (XX, T1 = Tor) também pede.
+const CONSENT_CC = new Set(['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU',
+  'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', 'NO', 'GB', 'CH', 'XX', 'T1']);
+// na prévia, ?cc=XX simula o país (teste); na produção vale só o país da Cloudflare
+export function needsConsent(req, env) {
+  const url = new URL(req.url);
+  const test = env && env.PREVIEW === '1' ? url.searchParams.get('cc') : null;
+  const cc = (test || (req.cf && req.cf.country) || req.headers.get('CF-IPCountry') || 'XX').toUpperCase();
+  return CONSENT_CC.has(cc);
+}
 const BIOMES = ['fields', 'highlands', 'abyss', 'frost', 'marsh', 'dusk', 'eclipse'];
 const VARIANTS = ['a', 'b', 'v2', 'v3', 'v3b', 'blog'];
 
@@ -182,6 +192,9 @@ export default {
     else res.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
     // 404 nunca fica um dia no cache (um arquivo novo, como /llms.txt, aparece no próximo minuto)
     if (status === 404) res.headers.set('Cache-Control', 'public, max-age=60');
+    if (/^text\/html/i.test(res.headers.get('Content-Type') || '') && needsConsent(req, env)) {
+      return new HTMLRewriter().on('html', { element(e) { e.setAttribute('data-consent', 'eu'); } }).transform(res);
+    }
     return res;
   },
 };
