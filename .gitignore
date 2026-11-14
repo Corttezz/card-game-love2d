@@ -8,3 +8,4 @@ tools/pixellab/raw/
 public/media/*.mp4
 src/css/themes.css
 src/css/sprites.css
+preview_only/
