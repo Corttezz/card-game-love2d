@@ -38,6 +38,7 @@ return {
         on          = "ON",
         off         = "OFF",
         reduced_motion = "Mouvement réduit",
+        act_intros = "Scènes d'ouverture d'acte",
         music_react = "Le décor réagit à la musique",
         close       = "FERMER",
         tab_audio   = "Audio",
@@ -186,12 +187,12 @@ return {
     },
 
     acts = {
-        act1      = "Catacombes",
-        act2      = "Tour de Pierre",
-        act3      = "L'Abîme",
-        act4      = "Citadelle Gelée",
-        act5      = "Coeur Putride",
-        act6      = "Cour de l'Éclipse",
+        act1      = "Champs en Ruine",
+        act2      = "Collines de la Tour",
+        act3      = "Route de l'Abîme",
+        act4      = "Glacier Spectral",
+        act5      = "Marais Putride",
+        act6      = "Champs du Crépuscule",
         endless   = "Infini",
         endless_n = "Infini #{n}",
         fallback  = "Acte {n}",
@@ -1453,4 +1454,14 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.fr").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.fr").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.fr").endless,
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua); o nome vem de acts.actN
+    act_intro = {
+        kicker = "ACTE {n}",
+        act1_sub = "Là où commence la longue route",
+        act2_sub = "Sous la tour, la lune veille",
+        act3_sub = "La route descend vers le feu",
+        act4_sub = "Là où même les morts ont froid",
+        act5_sub = "L'eau dormante garde ses secrets",
+        act6_sub = "La fin de la longue route",
+    },
 }

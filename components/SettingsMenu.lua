@@ -212,6 +212,9 @@ function SettingsMenu:_tabs()
             toggle("lighting", "settings.lighting",
                 function() return gs().lighting ~= false end,
                 function(v) gs().lighting = v end),
+            toggle("act_intros", "settings.act_intros",
+                function() return gs().actIntros ~= false end,
+                function(v) gs().actIntros = v end),
         } },
         { key = "game", label = I18n.t("settings.tab_game"), rows = {
             { key = "combat_speed", kind = "cycle", label = I18n.t("settings.combat_speed"),
@@ -449,6 +452,7 @@ function SettingsMenu:_persist()
         previewDetails = g.previewDetails and true or false,
         muteOnFocusLoss = g.muteOnFocusLoss ~= false,
         musicReact    = g.musicReact ~= false,
+        actIntros     = g.actIntros ~= false,
         locale        = I18n.getLocale(),
     }
     for k, v in pairs(snapshot) do g[k] = v end

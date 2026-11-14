@@ -38,6 +38,7 @@ return {
         on          = "ON",
         off         = "OFF",
         reduced_motion = "Movimiento reducido",
+        act_intros = "Escenas de apertura de acto",
         music_react = "El escenario reacciona a la música",
         close       = "CERRAR",
         tab_audio   = "Audio",
@@ -186,12 +187,12 @@ return {
     },
 
     acts = {
-        act1      = "Catacumbas",
-        act2      = "Torre de Piedra",
-        act3      = "El Abismo",
-        act4      = "Ciudadela Helada",
-        act5      = "Corazón Pútrido",
-        act6      = "Corte del Eclipse",
+        act1      = "Campos Arruinados",
+        act2      = "Colinas de la Torre",
+        act3      = "Camino del Abismo",
+        act4      = "Glaciar Espectral",
+        act5      = "Pantano Podrido",
+        act6      = "Campos del Ocaso",
         endless   = "Infinito",
         endless_n = "Infinito #{n}",
         fallback  = "Acto {n}",
@@ -1453,4 +1454,14 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.es").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.es").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.es").endless,
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua); o nome vem de acts.actN
+    act_intro = {
+        kicker = "ACTO {n}",
+        act1_sub = "Donde comienza el largo camino",
+        act2_sub = "Bajo la torre, la luna vigila",
+        act3_sub = "El camino desciende hacia el fuego",
+        act4_sub = "Donde hasta los muertos sienten frío",
+        act5_sub = "El agua quieta guarda secretos",
+        act6_sub = "El final del largo camino",
+    },
 }

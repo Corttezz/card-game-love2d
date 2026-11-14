@@ -37,6 +37,7 @@ local DEFAULT_SETTINGS = {
     previewDetails = false,
     muteOnFocusLoss = true,
     musicReact    = true,
+    actIntros     = true,
 }
 
 SaveManager.PATHS = PATHS

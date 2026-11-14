@@ -38,6 +38,7 @@ return {
         on          = "AN",
         off         = "AUS",
         reduced_motion = "Weniger Bewegung",
+        act_intros = "Akt-Einleitungsszenen",
         music_react = "Kulisse reagiert auf Musik",
         close       = "SCHLIESSEN",
         tab_audio   = "Audio",
@@ -186,12 +187,12 @@ return {
     },
 
     acts = {
-        act1      = "Katakomben",
-        act2      = "Steinturm",
-        act3      = "Der Abgrund",
-        act4      = "Eisige Zitadelle",
-        act5      = "Fauliges Herz",
-        act6      = "Eklipsenhof",
+        act1      = "Verwüstete Felder",
+        act2      = "Turmhügel",
+        act3      = "Abgrundstraße",
+        act4      = "Geisterhafter Gletscher",
+        act5      = "Fäulnissumpf",
+        act6      = "Dämmerfelder",
         endless   = "Endlos",
         endless_n = "Endlos #{n}",
         fallback  = "Akt {n}",
@@ -1453,4 +1454,14 @@ return {
     seal_ui = require("src.i18n.locales.run_modifiers.de").seal_ui,
     endless_curses = require("src.i18n.locales.run_modifiers.de").endless_curses,
     endless = require("src.i18n.locales.run_modifiers.de").endless,
+    -- cenas de abertura de ato (src/scenes/ActIntroScene.lua); o nome vem de acts.actN
+    act_intro = {
+        kicker = "AKT {n}",
+        act1_sub = "Wo der lange Weg beginnt",
+        act2_sub = "Unter dem Turm wacht der Mond",
+        act3_sub = "Der Weg führt hinab ins Feuer",
+        act4_sub = "Wo selbst die Toten frieren",
+        act5_sub = "Stilles Wasser hütet Geheimnisse",
+        act6_sub = "Das Ende des langen Weges",
+    },
 }
