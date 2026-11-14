@@ -53,6 +53,13 @@ function M.register(audioSystem)
     return n
 end
 
+local stingClock = {}
+
+function M.sinceSting(name)
+    local c = stingClock[name]
+    return c and (clock - c) or math.huge
+end
+
 function M.sting(name, fallback)
     local def = Data.STINGERS[name]
     local code = M.code(name)
@@ -69,6 +76,7 @@ function M.sting(name, fallback)
         Sfx.play(fallback)
         played = true
     end
+    if played then stingClock[name] = clock end
     note("sting", name, played)
     return played
 end

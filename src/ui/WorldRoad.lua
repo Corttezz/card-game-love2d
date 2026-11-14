@@ -1216,6 +1216,24 @@ function WorldRoad.setBiome(n)
     end
 end
 
+function WorldRoad.setBiomeNow(n)
+    WorldRoad.setBiome(n)
+    WorldRoad._blend = nil
+    WorldRoad._prevBiomeIndex = nil
+    WorldRoad._segBasePrev = nil
+    local props = WorldRoad._props
+    if props then
+        for i = #props, 1, -1 do
+            local p = props[i]
+            if p.ghost then
+                table.remove(props, i)
+            else
+                p.swapT, p.swapDelay, p.swapDur = nil, nil, nil
+            end
+        end
+    end
+end
+
 function WorldRoad.enterCastle(opts)
     opts = opts or {}
     local bid = rawBiome().id

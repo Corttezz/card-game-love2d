@@ -355,6 +355,7 @@ showMapSelection = function()
         if ActIntro.start(run.actNumber, function() currentState = "mapSelection" end,
                 { under = introUnder, after = drawForkScreen }) then
             currentState = "actIntro"
+            if GameplayScene.SCENE_MODE == "worldroad" then WorldRoad.setBiomeNow(run.actNumber) end
         end
     end
 end
@@ -372,10 +373,11 @@ local showRoundEval
 local showCardRewards
 
 showRoundEval = function()
+    local faded = require("src.ui.StateFade").begin(0.45)
     currentState = "roundEval"
     setRunStage("cashout")
 
-    if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
+    if not faded and FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
     do
         local r = game.runManager and game.runManager.currentRun
         require("src.systems.MusicMoments").cashOutChime(r, r and r.currentNode and r.currentNode.type)
@@ -388,10 +390,11 @@ showRoundEval = function()
 end
 
 showCardRewards = function()
+    local faded = require("src.ui.StateFade").begin(0.4)
     currentState = "cardReward"
     setRunStage("rewards")
 
-    if FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
+    if not faded and FlashShader and FlashShader.trigger then FlashShader.trigger(0.4, 0.35) end
 
     cardRewardScreen:show(game,
         function(offer)
@@ -1573,6 +1576,7 @@ function love.update(dt)
     end
     CardParticles.update(dt)
     FlashShader.update(dt)
+    require("src.ui.StateFade").update(dt)
     ScreenShake.update(dt)
 
     IF.push(IF.SCENE)
@@ -1702,6 +1706,8 @@ function love.draw()
         IF.pop()
         IF.push(IF.SCENE)
     end
+
+    require("src.ui.StateFade").draw()
 
     if currentState ~= "actIntro" then
         require("src.ui.StatusTooltip").draw()

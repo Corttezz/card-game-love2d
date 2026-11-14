@@ -83,6 +83,7 @@ local SUITES = {
     { group = "unit",  name = "test_boot_entry" },
     { group = "unit",  name = "test_intro_tube" },
     { group = "unit",  name = "test_act_intro" },
+    { group = "unit",  name = "test_transicoes_imersao" },
     { group = "unit",  name = "test_menu_brand" },
     { group = "unit",  name = "test_crt_levels" },
     { group = "unit",  name = "test_pixelcanvas_state" },

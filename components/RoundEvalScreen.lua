@@ -221,7 +221,7 @@ function RoundEvalScreen:_scheduleTimeline()
         self:_buildCashOutButton()
         self.cashOutReady = true
         if FlashShader and FlashShader.trigger then
-            FlashShader.trigger(0.45, 0.35)
+            FlashShader.trigger(0.45, 0.35, 0.12)
         end
         if _G.jiggleScreen then _G.jiggleScreen(0.8) end
         Sfx.play("cashOutChime")
@@ -250,7 +250,7 @@ function RoundEvalScreen:_onCashOutClick()
     Sfx.play("coinTotalThud", { pitch = 1.2, volume = 0.85 })
     if _G.jiggleScreen then _G.jiggleScreen(1.2) end
     if FlashShader and FlashShader.trigger then
-        FlashShader.trigger(0.65, 0.4)
+        FlashShader.trigger(0.65, 0.4, 0.1)
     end
 
     local landAt = self:_launchCoins()

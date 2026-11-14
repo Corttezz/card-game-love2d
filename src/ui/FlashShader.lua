@@ -7,6 +7,7 @@ local loaded = false
 local intensity = 0
 local decayTimer = 0
 local decayDuration = 0.3
+local attackTimer, attackDuration, target = 0, 0, 0
 
 function FlashShader.load()
     local ok, s = pcall(love.graphics.newShader, "shaders/flash.glsl")
@@ -23,13 +24,31 @@ function FlashShader.isAvailable()
     return loaded
 end
 
-function FlashShader.trigger(i, duration)
-    intensity = math.max(intensity, math.max(0, math.min(1, i or 0.5)))
+function FlashShader.trigger(i, duration, attack)
+    local v = math.max(0, math.min(1, i or 0.5))
     decayDuration = duration or 0.3
+    if attack and attack > 0 then
+        target = math.max(target, v)
+        attackDuration, attackTimer = attack, attack
+        return
+    end
+    intensity = math.max(intensity, v)
     decayTimer = decayDuration
 end
 
+function FlashShader.intensity() return intensity end
+
 function FlashShader.update(dt)
+    if attackTimer > 0 then
+        attackTimer = attackTimer - dt
+        local k = 1 - math.max(0, attackTimer) / attackDuration
+        intensity = math.max(intensity, target * k * k)
+        if attackTimer <= 0 then
+            intensity, target, attackTimer = math.max(intensity, target), 0, 0
+            decayTimer = decayDuration
+        end
+        return
+    end
     if decayTimer > 0 then
         decayTimer = decayTimer - dt
         if decayTimer <= 0 then

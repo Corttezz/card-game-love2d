@@ -140,7 +140,12 @@ function UnlockReveal.draw(result, x, y, w, h)
                 if sg.levelUp and k >= 1 and not st.sfxBar["up" .. sg.level] then
                     st.sfxBar["up" .. sg.level] = true
                     st.flash = 1
-                    Sfx.play("actComplete")
+                    local MM = require("src.systems.MusicMoments")
+                    if MM.sinceSting("run_victory") < 2.5 then
+                        Sfx.play("actComplete", { gain = 0.45 })
+                    else
+                        Sfx.play("actComplete")
+                    end
                 end
             end
         end
