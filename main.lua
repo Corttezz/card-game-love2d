@@ -101,11 +101,19 @@ local function startGame(classId, seal)
     game:checkpointRun()
     gameUI:show()
     classSelectionScreen:hide()
+    local primed = false
     if ActIntro.start(1, function()
             currentState = "playing"
-            GameplayScene.requestArrival()
-        end, { under = introUnder, after = drawRunScreen }) then
+        end, { under = introUnder, after = function()
+            if not primed then
+                primed = true
+                local okU, errU = pcall(GameplayScene.update, 0)
+                if not okU then Debug.warn("[ActIntro] preparar a chegada: " .. tostring(errU)) end
+            end
+            drawRunScreen()
+        end }) then
         currentState = "actIntro"
+        GameplayScene.requestArrival()
     else
         GameplayScene.requestArrival()
     end
