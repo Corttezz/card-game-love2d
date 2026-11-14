@@ -31,6 +31,13 @@ for (const rel of KEEP) {
   fs.cpSync(src, path.join(D, rel), { recursive: true });
 }
 
+// prévia: pasta local fora do git (PREVIEW_DIR, posta pelo tools/deploy_preview.sh), ex.: vídeos para o Daniel ver.
+// Nunca entra na produção nem no sitemap; o Worker já manda X-Robots-Tag noindex na prévia.
+if (process.env.PREVIEW_DIR) {
+  const pv = path.resolve(R, process.env.PREVIEW_DIR);
+  if (fs.existsSync(pv)) fs.cpSync(pv, D, { recursive: true });
+}
+
 // 2. JS e CSS
 const res = await esbuild.build({
   entryPoints: { app: path.join(R, 'src/ts/main.ts'), site: path.join(R, 'src/css/index.css') },

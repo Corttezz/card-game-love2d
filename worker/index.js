@@ -110,6 +110,32 @@ async function unsubscribe(req, env) {
 
 const PREFIX = { pt: 'pt', es: 'es', fr: 'fr', de: 'de' };
 
+// Range de um intervalo (bytes=a-b, a-, -n): os assets do Worker sempre devolvem o arquivo inteiro, e o Safari
+// do iPhone só toca vídeo com 206. Áudio e vídeo (<= 25 MiB por arquivo) são lidos inteiros para saber o tamanho,
+// porque a resposta dos assets não traz Content-Length; o resto passa direto.
+async function byteRange(req, r) {
+  const headers = new Headers(r.headers);
+  const media = /^(video|audio)\//i.test(headers.get('Content-Type') || '');
+  if (!media) return new Response(r.body, { status: 200, headers });
+  headers.set('Accept-Ranges', 'bytes');
+  const h = req.headers.get('Range');
+  const m = h && /^bytes=(\d*)-(\d*)$/.exec(h.trim());
+  if (!m || (m[1] === '' && m[2] === '')) return new Response(r.body, { status: 200, headers });
+  const buf = await r.arrayBuffer();
+  const size = buf.byteLength;
+  let start, end;
+  if (m[1] === '') { start = Math.max(0, size - Number(m[2])); end = size - 1; }
+  else { start = Number(m[1]); end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1); }
+  if (start >= size || start > end) {
+    headers.set('Content-Range', `bytes */${size}`);
+    headers.delete('Content-Length');
+    return new Response(null, { status: 416, headers });
+  }
+  headers.set('Content-Range', `bytes ${start}-${end}/${size}`);
+  headers.set('Content-Length', String(end - start + 1));
+  return new Response(req.method === 'HEAD' ? null : buf.slice(start, end + 1), { status: 206, headers });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -145,7 +171,7 @@ export default {
       r = await env.ASSETS.fetch(new Request(new URL(nf, url), req));
       status = 404;
     }
-    const res = new Response(r.body, { status, headers: r.headers });
+    const res = status === 200 ? await byteRange(req, r) : new Response(r.body, { status, headers: r.headers });
     for (const [k, v] of Object.entries(SEG)) res.headers.set(k, v);
     const ct = res.headers.get('Content-Type') || '';
     if (/^text\/(html|plain)/i.test(ct) && !/charset/i.test(ct)) res.headers.set('Content-Type', ct.split(';')[0] + '; charset=utf-8');
