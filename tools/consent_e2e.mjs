@@ -11,7 +11,7 @@ const run = async (cc, path, w, h, choice) => {
   await ctx.addInitScript(() => { Object.defineProperty(navigator, 'webdriver', { get: () => false }); });
   const pg = await ctx.newPage();
   const cl = []; pg.on('request', (r) => { if (/clarity\.ms/.test(r.url())) cl.push(r.url()); });
-  await pg.goto(base + path + '?cc=' + cc, { waitUntil: 'networkidle' }); await pg.waitForTimeout(1200);
+  await pg.goto(base + path + '?cc=' + cc, { waitUntil: 'load' }); await pg.waitForTimeout(1200);
   const tag = `${cc} ${path} ${w}x${h}`;
   const box = await pg.$('.consent');
   const ck = async () => (await ctx.cookies()).filter((c) => /^_cl/.test(c.name)).length;
@@ -53,7 +53,7 @@ const run = async (cc, path, w, h, choice) => {
     ok(tag + `: ${choice} pelo teclado fecha o banner`, !(await pg.$('.consent')));
     if (choice === 'yes') ok(tag + ': depois de aceitar o Clarity carrega', cl.length > 0, `pedidos=${cl.length} cookies=${await ck()}`);
     else ok(tag + ': depois de recusar, 0 pedidos e 0 cookies', cl.length === 0 && (await ck()) === 0, `pedidos=${cl.length} cookies=${await ck()}`);
-    await pg.reload({ waitUntil: 'networkidle' }); await pg.waitForTimeout(800);
+    await pg.reload({ waitUntil: 'load' }); await pg.waitForTimeout(1500);
     ok(tag + ': escolha lembrada (sem banner ao voltar)', !(await pg.$('.consent')));
   }
   await ctx.close();

@@ -1,14 +1,15 @@
 // Worker do runemoire.com: www -> raiz (301), cabeçalhos de segurança, cache e a API do "Me avise".
 import { STYLE_HASHES } from './csp.gen.js';
+// Google Ads (AW- no GTM, 15/11/2026): conversão e remarketing pedem doubleclick.net, googleadservices.com e os google.<país>.
 const CSP = [
   "default-src 'none'",
-  "script-src 'self' https://static.cloudflareinsights.com https://www.clarity.ms https://scripts.clarity.ms https://www.googletagmanager.com",
+  "script-src 'self' https://static.cloudflareinsights.com https://www.clarity.ms https://scripts.clarity.ms https://www.googletagmanager.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com",
   `style-src 'self' ${STYLE_HASHES}`.trim(),
-  "img-src 'self' data: blob: https://*.clarity.ms https://c.bing.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://www.google.com",
+  "img-src 'self' data: blob: https://*.clarity.ms https://c.bing.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.doubleclick.net https://www.googleadservices.com https://www.google.com https://www.google.com.br https://www.google.pt https://www.google.es https://www.google.fr https://www.google.de https://www.google.co.uk https://www.google.it https://www.google.nl https://www.google.ch https://www.google.at https://www.google.be https://www.google.ie https://www.google.pl https://www.google.se",
   "media-src 'self'",
   "font-src 'self'",
-  "connect-src 'self' https://cloudflareinsights.com https://*.clarity.ms https://c.bing.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://www.google.com",
-  "frame-src https://www.googletagmanager.com",
+  "connect-src 'self' https://cloudflareinsights.com https://*.clarity.ms https://c.bing.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.doubleclick.net https://www.googleadservices.com https://pagead2.googlesyndication.com https://google.com https://www.google.com https://www.google.com.br https://www.google.pt https://www.google.es https://www.google.fr https://www.google.de https://www.google.co.uk https://www.google.it https://www.google.nl https://www.google.ch https://www.google.at https://www.google.be https://www.google.ie https://www.google.pl https://www.google.se",
+  "frame-src https://www.googletagmanager.com https://*.doubleclick.net https://www.google.com",
   "manifest-src 'self'",
   "base-uri 'none'",
   "form-action 'self'",
