@@ -6,6 +6,8 @@ local AchievementToast = {}
 AchievementToast.IN = 0.45
 AchievementToast.HOLD = 3.4
 AchievementToast.OUT = 0.35
+AchievementToast.anchor = "top"
+AchievementToast.hold = false
 
 local queue = {}
 local current = nil
@@ -35,7 +37,7 @@ end
 
 function AchievementToast.update(dt)
     if not current then
-        if #queue == 0 then return end
+        if #queue == 0 or AchievementToast.hold then return end
         current = table.remove(queue, 1)
         current.t = 0
     end
@@ -49,6 +51,7 @@ function AchievementToast.rect(sw, sh)
     local x = math.floor((sw - w) / 2)
     local y = 60
     if sh < 420 then y = 8 end
+    if AchievementToast.anchor == "bottom" then y = sh - h - 16 end
     return x, y, w, h
 end
 
@@ -63,11 +66,12 @@ function AchievementToast.draw()
     local alpha, dy = 1, 0
     if t < AchievementToast.IN then
         local k = t / AchievementToast.IN
-        if rm then alpha = k else dy = -(1 - Easing.backOut(k)) * (h + y + 10) end
+        local down = AchievementToast.anchor == "bottom"
+        if rm then alpha = k elseif down then dy = (1 - Easing.backOut(k)) * (sh - y + 10) else dy = -(1 - Easing.backOut(k)) * (h + y + 10) end
     elseif t > AchievementToast.IN + AchievementToast.HOLD then
         local k = (t - AchievementToast.IN - AchievementToast.HOLD) / AchievementToast.OUT
         alpha = 1 - k
-        if not rm then dy = -Easing.easeIn(k) * 24 end
+        if not rm then dy = (AchievementToast.anchor == "bottom" and 1 or -1) * Easing.easeIn(k) * 24 end
     end
     y = math.floor(y + dy)
 

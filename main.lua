@@ -1082,6 +1082,7 @@ function love.load(loveArgs)
         audioSystem:loadSound("runDefeat", "audio/sfx/run-defeat.mp3", Config.Audio.RUN_DEFEAT_VOLUME)
 
         audioSystem:loadSound("coinClink",     "audio/sfx/coin-clink.mp3",       0.55)
+        audioSystem:loadSound("coinTick",      "audio/sfx/coin-tick.mp3",        0.55)
         audioSystem:loadSound("coinTotalThud", "audio/sfx/coin-total-thud.mp3",  0.65)
         audioSystem:loadSound("cashOutChime",  "audio/sfx/cash-out-chime.mp3",   0.55)
         audioSystem:loadSound("packSealBreak", "audio/sfx/pack-seal-break.mp3",  0.70)
@@ -1554,7 +1555,12 @@ function love.update(dt)
     end
     FloatingText.update(dt)
     require("src.ui.CoinBurst").update(dt)
-    if currentState ~= "actIntro" then require("src.ui.AchievementToast").update(dt) end
+    do
+        local AT = require("src.ui.AchievementToast")
+        AT.anchor = currentState == "roundEval" and "bottom" or "top"
+        AT.hold = currentState == "roundEval" and roundEvalScreen ~= nil and roundEvalScreen:isCounting()
+        if currentState ~= "actIntro" then AT.update(dt) end
+    end
     require("src.systems.SteamBridge").update()
     require("src.systems.Tutorial").update(dt, currentState, game)
     if audioSystem then audioSystem:update(dt) end

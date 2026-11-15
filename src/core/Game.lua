@@ -1477,6 +1477,7 @@ function Game:_buildRoundEvalSources()
             "src.systems.RunModifiers").victoryGoldDelta(
             self.isRunMode and self.runManager and self.runManager.currentRun)),
         color = {1, 0.85, 0.30, 1},
+        kind = "victory",
     })
 
     if self.player and self.player.health == self.player.maxHealth then
@@ -1484,6 +1485,7 @@ function Game:_buildRoundEvalSources()
             label = I18n.t("round_eval.src_full_hp", nil, "HP cheio"),
             dollars = Config.Economy.FULL_HP_BONUS,
             color = {0.4, 0.95, 0.5, 1},
+            kind = "full_hp",
         })
     end
 
@@ -1497,6 +1499,7 @@ function Game:_buildRoundEvalSources()
                     nil, nt == "boss" and "Chefe" or "Elite"),
                 dollars = bonus,
                 color = {0.95, 0.55, 0.30, 1},
+                kind = nt == "boss" and "boss" or "elite",
             })
         end
     end
@@ -1508,6 +1511,7 @@ function Game:_buildRoundEvalSources()
                 label = I18n.t("round_eval.src_interest", nil, "Juros (1$ a cada 5$)"),
                 dollars = interest,
                 color = {0.95, 0.85, 0.30, 1},
+                kind = "interest",
             })
         end
     end
