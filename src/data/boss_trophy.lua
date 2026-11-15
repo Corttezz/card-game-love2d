@@ -47,9 +47,9 @@ return {
         },
         eclipse_queen = {
             particle = "petal", rate = 34, burst = 30,
-            colors = { { 0.78, 0.22, 0.62 }, { 0.42, 0.20, 0.58 }, { 0.98, 0.80, 0.40 } },
-            glow = { 0.82, 0.34, 0.90 }, ray = { 1.00, 0.82, 0.44 },
-            riseSound = "bossEclipseBreak",
+            colors = { { 1.00, 0.82, 0.40 }, { 0.86, 0.46, 0.16 }, { 1.00, 0.96, 0.82 } },
+            glow = { 1.00, 0.78, 0.38 }, ray = { 1.00, 0.90, 0.62 },
+            riseSound = "maidenStarIgnite",
         },
     },
     default = {

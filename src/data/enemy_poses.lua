@@ -97,7 +97,7 @@ EnemyPoses.BY_ID = {
                       hover = 0.06, bob = 0.020, bobSpeed = 0.90,
                       drift = 0.010,
                       shadowK = 0.66, shadowA = 0.55,
-                      idle = { fps = 5, cycle = true } },
+                      idle = { fps = 7, cycle = true } },
 }
 
 local warned = {}

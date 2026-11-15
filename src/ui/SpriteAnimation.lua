@@ -4,15 +4,27 @@ SpriteAnimation.__index = SpriteAnimation
 local cache = {}
 local missCache = {}
 
+SpriteAnimation.SKIN = {}
+
 local function enemyKey(id, anim, dir)
-    return tostring(id) .. "|" .. tostring(anim) .. "|" .. tostring(dir)
+    return tostring(id) .. "|" .. tostring(SpriteAnimation.SKIN[id] or "") .. "|" .. tostring(anim)
+        .. "|" .. tostring(dir)
 end
 
 local function basePath(id)
     if tostring(id):find("/", 1, true) then
         return "assets/sprites/characters/" .. id
     end
+    local skin = SpriteAnimation.SKIN[id]
+    if skin then return "assets/sprites/characters/enemies/" .. id .. "/" .. skin end
     return "assets/sprites/characters/enemies/" .. id
+end
+SpriteAnimation.basePath = basePath
+
+function SpriteAnimation.setSkin(id, skin)
+    if SpriteAnimation.SKIN[id] == skin then return false end
+    SpriteAnimation.SKIN[id] = skin
+    return true
 end
 
 local function loadFrames(enemyId, animation, direction)

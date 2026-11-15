@@ -59,6 +59,16 @@ local SOUNDS = {
     bossEclipseCrown   = { "audio/sfx/boss/boss_eclipse_crown.mp3",   0.90 },
     bossEclipsePhase   = { "audio/sfx/boss/boss_eclipse_phase.mp3",   0.85 },
     bossEclipseFade    = { "audio/sfx/boss/boss_eclipse_fade.mp3",    0.80 },
+    maidenStarIgnite   = { "audio/sfx/boss/maiden_star_ignite.mp3",   0.70 },
+    maidenStarQuench   = { "audio/sfx/boss/maiden_star_quench.mp3",   0.60 },
+    maidenStarFall     = { "audio/sfx/boss/maiden_star_fall.mp3",     0.70 },
+    maidenCoronaFlare  = { "audio/sfx/boss/maiden_corona_flare.mp3",  0.70 },
+    maidenDiamondCharge = { "audio/sfx/boss/maiden_diamond_charge.mp3", 0.75 },
+    maidenDiamondRing  = { "audio/sfx/boss/maiden_diamond_ring.mp3",  0.85 },
+    maidenPhaseShift   = { "audio/sfx/boss/maiden_phase_shift.mp3",   0.85 },
+    maidenOrbitSpin    = { "audio/sfx/boss/maiden_orbit_spin.mp3",    0.75 },
+    maidenDawn         = { "audio/sfx/boss/maiden_dawn.mp3",          0.80 },
+    maidenVoiceFade    = { "audio/sfx/boss/maiden_voice_fade.mp3",    0.75 },
     colossusAssemble   = { "audio/sfx/boss/colossus_assemble.mp3",     0.80 },
     colossusCrack      = { "audio/sfx/boss/colossus_crack.mp3",        0.85 },
     colossusCrumble    = { "audio/sfx/boss/colossus_crumble.mp3",      0.85 },
@@ -1592,7 +1602,10 @@ end
 
 local QUEEN_ID = "eclipse_queen"
 local GOLD   = { 0.96, 0.80, 0.42 }
-local MAGENTA = { 0.92, 0.28, 0.78 }
+local MAGENTA = { 0.42, 0.46, 0.90 }
+local STARW  = { 1.00, 0.94, 0.78 }
+local QUEEN_SUN = { u = 0.5, v = 0.242, r = 22 }
+BossCinematic.QUEEN_SUN = QUEEN_SUN
 local ASH_GRAY = { 0.62, 0.58, 0.60 }
 local WARM = { 1.0, 0.86, 0.62 }
 
@@ -1614,7 +1627,7 @@ end
 local function eclipseCenter()
     local tr = stage and stage.tr
     if not tr then return nil end
-    return tr.ox + 0.5 * 400 * tr.scale, tr.oy + 0.2266 * 256 * tr.scale, 14 * tr.scale
+    return tr.ox + QUEEN_SUN.u * 400 * tr.scale, tr.oy + QUEEN_SUN.v * 256 * tr.scale, QUEEN_SUN.r * tr.scale
 end
 
 local function drawBrokenHalo(cx, cy, r, ry, P, col, a, t, seed)
@@ -1640,18 +1653,13 @@ end
 
 local function drawIris(cx, cy, r, P, open, t)
     if open <= 0.02 then return end
-    local w = math.max(P, math.floor(r * 0.22 / P) * P)
-    local hh = math.floor(r * 1.2 * open / P) * P
-    if hh < P then return end
-    local saccade = math.floor(t * 0.7) % 3 - 1
-    local track = math.floor(1.8 * math.sin(t * 0.6) + saccade * 0.7 + 0.5)
-    local px0 = math.floor((cx + track * P * 1.5) / P) * P - w / 2
-    local py0 = math.floor(cy / P) * P - hh / 2
-    glowBlob(cx, cy, r * 2.2, r * 2.2, MAGENTA, 0.35 * open, 2)
-    love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.95)
-    love.graphics.rectangle("fill", px0, py0, w, hh)
-    love.graphics.setColor(1.0, 0.78, 0.95, 0.95)
-    love.graphics.rectangle("fill", px0 + w / 2 - P / 2, py0 + hh * 0.3, P, math.max(P, hh * 0.2))
+    local ang = -0.8 + math.sin(t * 0.5) * 0.25
+    local bx = math.floor((cx + math.cos(ang) * r) / P) * P
+    local by = math.floor((cy + math.sin(ang) * r) / P) * P
+    glowBlob(bx, by, r * 1.4, r * 1.4, STARW, 0.55 * open, 2)
+    love.graphics.setColor(STARW[1], STARW[2], STARW[3], open)
+    love.graphics.rectangle("fill", bx - P, by, 3 * P, P)
+    love.graphics.rectangle("fill", bx, by - P, P, 3 * P)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -1688,65 +1696,51 @@ local function drawBigShadow(anim, bodyCx, floorY, s, a)
 end
 
 local STRAY_EYES = {
-    { u = 0.445, v = 0.19, at = 0.25, gap = 2.5, size = 1 },
-    { u = 0.555, v = 0.42, at = 0.55, gap = 2.0, size = 1 },
-    { u = 0.465, v = 0.52, at = 0.85, gap = 1.5, size = 0.7 },
-    { u = 0.540, v = 0.12, at = 1.05, gap = 3.0, size = 1.3 },
-    { u = 0.425, v = 0.36, at = 1.30, gap = 1.8, size = 0.8 },
-    { u = 0.575, v = 0.27, at = 1.50, gap = 2.2, size = 1 },
+    { u = 0.300, v = 0.10, at = 0.20 }, { u = 0.385, v = 0.06, at = 0.40 },
+    { u = 0.455, v = 0.14, at = 0.60 }, { u = 0.560, v = 0.08, at = 0.80 },
+    { u = 0.640, v = 0.15, at = 1.00 }, { u = 0.715, v = 0.07, at = 1.20 },
 }
 local function spawnHallEyes(omenDur)
-    local n = 20 + love.math.random(0, 20)
+    local n = 22 + love.math.random(0, 10)
     hallEyes = { list = {}, t = 0, turned = false, turnAt = omenDur - 0.35, close = nil }
     for i = 1, n do
-        local zone = love.math.random()
-        local u, v
-        if zone < 0.38 then u, v = 0.02 + love.math.random() * 0.33, 0.10 + love.math.random() * 0.58
-        elseif zone < 0.76 then u, v = 0.65 + love.math.random() * 0.33, 0.10 + love.math.random() * 0.58
-        else u, v = 0.08 + love.math.random() * 0.84, 0.01 + love.math.random() * 0.08 end
-        hallEyes.list[i] = { u = u, v = v, openAt = 0.3 + love.math.random() * (omenDur - 0.9),
-                             gap = 1 + love.math.random(0, 1), size = 1 + love.math.random(0, 1),
-                             look = love.math.random(0, 2) - 1, blink = love.math.random() * 7 }
+        hallEyes.list[i] = { u = 0.03 + love.math.random() * 0.94, v = 0.02 + love.math.random() * 0.36,
+                             openAt = 0.3 + love.math.random() * (omenDur - 0.9),
+                             size = 1 + love.math.random(0, 1), blink = love.math.random() * 7 }
     end
 end
+
+local function drawStar(x, y, B, size, a, col)
+    local c = col or STARW
+    love.graphics.setColor(c[1], c[2], c[3], a)
+    love.graphics.rectangle("fill", x, y, B, B)
+    if size >= 2 then
+        love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], a * 0.85)
+        love.graphics.rectangle("fill", x - B, y, B, B)
+        love.graphics.rectangle("fill", x + B, y, B, B)
+        love.graphics.rectangle("fill", x, y - B, B, B)
+        love.graphics.rectangle("fill", x, y + B, B, B)
+    end
+end
+
 local function drawHallEyes()
     local he = hallEyes
     local tr = stage and stage.tr
     if not he or not tr then return end
     local P = px()
     local t = he.t
-    local closeK = he.close and smooth(clamp01(he.close / 0.3)) or 0
-    if closeK >= 1 then return end
+    local closeK = he.close and smooth(clamp01(he.close / 0.6)) or 0
     local flash = (he.flash or 0) > 0
     for i, e in ipairs(he.list) do
         local age = t - e.openAt
-        local rows = (age < 0) and 0 or ((age < 0.09) and 1 or 2)
-        if closeK > 0 then rows = (closeK < 0.5) and math.min(rows, 1) or 0 end
-        local blink = (math.floor((t * 2 + e.blink)) % 9 == 0) and 1 or 2
-        rows = math.min(rows, blink)
-        if rows > 0 then
-            local B = P
-            local W = (e.size >= 2) and 4 or 3
-            local ex = tr.ox + e.u * 400 * tr.scale
-            local ey = tr.oy + e.v * 256 * tr.scale
-            local gap = (W + 1 + e.gap) * B
-            local pupilCol = he.turned and math.floor((W - 1) / 2) or math.max(0, math.min(W - 1, 1 + e.look))
-            local hh = rows * B
-            local yTop = math.floor(ey / B) * B - (rows == 2 and B or 0)
-            if flash then
-                glowBlob(ex, ey, gap * 2.6, B * 8, { 1, 0.9, 1 }, 0.75, 1 + i % 3)
-            else
-                glowBlob(ex, ey, gap * 2.2, B * 5, MAGENTA, 0.28, 1 + i % 3)
-            end
-            for side = -1, 1, 2 do
-                local x0 = math.floor((ex + side * gap / 2) / B) * B - math.floor(W / 2) * B
-                love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], 0.95)
-                love.graphics.rectangle("fill", x0 - 1, yTop - 1, W * B + 2, hh + 2)
-                love.graphics.setColor(1.0, 0.86, 0.97, 1)
-                love.graphics.rectangle("fill", x0, yTop, W * B, hh)
-                love.graphics.setColor(0.10, 0.01, 0.12, 1)
-                love.graphics.rectangle("fill", x0 + pupilCol * B, yTop, B, hh)
-            end
+        if age > 0 then
+            local tw = 0.65 + 0.35 * math.sin(t * 3 + e.blink)
+            local a = clamp01(age / 0.25) * tw * (1 - 0.6 * closeK)
+            local ex = math.floor((tr.ox + e.u * 400 * tr.scale) / P) * P
+            local ey = math.floor((tr.oy + e.v * 256 * tr.scale) / P) * P
+            if flash then glowBlob(ex, ey, P * 10, P * 10, STARW, 0.6, 1 + i % 3) end
+            glowBlob(ex, ey, P * 5, P * 5, GOLD, 0.18 * a, 1 + i % 3)
+            drawStar(ex, ey, P, e.size, a)
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
@@ -1756,26 +1750,23 @@ local function drawStrayEyes(t, fade)
     local tr = stage and stage.tr
     if not tr or fade <= 0.01 then return end
     local P = px()
+    local prev = nil
     for i, e in ipairs(STRAY_EYES) do
         local open = clamp01((t - e.at) / 0.35)
-        local blink = (math.floor((t * 3 + i * 1.3)) % 7 == 0) and 0.2 or 1
-        local a = open * fade * blink
-        if a > 0.02 then
-            local B = math.max(P, math.floor(2 * P * e.size + 0.5))
-            local ex = tr.ox + e.u * 400 * tr.scale
-            local ey = tr.oy + e.v * 256 * tr.scale
-            local gap = e.gap * B * 2
-            glowBlob(ex, ey, gap * 2.6, B * 7, MAGENTA, 0.45 * a, 1 + i % 3)
-            for side = -1, 1, 2 do
-                local x0 = math.floor((ex + side * gap / 2) / B) * B - B
-                local y0 = math.floor(ey / B) * B
-                love.graphics.setColor(MAGENTA[1], MAGENTA[2], MAGENTA[3], a)
-                love.graphics.rectangle("fill", x0, y0, 3 * B, 2 * B)
-                love.graphics.setColor(0.08, 0.01, 0.10, a)
-                love.graphics.rectangle("fill", x0 + B, y0, B, 2 * B)
+        if open > 0.02 then
+            local ex = math.floor((tr.ox + e.u * 400 * tr.scale) / P) * P
+            local ey = math.floor((tr.oy + e.v * 256 * tr.scale) / P) * P
+            if prev then
+                love.graphics.setColor(GOLD[1], GOLD[2], GOLD[3], 0.55 * open * fade)
+                love.graphics.setLineWidth(P)
+                love.graphics.line(prev[1], prev[2], prev[1] + (ex - prev[1]) * open, prev[2] + (ey - prev[2]) * open)
             end
+            glowBlob(ex, ey, P * 8, P * 8, GOLD, 0.35 * open * fade, 1 + i % 3)
+            drawStar(ex, ey, P, 2, open * fade)
+            prev = { ex, ey }
         end
     end
+    love.graphics.setLineWidth(1)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -1786,15 +1777,13 @@ local function drawOmen(w, h)
     local stepK = math.floor(k * o.steps + 1e-6) / o.steps
     local irisOpen = (o.t > o.dur * 0.45) and smooth(clamp01((o.t - o.dur * 0.45) / 0.5)) or 0
     if seq and seq.reduced then irisOpen = (o.t > o.dur * 0.4) and 1 or 0 end
-    drawEclipseClosing(0.25 + 0.75 * stepK, o.t, irisOpen)
     local tr = stage.tr
-    local cover = stepK * 0.85
+    local cover = stepK * 0.45
     if cover > 0.01 then
-        love.graphics.setColor(0.04, 0.01, 0.06, cover)
-        love.graphics.rectangle("fill", tr.ox + 160 * tr.scale, tr.oy - 4 * tr.scale, 80 * tr.scale, 196 * tr.scale)
-        love.graphics.setColor(0.04, 0.01, 0.06, cover * 0.7)
-        love.graphics.rectangle("fill", tr.ox + 148 * tr.scale, tr.oy + 192 * tr.scale, 104 * tr.scale, 70 * tr.scale)
+        love.graphics.setColor(0.05, 0.03, 0.10, cover)
+        love.graphics.rectangle("fill", tr.ox, tr.oy, 400 * tr.scale, 256 * tr.scale)
     end
+    drawEclipseClosing(0.25 + 0.75 * stepK, o.t, irisOpen)
 end
 
 local function drawUnveil(w, h)
@@ -1887,7 +1876,7 @@ local function drawCrownCard(w, h)
             local ch = echars[i]
             love.graphics.setColor(0, 0, 0, 0.7 * a)
             love.graphics.print(ch, ex + 1, ey + 1)
-            love.graphics.setColor(1.0, 0.70, 0.92, a)
+            love.graphics.setColor(1.0, 0.92, 0.74, a)
             love.graphics.print(ch, ex, ey)
             ex = ex + ef:getWidth(ch)
         end
@@ -1962,19 +1951,19 @@ local function queenEnter(st)
         fx.omen = { t = 0, dur = math.max(0.3, st.dur or 3.5), steps = st.steps or 4, nextStep = 1 }
         ensureEclipse().active = true
         spawnHallEyes(fx.omen.dur)
-        queueSfx(math.max(0.1, fx.omen.dur - 0.35), "bossBlinkClick", nil, 0.6)
+        queueSfx(math.max(0.1, fx.omen.dur - 0.35), "maidenStarIgnite", nil, 0.8)
         darkEase = { from = dark, to = st.to or 0.80, t = 0, dur = fx.omen.dur }
         play("bossEclipseOmen", nil)
         playLoop("bossEclipseHum")
         mistTarget(1, fx.omen.dur * 0.8)
         for i = 1, fx.omen.steps do
-            queueSfx(i * fx.omen.dur / (fx.omen.steps + 0.5), "bossBlinkClick", nil, 0.7 + i * 0.05)
+            queueSfx(i * fx.omen.dur / (fx.omen.steps + 0.5), "maidenStarIgnite", nil, 0.9 + i * 0.08)
         end
         return true
     elseif kind == "unveil" then
         fx.unveil = { t = 0, dur = math.max(0.4, st.dur or 3.0), u = st.u or 0.5, v = st.v or 0.3,
                       anim = ownAnim(st.clip or "unveil", st.dur) }
-        play("bossEclipseUnveil", nil)
+        play("maidenOrbitSpin", "bossEclipseUnveil")
         InteriorFX.gust(0.5, fx.unveil.dur)
         if _G.triggerShake and not seq.reduced then _G.triggerShake(2, fx.unveil.dur) end
         return true
@@ -2015,13 +2004,24 @@ local function queenDawnStart(st)
     local e = ensureEclipse()
     e.active = true
     e.dawnEase = { t = 0, dur = math.max(0.5, fx.dawn and fx.dawn.dur or 2) }
-    play("bossEclipseFade", nil)
+    play("maidenVoiceFade", "bossEclipseFade")
+    queueSfx(0.6, "maidenDawn", nil, 1.0)
     stopLoop("bossEclipseHum")
 end
 
-local function startPhaseShift()
-    fx.phaseShift = { t = 0, dur = 1.4 }
-    play("bossEclipsePhase", nil)
+local function queenSkinFor(phase)
+    if (phase or 0) <= 0 then return nil end
+    return "fase" .. (phase + 1)
+end
+BossCinematic.queenSkinFor = queenSkinFor
+
+local function startPhaseShift(phase)
+    fx.phaseShift = { t = 0, dur = 1.6, phase = phase }
+    play("maidenPhaseShift", "bossEclipsePhase")
+    if phase and phase > 0 then
+        EnemyRenderer.setSkin(QUEEN_ID, queenSkinFor(phase))
+        EnemyRenderer.playClip("t" .. phase .. (phase + 1), 9)
+    end
     if _G.triggerShake and not reducedMotion() then _G.triggerShake(10, 0.4) end
     InteriorFX.gust(0.8, 0.8)
     if stage and stage.tr and not reducedMotion() then
@@ -2029,6 +2029,10 @@ local function startPhaseShift()
         for _ = 1, 16 do
             spawnFeather(cx + (love.math.random() - 0.5) * 60 * px(), cy + (love.math.random() - 0.5) * 20,
                 (love.math.random() - 0.5) * 50, 20 + love.math.random() * 40, "petal")
+        end
+        for _ = 1, 10 do
+            spawnFeather(cx + (love.math.random() - 0.5) * 120 * px(), cy + (love.math.random() - 0.5) * 50 * px(),
+                (love.math.random() - 0.5) * 30, -20 - love.math.random() * 30, "ash")
         end
     end
 end
@@ -2042,10 +2046,13 @@ local function queenUpdate(dt, game, ctx)
         e.t = e.t + dt
         local phase = en._phaseIdx or 0
         if phase > e.lastPhase and e.lastPhase >= 0 and en.health and en.health > 0 then
-            startPhaseShift()
+            startPhaseShift(phase)
+        elseif EnemyRenderer.skin(QUEEN_ID) ~= queenSkinFor(phase) and en.health and en.health > 0 then
+            EnemyRenderer.setSkin(QUEEN_ID, queenSkinFor(phase))
         end
         e.lastPhase = phase
-        e.level = (phase > 0) and 1 or 0
+        e.phase = phase
+        e.level = math.min(1, phase / 3)
         if en.health and en.health <= 0 and e.dawn <= 0 and not e.dawnEase and (deathFor == en) then
             e.dawn = 1
         end
@@ -2141,8 +2148,9 @@ local function queenDrawBack(w, h)
             local g = e.gaze
             gazeOpen = math.min(smooth(clamp01(g.t / 0.3)), smooth(clamp01((g.dur - g.t) / 0.3)))
         end
-        if e.cur > 0.02 or gazeOpen > 0 then
-            drawEclipseClosing(e.cur, e.t, gazeOpen)
+        if gazeOpen > 0 and (e.phase or 0) < 3 then
+            local cx, cy, r = eclipseCenter()
+            if cx then drawIris(cx, cy, r, px(), gazeOpen, e.t) end
         end
     end
     drawPhaseShift()
@@ -2165,12 +2173,12 @@ end
 local function queenDrawFront()
     if not (eclipse and eclipse.active and stage and stage.bbox) then return end
     local e = eclipse
-    if e.cur > 0.05 and e.dawn <= 0 and not bossHidden and landed then
+    if e.cur > 0.05 and e.dawn <= 0 and not bossHidden and landed and (e.phase or 0) >= 3 then
         local bb = stage.bbox
-        local hx = bb.cx
-        local hy = bb.topY + (bb.bottomY - bb.topY) * 0.10
-        drawBrokenHalo(hx, hy, (bb.width or 120) * 0.22, (bb.width or 120) * 0.07, px(),
-            MAGENTA, 0.75 * e.cur, e.t, 7)
+        local hx = bb.cx + (bb.width or 120) * 0.10
+        local hy = bb.topY + (bb.bottomY - bb.topY) * 0.06
+        local pulse = 0.55 + 0.45 * math.sin(e.t * 3.1)
+        glowBlob(hx, hy, (bb.width or 120) * 0.35, (bb.width or 120) * 0.35, STARW, 0.30 * pulse, 2)
         love.graphics.setColor(1, 1, 1, 1)
     end
 end

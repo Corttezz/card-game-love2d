@@ -111,16 +111,21 @@ function EnemyHud.intentSpec(enemy, player)
         lines[#lines + 1] = I18n.t("enemy_kit.intent.frost", { value = it.frost })
     end
     if it.fullMoon then
-        lines[#lines + 1] = I18n.t("enemy_kit.intent.full_moon")
+        lines[#lines + 1] = I18n.t(it.moonMsg and ("enemy_kit.intent." .. it.moonMsg .. "_full")
+            or "enemy_kit.intent.full_moon")
     end
     if it.newMoon then
-        lines[#lines + 1] = I18n.t("enemy_kit.intent.new_moon")
+        lines[#lines + 1] = I18n.t(it.moonMsg and ("enemy_kit.intent." .. it.moonMsg .. "_new")
+            or "enemy_kit.intent.new_moon")
+    end
+    if it.selfVuln then
+        lines[#lines + 1] = I18n.t("enemy_kit.intent.self_vuln")
     end
     if it.staggered then
         lines[#lines + 1] = I18n.t("enemy_kit.intent.staggered")
     end
     if it.runes then
-        lines[#lines + 1] = I18n.t("enemy_kit.intent.runes", { hits = hits })
+        lines[#lines + 1] = I18n.t("enemy_kit.intent." .. (it.runesKey or "runes"), { hits = hits })
         if hits <= 0 then text = "0" end
     end
 

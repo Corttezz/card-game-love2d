@@ -254,6 +254,10 @@ function AudioManager:playMusic(code, opts)
 
     entry.loop = true
     entry.template:setLooping(nativeLoop(entry))
+    if type(opts.startAt) == "number" and opts.startAt >= 0 then
+        entry.template:stop()
+        pcall(function() entry.template:seek(opts.startAt, "seconds") end)
+    end
 
     local fadeDuration = opts.fadeDuration or 0
     local cf0 = self.musicCrossfade

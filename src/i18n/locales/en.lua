@@ -914,7 +914,7 @@ return {
             rot_colossus      = "Rot Colossus",
             dusk_shade        = "Dusk Shade",
             blood_duke        = "Blood Duke",
-            eclipse_queen     = "Eclipse Queen",
+            eclipse_queen     = "Astrolabe Maiden",
             hollow_farmer     = "Hollow Farmer",
             plague_rats       = "Plague Rats",
             blight_bull       = "Blight Bull",

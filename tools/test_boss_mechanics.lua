@@ -595,116 +595,103 @@ local function testQueen(t)
     local ID = "eclipse_queen"
     local g = battleWith(ID, 1000, 20)
     local e = g.enemy
-    t:eq("rainha: mecânica lua", BM.spec(e).kind, "moon")
-    t:eq("rainha: abre na Crescente", BM.stacks(e, "moon"), 1)
-    t:falsy("rainha: Crescente sem Vulnerável", e:hasStatus("vulnerable"))
-    e._forcedNext = "lunar_blades"
+    t:eq("donzela: Crepúsculo sem mecânica", BM.spec(e), nil)
+    t:eq("donzela: 3 marcas de fase na barra", #BM.hpMarks(e), 3)
+    e:takeDamage(250)
+    t:eq("donzela: 75% abre a Totalidade", e._phaseIdx, 1)
+    t:truthy("donzela: status totality", e:hasStatus("totality"))
+    local m = BM.spec(e)
+    t:eq("donzela: Totalidade = constelação (runas)", m and m.kind, "runes")
+    t:eq("donzela: constelação nasce vazia", BM.stacks(e, "stars"), 0)
+    t:eq("donzela: limiar de quebra = 8% (80)", BM.runeThreshold(e), 80)
+    for _ = 1, 4 do
+        for _, step in ipairs(BM.turnEndSteps(e)) do BM.applyStep(e, step) end
+    end
+    t:eq("donzela: teto de 3 estrelas", BM.stacks(e, "stars"), 3)
+    e._phaseOpener = nil
+    e._forcedNext = "star_fall"
     e:rollIntent(g.player)
     local it = e:getIntent()
-    t:eq("rainha: 2º anúncio = Lua Cheia", BM.stacks(e, "moon"), 2)
-    t:truthy("rainha: intent marcado Cheia", it.fullMoon)
-    t:eq("rainha: Cheia = golpe x1,5 já no anúncio", it.perHit, math.floor(math.floor(20 * 0.4) * 1.5))
+    t:eq("donzela: Queda Estelar 1 golpe por estrela", it.hits, 3)
+    t:truthy("donzela: Queda Estelar sempre revelada", it.reveal)
+    t:eq("donzela: chave de anúncio estrelas", it.runesKey, "stars")
+    t:eq("donzela: golpe vira estrela no visual", BM.strikeFor(e, it), "star")
+    e:takeDamage(250)
+    t:eq("donzela: 50% abre a Coroa", e._phaseIdx, 2)
+    t:eq("donzela: estrelas apagadas na Coroa", BM.stacks(e, "stars"), 0)
+    t:falsy("donzela: status totality removido", e:hasStatus("totality"))
+    t:eq("donzela: Coroa = ciclo de labaredas", BM.spec(e).kind, "moon")
+    e:rollIntent(g.player)
+    t:eq("donzela: abertura da Coroa", e:getIntent().id, "corona_rise")
+    t:eq("donzela: labareda começa no passo 1", BM.stacks(e, "flare"), 1)
+    e._forcedNext = "flare"
+    e:rollIntent(g.player)
+    it = e:getIntent()
+    t:truthy("donzela: 2º passo = labareda cheia", it.fullMoon)
+    t:eq("donzela: labareda usa mensagem própria", it.moonMsg, "flare")
     local ev = BM.afterRoll(e)
-    t:truthy("rainha: virada da Cheia avisa", ev and ev.full)
-    e._forcedNext = "lunar_blades"
+    t:eq("donzela: aviso da labareda com chave própria", ev and ev.msg, "flare")
     e:rollIntent(g.player)
-    t:eq("rainha: Minguante", BM.stacks(e, "moon"), 3)
-    t:eq("rainha: Minguante sem bônus", e:getIntent().perHit, math.floor(20 * 0.4))
-    t:falsy("rainha: Minguante não avisa", BM.afterRoll(e))
     e:rollIntent(g.player)
-    t:eq("rainha: Lua Nova", BM.stacks(e, "moon"), 4)
-    t:truthy("rainha: Lua Nova = Vulnerável", e:hasStatus("vulnerable"))
-    t:truthy("rainha: intent marcado Nova", e:getIntent().newMoon)
-    local hp = e.health
-    e:takeDamage(10)
-    t:eq("rainha: Vulnerável na Nova = +50%", hp - e.health, 15)
+    t:truthy("donzela: 4º passo = brecha (Vulnerável)", e:hasStatus("vulnerable"))
     e:onTurnEnd()
-    t:falsy("rainha: Vulnerável some no turno dela", e:hasStatus("vulnerable"))
+    e:takeDamage(250)
+    t:eq("donzela: 25% abre o Anel de Diamante", e._phaseIdx, 3)
+    t:eq("donzela: Anel de Diamante sem ciclo", BM.spec(e), nil)
+    t:eq("donzela: labareda limpa", BM.stacks(e, "flare"), 0)
+    t:eq("donzela: abre com Forma de Diamante", e._phaseOpener, "diamond_form")
     e:rollIntent(g.player)
-    t:eq("rainha: ciclo volta à Crescente", BM.stacks(e, "moon"), 1)
+    it = e:getIntent()
+    t:eq("donzela: carga anunciada", it.id, "diamond_form")
+    t:truthy("donzela: carga revelada", it.reveal)
+    t:truthy("donzela: carga deixa ela Vulnerável", e:hasStatus("vulnerable"))
+    e:onTurnEnd()
+    e:rollIntent(g.player)
+    it = e:getIntent()
+    t:eq("donzela: depois da carga vem o Anel de Diamante", it.id, "diamond_ring")
+    t:truthy("donzela: pico revelado", it.reveal)
+    t:eq("donzela: golpe do anel vira diamante", BM.strikeFor(e, it), "diamond")
 
     local g2 = battleWith(ID, 1000, 20)
-    local e2 = g2.enemy
-    e2:rollIntent(g2.player)
-    g2.player.armor = 0
-    local expected = e2:getIncomingDamage(g2.player)
-    local hp0 = g2.player.health
-    CombatBeats.startTrace()
-    runEnemyTurn(g2, 8)
-    local trace = CombatBeats.traceString()
-    CombatBeats.stopTrace()
-    t:eq("rainha (luta): golpe da Cheia sai exatamente como anunciado", hp0 - g2.player.health, expected)
-    t:eq("rainha (luta): virou Minguante no fim do turno", BM.stacks(e2, "moon"), 3)
-    t:truthy("rainha (luta): sem beat extra na Minguante", not trace:find("boss.moon", 1, true))
-    local g3 = battleWith(ID, 1000, 20)
-    t:eq("Continuar: rainha começa na Crescente", BM.stacks(g3.enemy, "moon"), 1)
-    t:truthy("rainha: marca de 50% (eclipse) na barra", #BM.hpMarks(g3.enemy) == 1
-        and BM.hpMarks(g3.enemy)[1] == 0.5)
-
-    local pills = require("src.ui.EnemyHud").collectPills(e2)
-    local moonPill = nil
-    for _, pl in ipairs(pills) do if pl.name == "moon" then moonPill = pl end end
-    t:truthy("rainha: pill da lua sem número e com a fase no texto",
-        moonPill and moonPill.variant == "p3" and moonPill.showStacks == false)
+    g2.enemy:takeDamage(800)
+    t:eq("donzela: golpe enorme atravessa todas as fases", g2.enemy._phaseIdx, 3)
+    t:eq("donzela: só o status da fase atual", (g2.enemy:hasStatus("totality") or g2.enemy:hasStatus("corona")) and 1 or 0, 0)
 
     local savedGS = _G.gameSettings
     _G.gameSettings = { reducedMotion = false }
     BossTokens.reset()
-    local n = 1
-    local fake = { getStatusStacks = function(_, nm) return nm == "moon" and n or 0 end }
-    settleTokens(ID, fake, 0.1)
-    local st = BossTokens._debug(ID)
-    t:eq("rainha visual: lua na fase do status", st.phase, 1)
-    n = 2
-    settleTokens(ID, fake, 0.1)
-    t:eq("rainha visual: lua vira Cheia", st.phase, 2)
-    t:eq("rainha visual: com transição", st.prevPhase, 1)
-    local spec = BossTokens.spec(ID)
-    local imgs = {}
-    for p = 1, 4 do imgs[p] = BossTokens.moonImage(spec, p) end
-    t:truthy("rainha visual: 4 fases desenhadas do sprite", imgs[1] and imgs[2] and imgs[3] and imgs[4])
-    local function litCount(p)
-        local out = 0
-        local img = BossTokens.moonImage(spec, p)
-        local cv = love.graphics.newCanvas(img:getWidth(), img:getHeight())
-        love.graphics.setCanvas(cv)
-        love.graphics.clear(0, 0, 0, 0)
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(img, 0, 0)
-        love.graphics.setCanvas()
-        local data = cv:newImageData()
-        for y = 0, data:getHeight() - 1 do
-            for x = 0, data:getWidth() - 1 do
-                local r0, _, _, a0 = data:getPixel(x, y)
-                if a0 > 0 and r0 > 0.5 then out = out + 1 end
-            end
-        end
-        return out
+    local g3 = battleWith(ID, 1000, 20)
+    local q = g3.enemy
+    settleTokens(ID, q, 0.1)
+    t:eq("donzela visual: sem tokens no Crepúsculo", BossTokens.count(ID), 0)
+    q:takeDamage(250)
+    for _ = 1, 2 do
+        for _, step in ipairs(BM.turnEndSteps(q)) do BM.applyStep(q, step) end
     end
-    local full, cres, newm = litCount(2), litCount(1), litCount(4)
-    t:truthy(string.format("rainha visual: Cheia > Crescente > Nova (%d > %d > %d)", full, cres, newm),
-        full > cres and cres > newm)
-    st.iw, st.ih, st.tgtX, st.tgtY = 140, 135, -200, 300
-    t:truthy("rainha visual: Lâminas Lunares lançam crescente", BossTokens.strike(ID, "crescent", 0.34, 0.42))
-    _G.gameSettings = { reducedMotion = true }
-    BossTokens.reset()
-    n = 4
-    settleTokens(ID, fake, 0.1)
-    t:eq("rainha reducedMotion: fase sem transição", BossTokens._debug(ID).prevPhase, nil)
-    t:falsy("rainha reducedMotion: sem crescente", BossTokens.strike(ID, "crescent", 0.34, 0.42))
+    settleTokens(ID, q, 1)
+    t:eq("donzela visual: 2 estrelas na constelação", BossTokens.count(ID), 2)
+    q:takeDamage(250)
+    q:rollIntent(g3.player)
+    settleTokens(ID, q, 1)
+    t:eq("donzela visual: sol da coroa no passo do ciclo", BossTokens._debug(ID).phase, 1)
     _G.gameSettings = savedGS
     BossTokens.reset()
 
-    local SP = ownIcon(t, "rainha", require("src.ui.StatusPill").ICONS.moon)
-    t:eq("rainha: pill usa status_moon", SP.ICONS.moon, "status_moon")
-    t:truthy("rainha: crescente é sprite", BossTokens.image(spec.strikes.crescent.sprite))
-    for _, snd in pairs(spec.sounds) do
-        t:truthy("rainha: som " .. snd.code .. " baixo", snd.volume <= 0.75)
+    local SP = require("src.ui.StatusPill")
+    for _, nm in ipairs({ "stars", "flare", "totality", "corona", "diamond_ring" }) do
+        ownIcon(t, "donzela " .. nm, SP.ICONS[nm])
     end
-    localesHave(t, "rainha", { "enemy_kit.intent.full_moon", "enemy_kit.intent.new_moon",
-        "enemy_kit.status.moon.name", "enemy_kit.status.moon.desc_p1", "enemy_kit.status.moon.desc_p2",
-        "enemy_kit.status.moon.desc_p3", "enemy_kit.status.moon.desc_p4",
-        "enemy_kit.msg.moon_full", "enemy_kit.msg.moon_new" })
+    for _, sp in ipairs({ "star", "spark", "diamond", "sun" }) do
+        t:truthy("donzela: sprite " .. sp, love.filesystem.getInfo(
+            "assets/sprites/characters/enemies/eclipse_queen/mechanic/" .. sp .. ".png"))
+    end
+    localesHave(t, "donzela", { "enemy_kit.intent.stars", "enemy_kit.intent.flare_full",
+        "enemy_kit.intent.flare_new", "enemy_kit.intent.self_vuln",
+        "enemy_kit.status.stars.name", "enemy_kit.status.flare.desc_p1",
+        "enemy_kit.status.flare.desc_p4", "enemy_kit.phases.totality.name",
+        "enemy_kit.phases.corona.name", "enemy_kit.phases.diamond_ring.name",
+        "enemy_kit.msg.star_gain", "enemy_kit.msg.star_break",
+        "enemy_kit.msg.flare_full", "enemy_kit.msg.flare_new" })
 end
 
 local function testOwnIcons(t)

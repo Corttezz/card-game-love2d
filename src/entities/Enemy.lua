@@ -186,7 +186,12 @@ function Enemy:rollIntent(player)
         charge = m.next and true or nil,
         debuffs = debuffList(m),
         vuln = (player and player.hasDebuff and player:hasDebuff("vulnerable")) or nil,
+        reveal = m.reveal or nil,
+        selfVuln = m.selfVuln or nil,
     }
+    if m.selfVuln then
+        self:addStatusEffect({ name = "vulnerable", stacks = 1, duration = 1 })
+    end
     BossMechanics.shapeIntent(self, intent, m)
     self.intent = intent
     self.nextIntent = intent.kind
@@ -351,8 +356,10 @@ function Enemy:_checkPhase()
     if not phases or self.health <= 0 then return end
     local nextIdx = (self._phaseIdx or 0) + 1
     local ph = phases[nextIdx]
-    if ph and self.health <= self.maxHealth * (ph.at or 0.5) then
+    while ph and self.health <= self.maxHealth * (ph.at or 0.5) do
+        local prev = phases[nextIdx - 1]
         self._phaseIdx = nextIdx
+        BossMechanics.onPhaseChange(self, prev)
         self._pendingPhase = ph
         self._phaseOpener = ph.opener
         self._moveHistory = {}
@@ -360,6 +367,8 @@ function Enemy:_checkPhase()
         self.baseDamage = math.floor(self.baseDamage * mul)
         self.damage = math.floor(self.damage * mul)
         self:addStatusEffect({ name = ph.id or "eclipse", stacks = 1, duration = 999 })
+        nextIdx = nextIdx + 1
+        ph = phases[nextIdx]
     end
 end
 
@@ -394,7 +403,7 @@ function Enemy:takeDamage(damage, dtype)
     self:_markDeathIfCrossed(wasAlive)
     require("src.systems.EnemySfx").hurt(self, hpBefore - self.health, level)
 
-    if self.health < self.maxHealth * 0.3 then
+    if self.health < self.maxHealth * 0.3 and not (self.kit and self.kit.noEnrage) then
         local wasEnraged = (self.attackPattern == "aggressive")
         self.attackPattern = "aggressive"
         self.damage = math.floor(self.baseDamage * 1.5)

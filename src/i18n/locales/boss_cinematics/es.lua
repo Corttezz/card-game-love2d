@@ -5,5 +5,5 @@ return {
     abyss_tyrant   = { name = "Tirano del Abismo",    epithet = "Carcelero de las Cadenas Ardientes" },
     winter_monarch = { name = "Monarca del Invierno", epithet = "Corona de la Ventisca Eterna" },
     rot_colossus   = { name = "Coloso Pútrido",       epithet = "Corazón de las Raíces Podridas" },
-    eclipse_queen  = { name = "Reina del Eclipse",    epithet = "Señora del Sol Negro" },
+    eclipse_queen  = { name = "Doncella del Astrolabio", epithet = "Guardiana del Último Amanecer" },
 }

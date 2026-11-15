@@ -7,6 +7,13 @@ local BossTokens = {}
 local floor, max, min = math.floor, math.max, math.min
 local state = {}
 local images = {}
+local curPhase = {}
+
+local function specOf(id)
+    local base = id and SPECS[id]
+    if base and base.phased then return base.phased[curPhase[id] or 0] end
+    return base
+end
 
 BossTokens.TIMES = { enter = 0.55, leave = 0.45, stagger = 0.18 }
 
@@ -19,7 +26,7 @@ function BossTokens.has(id)
 end
 
 function BossTokens.spec(id)
-    return SPECS[id]
+    return specOf(id)
 end
 
 function BossTokens.image(path)
@@ -47,6 +54,7 @@ end
 
 function BossTokens.reset()
     state = {}
+    curPhase = {}
 end
 
 function BossTokens.tokenScale(artScale, full)
@@ -72,13 +80,21 @@ function BossTokens.playSound(snd, pitchJitter)
 end
 
 function BossTokens.setWant(id, n)
-    if not SPECS[id] then return end
+    if not specOf(id) then return end
     getState(id).want = max(0, floor(n or 0))
 end
 
 function BossTokens.sync(id, enemy)
-    local spec = SPECS[id]
-    if not spec or not enemy or not enemy.getStatusStacks then return end
+    local base = id and SPECS[id]
+    if base and base.phased and enemy then
+        local p = enemy._phaseIdx or 0
+        if curPhase[id] ~= p then
+            curPhase[id] = p
+            state[id] = nil
+        end
+    end
+    local spec = specOf(id)
+    if not spec or not spec.status or not enemy or not enemy.getStatusStacks then return end
     local st = getState(id)
     st.want = max(0, floor(enemy:getStatusStacks(spec.status) or 0))
     st.dead = (enemy.health or 1) <= 0
@@ -319,7 +335,7 @@ end
 BossTokens._chainEnds = chainEnds
 
 function BossTokens.setSlack(id, k)
-    if not SPECS[id] then return end
+    if not specOf(id) then return end
     getState(id).slack = max(0, k or 0)
 end
 
@@ -382,7 +398,7 @@ local function advanceBolts(spec, s, dt)
 end
 
 function BossTokens.update(dt, id, dying)
-    local spec = id and SPECS[id]
+    local spec = id and specOf(id)
     if not spec then return end
     local s = getState(id)
     local still = reducedMotion()
@@ -422,7 +438,7 @@ end
 
 function BossTokens.strike(id, kind, apex, back)
     if reducedMotion() then return false end
-    local spec = SPECS[id]
+    local spec = specOf(id)
     local st = spec and spec.strikes and spec.strikes[kind]
     if not st then return false end
     local s = state[id]
@@ -825,7 +841,7 @@ function BossTokens.drawnChains(id)
 end
 
 function BossTokens.drawChainsAt(id, r)
-    local spec = id and SPECS[id]
+    local spec = id and specOf(id)
     if not (spec and spec.layout == "chains") then return end
     local s = getState(id)
     if s.want == nil then s.want = #spec.chains end
@@ -849,7 +865,7 @@ local function prepare(r, s)
 end
 
 function BossTokens.drawBack(id, r)
-    local spec = id and SPECS[id]
+    local spec = id and specOf(id)
     if not spec then return end
     local s = getState(id)
     prepare(r, s)
@@ -862,7 +878,7 @@ function BossTokens.drawBack(id, r)
 end
 
 function BossTokens.drawFront(id, r)
-    local spec = id and SPECS[id]
+    local spec = id and specOf(id)
     if not spec then return end
     local s = getState(id)
     if (s.fade or 1) <= 0 then return end
@@ -884,7 +900,7 @@ end
 
 function BossTokens.drawScreen(game)
     local e = game and game.enemy
-    local spec = e and e.spriteId and SPECS[e.spriteId]
+    local spec = e and e.spriteId and specOf(e.spriteId)
     local p = game and game.player
     local dt = love.timer.getDelta()
     local m = require("src.systems.BossMechanics").frostSpec(game)
@@ -967,15 +983,17 @@ end
 function BossTokens.react(game, res)
     local e = game and game.enemy
     local id = e and e.spriteId
-    local spec = id and SPECS[id]
+    local spec = id and specOf(id)
     local I18n = require("src.i18n.I18n")
+    local runeKey = (spec and spec.status == "stars") and "star" or "rune"
     if res.kind == "rune_gain" then
         if spec then BossTokens.playSound(spec.sounds.gain) end
-        enemyFloat(I18n.t("enemy_kit.msg.rune_gain", { value = res.total }, "+1"),
+        enemyFloat(I18n.t("enemy_kit.msg." .. runeKey .. "_gain", { value = res.total }, "+1"),
             { kind = "movename", hold = 0.45, lift = 22 })
     elseif res.kind == "moon" then
         if spec then BossTokens.playSound(res.full and spec.sounds.full or spec.sounds.new) end
-        enemyFloat(I18n.t(res.full and "enemy_kit.msg.moon_full" or "enemy_kit.msg.moon_new",
+        local mk = res.msg or "moon"
+        enemyFloat(I18n.t(res.full and ("enemy_kit.msg." .. mk .. "_full") or ("enemy_kit.msg." .. mk .. "_new"),
             nil, "*"), { kind = "movename", hold = 0.6, lift = 26 })
     elseif res.kind == "root_grow" then
         if spec then BossTokens.playSound(spec.sounds.gain) end
@@ -1029,7 +1047,7 @@ function BossTokens.react(game, res)
     elseif res.kind == "rune_break" then
         if spec then BossTokens.playSound(spec.sounds.lose) end
         if _G.triggerShake then _G.triggerShake(4, 0.16) end
-        enemyFloat(I18n.t("enemy_kit.msg.rune_break", { value = res.n }, "-" .. res.n),
+        enemyFloat(I18n.t("enemy_kit.msg." .. runeKey .. "_break", { value = res.n }, "-" .. res.n),
             { kind = "movename", hold = 0.55, lift = 26 })
     end
 end

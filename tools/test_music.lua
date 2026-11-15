@@ -337,9 +337,15 @@ function M.loopPoints(t)
     end
     t:falsy("colosso sem faixa propria instalada",
         love.filesystem.getInfo("audio/music/" .. MD.bossFile("rot_colossus")) ~= nil)
-    t:falsy("rainha sem boss-eclipse_queen.mp3 (fica com a dela)",
+    t:truthy("donzela com boss-eclipse_queen.mp3 instalada",
         love.filesystem.getInfo("audio/music/" .. MD.bossFile("eclipse_queen")) ~= nil)
-    t:eq("rainha usa music-boss-eclipse", MD.TRACKS[MD.BOSS_TRACKS.eclipse_queen], "music-boss-eclipse.mp3")
+    t:eq("donzela sem a faixa antiga na tabela geral", MD.TRACKS[MD.BOSS_TRACKS.eclipse_queen], nil)
+    for i, code in ipairs({ MD.BOSS_TRACKS.eclipse_queen, unpack(MD.PHASE_TRACKS.eclipse_queen) }) do
+        local lp = LOOPS[code]
+        t:truthy("donzela fase " .. i .. ": loop de pelo menos 20 s", lp and lp.loopEnd - lp.loopStart >= 20)
+        t:truthy("donzela fase " .. i .. ": loop em compassos inteiros",
+            lp and lp.bar and math.abs(((lp.loopEnd - lp.loopStart) / lp.bar) - math.floor((lp.loopEnd - lp.loopStart) / lp.bar + 0.5)) < 0.01)
+    end
     for code in pairs(LOOPS) do
         t:truthy("ponto de loop de " .. code .. " e de uma faixa que o diretor conhece",
             MD.TRACKS[code] ~= nil or MD.isBossCode(code))

@@ -12,7 +12,6 @@ MusicDirector.TRACKS = {
     musicAct5 = "music-act5.mp3",
     musicAct6 = "music-act6.mp3",
     musicBoss = "music-boss.mp3",
-    musicBossEclipse = "music-boss-eclipse.mp3",
     musicShop = "music-shop.mp3",
     musicRest = "music-rest.mp3",
 }
@@ -24,6 +23,10 @@ MusicDirector.BOSS_TRACKS = {
     winter_monarch = "musicBossWinterMonarch",
     rot_colossus = "musicBossRotColossus",
     eclipse_queen = "musicBossEclipse",
+}
+
+MusicDirector.PHASE_TRACKS = {
+    eclipse_queen = { "musicBossEclipseP2", "musicBossEclipseP3", "musicBossEclipseP4" },
 }
 
 MusicDirector.LOOPS = require("src.data.music_loops")
@@ -54,6 +57,9 @@ function MusicDirector.registerTracks(audioSystem)
     end
     for id, code in pairs(MusicDirector.BOSS_TRACKS) do
         load(code, "audio/music/" .. MusicDirector.bossFile(id))
+        for _, pc in ipairs(MusicDirector.PHASE_TRACKS[id] or {}) do
+            load(pc, "audio/music/" .. MusicDirector.bossFile(id))
+        end
     end
     require("src.systems.MusicSections").scan(MusicDirector.BOSS_TRACKS)
     require("src.systems.MusicMoments").register(audioSystem)
@@ -62,6 +68,7 @@ end
 
 local FADE_FAST = 1.2
 local FADE_SLOW = 2.5
+MusicDirector.PHASE_FADE = 1.5
 MusicDirector.FADE_SILENCE = 5.0
 
 MusicDirector.enabled = true
@@ -81,9 +88,13 @@ local FALLBACK = {
 }
 
 local BOSS_CODES = {}
-for _, code in pairs(MusicDirector.BOSS_TRACKS) do
+for id, code in pairs(MusicDirector.BOSS_TRACKS) do
     BOSS_CODES[code] = true
     FALLBACK[code] = MusicDirector.GENERIC_BOSS
+    for _, pc in ipairs(MusicDirector.PHASE_TRACKS[id] or {}) do
+        BOSS_CODES[pc] = true
+        FALLBACK[pc] = code
+    end
 end
 BOSS_CODES[MusicDirector.GENERIC_BOSS] = true
 
@@ -126,9 +137,48 @@ local function bossIdOf(run)
     return roster and roster.boss and roster.boss[1] or nil
 end
 
+MusicDirector.phaseProbe = nil
+function MusicDirector.bossPhase(id)
+    if MusicDirector.phaseProbe then return MusicDirector.phaseProbe(id) or 0 end
+    local ok, GS = pcall(require, "src.scenes.GameplayScene")
+    local g = (ok and GS and GS.getGame and GS.getGame()) or _G.game
+    local e = g and g.enemy
+    if not e or e.spriteId ~= id then return 0 end
+    return e._phaseIdx or 0
+end
+
+function MusicDirector.phaseCode(id, phase)
+    local list = id and MusicDirector.PHASE_TRACKS[id]
+    if not list or (phase or 0) <= 0 then return id and MusicDirector.BOSS_TRACKS[id] or nil end
+    return list[math.min(phase, #list)]
+end
+
+function MusicDirector.sameFamily(a, b)
+    if not a or not b then return false end
+    for id, code in pairs(MusicDirector.BOSS_TRACKS) do
+        local fam = { [code] = true }
+        for _, pc in ipairs(MusicDirector.PHASE_TRACKS[id] or {}) do fam[pc] = true end
+        if fam[a] and fam[b] then return true end
+    end
+    return false
+end
+
+function MusicDirector.barSyncStart(fromCode, toCode, pos)
+    local L = MusicDirector.LOOPS
+    local f, t = L[fromCode], L[toCode]
+    if not (f and t and t.loopStart and type(pos) == "number") then return nil end
+    local bar = t.bar or f.bar
+    if not bar or bar <= 0 then return t.loopStart end
+    local into = (pos - (f.loopStart or 0)) % bar
+    return t.loopStart + into
+end
+
 function MusicDirector.bossTrack(run)
     local id = bossIdOf(run)
     local code = id and MusicDirector.BOSS_TRACKS[id]
+    if code and MusicDirector.PHASE_TRACKS[id] then
+        return MusicDirector.phaseCode(id, MusicDirector.bossPhase(id))
+    end
     if code then return code end
     if id then
         warnOnce("chefe:" .. id, "[Musica] chefe sem faixa propria: " .. tostring(id)
@@ -293,10 +343,18 @@ function MusicDirector.apply(state, run, nodeType, dt)
 
     local saindoDoMenu = (atual == "menuMusic" and code ~= "menuMusic")
     local fade = (BOSS_CODES[code] or saindoDoMenu) and FADE_FAST or FADE_SLOW
+    local startAt = nil
+    if MusicDirector.sameFamily(atual, code) then
+        local a = audioReal()
+        local e = a and a.sources[atual]
+        local pos = e and e.template and e.template:isPlaying() and e.template:tell("seconds") or nil
+        startAt = MusicDirector.barSyncStart(atual, code, pos)
+        fade = MusicDirector.PHASE_FADE
+    end
     Debug.log(string.format("[Musica] %s -> %s (estado=%s, no=%s)",
         tostring(atual or "nada"), tostring(code), tostring(state),
         tostring(nodeType or "-")))
-    Sfx.playMusic(code, { fadeDuration = fade })
+    Sfx.playMusic(code, { fadeDuration = fade, startAt = startAt })
     MusicDirector._current = code
 end
 

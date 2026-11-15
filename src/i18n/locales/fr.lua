@@ -914,7 +914,7 @@ return {
             rot_colossus      = "Colosse Putride",
             dusk_shade        = "Ombre du Crépuscule",
             blood_duke        = "Duc de Sang",
-            eclipse_queen     = "Reine de l'Éclipse",
+            eclipse_queen     = "Demoiselle de l'Astrolabe",
             hollow_farmer     = "Fermier Creux",
             plague_rats       = "Rats de la Peste",
             blight_bull       = "Taureau du Fléau",
