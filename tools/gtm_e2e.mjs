@@ -25,7 +25,7 @@ const visit = async (cc, path) => {
     const u = r.url();
     if (/googletagmanager\.com\/gtm\.js/.test(u)) net.gtm++;
     if (/googletagmanager\.com\/gtag\/js/.test(u)) net.gtag++;
-    if (/\/g\/collect/.test(u)) net.collect.push(u);
+    if (/\/g\/collect/.test(u)) net.collect.push(u + ' ' + (r.postData() || ''));
   });
   pg.on('console', (m) => { if (m.type() === 'error' && /Content Security Policy|CSP/i.test(m.text())) net.errs.push(m.text().slice(0, 160)); });
   await pg.goto(base + path + sep(path) + 'cc=' + cc, { waitUntil: 'networkidle' });
@@ -67,7 +67,7 @@ for (const choice of PROD ? [] : ['yes', 'no']) {
 // cadastro: generate_lead sem e-mail, event_id igual ao do D1
 d1(`DELETE FROM notify WHERE email = '${MAIL}'`);
 for (const [path, sel] of PROD ? [] : [['/pt/?utm_source=instagram&utm_medium=social&utm_campaign=runemoire_teste_20261115', 'home'], ['/blog/', 'blog']]) {
-  const { ctx, pg } = await visit('BR', path);
+  const { ctx, pg, net } = await visit('BR', path);
   if (sel === 'home') {
     if (await pg.isVisible('#screenhit')) { await pg.click('#screenhit'); for (let i = 0; i < 10 && !(await pg.evaluate(() => document.documentElement.classList.contains('in-menu'))); i++) { await pg.waitForTimeout(400); await pg.keyboard.press('Space'); } }
     await pg.click('.menu a[data-open="achievements"]', { force: true });
@@ -86,6 +86,10 @@ for (const [path, sel] of PROD ? [] : [['/pt/?utm_source=instagram&utm_medium=so
   if (sel === 'home') ok('home: UTMs da primeira visita no evento', ev && ev.utm_source === 'instagram' && ev.utm_campaign === 'runemoire_teste_20261115');
   const row = d1(`SELECT event_id, source FROM notify WHERE email = '${MAIL}'`)[0];
   ok(`${sel}: o mesmo event_id gravado no D1`, row && ev && row.event_id === ev.event_id, JSON.stringify(row));
+  await pg.waitForTimeout(6000);
+  const hit = net.collect.find((c) => /en=generate_lead/.test(c)) || '';
+  ok(`${sel}: GA4 recebeu generate_lead com o event_id`, hit && ev && hit.includes(ev.event_id), hit ? 'collect com en=generate_lead' : `collect=${net.collect.length}`);
+  ok(`${sel}: collect sem e-mail`, !net.collect.some((c) => /%40|@|example\.com|teste-gtm/i.test(decodeURIComponent(c.replace(/\+/g, ' ')))));
   d1(`DELETE FROM notify WHERE email = '${MAIL}'`);
   await ctx.close();
 }
