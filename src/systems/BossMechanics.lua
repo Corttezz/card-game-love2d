@@ -2,9 +2,27 @@ local BM = {}
 
 local floor, max, min = math.floor, math.max, math.min
 
+function BM.phaseOf(enemy)
+    local kit = enemy and enemy.kit
+    local i = enemy and enemy._phaseIdx or 0
+    return (kit and kit.phases and i > 0) and kit.phases[i] or nil
+end
+
 function BM.spec(enemy)
     local kit = enemy and enemy.kit
-    return kit and kit.mechanic or nil
+    if not kit then return nil end
+    if kit.phases and kit.phasedMechanic == nil then
+        local any = false
+        for _, ph in ipairs(kit.phases) do
+            if ph.mechanic then any = true end
+        end
+        kit.phasedMechanic = any
+    end
+    if kit.phasedMechanic then
+        local ph = BM.phaseOf(enemy)
+        if ph then return ph.mechanic end
+    end
+    return kit.mechanic
 end
 
 function BM.stacks(enemy, name)
@@ -60,6 +78,18 @@ function BM.onSpawn(enemy)
     elseif m.kind == "roots" then
         BM.setStacks(enemy, m.status, m.start or 0)
     end
+end
+
+function BM.onPhaseChange(enemy, prev)
+    local kit = enemy and enemy.kit
+    if not kit or not kit.phasedMechanic then return end
+    local old = prev and prev.mechanic or (not prev and kit.mechanic) or nil
+    if old and old.status then BM.setStacks(enemy, old.status, 0) end
+    if prev and prev.id then BM.setStacks(enemy, prev.id, 0) end
+    enemy._mech = nil
+    enemy._mechEvents = nil
+    local m = BM.spec(enemy)
+    if m and m.kind == "runes" then BM.setStacks(enemy, m.status, m.start or 0) end
 end
 
 function BM.rootRegen(enemy)
@@ -119,6 +149,7 @@ function BM.shapeIntent(enemy, intent, move)
         end
         intent.fullMoon = (p == m.full) or nil
         intent.newMoon = (p == m.new) or nil
+        intent.moonMsg = m.msg
         if p == m.new then
             enemy:addStatusEffect({ name = "vulnerable", stacks = 1, duration = 1 })
         end
@@ -131,6 +162,7 @@ function BM.shapeIntent(enemy, intent, move)
     end
     if m.kind == "runes" and move.runes then
         intent.runes = true
+        intent.runesKey = (m.token == "star") and "stars" or nil
         intent.hits = (intent.perHit or 0) > 0 and BM.stacks(enemy, m.status) or 0
     end
 end
@@ -175,7 +207,7 @@ function BM.afterRoll(enemy)
     local p = enemy._mech.moonEvent
     enemy._mech.moonEvent = nil
     if not p then return nil end
-    return { kind = "moon", phase = p, full = (p == m.full), new = (p == m.new) }
+    return { kind = "moon", phase = p, full = (p == m.full), new = (p == m.new), msg = m.msg }
 end
 
 function BM.hasPending(enemy)
@@ -191,7 +223,7 @@ end
 function BM.applyEvent(enemy, ev)
     local m = BM.spec(enemy)
     if not m or not enemy:isAlive() then return nil end
-    if ev.kind == "rune_break" then
+    if ev.kind == "rune_break" and m.kind == "runes" then
         local have = BM.stacks(enemy, m.status)
         local n = min(ev.n or 1, have)
         if n <= 0 then return nil end
@@ -202,13 +234,13 @@ function BM.applyEvent(enemy, ev)
         end
         return { kind = "rune_break", n = n, left = have - n }
     end
-    if ev.kind == "root_cut" then
+    if ev.kind == "root_cut" and m.kind == "roots" then
         local have = BM.stacks(enemy, m.status)
         if have <= 0 then return nil end
         BM.setStacks(enemy, m.status, have - 1)
         return { kind = "root_cut", left = have - 1 }
     end
-    if ev.kind == "chain_break" then
+    if ev.kind == "chain_break" and m.kind == "chains" then
         local have = BM.stacks(enemy, m.status)
         if have <= 0 then return nil end
         BM.setStacks(enemy, m.status, have - 1)
@@ -243,7 +275,7 @@ end
 function BM.applyStep(enemy, step)
     local m = BM.spec(enemy)
     if not m or not enemy:isAlive() then return nil end
-    if step.kind == "root_grow" then
+    if step.kind == "root_grow" and m.kind == "roots" then
         local s = mech(enemy)
         s.turns = (s.turns or 0) + 1
         local have = BM.stacks(enemy, m.status)
@@ -251,7 +283,7 @@ function BM.applyStep(enemy, step)
         BM.setStacks(enemy, m.status, have + 1)
         return { kind = "root_grow", total = have + 1 }
     end
-    if step.kind == "rune_gain" then
+    if step.kind == "rune_gain" and m.kind == "runes" then
         local have = BM.stacks(enemy, m.status)
         local n = min(step.n, m.max - have)
         if n <= 0 then return nil end
@@ -357,8 +389,13 @@ end
 
 function BM.strikeFor(enemy, intent)
     local m = BM.spec(enemy)
-    if not m or not intent then return nil end
-    if m.kind == "runes" and intent.runes then return "rune" end
+    if not intent then return nil end
+    if not m then
+        local ph = BM.phaseOf(enemy)
+        local s = (ph and ph.strikes) or (enemy and enemy.kit and enemy.kit.strikes)
+        return s and s[intent.id] or nil
+    end
+    if m.kind == "runes" and intent.runes then return m.token or "rune" end
     local s = m.strikes
     return s and s[intent.id] or nil
 end

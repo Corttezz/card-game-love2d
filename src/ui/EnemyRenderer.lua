@@ -86,7 +86,7 @@ local function loadStatic(id)
     if staticCache[id] then return staticCache[id] end
     if staticMiss[id] then return nil end
 
-    local base = "assets/sprites/characters/enemies/" .. id .. "/"
+    local base = SpriteAnimation.basePath(id) .. "/"
     local sprites = {}
     local found = 0
     for _, dir in ipairs(DIRECTIONS) do
@@ -225,12 +225,28 @@ function EnemyRenderer._tickFlap(dt)
     end
 end
 
+function EnemyRenderer.setSkin(id, skin)
+    if not SpriteAnimation.setSkin(id, skin) then return false end
+    staticCache[id] = nil
+    staticMiss[id] = nil
+    if currentEnemyId == id then
+        currentAnim = nil
+        currentAnimName = nil
+    end
+    return true
+end
+
+function EnemyRenderer.skin(id)
+    return SpriteAnimation.SKIN[id]
+end
+
 function EnemyRenderer.clearCache()
     EnemyRenderer._flap.n, EnemyRenderer._flap.id = 0, nil
     axisCache = {}
     staticCache = {}
     staticMiss = {}
     SpriteAnimation.clearCache()
+    SpriteAnimation.SKIN = {}
     currentAnim = nil
     currentEnemyId = nil
     currentAnimName = nil

@@ -255,7 +255,7 @@ local function checkHud(t)
     local last = ResistBadges.lastRects[#ResistBadges.lastRects]
     t:truthy("HUD: icones a esquerda da barra de vida", last and last.x + last.w <= bar.x)
     t:truthy("HUD: icones dentro do retangulo do HUD", first and first.x >= L.rect.x - 0.5)
-    t:eq("HUD: imunes primeiro", first and first.entry.level, "immune")
+    t:eq("HUD: donzela sem imunidade, resistencias primeiro", first and first.entry.level, "resist")
     canvas:release()
 
     local pills = EnemyHud.collectPills((function()

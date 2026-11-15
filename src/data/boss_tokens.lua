@@ -94,24 +94,53 @@ return {
         },
     },
 
-    eclipse_queen = {
-        status = "moon", layout = "moon", full = true,
-        sprite = DIR .. "eclipse_queen/mechanic/moon.png",
-        u = 0.90, v = 0.13,
-        lit = { 0.42, 1.00, 0.42, 0.00 }, side = { 1, 0, -1, 0 },
-        glow = { 0.95, 0.55, 0.85 },
-        strikes = {
-            crescent = { kind = "bolt", sprite = DIR .. "eclipse_queen/mechanic/crescent.png",
-                         from = { 0.50, 0.30 }, spin = true, arc = 30, trail = { 0.90, 0.45, 0.85 },
-                         burst = { { 0.95, 0.75, 1.00 }, { 0.85, 0.35, 0.75 }, { 0.40, 0.20, 0.60 } },
-                         sound = { code = "impactArcaneQueen", path = "audio/sfx/impact-arcane.mp3",
-                                   volume = 0.32, pitch = 1.15 } },
-        },
-        sounds = {
-            full = { code = "bossEclipsePhaseMech", path = "audio/sfx/boss/boss_eclipse_phase.mp3",
-                     volume = 0.09, pitch = 1.10 },
-            new = { code = "bossCrownTickMech", path = "audio/sfx/boss/boss_crown_tick.mp3",
-                    volume = 0.75, pitch = 0.80 },
-        },
-    },
+    eclipse_queen = (function()
+        local Q = DIR .. "eclipse_queen/mechanic/"
+        local spark = { kind = "bolt", sprite = Q .. "spark.png", from = { 0.50, 0.30 }, spin = true, arc = 24,
+                        trail = { 1.00, 0.80, 0.42 },
+                        burst = { { 1.00, 0.95, 0.80 }, { 1.00, 0.76, 0.32 }, { 0.62, 0.40, 0.20 } },
+                        sound = { code = "impactArcaneMaiden", path = "audio/sfx/impact-arcane.mp3",
+                                  volume = 0.28, pitch = 1.20 } }
+        local diamond = { kind = "bolt", sprite = Q .. "diamond.png", from = { 0.66, 0.08 }, full = true,
+                          spin = true, arc = 10, trail = { 1.00, 0.95, 0.80 },
+                          burst = { { 1.00, 1.00, 0.95 }, { 1.00, 0.86, 0.50 }, { 0.95, 0.62, 0.22 } },
+                          sound = { code = "maidenDiamondRing", path = "audio/sfx/boss/maiden_diamond_ring.mp3",
+                                    volume = 0.55, pitch = 1.0 } }
+        return {
+            phased = {
+                [0] = { layout = "none", strikes = { spark = spark } },
+                [1] = { status = "stars", layout = "orbit", max = 3, full = true,
+                        sprites = { Q .. "star.png" },
+                        cu = 0.50, cv = 0.42, ru = 0.62, rv = 0.10, speed = 0.30, bob = 0.02,
+                        spawn = { 0.50, 0.08 },
+                        glow = { 1.00, 0.86, 0.50 },
+                        shard = { { 1.00, 0.95, 0.80 }, { 0.95, 0.70, 0.30 } },
+                        strikes = {
+                            star = { kind = "token", burst = { { 1.00, 0.96, 0.82 }, { 1.00, 0.76, 0.32 } } },
+                            spark = spark,
+                        },
+                        sounds = {
+                            gain = { code = "maidenStarIgnite", path = "audio/sfx/boss/maiden_star_ignite.mp3",
+                                     volume = 0.70, pitch = 1.0 },
+                            lose = { code = "maidenStarQuench", path = "audio/sfx/boss/maiden_star_quench.mp3",
+                                     volume = 0.60, pitch = 1.0 },
+                            hit = { code = "maidenStarFall", path = "audio/sfx/boss/maiden_star_fall.mp3",
+                                    volume = 0.42, pitch = 1.1 },
+                        } },
+                [2] = { status = "flare", layout = "moon", full = true,
+                        sprite = Q .. "sun.png",
+                        u = 0.80, v = 0.09,
+                        lit = { 0.42, 1.00, 0.42, 0.00 }, side = { 1, 0, -1, 0 },
+                        glow = { 1.00, 0.72, 0.30 },
+                        strikes = { spark = spark },
+                        sounds = {
+                            full = { code = "maidenCoronaFlare", path = "audio/sfx/boss/maiden_corona_flare.mp3",
+                                     volume = 0.55, pitch = 1.0 },
+                            new = { code = "maidenStarQuenchNew", path = "audio/sfx/boss/maiden_star_quench.mp3",
+                                    volume = 0.55, pitch = 0.80 },
+                        } },
+                [3] = { layout = "none", strikes = { spark = spark, diamond = diamond } },
+            },
+        }
+    end)(),
 }

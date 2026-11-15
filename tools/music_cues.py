@@ -27,7 +27,7 @@ DROP_RISE_DB = 7.0
 MUSIC_DIR = os.path.join("audio", "music")
 OUT_DIR = os.path.join("src", "data", "music_cues")
 PREVIEW_DIR = os.path.join("tools", "preview_out", "musica_reativa")
-GENERIC_BOSS_FILES = ("music-boss.mp3", "music-boss-eclipse.mp3")
+GENERIC_BOSS_FILES = ("music-boss.mp3",)
 
 
 def decode(path):

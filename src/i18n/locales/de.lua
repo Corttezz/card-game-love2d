@@ -914,7 +914,7 @@ return {
             rot_colossus      = "Fäulniskoloss",
             dusk_shade        = "Dämmerschatten",
             blood_duke        = "Blutherzog",
-            eclipse_queen     = "Finsternis-Königin",
+            eclipse_queen     = "Astrolabium-Jungfrau",
             hollow_farmer     = "Hohler Bauer",
             plague_rats       = "Pestratten",
             blight_bull       = "Seuchenstier",

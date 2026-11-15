@@ -78,6 +78,7 @@ end
 
 function IntentVisibility.resolve(enemy, roll)
     if not enemy then return "full", nil end
+    if enemy.intent and enemy.intent.reveal then return "full", nil end
     if (enemy._revealTurns or 0) > 0 then
         enemy._revealTurns = enemy._revealTurns - 1
         return "full", "reveal"

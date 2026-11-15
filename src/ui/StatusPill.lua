@@ -65,6 +65,11 @@ StatusPill.ICONS = {
     roots           = "status_roots",
     moon            = "status_moon",
     eclipse         = "status_eclipse",
+    stars           = "status_stars",
+    flare           = "status_flare",
+    totality        = "status_totality",
+    corona          = "status_corona",
+    diamond_ring    = "status_diamond_ring",
 }
 
 local warned = {}

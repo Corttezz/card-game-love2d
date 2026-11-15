@@ -208,9 +208,9 @@ return {
             lore = "Sie fiel vom Himmel, als die Finsternis begann, und wollte nicht wieder aufsteigen. Ihre unheiligen Schwingen schützen und stärken sie. Ihr Urteil durchdringt jeden Block.",
         },
         eclipse_queen = {
-            epithet = "Herrin des schwarzen Mondes",
-            lore = "Sie herrscht über den Hof der Dämmerung, seit der Mond die Sonne verschlang. Ihre Kraft wächst und schwindet mit den Phasen des Mondes. Bis zur Hälfte verwundet, wird sie selbst zur Finsternis.",
-            signature = "Der Mond durchläuft vier Phasen: Bei Vollmond zählt ihr Hieb 50 % mehr; bei Neumond ist sie in deinem Zug verwundbar. Unter der Hälfte ihres Lebens tritt sie in die Finsternis ein.",
+            epithet = "die Hüterin der letzten Morgenröte",
+            lore = "Seit jeher dreht sie den Himmel in ihrem Astrolabium: in der Dämmerung ruft sie die Nacht, im Morgengrauen kündigt sie die Sonne an. Als die lange Straße begann, verstand sie, dass sie eines Tages die letzte Morgenröte verkünden müsste, und band die verfinsterte Sonne an ihre eigene Krone, damit dieser Tag nie käme. Sie zu besiegen heißt, sie ihr Amt erfüllen zu lassen.",
+            signature = "Vier Phasen. Totalität (75 %): entzündet pro Zug einen Stern und wirkt bei drei den Sternenfall, ein Schlag pro Stern; je 8 % ihrer Lebenspunkte in einem Zug löschen einen. Korona (50 %): Flammenstoß +50 %, die Bresche macht sie verwundbar. Diamantring (25 %): alle 3 Züge sammelt sie den Ring (wird verwundbar) und entfesselt einen gewaltigen Schlag, stets sichtbar.",
         },
     },
 }

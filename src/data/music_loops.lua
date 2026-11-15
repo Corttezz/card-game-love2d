@@ -9,4 +9,8 @@ return {
     musicBossTowerLich = { loopStart = 40.067574, loopEnd = 103.731995 },
     musicBossWinterMonarch = { loopStart = 57.660204, loopEnd = 108.066009 },
     musicBossAbyssTyrant = { loopStart = 24.801088, loopEnd = 75.089002 },
+    musicBossEclipse = { loopStart = 24.055510, loopEnd = 51.043469, bar = 3.855422 },
+    musicBossEclipseP2 = { loopStart = 51.043469, loopEnd = 74.175986, bar = 3.855422 },
+    musicBossEclipseP3 = { loopStart = 74.175986, loopEnd = 97.308526, bar = 3.855422 },
+    musicBossEclipseP4 = { loopStart = 97.308526, loopEnd = 124.296463, bar = 3.855422 },
 }

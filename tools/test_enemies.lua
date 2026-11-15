@@ -338,10 +338,10 @@ function M.run()
         t:check("Nuvem Pestilenta envenena o jogador", g.player:getDebuffStacks("poison") >= 4)
     end
     do
-        local g = battleWith("eclipse_queen", "lunar_blades", 1000, 20)
+        local g = battleWith("eclipse_queen", "sunset_ray", 1000, 20)
         local frozen = g.enemy:getIncomingDamage(g.player)
         CombatBeats.startTrace()
-        g.enemy:takeDamage(520)
+        g.enemy:takeDamage(260)
         g:settleEnemyDamage(nil)
         TK.pump(g, 1.0)
         CombatBeats.stopTrace()
@@ -350,7 +350,7 @@ function M.run()
         t:eq("intent já anunciado NÃO muda na troca de fase",
             g.enemy:getIncomingDamage(g.player), frozen)
         g.enemy:rollIntent(g.player)
-        t:eq("fase 2 abre com o Eclipse Total", g.enemy:getIntent().id, "total_eclipse")
+        t:eq("fase 2 abre com a Totalidade", g.enemy:getIntent().id, "totality_fall")
         g.enemy:rollIntent(g.player)
         local inPhase2 = false
         for _, m in ipairs(EnemyKits.KITS.eclipse_queen.phases[1].moves) do

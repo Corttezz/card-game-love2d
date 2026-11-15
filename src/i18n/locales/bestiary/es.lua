@@ -208,9 +208,9 @@ return {
             lore = "Cayó del cielo cuando empezó el eclipse y no quiso volver a subir. Sus alas profanas la protegen y la fortalecen. Su juicio atraviesa cualquier bloqueo.",
         },
         eclipse_queen = {
-            epithet = "la Señora de la Luna Negra",
-            lore = "Reina sobre la corte del ocaso desde que la luna devoró al sol. Su fuerza crece y mengua con las fases de la luna. Herida hasta la mitad, ella misma se convierte en el eclipse.",
-            signature = "La luna gira en cuatro fases: en la Llena, su golpe vale un 50% más; en la Nueva, ella queda Vulnerable durante tu turno. Por debajo de la mitad de su vida, entra en el Eclipse.",
+            epithet = "la Guardiana del Último Amanecer",
+            lore = "Desde siempre hace girar el cielo dentro de su astrolabio: llama a la noche al atardecer y anuncia el sol al amanecer. Cuando empezó el largo camino, comprendió que un día tendría que anunciar el último amanecer, y ató el sol eclipsado a su propia corona para que ese día nunca llegara. Vencerla es hacer que cumpla su oficio.",
+            signature = "Cuatro fases. Totalidad (75%): enciende una estrella por turno y, con tres, lanza la Caída Estelar, un golpe por estrella; cada 8% de su vida quitado en un turno apaga una. Corona (50%): Llamarada +50%, la Brecha la deja Vulnerable. Anillo de Diamante (25%): cada 3 turnos carga el Anillo (queda Vulnerable) y suelta un golpe enorme, siempre visible.",
         },
     },
 }

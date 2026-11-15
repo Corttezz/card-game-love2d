@@ -335,7 +335,16 @@ function M.run()
         t:truthy("rainha: virada de fase tem instante proprio (phaseShift)", BC._debug().fx.phaseShift ~= nil)
         t:falsy("rainha: a virada nao trava a entrada do jogador", BC.lockInput())
         for _ = 1, 180 do BC.update(DT, gq, { inHall = true }) end
-        t:truthy("rainha: eclipse fechado na 2a fase (" .. string.format("%.2f", BC.eclipseLevel()) .. ")",
+        local ER = require("src.ui.EnemyRenderer")
+        t:eq("donzela: Totalidade troca a pele (fase2)", ER.skin("eclipse_queen"), "fase2")
+        t:near("donzela: arena na Totalidade (1/3)", BC.eclipseLevel(), 1 / 3, 0.02)
+        for ph = 2, 3 do
+            gq.enemy._phaseIdx = ph
+            for _ = 1, 180 do BC.update(DT, gq, { inHall = true }) end
+            t:eq("donzela: pele da fase " .. (ph + 1), ER.skin("eclipse_queen"), "fase" .. (ph + 1))
+            t:near("donzela: arena na fase " .. (ph + 1), BC.eclipseLevel(), ph / 3, 0.02)
+        end
+        t:truthy("rainha: eclipse fechado no Anel de Diamante (" .. string.format("%.2f", BC.eclipseLevel()) .. ")",
             BC.eclipseLevel() > 0.9)
         local lvl, dawn0 = IFX.eclipseState()
         t:truthy("rainha: o salao 6 recebeu o fechamento (InteriorFX.setEclipse)", lvl > 0.9)

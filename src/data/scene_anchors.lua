@@ -25,8 +25,8 @@ SceneAnchors.BY_SCENE = {
     castle_hall_5 = { xr = 0.50, yr = 0.82, backYr = 0.79,
                       shadowA = 0.55, lightXr = 0.5, lightBehind = true },
 
-    castle_hall_6 = { xr = 0.50, yr = 0.78, backYr = 0.75,
-                      shadowA = 0.95, lightXr = 0.5, lightBehind = true },
+    castle_hall_6 = { xr = 0.50, yr = 0.72, backYr = 0.70,
+                      shadowA = 0.70, lightXr = 0.5, lightBehind = true },
 
     catacumbs   = { xr = 0.50, yr = 0.80, shadowA = 0.95,
                     lightXr = 0.5, lightBehind = true },

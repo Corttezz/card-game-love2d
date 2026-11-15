@@ -208,9 +208,9 @@ return {
             lore = "She fell from the sky when the eclipse began and chose not to rise again. Her unholy wings shield and strengthen her. Her judgment pierces any block.",
         },
         eclipse_queen = {
-            epithet = "Lady of the Black Moon",
-            lore = "She has ruled the twilight court since the moon swallowed the sun. Her strength waxes and wanes with the phases of the moon. Wounded to half, she becomes the eclipse herself.",
-            signature = "The moon turns through four phases: at Full Moon her blow is worth 50% more; at New Moon she is Vulnerable during your turn. Below half health, she enters the Eclipse.",
+            epithet = "the Keeper of the Last Dawn",
+            lore = "Since the beginning she has turned the sky inside her astrolabe: she calls the night at dusk and heralds the sun at daybreak. When the long road began, she understood that one day she would have to herald the last dawn, so she bound the eclipsed sun to her own crown so that day would never come. To defeat her is to make her fulfil her duty.",
+            signature = "Four phases. Totality (75%): lights one star per turn and, at three, casts Starfall, one strike per star; every 8% of her health taken in one turn puts one out. Corona (50%): Flare +50%, Breach leaves her Vulnerable. Diamond Ring (25%): every 3 turns she gathers the Ring (becoming Vulnerable) and releases a huge strike, always visible.",
         },
     },
 }

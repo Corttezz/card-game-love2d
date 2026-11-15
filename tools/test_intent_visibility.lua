@@ -176,8 +176,8 @@ function M.run()
     t:truthy("rime_shaman tem véu", EnemyKits.KITS.rime_shaman.veil)
     t:truthy("dusk_shade tem véu", EnemyKits.KITS.dusk_shade.veil)
     local eq = EnemyKits.KITS.eclipse_queen
-    t:eq("Rainha do Eclipse: véu só na FASE 2", eq.veil, nil)
-    t:eq("Rainha do Eclipse fase 2: véu hidden", eq.phases[1].veil and eq.phases[1].veil.level, "hidden")
+    t:eq("Donzela do Astrolábio: véu só na FASE 2", eq.veil, nil)
+    t:eq("Donzela fase 2 (Totalidade): véu type_only", eq.phases[1].veil and eq.phases[1].veil.level, "type_only")
 
     TK.seedRng(11)
     local wight = Enemy:new(100, 10, "frost_wight")
@@ -209,10 +209,13 @@ function M.run()
 
     local queen = Enemy:new(100, 10, "eclipse_queen")
     t:eq("Rainha fase 1: sem véu", queen:veilSpec(), nil)
-    queen.health = 40
+    queen.health = 70
     queen:_checkPhase()
     t:truthy("Rainha fase 2: véu ativo", queen:veilSpec() ~= nil)
-    t:eq("Rainha fase 2: rolagem baixa = hidden", (IV.resolve(queen, roll(0.1))), "hidden")
+    t:eq("Donzela fase 2: rolagem baixa = type_only", (IV.resolve(queen, roll(0.1))), "type_only")
+    queen.health = 40
+    queen:_checkPhase()
+    t:eq("Donzela fase 3: sem véu", queen:veilSpec(), nil)
 
     wight:rollIntent()
     t:eq("(pré) espectro escondido", wight:getIntentVisibility(), "type_only")

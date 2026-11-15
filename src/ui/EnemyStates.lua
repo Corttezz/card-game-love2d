@@ -6,7 +6,7 @@ for i, n in ipairs(EnemyStates.LIST) do INDEX[n] = i end
 EnemyStates.INDEX = INDEX
 
 EnemyStates.ALIAS = { fury = "enraged", frail = "vulnerable", eclipse = "enraged", armor = "block" }
-EnemyStates.TOKEN_ONLY = { swarm = true }
+EnemyStates.TOKEN_ONLY = { swarm = true, totality = true, corona = true, diamond_ring = true, stars = true, flare = true }
 EnemyStates.PRIORITY = { "burn", "poison", "enraged", "block", "strength", "regen", "vulnerable", "weak", "veil" }
 EnemyStates.MAX_KINDS = 4
 EnemyStates.RATE = { poison = 0.9, weak = 0.7, strength = 1.15, enraged = 1.3 }
@@ -64,7 +64,7 @@ function EnemyStates.canonical(name, enemy)
     if INDEX[name] then return name end
     if EnemyStates.ALIAS[name] then return EnemyStates.ALIAS[name] end
     local kit = enemy and enemy.kit
-    if kit and kit.phases then
+    if kit and kit.phases and not kit.noEnrage then
         for _, ph in ipairs(kit.phases) do
             if ph.id == name then return "enraged" end
         end
@@ -224,8 +224,9 @@ function EnemyStates.read(enemy, dying)
     end
     if armor > ST.prevArmor + 0.5 then ST.sweepT = 0 end
     ST.prevArmor = armor
-    if ST.dmg0 and enemy.baseDamage and enemy.baseDamage > ST.dmg0 then
-        ST.k.strength = clamp(0.5 + 2 * (enemy.baseDamage - ST.dmg0) / math.max(1, ST.dmg0), 0.5, 1)
+    local ref = math.max(ST.dmg0 or 0, enemy._dmgRef or 0)
+    if ST.dmg0 and enemy.baseDamage and enemy.baseDamage > ref then
+        ST.k.strength = clamp(0.5 + 2 * (enemy.baseDamage - ref) / math.max(1, ref), 0.5, 1)
     end
     if enemy.intentVeilCause == "veil" and enemy.intentVisibility and enemy.intentVisibility ~= "full" then
         ST.k.veil = 0.8

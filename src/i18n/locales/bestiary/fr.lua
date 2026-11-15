@@ -208,9 +208,9 @@ return {
             lore = "Elle est tombée du ciel quand l'éclipse a commencé et n'a pas voulu remonter. Ses ailes impies la protègent et la renforcent. Son jugement transperce tout blocage.",
         },
         eclipse_queen = {
-            epithet = "la Dame de la Lune Noire",
-            lore = "Elle règne sur la cour du crépuscule depuis que la lune a avalé le soleil. Sa force croît et décroît avec les phases de la lune. Blessée à moitié, elle devient elle-même l'éclipse.",
-            signature = "La lune passe par quatre phases : à la Pleine Lune, son coup vaut 50 % de plus ; à la Nouvelle Lune, elle est Vulnérable pendant votre tour. Sous la moitié de sa vie, elle entre dans l'Éclipse.",
+            epithet = "la Gardienne de la Dernière Aube",
+            lore = "Depuis toujours, elle fait tourner le ciel dans son astrolabe : elle appelle la nuit au crépuscule et annonce le soleil à l'aube. Quand la longue route a commencé, elle a compris qu'un jour elle devrait annoncer la dernière aube, et elle a lié le soleil éclipsé à sa propre couronne pour que ce jour n'arrive jamais. La vaincre, c'est l'obliger à accomplir sa charge.",
+            signature = "Quatre phases. Totalité (75 %) : allume une étoile par tour et, à trois, lance la Chute d'Étoiles, un coup par étoile ; chaque 8 % de sa vie retirés en un tour en éteint une. Couronne (50 %) : Éruption +50 %, la Brèche la rend Vulnérable. Anneau de Diamant (25 %) : tous les 3 tours elle forme l'Anneau (devient Vulnérable) et libère un coup énorme, toujours visible.",
         },
     },
 }

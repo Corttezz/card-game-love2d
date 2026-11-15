@@ -81,12 +81,16 @@ local HALLS = {
     },
     [6] = {
         flames = {},
-        pulses = { { 170, 60, 62, 130, 0.35, 0.08 } },
+        pulses = { { 174, 36, 52, 52, 0.6, 0.10 } },
         ember = nil,
-        ambient = { style = "motes", rate = 10, color = { 1.00, 0.97, 0.90 },
-                    region = { 172, 40, 58, 150 } },
-        fog = { y = 186, h = 40, color = { 0.62, 0.60, 0.66 }, alpha = 0.38 },
-        vignette = 0.65,
+        ambient = { style = "ash", rate = 5, color = { 0.92, 0.54, 0.20 },
+                    region = { 0, -8, 400, 12 } },
+        fireflies = { n = 7, region = { 70, 120, 260, 60 }, color = { 1.00, 0.86, 0.50 } },
+        fog = { y = 176, h = 40, color = { 0.62, 0.40, 0.30 }, alpha = 0.30, speed = 0.6 },
+        vignette = 0.60,
+        phaseArt = { "assets/sprites/scenes/castle_hall_6_fase2.png", "assets/sprites/scenes/castle_hall_6_fase3.png",
+                     "assets/sprites/scenes/castle_hall_6_fase4.png" },
+        dawnArt = "assets/sprites/scenes/castle_hall_6_alvorada.png",
     },
 }
 InteriorFX.HALLS = HALLS
@@ -482,8 +486,8 @@ local function drawParticles(tr, front)
             else
                 local tw = 0.65 + 0.35 * math.sin(time * 2.2 + p.phase)
                 if k == "motes" and (eclipseLvl > 0.01 or eclipseDawn > 0.01) then
-                    c = { c[1] + (0.85 - c[1]) * eclipseLvl, c[2] + (0.30 - c[2]) * eclipseLvl,
-                          c[3] + (0.75 - c[3]) * eclipseLvl }
+                    c = { c[1] + (1.00 - c[1]) * eclipseLvl, c[2] + (0.86 - c[2]) * eclipseLvl,
+                          c[3] + (0.56 - c[3]) * eclipseLvl }
                     c = { c[1] + (1.0 - c[1]) * eclipseDawn, c[2] + (0.82 - c[2]) * eclipseDawn,
                           c[3] + (0.50 - c[3]) * eclipseDawn }
                 end
@@ -533,36 +537,57 @@ function InteriorFX.eclipseState() return eclipseLvl, eclipseDawn end
 
 local function eclipseFogColor(fc)
     if eclipseLvl <= 0.01 and eclipseDawn <= 0.01 then return fc end
-    local r = fc[1] + (0.42 - fc[1]) * eclipseLvl
-    local g = fc[2] + (0.16 - fc[2]) * eclipseLvl
-    local b = fc[3] + (0.50 - fc[3]) * eclipseLvl
+    local r = fc[1] + (0.26 - fc[1]) * eclipseLvl
+    local g = fc[2] + (0.24 - fc[2]) * eclipseLvl
+    local b = fc[3] + (0.48 - fc[3]) * eclipseLvl
     r = r + (0.82 - r) * eclipseDawn
     g = g + (0.66 - g) * eclipseDawn
     b = b + (0.46 - b) * eclipseDawn
     return { r, g, b }
 end
 
+local phaseImgs = {}
+local function phaseImage(path)
+    if phaseImgs[path] ~= nil then return phaseImgs[path] or nil end
+    if not path or not love.filesystem.getInfo(path) then
+        phaseImgs[path or ""] = false
+        return nil
+    end
+    local img = love.graphics.newImage(path)
+    img:setFilter("nearest", "nearest")
+    phaseImgs[path] = img
+    return img
+end
+InteriorFX._phaseImage = phaseImage
+
+function InteriorFX.phaseWeights(level)
+    local f = math.max(0, math.min(1, level or 0)) * 3
+    return { math.max(0, math.min(1, f)), math.max(0, math.min(1, f - 1)), math.max(0, math.min(1, f - 2)) }
+end
+
 local function drawEclipseOnHall(hall, img, tr)
-    if hall ~= 6 then return end
+    local cfg = HALLS[hall]
+    if not (cfg and cfg.phaseArt) then return end
     local s, ox, oy = tr.scale, tr.ox, tr.oy
-    if eclipseLvl > 0.01 then
-        local q = math.floor(eclipseLvl * 4 + 1e-6) / 4
-        if q > 0 then
-            love.graphics.setColor(0.05, 0.01, 0.07, 0.80 * q)
-            love.graphics.rectangle("fill", ox + 160 * s, oy - 4 * s, 80 * s, 196 * s)
-            love.graphics.setColor(0.05, 0.01, 0.07, 0.60 * q)
-            love.graphics.rectangle("fill", ox + 148 * s, oy + 192 * s, 104 * s, 70 * s)
+    if eclipseLvl > 0.001 then
+        local wts = InteriorFX.phaseWeights(eclipseLvl)
+        for i, path in ipairs(cfg.phaseArt) do
+            local a = wts[i] or 0
+            local pim = a > 0.001 and phaseImage(path) or nil
+            if pim then
+                love.graphics.setColor(1, 1, 1, a)
+                love.graphics.draw(pim, ox, oy, 0, s, s)
+            end
         end
     end
-    if eclipseDawn > 0.01 and img then
-        love.graphics.setBlendMode("add")
-        local a = 0.55 * eclipseDawn * (0.9 + 0.1 * math.sin(time * 0.8))
-        love.graphics.setColor(1.0, 0.86, 0.62, a)
-        love.graphics.draw(img, quadFor(hall, "dawnBeam", { 170, 0, 62, 196 }), ox + 170 * s, oy, 0, s, s)
-        love.graphics.setColor(1.0, 0.80, 0.55, a * 0.7)
-        love.graphics.draw(img, quadFor(hall, "dawnFloor", { 140, 190, 120, 66 }), ox + 140 * s, oy + 190 * s, 0, s, s)
-        love.graphics.setBlendMode("alpha")
+    if eclipseDawn > 0.001 then
+        local dim = phaseImage(cfg.dawnArt)
+        if dim then
+            love.graphics.setColor(1, 1, 1, eclipseDawn)
+            love.graphics.draw(dim, ox, oy, 0, s, s)
+        end
     end
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 local function flicker(i)
@@ -588,9 +613,11 @@ function InteriorFX.draw(hall)
 
     local img = hallImage(hall)
     if img then HallAnim.draw(hallAnims[hall], tr, time) end
+    drawEclipseOnHall(hall, img, tr)
     if img then
         love.graphics.setBlendMode("add")
         local mg = 1 + InteriorFX.musicLevel()
+        if cfg.phaseArt then mg = mg * (1 - InteriorFX.phaseWeights(eclipseLvl)[1]) * (1 - eclipseDawn) end
         for i, f in ipairs(cfg.flames) do
             love.graphics.setColor(1, 1, 1, (cfg.flameGlow or 0.75) * flicker(i) * mg)
             love.graphics.draw(img, quadFor(hall, "f" .. i, f), ox + f[1] * s, oy + f[2] * s, 0, s, s)
@@ -611,8 +638,6 @@ function InteriorFX.draw(hall)
         end
         love.graphics.setBlendMode("alpha")
     end
-
-    drawEclipseOnHall(hall, img, tr)
 
     local fog = cfg.fog
     local fc = eclipseFogColor(fog.color)

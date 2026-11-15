@@ -42,7 +42,11 @@ function MusicReact.cueKeyFor(code)
     if not code then return nil end
     local MD = require("src.systems.MusicDirector")
     for id, c in pairs(MD.BOSS_TRACKS) do
-        if c == code and love.filesystem.getInfo("audio/music/" .. MD.bossFile(id)) then
+        local fam = (c == code)
+        for _, pc in ipairs((MD.PHASE_TRACKS or {})[id] or {}) do
+            if pc == code then fam = true end
+        end
+        if fam and love.filesystem.getInfo("audio/music/" .. MD.bossFile(id)) then
             return id
         end
     end
