@@ -147,7 +147,7 @@ function shell(t, ctx, { title, desc, pathname, noindex = false, ogType = 'websi
   return head(t, EN, ctx, { title, desc, path: pathname, noindex, preload: false, alts: false, ogType, ogImage }) +
     `<script type="application/json" id="rm-data">${JSON.stringify(client).replace(/</g, '\\u003c')}</script>
 ${ld.map(ldTag).join('\n')}
-</head><body class="simple blog"><main id="main"><div class="frame9 page prose">
+</head><body class="simple blog"><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5NVWLLNZ" height="0" width="0" style="display:none;visibility:hidden" title="GTM"></iframe></noscript><main id="main"><div class="frame9 page prose">
 <a class="home" href="/"><img class="px" src="/img/v3/wordmark.png" width="289" height="48" alt="Runemoire"></a>
 ${body}
 <p class="fine foot"><a href="/">Runemoire</a> · <a href="/blog/">Blog</a> · <a href="/privacy/">${esc(t.privacy)}</a> · <a href="https://dcsolutions.app/">DC Solutions</a></p>

@@ -228,6 +228,20 @@ function settings() {
 }
 
 // ---------------- conquista: o "Me avise" ----------------
+// generate_lead no dataLayer (GTM): id do evento (UUID, gravado com o cadastro para o Pixel/CAPI deduplicarem), origem do
+// formulário e as UTMs da primeira visita. NUNCA e-mail ou outro dado pessoal. Só no cadastro novo (o repetido não grava linha).
+function uuid(): string {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+function leadEvent(eventId: string, source: string, variant: string, utm: Record<string, string> | null) {
+  const ev: Record<string, string> = { event: 'generate_lead', event_id: eventId, lead_source: source, form_variant: variant, language: D.lang };
+  for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) if (utm && typeof utm[k] === 'string') ev[k] = utm[k];
+  const w = window as any;
+  (w.dataLayer = w.dataLayer || []).push(ev);
+}
 // origem da primeira visita, guardada por public/js/clarity.js
 function firstTouch(): Record<string, string> | null {
   try { const o = JSON.parse(localStorage.getItem('rm_utm') || 'null'); return o && typeof o === 'object' ? o : null; } catch { return null; }
@@ -242,11 +256,13 @@ function notify() {
     const email = String(fd.get('email') || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.className = 'msg err'; msg.textContent = D.t.notifyBad; $('input[type=email]', f)?.focus(); return; }
     msg.className = 'msg'; msg.textContent = D.t.sending; btn.disabled = true;
+    const eventId = uuid(), utm = firstTouch(), variant = f.dataset.variant || 'v3b', source = f.dataset.source || 'achievements';
     try {
-      const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), variant: f.dataset.variant || 'v3b', source: f.dataset.source || 'achievements', utm: firstTouch() }) });
+      const r = await fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, lang: D.lang, website: fd.get('website'), variant, source, utm, event_id: eventId }) });
       const j = await r.json().catch(() => ({}));
       if (r.ok && j.ok) {
         msg.textContent = D.t.notifyOk + ' ';
+        if (j.token) leadEvent(eventId, source, variant, utm);
         if (j.token) { const a = document.createElement('a'); a.href = `${D.unsubPath}?t=${encodeURIComponent(j.token)}`; a.textContent = D.t.unsubLink; msg.append(a); }
         f.reset();
         const icon = $<HTMLImageElement>('#ach-icon'); if (icon) icon.src = icon.dataset.on!;

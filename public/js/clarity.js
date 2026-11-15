@@ -67,7 +67,7 @@
     var close = function (v) {
       try { localStorage.setItem(KEY, v); } catch (e) {}
       box.remove();
-      if (v === 'yes') go();
+      if (v === 'yes') { go(); if (window.rmConsentGrant) window.rmConsentGrant(); }
     };
     yes.addEventListener('click', function () { close('yes'); });
     no.addEventListener('click', function () { close('no'); });

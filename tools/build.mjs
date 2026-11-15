@@ -20,7 +20,7 @@ const GAME = JSON.parse(fs.readFileSync(path.join(R, 'src/data/game.json'), 'utf
 
 // 1. só o que a v2 usa
 const KEEP = [
-  'favicon.ico', 'js/clarity.js', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/blog', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
+  'favicon.ico', 'js/clarity.js', 'js/gtm.js', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/blog', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
   'img/brand/icon_32.png', 'img/brand/icon_180.png', 'img/brand/icon_192.png', 'img/brand/icon_512.png',
   'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
   ...['en', 'pt_BR'].flatMap((l) => ['03_road_battle', '06_road_fork', '05_shop'].flatMap((s) => [`img/shots/${l}/${s}.webp`, `img/shots/${l}/${s}_s.webp`])),
