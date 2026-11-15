@@ -229,14 +229,14 @@ return {
             { kind = "hud",        dur = 0 },
         },
         death = {
-            { kind = "burst",  dur = 0,    n = 38, particle = "ash", sound = "maidenDiamondRing" },
+            { kind = "burst",  dur = 0,    n = 38, particle = "ash" },
             { kind = "dawn",   dur = 0,    u = 0.50, v = 0.242 },
             { kind = "desat",  dur = 0,    peak = 0.45, rise = 0.45, fall = 1.40 },
             { kind = "slowmo", dur = 1.70, scale = 0.32, release = 0.35 },
             { kind = "hold",   dur = 2.40 },
         },
         deathReduced = {
-            { kind = "burst",  dur = 0,    n = 14, particle = "ash", sound = "maidenDiamondRing" },
+            { kind = "burst",  dur = 0,    n = 14, particle = "ash" },
             { kind = "dawn",   dur = 0,    u = 0.50, v = 0.242 },
             { kind = "desat",  dur = 0,    peak = 0.30, rise = 0.30, fall = 0.80 },
             { kind = "hold",   dur = 1.40 },

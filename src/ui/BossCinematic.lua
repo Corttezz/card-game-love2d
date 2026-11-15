@@ -64,7 +64,7 @@ local SOUNDS = {
     maidenStarFall     = { "audio/sfx/boss/maiden_star_fall.mp3",     0.70 },
     maidenCoronaFlare  = { "audio/sfx/boss/maiden_corona_flare.mp3",  0.70 },
     maidenDiamondCharge = { "audio/sfx/boss/maiden_diamond_charge.mp3", 0.75 },
-    maidenDiamondRing  = { "audio/sfx/boss/maiden_diamond_ring.mp3",  0.85 },
+    maidenDiamondRing  = { "audio/sfx/boss/maiden_diamond_ring.mp3",  0.70 },
     maidenPhaseShift   = { "audio/sfx/boss/maiden_phase_shift.mp3",   0.85 },
     maidenOrbitSpin    = { "audio/sfx/boss/maiden_orbit_spin.mp3",    0.75 },
     maidenDawn         = { "audio/sfx/boss/maiden_dawn.mp3",          0.80 },
@@ -2004,8 +2004,9 @@ local function queenDawnStart(st)
     local e = ensureEclipse()
     e.active = true
     e.dawnEase = { t = 0, dur = math.max(0.5, fx.dawn and fx.dawn.dur or 2) }
-    play("maidenVoiceFade", "bossEclipseFade")
-    queueSfx(0.6, "maidenDawn", nil, 1.0)
+    queueSfx(0.45, "maidenDiamondRing", nil, 1.0)
+    queueSfx(1.1, "maidenVoiceFade", "bossEclipseFade", 1.0)
+    queueSfx(1.8, "maidenDawn", nil, 1.0)
     stopLoop("bossEclipseHum")
 end
 

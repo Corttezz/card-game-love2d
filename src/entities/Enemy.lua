@@ -366,6 +366,7 @@ function Enemy:_checkPhase()
         local mul = ph.dmgMul or 1
         self.baseDamage = math.floor(self.baseDamage * mul)
         self.damage = math.floor(self.damage * mul)
+        if self.kit.noEnrage then self._dmgRef = self.baseDamage end
         self:addStatusEffect({ name = ph.id or "eclipse", stacks = 1, duration = 999 })
         nextIdx = nextIdx + 1
         ph = phases[nextIdx]

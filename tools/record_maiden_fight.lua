@@ -193,6 +193,7 @@ function M.run(arg)
     CheatMode.panelOpen = false
     require("src.ui.UnlockReveal").dtOverride = DT
     if _G.gameSettings then _G.gameSettings.tipsEnabled = false end
+    require("src.i18n.I18n").setLocale("pt_BR", true)
     local notes
     local ok, err = pcall(function()
         local st = function() return state() end
