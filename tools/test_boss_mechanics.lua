@@ -602,8 +602,8 @@ local function testQueen(t)
     t:truthy("donzela: status totality", e:hasStatus("totality"))
     local m = BM.spec(e)
     t:eq("donzela: Totalidade = constelação (runas)", m and m.kind, "runes")
-    t:eq("donzela: constelação nasce vazia", BM.stacks(e, "stars"), 0)
-    t:eq("donzela: limiar de quebra = 8% (80)", BM.runeThreshold(e), 80)
+    t:eq("donzela: constelação nasce com 1 estrela", BM.stacks(e, "stars"), 1)
+    t:eq("donzela: limiar de quebra = 11% (110)", BM.runeThreshold(e), 110)
     for _ = 1, 4 do
         for _, step in ipairs(BM.turnEndSteps(e)) do BM.applyStep(e, step) end
     end
@@ -665,7 +665,7 @@ local function testQueen(t)
     settleTokens(ID, q, 0.1)
     t:eq("donzela visual: sem tokens no Crepúsculo", BossTokens.count(ID), 0)
     q:takeDamage(250)
-    for _ = 1, 2 do
+    for _ = 1, 1 do
         for _, step in ipairs(BM.turnEndSteps(q)) do BM.applyStep(q, step) end
     end
     settleTokens(ID, q, 1)

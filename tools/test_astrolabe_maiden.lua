@@ -50,7 +50,7 @@ local function numbers(t)
         kit.phases[3].at), "0.75,0.50,0.25")
 
     local p1 = maxOfMove(e, g, "sunset_ray")
-    t:eq("Crepúsculo: Raio do Poente = 29", p1, 29)
+    t:eq("Crepúsculo: Raio do Poente = 40 (1,4 x 29)", p1, 40)
     e:takeDamage(e.health - 765)
     t:eq("virada 1 exatamente em 765", e._phaseIdx, 1)
     t:eq("Totalidade: golpe base 30", e.damage, 30)
@@ -58,6 +58,10 @@ local function numbers(t)
     for _ = 1, 3 do
         for _, step in ipairs(BM.turnEndSteps(e)) do BM.applyStep(e, step) end
     end
+    local BossTokens = require("src.ui.BossTokens")
+    BossTokens.reset()
+    local okReact, errReact = pcall(BossTokens.react, g, { kind = "rune_gain", total = 1 })
+    t:truthy("reação de estrela sem sync visual (simulador) não quebra: " .. tostring(errReact), okReact)
     local starPeak, starIt = maxOfMove(e, g, "star_fall")
     t:truthy("Totalidade: Queda Estelar cheia <= 59 (" .. starPeak .. ")", starPeak <= PEAK_MAX)
     t:truthy("Totalidade: Queda Estelar avisada mesmo sob véu", starIt.reveal)
@@ -65,7 +69,13 @@ local function numbers(t)
     t:eq("virada 2 exatamente em 510", e._phaseIdx, 2)
     t:eq("Coroa: golpe base 31", e.damage, 31)
     t:eq("Coroa: regra nova = ciclo de labaredas", BM.spec(e).kind, "moon")
+    local okStep, errStep = pcall(BM.applyStep, e, { kind = "rune_gain", n = 1 })
+    t:truthy("passo de estrela atrasado na virada para a Coroa é ignorado: " .. tostring(errStep), okStep)
+    t:eq("passo atrasado não cria estrela", BM.stacks(e, "stars"), 0)
     e:rollIntent(g.player)
+    BossTokens.reset()
+    okReact, errReact = pcall(BossTokens.react, g, { kind = "moon", full = true, msg = "flare" })
+    t:truthy("reação de labareda sem sync visual não quebra: " .. tostring(errReact), okReact)
     local flarePeak, flareIt = maxOfMove(e, g, "solar_embrace")
     t:truthy("Coroa: labareda cheia anunciada", flareIt.fullMoon)
     t:truthy("Coroa: pico da labareda <= 59 (" .. flarePeak .. ")", flarePeak <= PEAK_MAX)
@@ -93,7 +103,7 @@ local function numbers(t)
             local per = math.floor(ph.mul * (m.mult or m.damageMul or 0))
             local hits = m.hits or 1
             if m.runes then hits = 3 end
-            local full = (ph.moves == kit.phases[2].moves) and 1.5 or 1
+            local full = (ph.moves == kit.phases[2].moves) and kit.phases[2].mechanic.fullMul or 1
             worst = math.max(worst, math.floor(per * full) * hits)
         end
     end

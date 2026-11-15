@@ -9,9 +9,12 @@ local state = {}
 local images = {}
 local curPhase = {}
 
-local function specOf(id)
+local function specOf(id, enemy)
     local base = id and SPECS[id]
-    if base and base.phased then return base.phased[curPhase[id] or 0] end
+    if base and base.phased then
+        local p = (enemy and enemy._phaseIdx) or curPhase[id] or 0
+        return base.phased[p] or base.phased[0]
+    end
     return base
 end
 
@@ -900,7 +903,7 @@ end
 
 function BossTokens.drawScreen(game)
     local e = game and game.enemy
-    local spec = e and e.spriteId and specOf(e.spriteId)
+    local spec = e and e.spriteId and specOf(e.spriteId, e)
     local p = game and game.player
     local dt = love.timer.getDelta()
     local m = require("src.systems.BossMechanics").frostSpec(game)
@@ -983,7 +986,8 @@ end
 function BossTokens.react(game, res)
     local e = game and game.enemy
     local id = e and e.spriteId
-    local spec = id and specOf(id)
+    local spec = id and specOf(id, e)
+    if spec and not spec.sounds then spec = nil end
     local I18n = require("src.i18n.I18n")
     local runeKey = (spec and spec.status == "stars") and "star" or "rune"
     if res.kind == "rune_gain" then

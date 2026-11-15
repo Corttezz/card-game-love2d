@@ -87,6 +87,7 @@ function BM.onPhaseChange(enemy, prev)
     if old and old.status then BM.setStacks(enemy, old.status, 0) end
     if prev and prev.id then BM.setStacks(enemy, prev.id, 0) end
     enemy._mech = nil
+    enemy._mechEvents = nil
     local m = BM.spec(enemy)
     if m and m.kind == "runes" then BM.setStacks(enemy, m.status, m.start or 0) end
 end
@@ -222,7 +223,7 @@ end
 function BM.applyEvent(enemy, ev)
     local m = BM.spec(enemy)
     if not m or not enemy:isAlive() then return nil end
-    if ev.kind == "rune_break" then
+    if ev.kind == "rune_break" and m.kind == "runes" then
         local have = BM.stacks(enemy, m.status)
         local n = min(ev.n or 1, have)
         if n <= 0 then return nil end
@@ -233,13 +234,13 @@ function BM.applyEvent(enemy, ev)
         end
         return { kind = "rune_break", n = n, left = have - n }
     end
-    if ev.kind == "root_cut" then
+    if ev.kind == "root_cut" and m.kind == "roots" then
         local have = BM.stacks(enemy, m.status)
         if have <= 0 then return nil end
         BM.setStacks(enemy, m.status, have - 1)
         return { kind = "root_cut", left = have - 1 }
     end
-    if ev.kind == "chain_break" then
+    if ev.kind == "chain_break" and m.kind == "chains" then
         local have = BM.stacks(enemy, m.status)
         if have <= 0 then return nil end
         BM.setStacks(enemy, m.status, have - 1)
@@ -274,7 +275,7 @@ end
 function BM.applyStep(enemy, step)
     local m = BM.spec(enemy)
     if not m or not enemy:isAlive() then return nil end
-    if step.kind == "root_grow" then
+    if step.kind == "root_grow" and m.kind == "roots" then
         local s = mech(enemy)
         s.turns = (s.turns or 0) + 1
         local have = BM.stacks(enemy, m.status)
@@ -282,7 +283,7 @@ function BM.applyStep(enemy, step)
         BM.setStacks(enemy, m.status, have + 1)
         return { kind = "root_grow", total = have + 1 }
     end
-    if step.kind == "rune_gain" then
+    if step.kind == "rune_gain" and m.kind == "runes" then
         local have = BM.stacks(enemy, m.status)
         local n = min(step.n, m.max - have)
         if n <= 0 then return nil end
