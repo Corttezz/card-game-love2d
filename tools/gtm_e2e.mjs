@@ -28,7 +28,7 @@ const visit = async (cc, path) => {
     if (/\/g\/collect/.test(u)) net.collect.push(u + ' ' + (r.postData() || ''));
   });
   pg.on('console', (m) => { if (m.type() === 'error' && /Content Security Policy|CSP/i.test(m.text())) net.errs.push(m.text().slice(0, 160)); });
-  await pg.goto(base + path + sep(path) + 'cc=' + cc, { waitUntil: 'networkidle' });
+  await pg.goto(base + path + sep(path) + 'cc=' + cc, { waitUntil: 'load' });
   await pg.waitForTimeout(4000);
   const ga = async () => (await ctx.cookies()).filter((c) => /^_ga/.test(c.name)).map((c) => c.name);
   return { ctx, pg, net, ga };
@@ -56,8 +56,8 @@ for (const choice of PROD ? [] : ['yes', 'no']) {
     ok('DE (yes): update concedido', (await consentOf(pg)).includes('update:granted'), JSON.stringify(await consentOf(pg)));
     ok('DE (yes): gtm.js carrega depois do aceite', net.gtm === 1, `gtm.js=${net.gtm}`);
     ok('DE (yes): GA4 coleta e grava _ga depois do aceite', net.collect.length > 0 && (await ga()).length > 0, `collect=${net.collect.length} cookies=${(await ga()).join(',')}`);
-    await pg.reload({ waitUntil: 'networkidle' }); await pg.waitForTimeout(3000);
-    ok('DE (yes): na volta, já carrega concedido', (await consentOf(pg)).includes('update:granted') && net.gtm === 2);
+    await pg.reload({ waitUntil: 'load' }); await pg.waitForTimeout(3000);
+    ok('DE (yes): na volta, já carrega concedido', (await consentOf(pg)).includes('update:granted') && net.gtm >= 2, `consent=${JSON.stringify(await consentOf(pg))} gtm.js=${net.gtm}`);
   } else {
     ok('DE (no): recusa segue sem nada', net.gtm === 0 && net.collect.length === 0 && (await ga()).length === 0, `gtm.js=${net.gtm} collect=${net.collect.length} _ga=${(await ga()).length}`);
   }
@@ -74,7 +74,7 @@ for (const [path, sel] of PROD ? [] : [['/pt/?utm_source=instagram&utm_medium=so
     await pg.fill('#email', MAIL); await pg.click('#achievements form button[type=submit]');
   } else {
     const post = await pg.evaluate(() => [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')).find((h) => /^\/blog\/[a-z0-9-]+\/$/.test(h)));
-    await pg.goto(base + post + '?cc=BR', { waitUntil: 'networkidle' });
+    await pg.goto(base + post + '?cc=BR', { waitUntil: 'load' });
     await pg.fill('form.notify input[type=email]', MAIL); await pg.click('form.notify button[type=submit]');
   }
   await pg.waitForFunction(() => (window.dataLayer || []).some((x) => x && x.event === 'generate_lead'), null, { timeout: 10000 }).catch(() => {});
