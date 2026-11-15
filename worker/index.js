@@ -2,12 +2,13 @@
 import { STYLE_HASHES } from './csp.gen.js';
 const CSP = [
   "default-src 'none'",
-  "script-src 'self' https://static.cloudflareinsights.com https://www.clarity.ms https://scripts.clarity.ms",
+  "script-src 'self' https://static.cloudflareinsights.com https://www.clarity.ms https://scripts.clarity.ms https://www.googletagmanager.com",
   `style-src 'self' ${STYLE_HASHES}`.trim(),
-  "img-src 'self' data: blob: https://*.clarity.ms https://c.bing.com",
+  "img-src 'self' data: blob: https://*.clarity.ms https://c.bing.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://www.google.com",
   "media-src 'self'",
   "font-src 'self'",
-  "connect-src 'self' https://cloudflareinsights.com https://*.clarity.ms https://c.bing.com",
+  "connect-src 'self' https://cloudflareinsights.com https://*.clarity.ms https://c.bing.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net https://www.google.com",
+  "frame-src https://www.googletagmanager.com",
   "manifest-src 'self'",
   "base-uri 'none'",
   "form-action 'self'",
@@ -112,8 +113,9 @@ async function notify(req, env) {
   const source = ['hero', 'final', 'achievements'].includes(b.source) || /^blog:[a-z0-9-]{1,80}$/.test(String(b.source || '')) ? b.source : null;
   // e-mail novo: grava e devolve o link de saída. Já cadastrado: só confirma, sem devolver o token
   // (senão qualquer um tiraria qualquer e-mail da lista); a pessoa sai pelo link original ou pelo contato.
-  const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token, biome, variant, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13) ON CONFLICT(email) DO NOTHING')
-    .bind(email, lang, now, t, biome, variant, source, ...cleanUtm(b.utm)).run();
+  const eventId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(b.event_id || '')) ? String(b.event_id).toLowerCase() : null;
+  const r = await env.DB.prepare('INSERT INTO notify (email, lang, created_at, token, biome, variant, source, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, event_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14) ON CONFLICT(email) DO NOTHING')
+    .bind(email, lang, now, t, biome, variant, source, ...cleanUtm(b.utm), eventId).run();
   // e-mails @example.com (domínio reservado, usado nos testes) não entram na contagem
   if (r.meta?.changes && !email.endsWith('@example.com')) await bump(env, variant || 'none', lang, 'signups');
   return json({ ok: true, token: r.meta?.changes ? t : null });
