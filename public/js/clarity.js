@@ -37,17 +37,17 @@
   var seg = location.pathname.split('/')[1];
   var lang = { pt: 'pt', es: 'es', fr: 'fr', de: 'de' }[seg] || 'en';
   var T = {
-    en: ['We use Microsoft Clarity, with cookies, to see how this site is used. Nothing is recorded unless you accept.', 'Accept', 'Decline', 'Privacy'],
-    pt: ['Usamos o Microsoft Clarity, com cookies, para ver como o site é usado. Nada é gravado se você não aceitar.', 'Aceitar', 'Recusar', 'Privacidade'],
-    es: ['Usamos Microsoft Clarity, con cookies, para ver cómo se usa el sitio. No se graba nada si no aceptas.', 'Aceptar', 'Rechazar', 'Privacidad'],
-    fr: ['Nous utilisons Microsoft Clarity, avec cookies, pour voir comment le site est utilisé. Rien n’est enregistré sans votre accord.', 'Accepter', 'Refuser', 'Confidentialité'],
-    de: ['Wir nutzen Microsoft Clarity mit Cookies, um zu sehen, wie die Seite genutzt wird. Ohne deine Zustimmung wird nichts aufgezeichnet.', 'Akzeptieren', 'Ablehnen', 'Datenschutz'],
+    en: ['We use cookies to keep the site running, understand how it is used and improve our ads.', 'Accept', 'Decline', 'Learn more'],
+    pt: ['Usamos cookies para o site funcionar, entender como ele é usado e melhorar nossos anúncios.', 'Aceitar', 'Recusar', 'Saiba mais'],
+    es: ['Usamos cookies para que el sitio funcione, entender cómo se usa y mejorar nuestros anuncios.', 'Aceptar', 'Rechazar', 'Más información'],
+    fr: ['Nous utilisons des cookies pour faire fonctionner le site, comprendre son utilisation et améliorer nos annonces.', 'Accepter', 'Refuser', 'En savoir plus'],
+    de: ['Wir nutzen Cookies, damit die Seite funktioniert, um zu verstehen, wie sie genutzt wird, und um unsere Anzeigen zu verbessern.', 'Akzeptieren', 'Ablehnen', 'Mehr erfahren'],
   }[lang];
   var show = function () {
     var box = document.createElement('div');
     box.className = 'consent';
     box.setAttribute('role', 'dialog');
-    box.setAttribute('aria-label', T[3]);
+    box.setAttribute('aria-label', 'Cookies');
     box.setAttribute('aria-describedby', 'consent-text');
     var p = document.createElement('p');
     p.id = 'consent-text';
