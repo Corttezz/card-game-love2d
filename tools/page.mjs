@@ -58,7 +58,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="/img/brand/icon_32.png"><link rel="apple-touch-icon" href="/img/brand/icon_180.png">
 <link rel="manifest" href="/site.webmanifest">
 ${preload ? '<link rel="preload" href="/img/v3b/computer.png" as="image" fetchpriority="high">' : ''}<link rel="preload" href="/fonts/pixel.woff2" as="font" type="font/woff2" crossorigin>
-${styleTag(ctx)}<script src="/js/gtm.js?v=1" async></script><script src="/js/clarity.js?v=6" async></script>${script ? `<script type="module" src="${ctx.JS}"></script>` : ''}`;
+${styleTag(ctx)}<script src="/js/gtm.js?v=1" async></script><script src="/js/clarity.js?v=8" async></script>${script ? `<script type="module" src="${ctx.JS}"></script>` : ''}`;
 }
 
 const panel = (id, title, body, t, l, extra = '') => `<section class="panel" id="${id}" role="dialog" aria-modal="true" aria-labelledby="${id}-t"${extra}>
