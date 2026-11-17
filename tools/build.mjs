@@ -152,5 +152,5 @@ const kb = (n) => (n / 1024).toFixed(1) + ' KB';
 let total = 0; (function sum(d) { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) sum(p); else total += fs.statSync(p).size; } })(D);
 console.log('JS', kb(size(JS)), '| CSS', kb(size(CSS)), '| index.html', kb(size('index.html')), '| dist', (total / 1048576).toFixed(1) + ' MB', '| webp', conv.size);
 // paridade de idiomas: nenhum idioma com menos menu, seções, páginas ou posts que o en (derruba o build e o deploy)
-checkParity(D);
+checkParity(D, { ignore: process.env.PREVIEW_DIR && fs.existsSync(path.resolve(R, process.env.PREVIEW_DIR)) ? fs.readdirSync(path.resolve(R, process.env.PREVIEW_DIR)) : [] });
 console.log('build ok',crypto.createHash('sha256').update(fs.readFileSync(path.join(D, 'index.html'))).digest('hex').slice(0, 12));

@@ -23,7 +23,7 @@ function pages(dir, base = '') {
   return out;
 }
 
-export function measure(D) {
+export function measure(D, ignore = []) {
   const sitemap = fs.readFileSync(path.join(D, 'sitemap.xml'), 'utf8');
   const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname).filter((u) => !u.includes('/blog/sample-'));
   const T = Object.fromEntries(LANGS.map((l) => [l.code, JSON.parse(fs.readFileSync(path.join(R, `src/i18n/${l.code}.json`), 'utf8'))]));
@@ -34,7 +34,7 @@ export function measure(D) {
     const home = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const about = between(home, '<main class="about"', '</main>');
     const priv = fs.readFileSync(path.join(root, 'privacy/index.html'), 'utf8');
-    const all = pages(root).filter((p) => !p.startsWith('blog/') || p === 'blog/index.html');
+    const all = pages(root).filter((p) => (!p.startsWith('blog/') || p === 'blog/index.html') && !ignore.includes(p.split('/')[0]));
     const posts = pages(path.join(root, 'blog')).filter((p) => p !== 'index.html' && !p.startsWith('sample-')); // a amostra (só na prévia) não conta
     const art = Object.fromEntries(posts.map((p) => {
       const h = fs.readFileSync(path.join(root, 'blog', p), 'utf8');
@@ -59,8 +59,9 @@ export function measure(D) {
   return rows;
 }
 
-export function check(D = path.join(R, 'dist'), { print = true } = {}) {
-  const rows = measure(D);
+// ignore: pastas de topo que só existem na prévia (PREVIEW_DIR), fora da comparação
+export function check(D = path.join(R, 'dist'), { print = true, ignore = [] } = {}) {
+  const rows = measure(D, ignore);
   const en = rows.en;
   const errs = [];
   const KEYS = ['menu', 'panels', 'sections', 'footer', 'pages', 'privSections', 'i18n', 'articles', 'sitemap'];
