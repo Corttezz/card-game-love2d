@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import * as esbuild from 'esbuild';
 import { LANGS, renderHome, renderPrivacy, render404, renderUnsub } from './page.mjs';
 import { loadPosts, renderPost, renderHub } from './blog.mjs';
+import { check as checkParity } from './parity.mjs';
 
 const R = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const P = path.join(R, 'public');
@@ -64,11 +65,13 @@ for (const l of LANGS) {
   write(`${base}unsubscribe/index.html`, renderUnsub(T[l.code], l, ctx));
   write(`${base}404.html`, render404(T[l.code], l, ctx));
 }
-// blog (só inglês): posts de content/posts; a amostra de content/sample só na prévia (BLOG_SAMPLE=1)
-const POSTS = loadPosts({ sample: process.env.BLOG_SAMPLE === '1' });
-for (const p of POSTS) write(`blog/${p.slug}/index.html`, renderPost(p, T.en, ctx));
-write('blog/index.html', renderHub(POSTS, T.en, ctx));
-console.log('blog', POSTS.length, 'post(s):', POSTS.map((p) => p.slug).join(', ') || '(vazio)');
+// blog nos 5 idiomas: posts de content/posts (en) e content/posts/<prefixo> (traduções); a amostra de content/sample só na prévia (BLOG_SAMPLE=1)
+const ALLPOSTS = loadPosts({ sample: process.env.BLOG_SAMPLE === '1' });
+const BYLANG = Object.fromEntries(LANGS.map((l) => [l.code, ALLPOSTS.filter((p) => p.l === l)]));
+const POSTS = BYLANG.en;
+for (const p of ALLPOSTS) write(`${p.url.slice(1)}index.html`, renderPost(p, T[p.l.code], ctx, ALLPOSTS.filter((s) => s.key === p.key)));
+for (const l of LANGS) write(`${l.prefix ? l.prefix + '/' : ''}blog/index.html`, renderHub(BYLANG[l.code], T[l.code], ctx, l, BYLANG));
+console.log('blog', LANGS.map((l) => `${l.short} ${BYLANG[l.code].length}`).join(' | '), 'post(s):', POSTS.map((p) => p.slug).join(', ') || '(vazio)');
 // IndexNow: o arquivo da chave fica na raiz (servido pelo Worker como os outros arquivos)
 const CONF = JSON.parse(fs.readFileSync(path.join(R, 'src/data/config.json'), 'utf8'));
 if (CONF.indexnowKey) write(`${CONF.indexnowKey}.txt`, CONF.indexnowKey);
@@ -83,8 +86,14 @@ const xurl = (l, s) => {
   return `  <url><loc>${locUrl(l, s)}</loc>${mod ? `<lastmod>${mod}</lastmod>` : ''}${alts}</url>`;
 };
 // blog: o hub só entra no sitemap quando há post; cada post com a data de atualização do frontmatter
-const blogUrls = POSTS.length ? [`  <url><loc>${SITE}/blog/</loc><lastmod>${POSTS.map((p) => p.updated).sort().pop()}</lastmod></url>`,
-  ...POSTS.map((p) => `  <url><loc>${SITE}/blog/${p.slug}/</loc><lastmod>${p.updated}</lastmod></url>`)] : [];
+// com hreflang entre os idiomas que têm a mesma página (x-default = inglês)
+const altSet = (pairs) => pairs.map(([x, u]) => `<xhtml:link rel="alternate" hreflang="${x.html}" href="${SITE}${u}"/>`).join('') +
+  (pairs.find(([x]) => x === LANGS[0]) ? `<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}${pairs.find(([x]) => x === LANGS[0])[1]}"/>` : '');
+const hubLangs = LANGS.filter((l) => BYLANG[l.code].length);
+const blogUrls = [
+  ...hubLangs.map((l) => `  <url><loc>${SITE}/${l.prefix ? l.prefix + '/' : ''}blog/</loc><lastmod>${BYLANG[l.code].map((p) => p.updated).sort().pop()}</lastmod>${altSet(hubLangs.map((x) => [x, `/${x.prefix ? x.prefix + '/' : ''}blog/`]))}</url>`),
+  ...ALLPOSTS.map((p) => `  <url><loc>${SITE}${p.url}</loc><lastmod>${p.updated}</lastmod>${altSet(LANGS.map((x) => ALLPOSTS.find((s) => s.key === p.key && s.l === x)).filter(Boolean).map((s) => [s.l, s.url]))}</url>`),
+];
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${LANGS.flatMap((l) => ['', 'privacy/'].map((s) => xurl(l, s))).concat(blogUrls).join('\n')}\n</urlset>\n`);
 // /llms.txt: resumo do jogo e das páginas principais para assistentes de IA (texto puro, inglês)
 write('llms.txt', [
@@ -142,4 +151,6 @@ const size = (rel) => fs.statSync(path.join(D, rel.replace(/^\//, ''))).size;
 const kb = (n) => (n / 1024).toFixed(1) + ' KB';
 let total = 0; (function sum(d) { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) sum(p); else total += fs.statSync(p).size; } })(D);
 console.log('JS', kb(size(JS)), '| CSS', kb(size(CSS)), '| index.html', kb(size('index.html')), '| dist', (total / 1048576).toFixed(1) + ' MB', '| webp', conv.size);
-console.log('build ok', crypto.createHash('sha256').update(fs.readFileSync(path.join(D, 'index.html'))).digest('hex').slice(0, 12));
+// paridade de idiomas: nenhum idioma com menos menu, seções, páginas ou posts que o en (derruba o build e o deploy)
+checkParity(D, { ignore: process.env.PREVIEW_DIR && fs.existsSync(path.resolve(R, process.env.PREVIEW_DIR)) ? fs.readdirSync(path.resolve(R, process.env.PREVIEW_DIR)) : [] });
+console.log('build ok',crypto.createHash('sha256').update(fs.readFileSync(path.join(D, 'index.html'))).digest('hex').slice(0, 12));

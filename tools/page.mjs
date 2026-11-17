@@ -135,7 +135,7 @@ function about(t, l, G) {
 <h2>${esc(t.trailerPlay)}</h2>
 <video controls preload="none" playsinline poster="${TRAILER.poster}" width="1280" height="720" aria-label="${esc(t.trailerPlay)}"><source src="${TRAILER.src}" type="video/mp4"></video>
 <h2>${esc(t.faqTitle)}</h2>${faq}
-<p class="fine">${dc} · <a href="/blog/">Blog</a> · <a href="${home(l)}privacy/">${esc(t.privacy)}</a> · <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>
+<p class="fine">${dc} · <a href="${home(l)}blog/">Blog</a> · <a href="${home(l)}privacy/">${esc(t.privacy)}</a> · <a href="mailto:${CONFIG.contact}">${CONFIG.contact}</a></p>
 <p class="fine langs">${langs}</p>
 </div></main>`;
 }

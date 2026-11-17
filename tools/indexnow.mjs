@@ -10,7 +10,7 @@ const STATE = path.join(R, 'tools/out/indexnow-sent.json');
 const sent = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : {};
 const xml = fs.readFileSync(path.join(R, 'dist/sitemap.xml'), 'utf8');
 const urls = [...xml.matchAll(/<url><loc>([^<]+)<\/loc>(?:<lastmod>([^<]+)<\/lastmod>)?/g)]
-  .map(([, u, m]) => ({ u, m: m || '' })).filter((x) => x.u.startsWith(`${SITE}/blog/`));
+  .map(([, u, m]) => ({ u, m: m || '' })).filter((x) => x.u.startsWith(SITE) && /^\/(?:[a-z]{2}\/)?blog\//.test(x.u.slice(SITE.length)));
 const todo = urls.filter((x) => sent[x.u] !== x.m);
 if (!todo.length) { console.log('indexnow: nada novo no blog'); process.exit(0); }
 if (process.argv.includes('--dry')) { console.log('indexnow (dry):', todo.map((x) => x.u).join(' ')); process.exit(0); }
