@@ -234,6 +234,19 @@ local function loopFrame(clip, cycles)
     return clip.frames[f]
 end
 
+local function rangeFrame(clip, cycles, a, b)
+    local n = #clip.frames
+    a = math.max(1, math.min(n, a))
+    b = math.max(a, math.min(n, b))
+    local m = b - a + 1
+    local fr = cycles - math.floor(cycles)
+    local f = a + math.floor(fr * m)
+    if f > b then f = b end
+    clip.currentFrame = f
+    return clip.frames[f]
+end
+EE.rangeFrame = rangeFrame
+
 local function idleImage(S, dt, freezeAt1, freezeAt)
     local idle = S.idle
     if not idle then
@@ -302,6 +315,24 @@ local PHYS = {
     frost = { speed = 35, gravity = -15, life = 1.3, n = 18 },
 }
 
+EE.GROUND_BAND_K = 0.8
+EE.GROUND_BAND_H = 4
+EE.RISE_MAX_G = -30
+EE.RISE_LIFE_K = 0.55
+EE.RISE_SPEED_K = 0.45
+
+function EE.groundBurst(name, k)
+    local cfg = PHYS[name]
+    if not cfg then return nil end
+    local g, life, speed = cfg.gravity, cfg.life, cfg.speed
+    if g < 0 then
+        g = math.max(g, EE.RISE_MAX_G)
+        life = life * EE.RISE_LIFE_K
+        speed = speed * EE.RISE_SPEED_K
+    end
+    return g, life, speed * (k or 1)
+end
+
 local function burst(name, k)
     if not st or st.red or not st.scrX then return end
     local cfg = PHYS[name]
@@ -309,10 +340,13 @@ local function burst(name, k)
     local ok, PM = pcall(require, "engine.ParticlesManager")
     if not ok then return end
     local uk = require("src.ui.UiScale").k()
-    local ps = PM.spawn(st.scrX / uk, (st.scrY - 6) / uk, 0, 0, {
-        timer = 0.012, lifespan = cfg.life, scale = 0.38, speed = cfg.speed * (k or 1),
+    local g, life, speed = EE.groundBurst(name, k)
+    local bw = math.max(16, ((st.enc and st.enc.iw) or 60) * (st.scale or 1) * EE.GROUND_BAND_K) / uk
+    local bh = EE.GROUND_BAND_H / uk
+    local ps = PM.spawn(st.scrX / uk, (st.scrY / uk) - bh / 2, bw, bh, {
+        timer = 0.012, lifespan = life, scale = 0.38, speed = speed, fill = true,
         colours = COLOURS[name], pulse_max = math.floor(cfg.n * (k or 1) + 0.5),
-        vel_variation = 0.7, gravity = cfg.gravity, layer = 7,
+        vel_variation = 0.7, gravity = g, layer = 7,
     })
     if ps then EE._spawned[ps] = true end
 end
@@ -1128,7 +1162,22 @@ function K.investida(S, dt)
     local cyc = legCycles(S, L * fRun) * math.min(1, f / math.max(1e-3, fRun))
     local charge = S.clips.charge
     local skidding = u > us and u < 1
-    if charge and u < 1 then
+    local rl = spec.runLoop
+    if charge and skidding and spec.skidFrom then
+        local sk = (u - us) / math.max(1e-3, 1 - us)
+        local n = #charge.frames
+        local a = math.min(n, spec.skidFrom)
+        local fi = a + math.floor(sk * (n - a) + 1e-6)
+        if fi > n then fi = n end
+        charge.currentFrame = fi
+        S.img = charge.frames[fi]
+        S.used.charge = true
+        S.view.currentFrame = 1
+    elseif charge and u < 1 and rl then
+        S.img = rangeFrame(charge, cyc, rl[1], rl[2])
+        S.used.charge = true
+        S.view.currentFrame = 1
+    elseif charge and u < 1 then
         S.img = loopFrame(charge, cyc)
         S.used.charge = true
         S.view.currentFrame = 1
