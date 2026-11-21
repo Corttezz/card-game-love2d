@@ -11,6 +11,9 @@ local DynaText        = require("src.ui.DynaText")
 local BossCinematic = {}
 
 BossCinematic.SKIP_AFTER = 1.0
+BossCinematic.FLY_SIDE_FPS = 16
+BossCinematic.FLY_DIVE_AT = 0.72
+BossCinematic.FLY_SIDE_EYE = { 0.81, 0.50 }
 
 BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = true,
                               title = true, hud = true,
@@ -2207,6 +2210,10 @@ local function enterStep(st)
                 arc = st.arc or 0, land = st.land, lights = st.lights,
                 scale = st.scale or 1, near = (st.scale or 1) > 1.2,
                 t = 0, dur = math.max(0.05, st.dur or 0.5), startDark = dark, trail = {} }
+        if SpriteAnimation.exists(seq.bossId, "fly_side", "east") then
+            fly.side = SpriteAnimation.new(seq.bossId, "fly_side",
+                (fly.from == "left") and "east" or "west", BossCinematic.FLY_SIDE_FPS)
+        end
         if st.lights then
             darkEase = { from = dark, to = st.lights, t = 0, dur = fly.dur }
         end
@@ -2493,6 +2500,7 @@ function BossCinematic.update(dt, game, ctx)
     if fly then
         fly.t = fly.t + dt
         if flyAnim then flyAnim:update(dt) end
+        if fly.side then fly.side:update(dt) end
         if stage then
             local x, y, sw, sh = flyPos(fly, clamp01(fly.t / fly.dur), stage.w, stage.h)
             local tr = fly.trail
@@ -2801,6 +2809,9 @@ local function drawFly(w, h)
     local x, y, sw, sh, s = flyPos(fly, k, w, h)
     local tr = fly.trail
     local n = fly.ghosts or 0
+    local anim = flyAnim
+    local profile = fly.side and not (fly.land and k >= BossCinematic.FLY_DIVE_AT)
+    if profile then anim = fly.side end
     for i = 1, #tr, 2 do
         local p = tr[i]
         local a = 0.26 * (i / #tr)
@@ -2813,20 +2824,25 @@ local function drawFly(w, h)
         local p = tr[#tr - g * lag]
         if p then
             local a = (fly.near and 0.5 or 0.55) * (1 - (g - 1) / math.max(1, n))
-            flyAnim:draw(p.x, p.y, s, { PAL.ghost[1] + 0.15, PAL.ghost[2] + 0.1, PAL.ghost[3] + 0.15, a })
+            anim:draw(p.x, p.y, s, { PAL.ghost[1] + 0.15, PAL.ghost[2] + 0.1, PAL.ghost[3] + 0.15, a })
         end
     end
     local P = math.max(1, math.floor(s + 0.5))
     for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
-        flyAnim:draw(x + off[1], y + off[2], s, { PAL.rim[1], PAL.rim[2], PAL.rim[3], 0.32 })
+        anim:draw(x + off[1], y + off[2], s, { PAL.rim[1], PAL.rim[2], PAL.rim[3], 0.32 })
     end
     love.graphics.setBlendMode("alpha")
-    flyAnim:draw(x, y, s, { 1, 0.98, 1.04, 1 })
+    anim:draw(x, y, s, { 1, 0.98, 1.04, 1 })
     love.graphics.setBlendMode("add")
-    flyAnim:draw(x, y, s, { 0.55, 0.45, 0.80, 0.22 })
+    anim:draw(x, y, s, { 0.55, 0.45, 0.80, 0.22 })
     love.graphics.setBlendMode("alpha")
     local glow = 0.8 + 0.2 * math.sin(fly.t * 23)
-    for _, e in ipairs(EYE_ANCHORS) do
+    local eyes = EYE_ANCHORS
+    if profile then
+        local se = BossCinematic.FLY_SIDE_EYE
+        eyes = { { (fly.from == "left") and se[1] or (1 - se[1]), se[2] } }
+    end
+    for _, e in ipairs(eyes) do
         local ex = x + e[1] * sw
         local ey = y + e[2] * sh
         glowBlob(ex, ey, 10 * P, 6 * P, EYE_HALO, 0.6 * glow, 2)

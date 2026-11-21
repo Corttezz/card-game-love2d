@@ -273,3 +273,35 @@ Design: `docs/superpowers/specs/2026-10-22-entradas-inimigos-design.md`. Pedido 
   rosnado ficam no `stop`. Galopes guardados em `tools/preview_out/entradas_som/raw/*_r2.mp3` para um beat de corrida.
 - Rodada 4: investida tem `charge` (2 unidades depois da crista, ~2,5-3 s antes da parada): touro e cao tocam ali o
   galope da rodada 2 cortado so nas batidas (`<id>_charge.mp3`); linha do tempo charge -> skid (deslize) -> stop (bufo/rosnado).
+
+## Rodada #462 (21/11/2026)
+
+Playtest do dono: touro e cao com entrada e som estranhos, pe do cavaleiro espectral "dentro do chao", faiscas
+centralizadas feias em varias entradas, dullahan com batidas e passo ruins, voo do anjo duro, voo de lado do
+rei-carnica travado.
+
+- **Faisca no meio do corpo (causa):** `burst()` soltava a rajada num PONTO 6 px acima dos pes e os tipos que sobem
+  (embers g -90, ghostfire -110, dark -20, spores -25, frost -15) atravessavam o tronco; o passe global de particulas
+  (camada 7) desenha por cima do corpo. **Agora:** faixa rente aos pes (`EE.GROUND_BAND_K` 0,8 da largura do corpo,
+  `EE.GROUND_BAND_H` 4 px, `fill` centrado em `scrX`), e `EE.groundBurst` limita quem sobe a g -30 (`RISE_MAX_G`), vida
+  x0,55 e velocidade x0,45. Vale para todo `burst` de entrada (fx, marquee, rastro). Trail de brasas do hellhound e
+  ghostfire do dullahan sairam (o rastro pingava no peito a cada 0,12 s).
+- **Investida (touro/cao):** clipe novo idle -> preparo -> galope -> idle (cadeia pinada). `runLoop = {a, b}` faz o laco
+  so na faixa do galope (`EE.rangeFrame`) e `skidFrom` toca os quadros de freada durante a derrapada ate o idle 0; antes o
+  `loopFrame` repetia 1..n-1 e o idle entrava no meio da corrida a cada ciclo.
+- **Dullahan:** walk = cadeia de passadas (idle -> A -> B -> idle, 13 quadros, como o glacier_knight). Passo com
+  `step = { "entrance_dullahan_step", "sceneStoneThud" }` (armadura: glacier_knight_step + obsidian_sentinel_stop +
+  punching-light-armour). `stepSfx` com pedra seca saiu.
+- **Rei-carnica:** flyby usa `fly_side/east|west` (batida de asa em loop, 16 fps) e so troca para o `dive` frontal a partir
+  de `BossCinematic.FLY_DIVE_AT` (0,72) do rasante de pouso; olho na cabeca de perfil (`FLY_SIDE_EYE`). Campos de modulo
+  (o arquivo vive no teto de 200 locais).
+- **Cavaleiro espectral:** o pe NAO afundava mais que os outros (sola = linha de chao em todo quadro, mesmo FOOT_SINK 2);
+  o que lia como pe enterrado era a nevoa pintada OPACA com base reta no chao, cobrindo perna direita e base do escudo
+  (poca). `tools/knight_mist_base.py` deixa a nevoa (cor lavanda, x >= 36 do canvas do idle) translucida nas 7 linhas de
+  baixo (alfa 1 -> 0,38), igual em todos os 122 quadros: contratos de byte e linha de chao por quadro intactos.
+- **Som:** o "carro/maquina" do touro era o skid com centroide 7 kHz (chiado de pneu). Receitas em
+  `tools/entradas_462_sfx.py` (originais em `tools/preview_out/entradas_som/antes_462/`). Licao: lowpass pesado sobe a
+  metrica `tonal` (o cao foi a 97%); o charge do cao refeito ficou mais tonal que o original e o ORIGINAL voltou.
+- **Bloqueio desta rodada:** lovec/lua/git add pediram aprovacao que nao podia ser dada na sessao em segundo plano; os 3
+  testes e as capturas de cena NAO rodaram aqui. `tools/gif_entradas.lua` (captura de quadros de cena) ficou pronto e
+  registrado em `TOOL_RESULT_PRINTERS` (so imprime `[ok]/[FAIL]`).

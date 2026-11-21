@@ -1,0 +1,302 @@
+[
+ {
+  "kind": "still",
+  "key": "carrion_king/side",
+  "seed": 0,
+  "job": "020ac620-2abd-4b6f-9444-d076a43df521",
+  "t": "2026-11-21 11:43:28"
+ },
+ {
+  "kind": "still",
+  "key": "carrion_king/side",
+  "seed": 7,
+  "job": "260891c9-3b89-4ad6-92a4-4cf0f9e0750f",
+  "t": "2026-11-21 11:43:30"
+ },
+ {
+  "kind": "still",
+  "key": "fallen_angel/fly",
+  "seed": 0,
+  "job": "49866b0f-2ce4-4bb7-9f4d-f2be903964ee",
+  "t": "2026-11-21 11:43:31"
+ },
+ {
+  "kind": "still",
+  "key": "fallen_angel/fly",
+  "seed": 7,
+  "job": "c8c3b7c7-c44e-447b-a50d-ccd402076ec2",
+  "t": "2026-11-21 11:43:33"
+ },
+ {
+  "kind": "still",
+  "key": "fallen_angel/touch",
+  "seed": 0,
+  "job": "3cc6a0d2-c697-4282-a98d-d4e89161f686",
+  "t": "2026-11-21 11:43:34"
+ },
+ {
+  "kind": "still",
+  "key": "dullahan/strideA",
+  "seed": 0,
+  "job": "aec47f4e-2182-40fe-a3a4-639166c48d01",
+  "t": "2026-11-21 11:43:35"
+ },
+ {
+  "kind": "still",
+  "key": "dullahan/strideB",
+  "seed": 0,
+  "job": "869ffdb3-7a49-45e2-9453-bda317a6c6a0",
+  "t": "2026-11-21 11:43:37"
+ },
+ {
+  "kind": "still",
+  "key": "blight_bull/gallopA",
+  "seed": 0,
+  "job": "7aa660f5-3213-4d5f-ac66-d66f5c2243d0",
+  "t": "2026-11-21 11:43:39"
+ },
+ {
+  "kind": "still",
+  "key": "blight_bull/gallopB",
+  "seed": 0,
+  "job": "145d9591-1abe-41b4-9f53-46e3ea00dc33",
+  "t": "2026-11-21 11:43:40"
+ },
+ {
+  "kind": "still",
+  "key": "hellhound/lunge",
+  "seed": 0,
+  "job": "64af9ab3-d5d7-4b29-979d-26ac6121ab04",
+  "t": "2026-11-21 11:43:42"
+ },
+ {
+  "kind": "still",
+  "key": "hellhound/gather",
+  "seed": 0,
+  "job": "0936225e-b2ba-40cb-8df0-c243eb662d3e",
+  "t": "2026-11-21 11:44:04"
+ },
+ {
+  "kind": "still",
+  "key": "dullahan/strideA",
+  "seed": 1,
+  "job": "c2562515-4a58-4bc9-9598-97030a6fc240",
+  "t": "2026-11-21 11:45:48"
+ },
+ {
+  "kind": "still",
+  "key": "dullahan/strideA",
+  "seed": 2,
+  "job": "80829c81-a8ce-42e9-8a88-5b6a979be3c2",
+  "t": "2026-11-21 11:45:50"
+ },
+ {
+  "kind": "still",
+  "key": "dullahan/strideB",
+  "seed": 1,
+  "job": "9afb6d30-ec31-44df-babf-78d5db8ead50",
+  "t": "2026-11-21 11:45:51"
+ },
+ {
+  "kind": "anim",
+  "key": "blight_bull/charge#a",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "121cb328-e96d-4271-a235-2e4644d223ec",
+  "try": 1,
+  "t": "2026-11-21 11:45:52"
+ },
+ {
+  "kind": "still",
+  "key": "dullahan/strideB",
+  "seed": 2,
+  "job": "e12b6018-2e79-4c12-acb0-6510fee9009c",
+  "t": "2026-11-21 11:45:53"
+ },
+ {
+  "kind": "anim",
+  "key": "blight_bull/charge#b",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "4bebff1f-42e0-4cfb-9ea4-4baa0f303853",
+  "try": 1,
+  "t": "2026-11-21 11:45:54"
+ },
+ {
+  "kind": "still",
+  "key": "hellhound/gather",
+  "seed": 1,
+  "job": "bee7fe37-2ec3-452c-9c9e-616dd62659f1",
+  "t": "2026-11-21 11:45:54"
+ },
+ {
+  "kind": "anim",
+  "key": "blight_bull/charge#c",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "2826b34b-1684-44fa-b51d-40e2cae98959",
+  "try": 1,
+  "t": "2026-11-21 11:45:55"
+ },
+ {
+  "kind": "still",
+  "key": "hellhound/gather",
+  "seed": 2,
+  "job": "e23301b7-08be-4814-89a1-9cc0397fcab6",
+  "t": "2026-11-21 11:45:56"
+ },
+ {
+  "kind": "still",
+  "key": "carrion_king/side_down",
+  "seed": 0,
+  "job": "9af368f9-b750-461f-bc84-593acc9edbe9",
+  "t": "2026-11-21 11:45:57"
+ },
+ {
+  "kind": "still",
+  "key": "carrion_king/side_down",
+  "seed": 3,
+  "job": "25bf57ad-14e4-4935-97e4-febbf253e18f",
+  "t": "2026-11-21 11:46:20"
+ },
+ {
+  "kind": "still",
+  "key": "fallen_angel/fly_down",
+  "seed": 0,
+  "job": "6b67dc55-c46d-4b7a-9871-5fe122dd0b3e",
+  "t": "2026-11-21 11:46:21"
+ },
+ {
+  "kind": "still",
+  "key": "fallen_angel/fly_down",
+  "seed": 3,
+  "job": "c6a22a7d-ec61-406e-8e54-f053dbd34b76",
+  "t": "2026-11-21 11:46:23"
+ },
+ {
+  "kind": "anim",
+  "key": "carrion_king/fly_side#a",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "6efdbb42-24a1-42d1-a8ec-86c17c982c64",
+  "try": 1,
+  "t": "2026-11-21 11:48:02"
+ },
+ {
+  "kind": "anim",
+  "key": "carrion_king/fly_side#b",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "62554dd8-0985-4020-9a17-21f4dd75b719",
+  "try": 1,
+  "t": "2026-11-21 11:48:03"
+ },
+ {
+  "kind": "anim",
+  "key": "fallen_angel/swoop#a",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "7bdebdac-0eb7-42eb-a7cb-4a35bb401695",
+  "try": 1,
+  "t": "2026-11-21 11:48:05"
+ },
+ {
+  "kind": "anim",
+  "key": "fallen_angel/swoop#b",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "0e010541-8e14-436e-b67a-b64060ef0993",
+  "try": 1,
+  "t": "2026-11-21 11:48:07"
+ },
+ {
+  "kind": "anim",
+  "key": "fallen_angel/land#a",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "c5c199c6-1bfa-407e-ac0f-ccff77582d20",
+  "try": 1,
+  "t": "2026-11-21 11:48:07"
+ },
+ {
+  "kind": "anim",
+  "key": "fallen_angel/land#b",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "710a5173-9a44-41d9-bbd0-b316670f9900",
+  "try": 1,
+  "t": "2026-11-21 11:48:09"
+ },
+ {
+  "kind": "anim",
+  "key": "dullahan/walk#a",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "0e18cee5-f253-4020-a80c-329ac3c75b41",
+  "try": 1,
+  "t": "2026-11-21 11:48:11"
+ },
+ {
+  "kind": "anim",
+  "key": "dullahan/walk#b",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "2cadccc9-1ffe-4a48-bf0c-4f54555ff4e7",
+  "try": 1,
+  "t": "2026-11-21 11:48:12"
+ },
+ {
+  "kind": "anim",
+  "key": "dullahan/walk#c",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "d972efcd-b42f-4169-9412-0d2466e0de36",
+  "try": 1,
+  "t": "2026-11-21 11:48:13"
+ },
+ {
+  "kind": "anim",
+  "key": "hellhound/charge#a",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "9389687c-5550-4669-bc4c-8872228f15c5",
+  "try": 1,
+  "t": "2026-11-21 11:48:15"
+ },
+ {
+  "kind": "anim",
+  "key": "hellhound/charge#b",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "a71df0f0-d6b6-4d31-a158-7cad87dcf5b9",
+  "try": 1,
+  "t": "2026-11-21 11:48:38"
+ },
+ {
+  "kind": "anim",
+  "key": "hellhound/charge#c",
+  "tool": "animate_image",
+  "seed": null,
+  "job": "b51519ed-f494-4916-a094-31acf2c7e893",
+  "try": 1,
+  "t": "2026-11-21 11:49:00"
+ },
+ {
+  "kind": "anim",
+  "key": "fallen_angel/swoop#a",
+  "tool": "animate_image",
+  "seed": 11,
+  "job": "1761d235-f8e2-41ce-8564-e4b13544eae1",
+  "try": 2,
+  "t": "2026-11-21 11:50:55"
+ },
+ {
+  "kind": "anim",
+  "key": "fallen_angel/swoop#a",
+  "tool": "animate_image",
+  "seed": 23,
+  "job": "d23ee8c3-c6a2-4a37-bf20-823016ca9fc7",
+  "try": 3,
+  "t": "2026-11-21 11:50:56"
+ }
+]

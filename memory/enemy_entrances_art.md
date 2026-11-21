@@ -164,3 +164,28 @@ Fabrica: `python tools/pixellab_entradas_mini.py still <id> <pose> <seed> | pick
 | mire_hag | cackle 11 | ok: dois quadros lavados de branco cortados |
 | dullahan | laugh 13 | bom (still refeito: a 1a cabeca saia pela borda de cima) |
 | blood_duke | form 13 | ok: morcegos e nevoa viram o conde; o rosto no floreio fica mais palido que o idle por 3 quadros |
+
+## Rodada #462 (21/11/2026)
+
+Fabrica: `tools/pixellab_entradas_462.py` (stills/anims/pick/install/check; saida em
+`tools/preview_out/entradas_arte/e462/`, tira de cada clipe instalado em `<id>_<clip>_instalado.png`). Saldo 5000 -> 4853
+geracoes (147, 38 jobs).
+
+| criatura | clipe | como | stills escolhidos |
+|---|---|---|---|
+| blight_bull | charge 13 | cadeia idle -> gallopA -> gallopB -> idle, `fix=islands` | gallopA s0, gallopB s0 |
+| hellhound | charge 13 | cadeia idle -> gather -> lunge -> idle, `fix=islands` (brasas soltas fora) | lunge s0, gather s2 |
+| dullahan | walk 13 | cadeia idle -> strideA -> strideB -> idle | A s2, B s2 (seed 0 perdeu o elmo) |
+| fallen_angel | swoop 9 + land 13 | fly <-> fly_down em loop; fly -> touch -> kneel; rise ja existia | fly s0, fly_down s3, touch s0 |
+| carrion_king | fly_side east 7 + west (espelho) | side -> side_down, `skip=2` (quadro sem bico) | side s7, side_down s0 |
+| spectral_knight | todos (122 q) | transformacao deterministica da nevoa da base (`tools/knight_mist_base.py`), sem PixelLab | - |
+
+Licoes:
+- **Por que o voo_tries t1..t3 do anjo falhou:** eram hovers pinados no IDLE EM PE nas duas pontas; corpo rigido com os
+  pes plantados e so as asas mexendo, e o canvas cortava a envergadura. Voo natural pede um still DE VOO (pernas soltas,
+  pontas dos pes para baixo) como pose-chave e o laco entre stills de voo.
+- Still de "so mude as pernas" precisa repetir no prompt o que NAO pode mudar (o elmo na mao do dullahan sumia).
+- Halo do anjo saia branco no v3: o prompt agora diz "thin broken GOLD ring ... never white".
+- Corrida frontal (touro) encosta o chifre na borda direita num quadro; o idle ja chega a x 114 de 115, aceito.
+- Nevoa pintada opaca com base reta no chao le como poca que engole o pe; nevoa de chao em sprite vai translucida
+  para baixo.
