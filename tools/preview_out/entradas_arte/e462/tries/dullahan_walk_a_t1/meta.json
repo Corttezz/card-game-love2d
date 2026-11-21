@@ -1,0 +1,9 @@
+{
+ "key": "dullahan/walk#a",
+ "tool": "animate_image",
+ "seed": null,
+ "frames": 4,
+ "job": "0e18cee5-f253-4020-a80c-329ac3c75b41",
+ "first": "idle",
+ "last": "still:strideA"
+}

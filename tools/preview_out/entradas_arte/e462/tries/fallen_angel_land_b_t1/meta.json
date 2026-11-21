@@ -1,0 +1,9 @@
+{
+ "key": "fallen_angel/land#b",
+ "tool": "animate_image",
+ "seed": null,
+ "frames": 6,
+ "job": "710a5173-9a44-41d9-bbd0-b316670f9900",
+ "first": "still:touch",
+ "last": "mini:fallen_angel_kneel"
+}

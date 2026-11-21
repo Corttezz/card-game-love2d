@@ -1,0 +1,9 @@
+{
+ "key": "fallen_angel/land#a",
+ "tool": "animate_image",
+ "seed": null,
+ "frames": 6,
+ "job": "c5c199c6-1bfa-407e-ac0f-ccff77582d20",
+ "first": "still:fly",
+ "last": "still:touch"
+}

@@ -1,0 +1,9 @@
+{
+ "key": "blight_bull/charge#b",
+ "tool": "animate_image",
+ "seed": null,
+ "frames": 4,
+ "job": "4bebff1f-42e0-4cfb-9ea4-4baa0f303853",
+ "first": "still:gallopA",
+ "last": "still:gallopB"
+}

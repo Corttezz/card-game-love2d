@@ -1,0 +1,9 @@
+{
+ "key": "hellhound/charge#c",
+ "tool": "animate_image",
+ "seed": null,
+ "frames": 4,
+ "job": "b51519ed-f494-4916-a094-31acf2c7e893",
+ "first": "still:lunge",
+ "last": "idle"
+}

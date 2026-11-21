@@ -1,0 +1,9 @@
+{
+ "key": "carrion_king/fly_side#a",
+ "tool": "animate_image",
+ "seed": null,
+ "frames": 4,
+ "job": "6efdbb42-24a1-42d1-a8ec-86c17c982c64",
+ "first": "still:side",
+ "last": "still:side_down"
+}

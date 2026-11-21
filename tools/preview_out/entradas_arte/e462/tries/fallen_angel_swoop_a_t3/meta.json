@@ -1,0 +1,9 @@
+{
+ "key": "fallen_angel/swoop#a",
+ "tool": "animate_image",
+ "seed": 23,
+ "frames": 4,
+ "job": "d23ee8c3-c6a2-4a37-bf20-823016ca9fc7",
+ "first": "still:fly",
+ "last": "still:fly_down"
+}
