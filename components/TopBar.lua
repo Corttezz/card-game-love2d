@@ -1,5 +1,4 @@
 local FontManager = require("src.ui.FontManager")
-local ImageCache  = require("src.ui.ImageCache")
 local IconLoader  = require("src.ui.IconLoader")
 local PixelCanvas = require("src.ui.PixelCanvas")
 local Palette     = require("src.ui.Palette")
@@ -14,8 +13,6 @@ function TopBar:new()
 
     instance.visible = true
     instance.height = 52
-
-    instance.coinIcon = ImageCache.get("assets/icons/coin.png")
 
     instance.gearIcon = IconLoader.get("gear")
 
@@ -174,28 +171,91 @@ function TopBar:draw()
 
     local screenWidth = love.graphics.getWidth()
 
-    PixelCanvas.rect(0, 0, screenWidth, self.height, { 0.07, 0.055, 0.04, 0.98 })
-    PixelCanvas.hline(0, self.height,     screenWidth, Palette.AGED_GOLD)
-    PixelCanvas.hline(0, self.height + 1, screenWidth, Palette.AGED_GOLD_DARK)
-
-    for i = 0, 4 do
-        local x = 20 + math.floor(i * (screenWidth - 40) / 4)
-        PixelCanvas.rect(x - 2, self.height - 6, 4, 4, Palette.AGED_GOLD)
-        PixelCanvas.pixel(x - 1, self.height - 5, Palette.AGED_GOLD_LIGHT)
-    end
-
+    self:drawFrame(screenWidth)
     self:drawGameInfo()
     self:drawConfigIcon()
 end
 
+local BAND_TOP = { 0.105, 0.080, 0.056, 0.98 }
+local BAND_BOT = { 0.045, 0.034, 0.026, 0.98 }
+
+function TopBar:drawFrame(sw)
+    local h = self.height
+    local bands = 6
+    for i = 0, bands - 1 do
+        local k = i / (bands - 1)
+        local y0 = math.floor(i * h / bands)
+        local y1 = math.floor((i + 1) * h / bands)
+        PixelCanvas.rect(0, y0, sw, y1 - y0, {
+            BAND_TOP[1] + (BAND_BOT[1] - BAND_TOP[1]) * k,
+            BAND_TOP[2] + (BAND_BOT[2] - BAND_TOP[2]) * k,
+            BAND_TOP[3] + (BAND_BOT[3] - BAND_TOP[3]) * k, 0.98 })
+    end
+    local gl, g, gd = Palette.AGED_GOLD_LIGHT, Palette.AGED_GOLD, Palette.AGED_GOLD_DARK
+    PixelCanvas.hline(0, 0, sw, { gl[1], gl[2], gl[3], 0.10 })
+    PixelCanvas.hline(0, h - 3, sw, { gd[1], gd[2], gd[3], 0.55 })
+    PixelCanvas.hline(0, h, sw, g)
+    PixelCanvas.hline(0, h + 1, sw, gd)
+    PixelCanvas.hline(0, h + 2, sw, { 0, 0, 0, 0.45 })
+
+    local L = self:_layout()
+    local keys = { "gold", "deck", "score", "progress" }
+    local slots = {}
+    for _, k in ipairs(keys) do if L[k] then slots[#slots + 1] = L[k] end end
+    if #slots == 0 then return end
+    local x0 = slots[1].x - 14
+    local x1 = slots[#slots].x + slots[#slots].w + 2
+    self:_diamond(x0, h, 3, g, gl)
+    self:_diamond(x1, h, 3, g, gl)
+    self:_diamond(math.floor(sw / 2), h, 2, g, gl)
+    for i = 2, #slots do
+        local sx = math.floor((slots[i - 1].x + slots[i - 1].w + slots[i].x) / 2) - 2
+        PixelCanvas.vline(sx, 12, h - 24, { gd[1], gd[2], gd[3], 0.9 })
+        PixelCanvas.pixel(sx, 11, gd)
+        self:_diamond(sx, math.floor(h / 2), 2, gd, g)
+    end
+end
+
+function TopBar:_diamond(cx, cy, r, edge, core)
+    for dy = -r, r do
+        local half = r - math.abs(dy)
+        PixelCanvas.hline(cx - half, cy + dy, half * 2 + 1, edge)
+    end
+    if r >= 2 then
+        for dy = -(r - 1), r - 1 do
+            local half = r - 1 - math.abs(dy)
+            PixelCanvas.hline(cx - half, cy + dy, half * 2 + 1, core)
+        end
+    end
+end
+
+local ICON_PX = 32
+local TEXT_DX = 44
+
+local function drawIcon(name, x, cy)
+    local icon = IconLoader.get(name)
+    if icon and icon.draw then
+        love.graphics.setColor(1, 1, 1, 1)
+        icon.draw(x, cy - math.floor(ICON_PX / 2), ICON_PX / icon.size.w)
+    end
+    return icon
+end
+
+local function printShadowed(text, x, y, color)
+    love.graphics.setColor(0, 0, 0, 0.55)
+    love.graphics.print(text, x + 1, y + 1)
+    if color then Palette.set(color) end
+    love.graphics.print(text, x, y)
+end
+
+local ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" }
+
 function TopBar:drawGameInfo()
-    local iconScale = 0.05
     local centerY = math.floor(self.height / 2)
     local L = self:_layout()
 
     if self.game and self.game.economySystem and L.gold then
         local coinX = L.gold.x
-        local coinY = centerY - 22
 
         local interestGold = self.game.economySystem:calculateInterest()
         self:_hoverZone(coinX - 6, L.gold.w, "topbar_gold", {
@@ -203,15 +263,14 @@ function TopBar:drawGameInfo()
             interest = math.floor(interestGold),
         })
 
-        love.graphics.setColor(1, 1, 1, 1)
-        local rm = _G.gameSettings and _G.gameSettings.reducedMotion
-        local pulse = rm and 1 or (1 + math.sin(love.timer.getTime() * 0.7) * 0.03)
-        local cw, ch = self.coinIcon:getWidth(), self.coinIcon:getHeight()
-        local scaledIcon = iconScale * pulse
-        love.graphics.draw(self.coinIcon, coinX + cw * iconScale * 0.5, coinY + ch * iconScale * 0.5, 0,
-                           scaledIcon, scaledIcon, cw / 2, ch / 2)
+        drawIcon("ui_coin", coinX + 4, centerY)
 
         local base = Palette.AGED_GOLD_LIGHT
+        love.graphics.setFont(FontManager.getFont(14))
+        local goldDisp = math.floor((self.disp.gold or self.game.economySystem.currentGold or 0) + 0.001)
+        local goldText = "$" .. goldDisp
+        love.graphics.setColor(0, 0, 0, 0.55)
+        love.graphics.print(goldText, coinX + TEXT_DX + 1, centerY - 11)
         if self._goldFlash then
             local k = math.min(1, self._goldFlash.t / 0.6)
             local flash = self._goldFlash.dir > 0
@@ -224,16 +283,12 @@ function TopBar:drawGameInfo()
         else
             Palette.set(base)
         end
-        love.graphics.setFont(FontManager.getFont(14))
-        local goldDisp = math.floor((self.disp.gold or self.game.economySystem.currentGold or 0) + 0.001)
-        local goldText = "$" .. goldDisp
-        love.graphics.print(goldText, coinX + 50, centerY - 10)
+        love.graphics.print(goldText, coinX + TEXT_DX, centerY - 12)
 
         if interestGold > 0 then
-            Palette.set(Palette.PARCHMENT)
             love.graphics.setFont(FontManager.getFont(9))
             local interestText = I18n.t("top_bar.interest_suffix", { amount = math.floor(interestGold) })
-            love.graphics.print(interestText, coinX + 50, centerY + 6)
+            printShadowed(interestText, coinX + TEXT_DX, centerY + 5, Palette.AGED_GOLD)
         end
     end
 
@@ -245,40 +300,34 @@ function TopBar:drawGameInfo()
             hand = self.game.hand and #self.game.hand or 0,
         })
 
-        love.graphics.setColor(1, 1, 1, 1)
-        IconLoader.drawFit("ui_deck", deckX + 22, centerY, 40)
+        drawIcon("ui_deck_backs", deckX + 4, centerY)
 
-        Palette.set(Palette.PARCHMENT_LIGHT)
         love.graphics.setFont(FontManager.getFont(14))
         local deckSize = #self.game.deck
         local deckText = I18n.t("top_bar.deck_cards", { n = deckSize })
-        love.graphics.print(deckText, deckX + 50, centerY - 10)
+        printShadowed(deckText, deckX + TEXT_DX, centerY - 12, Palette.PARCHMENT_LIGHT)
 
         if self.game.hand then
-            Palette.set(Palette.PARCHMENT)
             love.graphics.setFont(FontManager.getFont(9))
             local handSize = #self.game.hand
             local handText = I18n.t("top_bar.hand_suffix", { n = handSize })
-            love.graphics.print(handText, deckX + 50, centerY + 6)
+            printShadowed(handText, deckX + TEXT_DX, centerY + 5, Palette.AGED_GOLD)
         end
     end
 
     if self.game and self.game.scoreSystem and L.score then
         local scoreX = L.score.x
-        local IconLoader = require("src.ui.IconLoader")
-
         local okPS, ProfileStats = pcall(require, "engine.ProfileStats")
         self:_hoverZone(scoreX - 6, L.score.w, "score", {
             best = (okPS and ProfileStats.get().bestScore) or 0,
         })
 
-        local icon = IconLoader.get("ui_score_star")
-        if icon and icon.draw and icon.size then
-            local sc = 26 / icon.size.w
-            love.graphics.setColor(1, 1, 1, 1)
-            icon.draw(scoreX, centerY - 14, sc)
-        end
+        drawIcon("ui_score_rune", scoreX + 4, centerY)
         local record = self.game.scoreSystem.recordBroken
+        love.graphics.setFont(FontManager.getFont(14))
+        local scoreText = tostring(self.game.score or 0)
+        love.graphics.setColor(0, 0, 0, 0.55)
+        love.graphics.print(scoreText, scoreX + TEXT_DX + 1, centerY - 11)
         if record then
             local pulse = 0.85 + math.sin(love.timer.getTime() * 2.5) * 0.15
             local g = Palette.AGED_GOLD_LIGHT
@@ -286,12 +335,11 @@ function TopBar:drawGameInfo()
         else
             Palette.set(Palette.PARCHMENT_LIGHT)
         end
-        love.graphics.setFont(FontManager.getFont(14))
-        love.graphics.print(tostring(self.game.score or 0), scoreX + 34, centerY - 10)
-        Palette.set(record and Palette.AGED_GOLD or Palette.PARCHMENT)
+        love.graphics.print(scoreText, scoreX + TEXT_DX, centerY - 12)
         love.graphics.setFont(FontManager.getFont(9))
-        love.graphics.print(record and I18n.t("top_bar.score_record")
-            or I18n.t("top_bar.score_label"), scoreX + 34, centerY + 6)
+        printShadowed(record and I18n.t("top_bar.score_record")
+            or I18n.t("top_bar.score_label"), scoreX + TEXT_DX, centerY + 5,
+            record and Palette.AGED_GOLD_LIGHT or Palette.AGED_GOLD)
     end
 
     local run = self.game and self.game.runManager
@@ -310,24 +358,25 @@ function TopBar:drawGameInfo()
             mods = RunModsText.long(run),
         })
 
-        local icon = IconLoader.get("ui_act_scroll")
-        if icon and icon.draw and icon.size then
-            local sc = 26 / icon.size.w
-            love.graphics.setColor(1, 1, 1, 1)
-            icon.draw(progressX, centerY - 14, sc)
+        drawIcon("ui_act_banner", progressX + 4, centerY)
+        local numeral = run.endlessMode and "" or (ROMAN[act] or tostring(act))
+        if numeral ~= "" then
+            local fn = FontManager.getFont(9)
+            love.graphics.setFont(fn)
+            local nx = progressX + 4 + math.floor((ICON_PX - fn:getWidth(numeral)) / 2)
+            local ny = centerY - math.floor(ICON_PX / 2) + 9
+            printShadowed(numeral, nx, ny, Palette.PARCHMENT_LIGHT)
         end
 
-        Palette.set(Palette.PARCHMENT_LIGHT)
         love.graphics.setFont(FontManager.getFont(14))
         local actText = run.endlessMode and I18n.t("top_bar.endless")
             or I18n.t("top_bar.act", { n = act })
-        love.graphics.print(actText, progressX + 34, centerY - 10)
+        printShadowed(actText, progressX + TEXT_DX, centerY - 12, Palette.PARCHMENT_LIGHT)
 
-        Palette.set(Palette.PARCHMENT)
         love.graphics.setFont(FontManager.getFont(9))
         local mods = RunModsText.short(run, true)
-        love.graphics.print(I18n.t("top_bar.floor", { x = floorIn, total = total })
-            .. (mods ~= "" and (" · " .. mods) or ""), progressX + 34, centerY + 6)
+        printShadowed(I18n.t("top_bar.floor", { x = floorIn, total = total })
+            .. (mods ~= "" and (" · " .. mods) or ""), progressX + TEXT_DX, centerY + 5, Palette.AGED_GOLD)
     end
 
     love.graphics.setColor(1, 1, 1, 1)

@@ -704,6 +704,7 @@ local function testOwnIcons(t)
         local src = love.filesystem.read(path) or ""
         local names = {}
         for n in src:gmatch('IconLoader%.get%("([%w_]+)"%)') do names[#names + 1] = n end
+        for n in src:gmatch('drawIcon%("([%w_]+)"') do names[#names + 1] = n end
         return names
     end
     local top = iconsAsked("components/TopBar.lua")
@@ -712,11 +713,13 @@ local function testOwnIcons(t)
         for _, n in ipairs(list) do if n == name then return true end end
         return false
     end
-    t:truthy("TopBar: pontuação com a estrela própria", has(top, "ui_score_star"))
-    t:truthy("TopBar: ato com o pergaminho próprio", has(top, "ui_act_scroll"))
+    t:truthy("TopBar: pontuação com a runa própria", has(top, "ui_score_rune"))
+    t:truthy("TopBar: ato com o estandarte próprio", has(top, "ui_act_banner"))
+    t:truthy("TopBar: moeda própria com a rosa do selo", has(top, "ui_coin"))
+    t:truthy("TopBar: baralho com o verso de carta do jogo", has(top, "ui_deck_backs"))
     t:falsy("TopBar: não pede mais a estrela de carta", has(top, "star"))
     t:falsy("TopBar: não pede mais o pergaminho de carta", has(top, "scroll"))
-    t:truthy("Menu: perfil com a estrela própria", has(menu, "ui_score_star"))
+    t:truthy("Menu: perfil com a runa própria", has(menu, "ui_score_rune"))
     t:falsy("Menu: não pede mais a estrela de carta", has(menu, "star"))
     for _, name in ipairs(top) do ownIcon(t, "TopBar " .. name, name) end
     for _, name in ipairs(menu) do ownIcon(t, "Menu " .. name, name) end
@@ -740,7 +743,7 @@ local function testUiIconsNotCardArt(t)
         t:truthy(path .. " lido", src ~= "")
         local names = {}
         for _, pat in ipairs({ 'IconLoader%.get%("([%w_]+)"%)', 'IconLoader"%)%.get%("([%w_]+)"%)', 'drawFit%("([%w_]+)"',
-                               'icon%s*=%s*"([%w_]+)"', 'setIcon%("([%w_]+)"' }) do
+                               'icon%s*=%s*"([%w_]+)"', 'setIcon%("([%w_]+)"', 'drawIcon%("([%w_]+)"' }) do
             for n in src:gmatch(pat) do names[#names + 1] = n end
         end
         for _, n in ipairs(names) do
