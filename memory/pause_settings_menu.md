@@ -148,3 +148,12 @@ referência `ui_score_star`; 2 gerações, 32 candidatas, escolhida `ui_gold`
 cand 1: pilha de moedas com o sigilo do olho). `test_boss_mechanics` passa a
 ler `CoinBurst.lua` e `RoundEvalScreen.lua` e exige `ui_gold`. A TopBar
 segue com `assets/icons/coin.png` (ícone de HUD antigo, não é arte de carta).
+
+**Moeda única (`ui_coin`, 22/Nov/2026, #488):** a TopBar ganhou a moeda da
+rosa-dos-ventos do selo (`ui_coin`, 21/Nov), mas a Avaliação da Rodada seguiu
+com a pilha cobre `ui_gold` (ícone dos juros, pilhas das linhas, TOTAL, botão de
+saque), e a chuva de moedas do `CoinBurst` também. Tudo passou a `ui_coin`, o
+mesmo sprite da barra. `test_boss_mechanics` exige `ui_coin` em uso, falha se
+alguma tela pedir `ui_gold` e confere `ROW_ICONS.interest`. Loja, recompensas,
+eventos e dados do escriba mostram preço só em texto (cifrão), sem sprite de
+moeda. `ui_gold.png` fica no disco sem uso.

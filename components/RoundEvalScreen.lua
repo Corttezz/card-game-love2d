@@ -37,7 +37,7 @@ local ROW_ICONS = {
     full_hp  = "ui_health",
     elite    = "skull_horned",
     boss     = "skull_crowned",
-    interest = "ui_gold",
+    interest = "ui_coin",
 }
 
 local MAX_ROW_COINS = 10
@@ -354,7 +354,7 @@ function RoundEvalScreen:_buildCashOutButton()
         function() self:_onCashOutClick() end,
         nil, 12
     )
-    self.cashOutButton:setIcon("ui_gold")
+    self.cashOutButton:setIcon("ui_coin")
 end
 
 function RoundEvalScreen:_onCashOutClick()
@@ -463,7 +463,7 @@ function RoundEvalScreen:_drawCoins()
             love.graphics.push()
             love.graphics.translate(c.x, c.y)
             love.graphics.rotate(c.rot or 0)
-            drawIcon("ui_gold", 0, 0, 22 * (c.s or 1), c.a)
+            drawIcon("ui_coin", 0, 0, 22 * (c.s or 1), c.a)
             love.graphics.pop()
         end
     end
@@ -661,7 +661,7 @@ function RoundEvalScreen:_drawRow(L, i, row, font, vfont)
 
     love.graphics.setColor(1, 0.85, 0.4, 0.06 * a)
     love.graphics.rectangle("fill", L.x + 22, y + 2, L.w - 44, L.rowH - 4, 4, 4)
-    drawIcon(ROW_ICONS[row.kind] or "ui_gold", iconX + dx, cy, 24, a)
+    drawIcon(ROW_ICONS[row.kind] or "ui_coin", iconX + dx, cy, 24, a)
 
     love.graphics.setFont(vfont)
     local vtxt = "+$" .. row.value
@@ -688,7 +688,7 @@ function RoundEvalScreen:_drawRow(L, i, row, font, vfont)
         local at = row.coinPop[c]
         if at then
             local ck = (self.reduced or self.skipped) and 1 or math.min(1, (self.t - at) / 0.14)
-            drawIcon("ui_gold", stackL + (c - 1) * step, cy + (1 - ck) * -7, 15, a * (0.4 + 0.6 * ck))
+            drawIcon("ui_coin", stackL + (c - 1) * step, cy + (1 - ck) * -7, 15, a * (0.4 + 0.6 * ck))
         end
     end
 
@@ -744,7 +744,7 @@ function RoundEvalScreen:_drawTotal(L)
     end
     love.graphics.print(label, ox, oy)
     love.graphics.pop()
-    drawIcon("ui_gold", cx - tw * 0.5 * s - 18, cy, 22, 1)
+    drawIcon("ui_coin", cx - tw * 0.5 * s - 18, cy, 22, 1)
 end
 
 function RoundEvalScreen:_drawFx(oy)

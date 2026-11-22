@@ -755,9 +755,12 @@ local function testUiIconsNotCardArt(t)
         end
     end
     for _, n in ipairs({ "ui_deck", "ui_jokers", "ui_journal", "ui_guide",
-                         "ui_health", "ui_mana", "ui_forge", "ui_gold" }) do
+                         "ui_health", "ui_mana", "ui_forge", "ui_coin" }) do
         t:truthy("ícone próprio em uso: " .. n, seen[n])
     end
+    t:falsy("moeda única: nenhuma tela pede a pilha antiga ui_gold", seen.ui_gold)
+    local RE = require("components.RoundEvalScreen")
+    t:eq("avaliação: juros com a moeda da barra do topo", RE.ROW_ICONS.interest, "ui_coin")
 
     local game = TK.newRunGame("warrior")
     local pause = require("components.PauseMenu"):new()
