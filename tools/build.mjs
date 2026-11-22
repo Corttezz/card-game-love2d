@@ -23,6 +23,8 @@ const GAME = JSON.parse(fs.readFileSync(path.join(R, 'src/data/game.json'), 'utf
 const KEEP = [
   'favicon.ico', 'js/clarity.js', 'js/gtm.js', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/blog', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
   'img/brand/icon_32.png', 'img/brand/icon_180.png', 'img/brand/icon_192.png', 'img/brand/icon_512.png',
+  'media/runemoire-trailer-c14v7.mp4', 'media/runemoire-trailer-c14v7.jpg',
+  // o trailer de gameplay saiu da página, mas o endereço antigo continua no ar para links externos
   'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
   ...['en', 'pt_BR'].flatMap((l) => ['03_road_battle', '06_road_fork', '05_shop'].flatMap((s) => [`img/shots/${l}/${s}.webp`, `img/shots/${l}/${s}_s.webp`])),
 ].map((p) => p.replace(/^\//, ''));
@@ -102,9 +104,9 @@ write('llms.txt', [
   'Pick the Warrior, Mage or Rogue, walk a cursed road of six acts and fight with a deck you build along the way. Stack passive jokers into chain combos, read each enemy’s intent and break the signature curse of every boss, then push into Endless and climb Seals 1 to 10.', '',
   `Facts: 3 classes, 6 acts and biomes, 42 creatures, ${GAME.cardCounts?.total ?? 145} cards, 37 achievements, 5 languages (English, Brazilian Portuguese, Spanish, French, German). Release date and price: not announced.`, '',
   '## Key pages', '',
-  `- [Home (English)](${SITE}/): the game's own title screen, with a text summary, the gameplay trailer and an FAQ below it`,
+  `- [Home (English)](${SITE}/): the game's own title screen, with a text summary, the trailer and an FAQ below it`,
   ...LANGS.slice(1).map((l) => `- [Home (${l.self})](${SITE}/${l.prefix}/)`),
-  `- [Gameplay trailer (MP4, 69 s)](${SITE}/media/runemoire-gameplay.mp4)`,
+  `- [Trailer (MP4, 86 s)](${SITE}/media/runemoire-trailer-c14v7.mp4)`,
   `- [Privacy](${SITE}/privacy/): only the email left for the launch notice is stored; usage analytics with Microsoft Clarity (session recordings and heatmaps)`, '',
   '## Blog', '',
   `- [Blog hub](${SITE}/blog/)${POSTS.length ? '' : ': first posts coming soon'}`,

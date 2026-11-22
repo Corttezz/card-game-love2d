@@ -35,8 +35,8 @@ const SHOT_ALT = {
 };
 const cardSrc = (l, id) => `/img/gamecards/${l.code}/${id}.png`;
 
-// o trailer de gameplay (o mesmo do painel Jogar, no site desde a v1): duração do arquivo e data de publicação
-const TRAILER = { src: '/media/runemoire-gameplay.mp4', poster: '/media/runemoire-gameplay.jpg', uploadDate: '2026-11-10', duration: 'PT1M9S' };
+// o trailer (o mesmo do painel Jogar; corte 14 v7 desde 21/11, antes o de gameplay da v1): duração do arquivo e data de publicação
+const TRAILER = { src: '/media/runemoire-trailer-c14v7.mp4', poster: '/media/runemoire-trailer-c14v7.jpg', uploadDate: '2026-11-21', duration: 'PT1M26S' };
 export const OG = '/img/og/og.png'; // uma arte só nos 5 idiomas (eram 5 cópias idênticas)
 const LANG_TAGS = LANGS.map((x) => x.html);
 const cardName = (G, l, id) => { const c = (G.cards || []).find((x) => x.id === id); return c ? loc(c.name, l) : 'Runemoire'; };
@@ -81,7 +81,7 @@ export function renderHome(t, l, ctx) {
 <button class="hang" type="button" data-i="0" aria-label="${esc(t.flipCard)}" aria-pressed="false"></button><button class="hang" type="button" data-i="1" aria-label="${esc(t.flipCard)}" aria-pressed="false"></button>
 <a class="corner" id="priv" href="${home(l)}privacy/">${esc(t.privacy)}</a>
 </div>
-${panel('play', t.trailerPlay, `<div class="vid"><img src="/media/runemoire-gameplay.jpg" width="1280" height="720" alt="${esc(t.trailerPlay)}" loading="lazy" decoding="async"><button class="vplay" type="button" data-src="/media/runemoire-gameplay.mp4" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span></span></button></div>`, t, l)}
+${panel('play', t.trailerPlay, `<div class="vid"><img src="${TRAILER.poster}" width="1280" height="720" alt="${esc(t.trailerPlay)}" loading="lazy" decoding="async"><button class="vplay" type="button" data-src="${TRAILER.src}" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span></span></button></div>`, t, l)}
 ${panel('collection', ui(l, 'collection.title'), `<p class="sub">${esc(t.cardsTitle)}</p><div class="cards">${COLLECTION_CARDS.map((id) => `<img class="px" src="${cardSrc(l, id)}" width="192" height="288" alt="${esc(cardName(G, l, id))}" loading="lazy" decoding="async">`).join('')}</div>
 <p class="sub">${esc(t.screensTitle)}</p><div class="screens">${shots.map((s) => `<img src="${s.thumb}" width="960" height="540" alt="${esc(SHOT_ALT[s.id][l.code] || SHOT_ALT[s.id].en)}" loading="lazy" decoding="async">`).join('')}</div>`, t, l)}
 ${panel('achievements', ui(l, 'menu.achievements'), `<div class="ach"><img class="px icon" id="ach-icon" src="/img/v3/ach_locked.png" data-on="/img/v3/ach.png" width="128" height="128" alt=""><div><h3>${esc(t.achName)}</h3><p>${esc(t.achDesc)}</p></div></div>
