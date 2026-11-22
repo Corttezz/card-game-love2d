@@ -17,6 +17,10 @@ local MenuBrand = require("src.ui.MenuBrand")
 local Menu = {}
 Menu.__index = Menu
 
+local STING_SFX = MenuBrand.stingSfx()
+local CUE_LATE = 0.25
+local SFX_FADE = 0.08
+
 local function reducedMotion()
     return _G.gameSettings and _G.gameSettings.reducedMotion and true or false
 end
@@ -199,6 +203,7 @@ function Menu:updatePositions()
 end
 
 function Menu:update(dt)
+    self:_stepSfxFade(dt)
     if not self.visible then return end
 
     if MenuBrand.available() then
@@ -302,10 +307,12 @@ function Menu:_settleIntro()
 end
 
 function Menu:_applyStingTimeline()
-    if not self._sting then return end
+    local st = self._sting
+    if not st then return end
     local BT = MenuBrand.T
     local t = self.brand:stingTime()
     if t == math.huge then
+        if st.cue <= #STING_SFX then self:_cutStingSfx() end
         self._sting = nil
         self:_settleIntro()
         return
@@ -317,15 +324,31 @@ function Menu:_applyStingTimeline()
         self.intro.alphaButtons[name] = smooth01(u)
         self.intro.buttonOffsetY[name] = 12 * (1 - backOut01(u))
     end
+    while STING_SFX[st.cue] and t >= STING_SFX[st.cue].t do
+        local c = STING_SFX[st.cue]
+        if t - c.t <= CUE_LATE then
+            st.voices[#st.voices + 1] = Sfx.playAt(c.code, c.volume, c.pitch)
+        end
+        st.cue = st.cue + 1
+    end
+end
+
+function Menu:_cutStingSfx()
     local st = self._sting
-    if not st.electric and t >= BT.ELECTRIC then
-        st.electric = true
-        Sfx.play("bootElectric", { volume = 0.45 })
+    if not st or #st.voices == 0 then return end
+    self._sfxFade = { voices = st.voices, t = 0 }
+    st.voices = {}
+end
+
+function Menu:_stepSfxFade(dt)
+    local f = self._sfxFade
+    if not f then return end
+    f.t = f.t + dt
+    local k = 1 - f.t / SFX_FADE
+    for _, v in ipairs(f.voices) do
+        if k > 0 then Sfx.setVoiceGain(v, k) else Sfx.stopVoice(v) end
     end
-    if not st.impact and t >= BT.FLASH then
-        st.impact = true
-        Sfx.play("bootImpact", { volume = 0.6 })
-    end
+    if k <= 0 then self._sfxFade = nil end
 end
 
 function Menu:isIntroPlaying()
@@ -335,6 +358,7 @@ end
 function Menu:skipIntro()
     if not self:isIntroPlaying() then return false end
     self.brand:finish()
+    self:_cutStingSfx()
     self._sting = nil
     self:_settleIntro()
     return true
@@ -953,7 +977,7 @@ function Menu:enterWithIntro()
     if full then
         if _G.EventManager then _G.EventManager.clear("menu_intro") end
         self.intro.active = true
-        self._sting = {}
+        self._sting = { cue = 1, voices = {} }
         self.brand:startSting()
         self:_applyStingTimeline()
         self:_startMenuMusic()

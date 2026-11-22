@@ -14,6 +14,37 @@ function Sfx.play(name, opts)
     end
 end
 
+function Sfx.playAt(name, volume, pitch)
+    local a = audio()
+    local entry = a and a.sources and a.sources[name]
+    if not entry then return nil end
+    local base = entry.baseVolume or 1
+    local gain = base > 0 and volume / base or 0
+    local src = a:play(name, { gain = gain, pitch = pitch })
+    if not src then return nil end
+    return { name = name, src = src, gain = gain, cur = gain }
+end
+
+local function ownsVoice(a, v)
+    local entry = a and a.sources and a.sources[v.name]
+    return entry ~= nil and entry.instGain[v.src] == v.cur and v.src:isPlaying()
+end
+
+function Sfx.setVoiceGain(v, k)
+    local a = audio()
+    if not ownsVoice(a, v) then return false end
+    v.cur = v.gain * math.max(0, k)
+    a:setInstanceGain(v.name, v.src, v.cur)
+    return true
+end
+
+function Sfx.stopVoice(v)
+    local a = audio()
+    if not ownsVoice(a, v) then return end
+    v.src:stop()
+    a.sources[v.name].instGain[v.src] = nil
+end
+
 function Sfx.playWithVariation(name, basePitch, pitchVar, baseVolume, volVar)
     local a = audio()
     if not a then return end

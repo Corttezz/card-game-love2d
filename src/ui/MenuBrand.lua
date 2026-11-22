@@ -8,7 +8,7 @@ MenuBrand.T = {
     RAY0 = 1.24, RAYSTEP = 0.125, CHARGE = 2.26, FLASH = 2.62,
     MOVE = 2.86, MOVE_END = 3.46, WORD0 = 3.02, WORDSTEP = 0.075,
     SWEEP0 = 4.15, BUTTONS = 3.95, BUTTON_STEP = 0.08, BUTTON_DUR = 0.30,
-    BG_FADE = 0.8, ELECTRIC = 2.55, END = 6.5,
+    BG_FADE = 0.8, END = 6.5,
 }
 MenuBrand.SWEEP_SPEED = 600 / 0.9
 MenuBrand.IDLE_SWEEP = { 8, 12 }
@@ -17,6 +17,25 @@ MenuBrand.IDLE_TWINKLE = { 1.4, 3.2 }
 local T = MenuBrand.T
 local BOUNCE = { -14, -10, -6, -2, 1, 3, 2, 1, 0, -1, 0 }
 local HOLD_TWINKLES = { { 4.7, 1 }, { 5.25, 4 }, { 5.7, 7 }, { 6.1, 3 } }
+
+local function stingVolume(db) return 0.6 * 10 ^ ((db + 3) / 20) end
+
+function MenuBrand.stingSfx()
+    local cues = {}
+    local function add(t, code, db, pitch)
+        cues[#cues + 1] = { t = t, code = code, volume = stingVolume(db), pitch = pitch or 1 }
+    end
+    add(0.60, "bootVortex", -15)
+    for k = 0, 7 do add(T.RAY0 + 0.1 + k * T.RAYSTEP, "jokerTick", -17, 1 + 0.06 * k) end
+    add(T.CHARGE + 0.04, "bootElectric", -8)
+    add(T.FLASH, "bootImpact", -3)
+    for i = 0, #Data.cuts - 2 do add(T.WORD0 + i * T.WORDSTEP, "menuHover", -19, 1.1) end
+    add(T.SWEEP0, "forgeReveal", -13)
+    add(T.SWEEP0 + 0.15, "eventChoiceSeal", -11)
+    for i, h in ipairs(HOLD_TWINKLES) do add(h[1], "effectChime", -17, 1.1 + 0.1 * i) end
+    table.sort(cues, function(a, b) return a.t < b.t end)
+    return cues
+end
 local SPARK = { { 255, 250, 232 }, { 255, 222, 140 }, { 232, 160, 64 } }
 local EMBER = { { 255, 246, 214 }, { 252, 208, 110 }, { 230, 134, 48 }, { 150, 52, 26 }, { 84, 26, 22 } }
 local DUST = { 96, 70, 92 }
