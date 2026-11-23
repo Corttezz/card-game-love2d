@@ -754,7 +754,7 @@ local function testUiIconsNotCardArt(t)
             end
         end
     end
-    for _, n in ipairs({ "ui_deck", "ui_jokers", "ui_journal", "ui_guide",
+    for _, n in ipairs({ "ui_deck", "ui_jokers", "ui_map", "ui_journal", "ui_guide",
                          "ui_health", "ui_mana", "ui_forge", "ui_coin" }) do
         t:truthy("ícone próprio em uso: " .. n, seen[n])
     end
@@ -765,8 +765,8 @@ local function testUiIconsNotCardArt(t)
     local game = TK.newRunGame("warrior")
     local pause = require("components.PauseMenu"):new()
     pause:show(game, {}, { quiet = true })
-    local want = { deck = "ui_deck", jokers = "ui_jokers", journal = "ui_journal", guide = "ui_guide" }
-    t:eq("pausa: 4 atalhos", #pause.shortcuts, 4)
+    local want = { deck = "ui_deck", jokers = "ui_jokers", map = "ui_map", journal = "ui_journal", guide = "ui_guide" }
+    t:eq("pausa: 5 atalhos", #pause.shortcuts, 5)
     for _, s in ipairs(pause.shortcuts) do
         t:eq("pausa: atalho " .. s.key .. " com ícone próprio", s.icon, want[s.key])
         ownIcon(t, "pausa " .. s.key, s.icon)
