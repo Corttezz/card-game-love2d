@@ -30,7 +30,12 @@ local FUNCTION_ATTRIBUTION = {
     ["EffectSystem:applyJokerEffects"] = {
         "damage_multiplier", "defense_multiplier",
         "damage_bonus", "defense_bonus", "echo_first_attack",
+        "held_tag_multiplier", "combo_variety_multiplier", "echo_first_card",
+        "cheap_attack_bonus", "poison_scaling_bonus",
     },
+    ["EffectSystem:_evokeOrbEffect"] = { "orb_focus_bonus" },
+    ["EffectSystem:holdPoison"] = { "poison_no_decay" },
+    ["Game:applyJokerBattleStart"] = { "battle_start_strength" },
 }
 
 local DELEGATION = {

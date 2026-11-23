@@ -75,6 +75,15 @@ local PROCESSED_EFFECT_TYPES = {
     heal_multiplier = true,
     channel_per_turn = true,
     reveal_intent = true,
+    held_tag_multiplier = true, combo_variety_multiplier = true,
+    echo_first_card = true, draw_every_n_cards = true,
+    duplicate_prev = true, copy_to_discard = true,
+    on_evoke_focus = true, on_evoke_rechannel = true, on_evoke_draw = true,
+    orb_focus_bonus = true, cheap_attack_bonus = true, passive_thorns = true,
+    on_card_played_damage = true, on_card_played_block = true,
+    poison_scaling_bonus = true, poison_no_decay = true,
+    battle_start_strength = true, on_defend_block_damage = true,
+    regen_below_half = true, on_exhaust_ash = true,
 }
 
 function M.run()

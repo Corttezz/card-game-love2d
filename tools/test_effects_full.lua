@@ -248,31 +248,31 @@ function M.run()
         { effects = { { type = "damage_multiplier", target = "attack", value = 1.5 } } },
     }
     local atkCard = { type = "attack" }
-    t:eq("2 jokers x1.5: só o maior conta (15, não 22)",
-        es:applyJokerEffects(g, atkCard, 10), 15)
+    t:eq("2 jokers x1.5 compoem em bola de neve (22.5)",
+        es:applyJokerEffects(g, atkCard, 10), 22.5)
     g.jokerSlots[2].effects[1].value = 2.0
-    t:eq("maior multiplicador vence (x2.0)",
-        es:applyJokerEffects(g, atkCard, 10), 20)
+    t:eq("x1.5 e x2.0 multiplicam (30)",
+        es:applyJokerEffects(g, atkCard, 10), 30)
     table.insert(g.jokerSlots, { effects = { { type = "damage_bonus", value = 3 } } })
     table.insert(g.jokerSlots, { effects = { { type = "damage_bonus", value = 2 } } })
-    t:eq("bônus flat somam TODOS por cima do maior x",
-        es:applyJokerEffects(g, atkCard, 10), 25)
+    t:eq("bônus flat somam TODOS por cima dos x",
+        es:applyJokerEffects(g, atkCard, 10), 35)
 
     do
         local finalV, procs = es:applyJokerEffects(g, atkCard, 10)
-        t:eq("procs: valor inalterado (25)", finalV, 25)
-        t:eq("procs: 3 contribuições (1 mult largest-wins + 2 flat)", #procs, 3)
-        t:eq("procs: rótulo do multiplicador", procs[1].label, "×2")
-        t:eq("procs: slotIndex aponta o joker do MAIOR mult", procs[1].slotIndex, 2)
-        t:eq("procs: rótulo do flat", procs[2].label, "+3")
-        t:eq("predictJokerProcs bate com o real", es:predictJokerProcs(g, atkCard), 3)
+        t:eq("procs: valor inalterado (35)", finalV, 35)
+        t:eq("procs: 4 contribuições (2 mult + 2 flat)", #procs, 4)
+        t:eq("procs: rótulo do primeiro multiplicador", procs[1].label, "×1.5")
+        t:eq("procs: slotIndex do segundo mult", procs[2].slotIndex, 2)
+        t:eq("procs: rótulo do flat", procs[3].label, "+3")
+        t:eq("predictJokerProcs bate com o real", es:predictJokerProcs(g, atkCard), 4)
         t:eq("predictJokerProcs: carta de efeito não proca", es:predictJokerProcs(g, { type = "effect" }), 0)
 
         local msgs = #(g.messages or {})
         local pv, entries, echoUsed = es:jokerSteps(g, atkCard, 10, nil, false)
-        t:eq("jokerSteps: mesmo valor do combate (25)", pv, 25)
-        t:eq("jokerSteps: uma entrada por joker que mexeu", #entries, 3)
-        t:eq("jokerSteps: entrada do maior multiplicador", entries[1].op, "mult")
+        t:eq("jokerSteps: mesmo valor do combate (35)", pv, 35)
+        t:eq("jokerSteps: uma entrada por joker que mexeu", #entries, 4)
+        t:eq("jokerSteps: entrada do multiplicador", entries[1].op, "mult")
         t:falsy("jokerSteps: sem Eco nesta mesa", echoUsed)
         t:eq("jokerSteps: nao emite toast (puro)", #(g.messages or {}), msgs)
     end

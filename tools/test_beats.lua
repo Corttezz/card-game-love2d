@@ -670,11 +670,11 @@ function M.run()
             .. #mixed .. ")", #mixed >= 8)
     end
 
-    local gj = TK.newRunGame("warrior")
+    local gj = TK.newRunGame("mage")
     TK.pump(gj, 0.5)
-    gj:addJokerToRun("warrior_dark_embrace")
+    gj:addJokerToRun("mage_sacred_chalice")
     local jk = gj.jokerSlots[#gj.jokerSlots]
-    t:truthy("Abraco Sombrio ativo no slot", jk ~= nil)
+    t:truthy("Calice do Sabio ativo no slot", jk ~= nil)
     local procs = {}
     local healed = gj.effectSystem:applyHealMultiplier(gj, 10, procs)
     t:eq("heal_multiplier 1.5 aplicou o valor", healed, 15)

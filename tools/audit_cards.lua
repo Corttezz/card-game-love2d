@@ -395,7 +395,12 @@ local function jokerScenario(CardDatabase, id)
     return res
 end
 
-local function jokerExpected(cd, base)
+local function heldFillers(CardDatabase, tag)
+    local TagSystem = require("src.systems.TagSystem")
+    return TagSystem.cardHasTag(CardDatabase:getCard(FILLER_ID), tag) and HAND_FILLERS or 0
+end
+
+local function jokerExpected(cd, base, CardDatabase)
     local ex = {
         atkDmg = base.atkDmg, atkDmg2 = base.atkDmg2, atkHeal = base.atkHeal,
         defArmor = base.defArmor, defThorn = base.defThorn, reflect = base.reflect,
@@ -405,15 +410,26 @@ local function jokerExpected(cd, base)
     }
     local dmgMult, defMult = 1, 1
     local dmgFlat, defFlat = 0, 0
-    local echo = nil
+    local echo, echoDef = nil, nil
     local healMult = 1
+    local perCardDmg, perCardBlock = 0, 0
     for _, e in ipairs(cd.effects or {}) do
         local t, v = e.type, e.value
-        if t == "damage_multiplier" then dmgMult = math.max(dmgMult, v)
-        elseif t == "defense_multiplier" then defMult = math.max(defMult, v)
+        if t == "damage_multiplier" then dmgMult = dmgMult * v
+        elseif t == "defense_multiplier" then defMult = defMult * v
+        elseif t == "held_tag_multiplier" then
+            local m = v ^ heldFillers(CardDatabase, e.tag or "metal")
+            dmgMult = dmgMult * m; defMult = defMult * m
         elseif t == "damage_bonus" then dmgFlat = dmgFlat + v
         elseif t == "defense_bonus" then defFlat = defFlat + v
         elseif t == "echo_first_attack" then echo = v or 2
+        elseif t == "echo_first_card" then
+            echo = v or 2; echoDef = echo
+            ex.heal = math.floor(15 * echo)
+        elseif t == "on_card_played_damage" then perCardDmg = perCardDmg + v
+        elseif t == "on_card_played_block" then perCardBlock = perCardBlock + v
+        elseif t == "passive_thorns" then
+            ex.reflect = ex.reflect + v + math.floor(1 / math.max(1, e.stacks or 3))
         elseif t == "heal_multiplier" then healMult = healMult * v
         elseif t == "on_attack_heal" then ex.atkHeal = ex.atkHeal + v
         elseif t == "on_attack_debuff" then
@@ -433,11 +449,11 @@ local function jokerExpected(cd, base)
     local function atk(baseV, first)
         local v = 10 * dmgMult
         if echo and first then v = v * echo end
-        return math.floor(v + dmgFlat)
+        return math.floor(v + dmgFlat) + perCardDmg
     end
     ex.atkDmg = atk(10, true)
     ex.atkDmg2 = atk(10, false)
-    ex.defArmor = math.floor(10 * defMult + defFlat)
+    ex.defArmor = math.floor(10 * defMult * (echoDef or 1) + defFlat) + perCardBlock
     if healMult ~= 1 then
         ex.heal = math.floor(15 * healMult)
     end
@@ -482,7 +498,7 @@ function M.behaviorAudit(opts)
         if cd.type == "joker" then
             baseJoker = baseJoker or jokerScenario(CardDatabase, nil)
             local got = jokerScenario(CardDatabase, id)
-            local ex = jokerExpected(cd, baseJoker)
+            local ex = jokerExpected(cd, baseJoker, CardDatabase)
             compareJoker(id, got, ex, issues)
             counted.jokers = counted.jokers + 1
             rows[#rows + 1] = { id = id, kind = "joker", got = got }
@@ -644,13 +660,31 @@ local function requiredConcepts(cd)
         elseif t == "evoke_orb" or t == "evoke_all_orbs" then need("evoke", t)
         elseif t == "on_defend_damage" then need("thorn", t)
         elseif t == "multi_hit" then need("multi", t)
-        elseif t == "echo_first_attack" then need("double", t)
+        elseif t == "echo_first_attack" or t == "echo_first_card" then need("double", t)
+        elseif t == "held_tag_multiplier" or t == "combo_variety_multiplier"
+            or t == "on_defend_block_damage" then
+            need("damage", t); need("block", t); need("percent", t)
+        elseif t == "draw_every_n_cards" then need("draw", t)
+        elseif t == "on_evoke_draw" then need("evoke", t); need("draw", t)
+        elseif t == "on_evoke_focus" then need("evoke", t); need("focus", t)
+        elseif t == "on_evoke_rechannel" then
+            need("evoke", t); need("channel", t); need(ORB_CONCEPT[e.orbType or "lightning"], t)
+        elseif t == "orb_focus_bonus" then
+            need("focus", t); need(ORB_CONCEPT[e.orbType or "lightning"], t)
+        elseif t == "on_exhaust_ash" then need("exhaust", t); need("draw", t); need("damage", t)
+        elseif t == "passive_thorns" then need("thorn", t)
+        elseif t == "battle_start_strength" then need("strength", t)
+        elseif t == "regen_below_half" then need("heal", t)
+        elseif t == "poison_no_decay" then need("poison", t)
+        elseif t == "poison_scaling_bonus" then need("poison", t); need("damage", t)
+        elseif t == "cheap_attack_bonus" or t == "on_card_played_damage" then need("damage", t)
+        elseif t == "on_card_played_block" then need("block", t)
         end
         if t == "damage_multiplier" or t == "defense_multiplier" or t == "heal_multiplier" then
             need("percent", t)
         end
         if t == "regen_per_turn" or t == "damage_per_turn" or t == "strength_per_turn"
-            or t == "on_turn_start_draw" or t == "channel_per_turn" then
+            or t == "on_turn_start_draw" or t == "channel_per_turn" or t == "regen_below_half" then
             need("per_turn", t)
         end
     end
@@ -744,7 +778,8 @@ function M.descAudit()
                 local req = requiredConcepts(cd)
                 for _, concept in ipairs(CLAIM_CHECK) do
                     if not req[concept] and mentions(n, loc, concept) then
-                        local skip = (concept == "discard" and cd.retain)
+                        local skip = (concept == "discard" and (cd.retain
+                            or hasEff(cd, "copy_to_discard") or hasEff(cd, "duplicate_prev")))
                         if not skip then
                             issues[#issues + 1] = string.format(
                                 "%s [%s]: descricao fala de '%s' mas a carta nao tem esse efeito: \"%s\"",
@@ -913,7 +948,8 @@ function M.cardPoints(cd)
         elseif t == "evoke_orb" then pts = pts + W.evoke
         elseif t == "evoke_all_orbs" then pts = pts + W.evoke * 2
         elseif t == "on_defend_damage" then pts = pts + v * W.thorn
-        elseif t == "mystery" then pts = pts + 6
+        elseif t == "mystery" or t == "duplicate_prev" then pts = pts + 6
+        elseif t == "copy_to_discard" then pts = pts + v * 2
         end
     end
     if cd.innate then pts = pts + W.innate end

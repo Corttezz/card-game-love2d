@@ -193,7 +193,7 @@ function M.run()
     gmJ:startNewRun("mage")
     gmJ:startGame()
     _G.game = gmJ
-    gmJ:addJokerToRun("mage_machine_learning")
+    gmJ:addJokerToRun("mage_sages_gem")
     check("proc-fx: joker de compra extra ativo no slot", #gmJ.jokerSlots >= 1)
     local jk = gmJ.jokerSlots[#gmJ.jokerSlots]
     gmJ.effectSystem:applyTriggerEffects(gmJ, "turn_start", {})
