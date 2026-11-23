@@ -386,13 +386,12 @@ return {
         id = "mage_creative_ai", name = "IA Criativa",
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "Compra 1 carta extra e regenera 3 de HP no início de cada turno.",
+        description = "Ao evocar um orbe, ganha 1 de Foco.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
-        tags = { "draw", "cycle", "magic" },
+        tags = { "evoke", "scaling" },
         effects = {
-            { type = "on_turn_start_draw", value = 1 },
-            { type = "regen_per_turn", value = 3 },
+            { type = "on_evoke_focus", value = 1 },
         },
     },
     mage_echo_form = {
@@ -413,12 +412,12 @@ return {
         damageType = "lightning",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
-        description = "Canaliza 1 Raio (valor 3) no início de cada turno.",
+        description = "Ao evocar um Raio, canaliza outro Raio (valor 3).",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
         tags = { "channel", "lightning", "scaling", "passive" },
         effects = {
-            { type = "channel_per_turn", orbType = "lightning", value = 3 },
+            { type = "on_evoke_rechannel", orbType = "lightning", value = 3 },
         },
     },
     mage_fission = {
@@ -438,12 +437,12 @@ return {
         id = "mage_machine_learning", name = "Aprendizado de Maquina",
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "Compra 2 cartas extras no início de cada turno.",
+        description = "Ao evocar um orbe, compra 1 carta (até 3 por turno).",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
-        tags = { "draw", "cycle" },
+        tags = { "draw", "evoke", "cycle" },
         effects = {
-            { type = "on_turn_start_draw", value = 2 },
+            { type = "on_evoke_draw", value = 1, stacks = 3 },
         },
     },
     mage_meteor_strike = {
@@ -479,12 +478,12 @@ return {
         id = "mage_rune_of_power", name = "Runa do Poder",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
-        description = "+3 de dano em cartas de ataque.",
+        description = "Orbes de Raio ganham +3 de Foco.",
         image = "assets/jokers/joker1.png",
         rarity = "rare", class = "mage",
-        tags = { "strike", "magic", "scaling" },
+        tags = { "lightning", "channel", "scaling" },
         effects = {
-            { type = "damage_bonus", target = "attack", value = 3 },
+            { type = "orb_focus_bonus", orbType = "lightning", value = 3 },
         },
     },
     mage_sages_gem = {

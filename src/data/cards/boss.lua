@@ -73,14 +73,13 @@ return {
         damageType = "dark",
         type = "joker", subtype = "boss",
         cost = 2, attack = 0, defense = 0,
-        description = "A primeira carta de ataque de cada turno causa dano dobrado. Compra 1 carta extra no inicio de cada turno.",
+        description = "A primeira carta de cada turno conta duas vezes.",
         image = "assets/jokers/joker1.png",
         rarity = "legendary", class = "boss", bossId = "eclipse_queen",
-        tags = { "dark", "draw", "scaling" },
+        tags = { "dark", "scaling" },
         effects = {
-            { type = "echo_first_attack", value = 2,
-              description = "Dobra a primeira carta de ataque do turno" },
-            { type = "on_turn_start_draw", value = 1, description = "+1 carta por turno" },
+            { type = "echo_first_card", value = 2,
+              description = "Dobra a primeira carta do turno" },
         },
     },
 }
