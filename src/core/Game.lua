@@ -126,6 +126,7 @@ function Game:startGame()
 
     self:_syncJokersFromRun()
     self:syncJokerFlags()
+    self:applyJokerBattleStart()
 
     self:promoteInnateCardsToTop()
 
@@ -213,6 +214,8 @@ function Game:drawForTurn()
     self._toxinGrowFiredThisTurn = false
     self._jokerThornFiredThisTurn = {}
     self._echoFiredThisTurn = false
+    self._cardsPlayedTurn = 0
+    self._evokeDrawsTurn = 0
     local baseDraw = (Config.Game.CARDS_PER_TURN or 5)
         + self:getShopServiceCount("card_draw_upgrade")
     local sealBonus = self._sealDrawBonus or 0
@@ -479,6 +482,10 @@ function Game:applyClassBattleStartPassive()
     self._toxinBonus = 0
     self._jokerThornFiredThisTurn = {}
     self._echoFiredThisTurn = false
+    self._cardsPlayedTurn = 0
+    self._cardsPlayedBattle = 0
+    self._defensesPlayedBattle = 0
+    self._evokeDrawsTurn = 0
     if self.selectedClass == "mage" and self.player and self.player.addOrb then
         self.player:addOrb({ type = "lightning", value = 4 })
         if self.player.addBuff then
@@ -487,6 +494,38 @@ function Game:applyClassBattleStartPassive()
         end
         if love.timer then self._passiveFlashT = love.timer.getTime() end
     end
+end
+
+function Game:applyJokerBattleStart()
+    local e, joker = nil, nil
+    if self.effectSystem then e, joker = self.effectSystem.jokerEffect(self, "battle_start_strength") end
+    if not e or not self.player or not self.player.gainStrength then return end
+    local run = self.isRunMode and self.runManager and self.runManager.currentRun
+    local n = (e.value or 1) + ((run and run.bannerKills) or 0)
+    if n > 0 then
+        self.player:gainStrength(n)
+        self.effectSystem:notifyJokerProc(self, joker,
+            "+" .. n .. " " .. I18nMod.t("status.strength.name", nil, "Força"), "buff")
+    end
+end
+
+function Game:onCardExhausted(card, sink)
+    self.effectSystem:applyTriggerEffects(self, "exhaust", { card = card, beatSink = sink })
+end
+
+function Game:spawnBattleCopy(card, keepSeal)
+    if not card or not card.id then return nil end
+    local db = (self.runManager and self.runManager.cardDatabase)
+        or (self.deckManager and self.deckManager.cardDatabase)
+    local data = db and db:getCard(card.id)
+    if not data then return nil end
+    local inst = db:createCardInstance(data)
+    if (card.upgrades or 0) > 0 and self.runManager and self.runManager.applyUpgradesToInstance then
+        self.runManager:applyUpgradesToInstance(inst, card.upgrades)
+    end
+    inst.edition = card.edition
+    if keepSeal then inst.seal = card.seal end
+    return inst
 end
 
 Game.TOXIN_GROWTH = 0
@@ -667,6 +706,7 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             if card.exhaust and card.id then
                 table.insert(self._exhaustedThisBattle, card.id)
                 Sfx.play("cardExhaust")
+                self:onCardExhausted(card, sink)
             end
             if card.type ~= "joker" and not card.exhaust then
                 table.insert(self.discard, card)
@@ -737,9 +777,10 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         local FloatingText = require("src.ui.FloatingText")
         FloatingText.atCard(card, "+" .. tostring(defense), { kind = "armor" })
 
+        self._defensesPlayedBattle = (self._defensesPlayedBattle or 0) + 1
         self.effectSystem:applyTriggerEffects(self, "defend", {
             target = self.enemy, turnContext = turnContext, sourceCard = card,
-            procSink = result.jokerProcs, beatSink = sink,
+            procSink = result.jokerProcs, beatSink = sink, value = defense,
         })
         processAdditionalEffects()
         applySealSideEffects()
@@ -753,14 +794,25 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         result.joker = true
 
     elseif card.type == "effect" then
-        if sink and card.effects then
-            for _, effect in ipairs(card.effects) do
-                self.effectSystem:processEffectCardStepped(self, effect, true, card)
+        local reps = 1
+        if not self._echoFiredThisTurn then
+            local echo, echoJoker = self.effectSystem.jokerEffect(self, "echo_first_card")
+            if echo then
+                self._echoFiredThisTurn = true
+                reps = math.max(1, math.floor(echo.value or 2))
+                self.effectSystem:notifyJokerProc(self, echoJoker, "x" .. reps, "mult")
             end
-        else
-            self._effectSourceCard = card
-            card.passive(self)
-            self._effectSourceCard = nil
+        end
+        for _ = 1, reps do
+            if sink and card.effects then
+                for _, effect in ipairs(card.effects) do
+                    self.effectSystem:processEffectCardStepped(self, effect, true, card)
+                end
+            else
+                self._effectSourceCard = card
+                card.passive(self)
+                self._effectSourceCard = nil
+            end
         end
         result.effect = true
     end
@@ -769,9 +821,19 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         table.insert(turnContext.cardsProcessed, card)
     end
 
+    if card.type ~= "joker" then
+        self._cardsPlayedTurn = (self._cardsPlayedTurn or 0) + 1
+        self._cardsPlayedBattle = (self._cardsPlayedBattle or 0) + 1
+        self.effectSystem:applyTriggerEffects(self, "card_played", {
+            card = card, turnContext = turnContext,
+            procSink = result.jokerProcs, beatSink = sink,
+        })
+    end
+
     if card.exhaust and card.id then
         table.insert(self._exhaustedThisBattle, card.id)
         Sfx.play("cardExhaust")
+        self:onCardExhausted(card, sink)
     end
 
     if card.type ~= "joker" and not card.exhaust then
@@ -1241,6 +1303,7 @@ function Game:_pushEnemyTurnTail(beat)
     end
 
     CombatBeats.push("enemy.dot", beat(function()
+        self.effectSystem:holdPoison(self)
         local poisonDmg, burnDmg = self.enemy:onTurnEnd()
         local dotInfo = self.enemy.lastDot
         local ResistFx = require("src.ui.ResistFx")
@@ -1434,6 +1497,10 @@ function Game:_onEnemyDeath()
         if run and run.currentNode and run.currentNode.type == "boss" then
             UnlockSystem.onBossDefeated(run.actNumber, self)
         end
+        local nodeType = run and run.currentNode and run.currentNode.type
+        if nodeType == "boss" or nodeType == "elite" or nodeType == "mini_boss" then
+            run.bannerKills = (run.bannerKills or 0) + 1
+        end
         if run and Config.Game.POTIONS and run.currentNode and run.currentNode.type == "elite" then
             local slots = Config.Game.POTION_SLOTS or 1
             if (run.potions or 0) < slots then
@@ -1589,6 +1656,7 @@ function Game:nextPhase()
     self:syncInterestCap()
     self:resetHandAndDeck()
     self:applyClassBattleStartPassive()
+    self:applyJokerBattleStart()
 
     if self.isRunMode and self.runManager:hasActiveRun() then
         local run = self.runManager.currentRun

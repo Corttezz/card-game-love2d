@@ -184,9 +184,10 @@ function DamagePreview.simulate(game, cards)
 
     local function evoke(orb, why)
         if not orb then return end
-        local v = (orb.value or 1) + P.focus
+        local focus = P.focus + EffectSystem.orbFocusBonus(game, orb)
+        local v = (orb.value or 1) + focus
         if orb.type == "lightning" or orb.type == "fire" or orb.type == "dark" then
-            extra("orb", (hitEnemy(EffectSystem.orbEvokeValue(orb, P.focus),
+            extra("orb", (hitEnemy(EffectSystem.orbEvokeValue(orb, focus),
                 Resistances.ORB_TYPE[orb.type])), { orb = orb.type, why = why })
         elseif orb.type == "ice" then
             addArmor(v)
@@ -237,7 +238,7 @@ function DamagePreview.simulate(game, cards)
             end
         end
     end
-    local function triggers(card, kind)
+    local function triggers(card, kind, value)
         local function one(e, fromJoker, joker)
             if kind == "attack" and e.type == "on_attack_heal" then
                 R.heal = R.heal + previewHeal(game, e.value or 0)
@@ -257,6 +258,9 @@ function DamagePreview.simulate(game, cards)
                 else
                     R.thorn = R.thorn + (e.value or 0)
                 end
+            elseif kind == "defend" and fromJoker and e.type == "on_defend_block_damage" then
+                local pct = (e.value or 0) > 0 and e.value or 50
+                extra("joker", (hitEnemy(math.floor((value or 0) * pct / 100), "physical")))
             end
         end
         for _, j in ipairs(game.jokerSlots or {}) do
@@ -285,6 +289,22 @@ function DamagePreview.simulate(game, cards)
         if attacks >= 2 then toxinBonus = toxinBonus + require("src.core.Game").TOXIN_GROWTH end
     end
 
+    local played = game._cardsPlayedBattle or 0
+    local function cardPlayed()
+        played = played + 1
+        for _, j in ipairs(game.jokerSlots or {}) do
+            for _, e in ipairs(j.effects or {}) do
+                if e.type == "on_card_played_damage" and E.health > 0 then
+                    local per = math.max(1, e.stacks or 10)
+                    extra("joker", (hitEnemy((e.value or 0) + math.floor(played / per), "physical")))
+                elseif e.type == "on_card_played_block" then
+                    addArmor(e.value or 0)
+                end
+            end
+        end
+    end
+    local echoCard = EffectSystem.jokerEffect(game, "echo_first_card")
+
     for _, card in ipairs(cards) do
         local entry = { card = card, type = card.type }
         if card.type == "attack" then
@@ -311,7 +331,7 @@ function DamagePreview.simulate(game, cards)
                     toxinsUsed = true
                     R.poison = R.poison + (game.toxinStacks and game:toxinStacks(toxinBonus) or 1)
                 end
-                triggers(card, "attack")
+                triggers(card, "attack", v)
                 additionalEffects(card)
                 if card.seal == "Purple" then
                     if #P.orbs >= P.orbSlots then table.remove(P.orbs, 1) end
@@ -319,18 +339,27 @@ function DamagePreview.simulate(game, cards)
                 end
             end
         elseif card.type == "defense" then
-            local v, steps = DamagePreview.cardValue(game, card, ctx, P)
+            local v, steps, _, echoUsed = DamagePreview.cardValue(game, card, ctx, P)
+            if echoUsed then P.echoFired = true end
             entry.value, entry.steps = v, steps
             addArmor(v)
-            triggers(card, "defend")
+            triggers(card, "defend", v)
             additionalEffects(card)
             if card.seal == "Purple" then
                 if #P.orbs >= P.orbSlots then table.remove(P.orbs, 1) end
                 P.orbs[#P.orbs + 1] = { type = "lightning", value = 1 }
             end
         elseif card.type == "effect" then
-            for _, e in ipairs(card.effects or {}) do effect(e, card) end
+            local reps = 1
+            if echoCard and not P.echoFired then
+                reps = math.max(1, math.floor(echoCard.value or 2))
+                P.echoFired = true
+            end
+            for _ = 1, reps do
+                for _, e in ipairs(card.effects or {}) do effect(e, card) end
+            end
         end
+        if card.type ~= "joker" and not entry.skipped then cardPlayed() end
         R.cards[#R.cards + 1] = entry
     end
 

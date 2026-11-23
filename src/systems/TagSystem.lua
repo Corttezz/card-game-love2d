@@ -9,6 +9,7 @@ TagSystem.CATALOG = {
     utility    = { category = "archetype", color = {0.45, 0.80, 0.50}, desc = "Efeito/utility" },
 
     armor       = { category = "mechanic",  color = {0.55, 0.65, 0.75}, desc = "Empilha armor" },
+    metal       = { category = "mechanic",  color = {0.70, 0.72, 0.78}, desc = "Carta Metalica" },
     poison      = { category = "mechanic",  color = {0.40, 0.75, 0.30}, desc = "Aplica veneno" },
     weak        = { category = "mechanic",  color = {0.60, 0.50, 0.80}, desc = "Debuff weak" },
     vulnerable  = { category = "mechanic",  color = {0.80, 0.50, 0.60}, desc = "Debuff vulnerable" },

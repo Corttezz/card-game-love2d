@@ -46,6 +46,15 @@ function ComboSystem.boostFor(game, ruleId)
     return best
 end
 
+function ComboSystem.isUncapped(game, ruleId)
+    for _, joker in ipairs((game and game.jokerSlots) or {}) do
+        for _, e in ipairs(joker.effects or {}) do
+            if e.type == "combo_boost" and e.combo == ruleId and e.uncap then return true end
+        end
+    end
+    return false
+end
+
 local function ruleBonusFor(rule, card, cards, game)
     if not card then return 0 end
     local before = 0
@@ -63,7 +72,8 @@ local function ruleBonusFor(rule, card, cards, game)
         end
     end
     if before <= 0 then return 0 end
-    local b = rule.step * math.min(before, rule.cap)
+    local cap = ComboSystem.isUncapped(game, rule.id) and before or rule.cap
+    local b = rule.step * math.min(before, cap)
     return math.floor(b * ComboSystem.boostFor(game, rule.id))
 end
 ComboSystem.ruleBonusFor = ruleBonusFor

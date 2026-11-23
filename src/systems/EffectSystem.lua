@@ -8,6 +8,7 @@ local Sfx = require("src.systems.Sfx")
 local CardFeel = require("src.systems.CardFeel")
 local CombatBeats = require("src.systems.CombatBeats")
 local Resistances = require("src.systems.Resistances")
+local TagSystem = require("src.systems.TagSystem")
 local function msg(key, vars) return I18n.t("messages." .. key, vars) end
 
 local function notifyOrbUI(fn, ...)
@@ -102,48 +103,76 @@ local function multLabel(v)
     return "×" .. string.format("%g", v or 1)
 end
 
+function EffectSystem.jokerEffect(game, effectType)
+    for _, joker in ipairs((game and game.jokerSlots) or {}) do
+        for _, e in ipairs(joker.effects or {}) do
+            if e.type == effectType then return e, joker end
+        end
+    end
+    return nil
+end
+
+function EffectSystem.heldTagCount(game, tag, turnContext)
+    local inPlay = {}
+    for _, c in ipairs((turnContext and turnContext.allSelectedCards) or {}) do inPlay[c] = true end
+    for _, c in ipairs((game and game.selectedCards) or {}) do inPlay[c] = true end
+    local n = 0
+    for _, c in ipairs((game and game.hand) or {}) do
+        if not inPlay[c] and TagSystem.cardHasTag(c, tag) then n = n + 1 end
+    end
+    return n
+end
+
+function EffectSystem.ashBonus(game)
+    local run = game and game.runManager and game.runManager.currentRun
+    return (run and run.ashBonus) or (game and game._ashBonus) or 0
+end
+
+local VALUE_MULT = {
+    damage_multiplier = true, defense_multiplier = true,
+    echo_first_attack = true, echo_first_card = true,
+    held_tag_multiplier = true, combo_variety_multiplier = true,
+}
+
 function EffectSystem:jokerSteps(game, card, baseValue, turnContext, echoFired)
     local finalValue = baseValue
     local entries = {}
     local echoUsed = false
+    local isAtk, isDef = card.type == "attack", card.type == "defense"
 
-    local bestMult, bestMultJoker = nil, nil
+    local function mult(joker, factor, text)
+        if factor == 1 then return end
+        finalValue = finalValue * factor
+        entries[#entries + 1] = { joker = joker, op = "mult", value = factor,
+            label = multLabel(factor), kind = "mult", text = text, after = finalValue }
+    end
+
     for _, joker in ipairs(game.jokerSlots or {}) do
-        if joker.effects then
-            for _, effect in ipairs(joker.effects) do
-                local isMatchingMult =
-                    (effect.type == "damage_multiplier" and effect.target == "attack"
-                        and card.type == "attack")
-                    or (effect.type == "defense_multiplier" and effect.target == "defense"
-                        and card.type == "defense")
-                if isMatchingMult and (not bestMult
-                    or (effect.value or 1) > (bestMult.value or 1)) then
-                    bestMult = effect
-                    bestMultJoker = joker
-                end
+        for _, effect in ipairs(joker.effects or {}) do
+            local t = effect.type
+            if (t == "damage_multiplier" and effect.target == "attack" and isAtk)
+                or (t == "defense_multiplier" and effect.target == "defense" and isDef) then
+                local _, m = self:processEffect(effect, card, finalValue, turnContext, game)
+                mult(joker, effect.value or 1, m)
+            elseif t == "held_tag_multiplier" and (isAtk or isDef) then
+                local n = EffectSystem.heldTagCount(game, effect.tag or "metal", turnContext)
+                if n > 0 then mult(joker, (effect.value or 1) ^ n) end
+            elseif t == "combo_variety_multiplier" and (isAtk or isDef) then
+                local n = (turnContext and turnContext.activeCombos
+                    and #turnContext.activeCombos) or 0
+                if n > 0 then mult(joker, (effect.value or 1) ^ n) end
             end
         end
     end
-    if bestMult then
-        local newValue, m = self:processEffect(bestMult, card, finalValue, turnContext)
-        if newValue ~= finalValue then
-            finalValue = newValue
-            entries[#entries + 1] = { joker = bestMultJoker, op = "mult",
-                value = bestMult.value or 1, label = multLabel(bestMult.value),
-                kind = "mult", text = m, after = finalValue }
-        end
-    end
 
-    if card.type == "attack" and not echoFired then
+    if (isAtk or isDef) and not echoFired then
         for _, joker in ipairs(game.jokerSlots or {}) do
             for _, effect in ipairs(joker.effects or {}) do
-                if effect.type == "echo_first_attack" then
+                if (effect.type == "echo_first_attack" and isAtk)
+                    or effect.type == "echo_first_card" then
                     echoUsed = true
                     local fator = effect.value or 2
-                    finalValue = finalValue * fator
-                    entries[#entries + 1] = { joker = joker, op = "mult", value = fator,
-                        label = multLabel(fator), kind = "mult",
-                        text = msg("echo_first", { value = fator }), after = finalValue }
+                    mult(joker, fator, msg("echo_first", { value = fator }))
                     break
                 end
             end
@@ -154,9 +183,9 @@ function EffectSystem:jokerSteps(game, card, baseValue, turnContext, echoFired)
     for _, joker in ipairs(game.jokerSlots or {}) do
         if joker.effects then
             for _, effect in ipairs(joker.effects) do
-                if effect.type ~= "damage_multiplier" and effect.type ~= "defense_multiplier"
-                    and effect.type ~= "echo_first_attack" then
-                    local newValue, m = self:processEffect(effect, card, finalValue, turnContext)
+                if not VALUE_MULT[effect.type] then
+                    local newValue, m = self:processEffect(effect, card, finalValue,
+                        turnContext, game)
                     if newValue ~= finalValue then
                         local delta = newValue - finalValue
                         finalValue = newValue
@@ -182,40 +211,30 @@ function EffectSystem:applyJokerEffects(game, card, baseValue, turnContext)
     return finalValue, procs
 end
 
+local PROC_ON = {
+    attack  = { on_attack_heal = true, on_attack_debuff = true },
+    defense = { on_defend_damage = true, on_defend_block_damage = true },
+}
+
 function EffectSystem:predictJokerProcs(game, card)
     if not game or not game.jokerSlots or #game.jokerSlots == 0 then return 0 end
-    local isAtk = card.type == "attack"
-    local isDef = card.type == "defense"
-    if not isAtk and not isDef then return 0 end
-    local n, multSeen = 0, false
+    local on = PROC_ON[card.type]
+    if not on then return 0 end
+    local _, entries = self:jokerSteps(game, card, 10, nil, game._echoFiredThisTurn)
+    local n = #entries
     for _, joker in ipairs(game.jokerSlots) do
         for _, e in ipairs(joker.effects or {}) do
-            local t = e.type
-            if isAtk then
-                if t == "damage_multiplier" and e.target == "attack" then
-                    if not multSeen then n = n + 1; multSeen = true end
-                elseif t == "echo_first_attack" then
-                    if not game._echoFiredThisTurn then n = n + 1 end
-                elseif t == "damage_bonus" or t == "on_attack_heal"
-                    or t == "on_attack_debuff" then
-                    n = n + 1
-                end
-            else
-                if t == "defense_multiplier" and e.target == "defense" then
-                    if not multSeen then n = n + 1; multSeen = true end
-                elseif t == "defense_bonus" or t == "on_defend_damage" then
-                    n = n + 1
-                end
-            end
+            if on[e.type] then n = n + 1 end
         end
     end
     return n
 end
 
-function EffectSystem:processEffect(effect, card, currentValue, turnContext)
+function EffectSystem:processEffect(effect, card, currentValue, turnContext, game)
     local t = effect.type
     local v = effect.value or 1
     local target = effect.target
+    game = game or (turnContext and turnContext.game)
 
     if t == "damage_multiplier" and target == "attack" and card.type == "attack" then
         return currentValue * v, msg("dmg_multiplier", { value = v })
@@ -228,6 +247,19 @@ function EffectSystem:processEffect(effect, card, currentValue, turnContext)
 
     elseif t == "defense_bonus" and card.type == "defense" then
         return currentValue + v, msg("def_bonus", { value = v })
+
+    elseif t == "cheap_attack_bonus" and card.type == "attack" and (card.cost or 0) == 0 then
+        return currentValue + v, msg("dmg_bonus", { value = v })
+
+    elseif t == "poison_scaling_bonus" and card.type == "attack" then
+        local enemy = game and game.enemy
+        local stacks = (enemy and enemy.getStatusStacks and enemy:getStatusStacks("poison")) or 0
+        local b = v * math.floor(stacks / math.max(1, effect.stacks or 2))
+        if b > 0 then return currentValue + b, msg("dmg_bonus", { value = b }) end
+
+    elseif t == "on_exhaust_ash" and card.type == "attack" then
+        local b = EffectSystem.ashBonus(game)
+        if b > 0 then return currentValue + b, msg("dmg_bonus", { value = b }) end
     end
 
     return currentValue, nil
@@ -432,6 +464,34 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
         local pick = pool[require("src.systems.Rng").get():random("misc", #pool)]
         return self:processEffectCard(game, pick, srcCard)
 
+    elseif t == "duplicate_prev" then
+        local ctx = game._currentTurnContext
+        local prev
+        for _, c in ipairs((ctx and ctx.allSelectedCards) or {}) do
+            if c == srcCard then break end
+            if c.type ~= "joker" then prev = c end
+        end
+        if not prev then
+            game:addMessage(msg("nothing_to_copy"), "warning")
+            return true
+        end
+        if game.isRunMode and game.runManager and game.runManager.currentRun then
+            game.runManager:addCardToDeck(prev.id, { edition = prev.edition, seal = prev.seal })
+        end
+        local copy = game:spawnBattleCopy(prev, true)
+        if copy then table.insert(game.discard, copy) end
+        game:addMessage(msg("card_copied", { name = I18n.cardName(prev) }), "arcane")
+        Sfx.play("effectChime")
+        return true
+
+    elseif t == "copy_to_discard" then
+        for _ = 1, math.max(1, math.floor(v)) do
+            local copy = srcCard and game:spawnBattleCopy(srcCard, false)
+            if copy then table.insert(game.discard, copy) end
+        end
+        Sfx.play("effectChime")
+        return true
+
     elseif t == "strength_scaling" or t == "dexterity_scaling"
         or t == "multi_hit" or t == "damage_bonus_self"
         or t == "retain_armor" then
@@ -460,6 +520,29 @@ function EffectSystem.orbEvokeValue(orb, focus)
     return ev
 end
 
+function EffectSystem.orbFocusBonus(game, orb)
+    local b, src = 0, nil
+    for _, joker in ipairs((game and game.jokerSlots) or {}) do
+        for _, e in ipairs(joker.effects or {}) do
+            if e.type == "orb_focus_bonus" and orb and orb.type == (e.orbType or "lightning") then
+                b = b + (e.value or 0)
+                src = src or joker
+            end
+        end
+    end
+    return b, src
+end
+
+function EffectSystem:holdPoison(game)
+    local e, joker = EffectSystem.jokerEffect(game, "poison_no_decay")
+    local enemy = game and game.enemy
+    if not enemy then return end
+    enemy.poisonNoDecay = e ~= nil
+    if e and enemy.getStatusStacks and (enemy:getStatusStacks("poison") or 0) > 0 then
+        pushJokerProc(game, nil, joker, I18n.t("status.poison.name", nil, "Veneno"), "buff")
+    end
+end
+
 function EffectSystem:_evokeOrbEffect(game, orb)
     if not orb then return end
     local v = orb.value or 1
@@ -467,6 +550,9 @@ function EffectSystem:_evokeOrbEffect(game, orb)
     if game.player and game.player.getBuffStacks then
         focus = game.player:getBuffStacks("focus") or 0
     end
+    local bonus, bonusJoker = EffectSystem.orbFocusBonus(game, orb)
+    if bonus > 0 then pushJokerProc(game, nil, bonusJoker, "+" .. bonus, "buff") end
+    focus = focus + bonus
     v = v + focus
     local dmg = EffectSystem.orbEvokeValue(orb, focus)
     if orb.type == "lightning" then
@@ -512,6 +598,7 @@ function EffectSystem:_stepChannelOrb(game, orb, sink)
         CombatBeats.extendCurrent("ORB")
         notifyOrbUI("notifyEvoke", 1, overflow, "overflow")
         self:_evokeOrbEffect(game, overflow)
+        self:applyTriggerEffects(game, "evoke", { orb = overflow, overflow = true })
         game:addMessage(msg("orb_overflow", { name = I18n.t("status.orb_" .. tostring(overflow.type)
             .. ".name", nil, tostring(overflow.type)) }), "arcane")
         Sfx.play("orbEvoke", { pitch = OVERFLOW_PITCH })
@@ -533,6 +620,7 @@ function EffectSystem:_stepEvokeOrb(game, sink, ord)
         if not orb then return end
         notifyOrbUI("notifyEvoke", 1, orb, "evoke")
         self:_evokeOrbEffect(game, orb)
+        self:applyTriggerEffects(game, "evoke", { orb = orb })
         local pitch = EVOKE_PITCH_BASE - ((ord or 1) - 1) * EVOKE_PITCH_STEP
         Sfx.play("orbEvoke", { pitch = math.max(0.78, pitch) })
     end, "ORB")
@@ -575,7 +663,7 @@ function EffectSystem:orbPassiveTick(game, sink)
     local focus = (p.getBuffStacks and p:getBuffStacks("focus")) or 0
     for i, orb in ipairs(p.orbs) do
         local idx, o = i, orb
-        local pulse = EffectSystem.orbPulseValue(o, focus)
+        local pulse = EffectSystem.orbPulseValue(o, focus + EffectSystem.orbFocusBonus(game, o))
         CombatBeats.step(sink, "orb.pulse." .. tostring(o.type), function()
             local landed = false
             if o.type == "lightning" or o.type == "fire" then
@@ -653,10 +741,23 @@ function EffectSystem:applyHealMultiplier(game, amount, procSink)
     return math.floor(final)
 end
 
+function EffectSystem.passiveThorns(game)
+    local n = 0
+    for _, joker in ipairs((game and game.jokerSlots) or {}) do
+        for _, e in ipairs(joker.effects or {}) do
+            if e.type == "passive_thorns" then
+                n = n + (e.value or 0)
+                    + math.floor((game._defensesPlayedBattle or 0) / math.max(1, e.stacks or 3))
+            end
+        end
+    end
+    return n
+end
+
 function EffectSystem.thornStacks(game)
     local p = game and game.player
     if not p or not p.getBuffStacks then return 0 end
-    return p:getBuffStacks("thorn") or 0
+    return (p:getBuffStacks("thorn") or 0) + EffectSystem.passiveThorns(game)
 end
 
 function EffectSystem:fireThornReflect(game)
@@ -679,12 +780,14 @@ function EffectSystem:fireThornReflect(game)
         end
     end
 
-    local armados = game._jokerThornFiredThisTurn
-    if armados then
-        for _, slotJoker in ipairs(game.jokerSlots or {}) do
-            if slotJoker and armados[slotJoker.id or slotJoker] then
-                self:notifyJokerProc(game, slotJoker, "-" .. v, "damage")
-            end
+    local armados = game._jokerThornFiredThisTurn or {}
+    for _, slotJoker in ipairs(game.jokerSlots or {}) do
+        local passive = false
+        for _, e in ipairs((slotJoker and slotJoker.effects) or {}) do
+            if e.type == "passive_thorns" then passive = true end
+        end
+        if slotJoker and (armados[slotJoker.id or slotJoker] or passive) then
+            self:notifyJokerProc(game, slotJoker, "-" .. v, "damage")
         end
     end
 
@@ -695,11 +798,20 @@ EffectSystem.TRIGGER_OF = {
     on_attack_heal     = "attack",
     on_attack_debuff   = "attack",
     on_defend_damage   = "defend",
+    on_defend_block_damage = "defend",
     channel_per_turn   = "turn_start",
     strength_per_turn  = "turn_start",
     regen_per_turn     = "turn_start",
+    regen_below_half   = "turn_start",
     damage_per_turn    = "turn_start",
     on_turn_start_draw = "turn_start",
+    on_card_played_block  = "card_played",
+    on_card_played_damage = "card_played",
+    draw_every_n_cards    = "card_played",
+    on_evoke_focus        = "evoke",
+    on_evoke_rechannel    = "evoke",
+    on_evoke_draw         = "evoke",
+    on_exhaust_ash        = "exhaust",
 }
 
 function EffectSystem:applyTriggerEffects(game, triggerType, context)
@@ -824,6 +936,92 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             pushJokerProc(game, context.procSink, context.sourceJoker,
                 I18n.t("status." .. name .. ".name", nil, name), "buff")
         end
+
+    elseif t == "on_defend_block_damage" and triggerType == "defend" then
+        local dmg = math.floor(((context and context.value) or 0) * (v > 0 and v or 50) / 100)
+        if dmg > 0 and game.enemy and game.enemy:isAlive() then
+            local landed = hitEnemy(game, dmg, "physical")
+            checkEnrage(game)
+            game.score = (game.score or 0) + landed
+            CardFeel.burstAtEnemy("physical", 0.8)
+            showEnemyDamage(landed)
+            pushJokerProc(game, context and context.procSink, context and context.sourceJoker,
+                "-" .. landed, "damage")
+        end
+
+    elseif t == "regen_below_half" and triggerType == "turn_start" then
+        local p = game.player
+        if p and p.health * 2 < (p.maxHealth or 0) then
+            local amount = self:applyHealMultiplier(game, v, context and context.procSink)
+            p:heal(amount)
+            pushJokerProc(game, context and context.procSink,
+                context and context.sourceJoker, "+" .. amount .. " PV", "heal")
+        end
+
+    elseif t == "on_card_played_block" and triggerType == "card_played" then
+        game.player:addArmor(v)
+        pushJokerProc(game, context and context.procSink,
+            context and context.sourceJoker, "+" .. v, "buff")
+
+    elseif t == "on_card_played_damage" and triggerType == "card_played" then
+        local per = math.max(1, effect.stacks or 10)
+        local dmg = v + math.floor((game._cardsPlayedBattle or 0) / per)
+        if game.enemy and game.enemy:isAlive() then
+            local landed = hitEnemy(game, dmg, "physical")
+            checkEnrage(game)
+            game.score = (game.score or 0) + landed
+            showEnemyDamage(landed)
+            pushJokerProc(game, context and context.procSink,
+                context and context.sourceJoker, "-" .. landed, "damage")
+        end
+
+    elseif t == "draw_every_n_cards" and triggerType == "card_played" then
+        local every = math.max(1, effect.stacks or 4)
+        if (game._cardsPlayedTurn or 0) % every == 0 then
+            local n = math.max(1, v)
+            for i = 1, n do game:drawCard((i - 1) * 0.06) end
+            pushJokerProc(game, context and context.procSink,
+                context and context.sourceJoker, "+" .. n .. " cartas", "buff")
+        end
+
+    elseif t == "on_evoke_focus" and triggerType == "evoke" then
+        game.player:addBuff("focus", 99, math.max(1, v))
+        pushJokerProc(game, nil, context and context.sourceJoker, "+" .. math.max(1, v)
+            .. " " .. I18n.t("status.focus.name", nil, "Foco"), "buff")
+
+    elseif t == "on_evoke_rechannel" and triggerType == "evoke" then
+        local orb = context and context.orb
+        local want = effect.orbType or "lightning"
+        if orb and orb.type == want and not (context and context.overflow) then
+            local p = game.player
+            if p and p.addOrb and #(p.orbs or {}) < (p.orbSlots or 3) then
+                local fresh = { type = want, value = math.max(1, v) }
+                p:addOrb(fresh)
+                notifyOrbUI("notifyChannel", #p.orbs, fresh)
+                pushJokerProc(game, nil, context and context.sourceJoker, "+1 Orbe", "buff")
+            end
+        end
+
+    elseif t == "on_evoke_draw" and triggerType == "evoke" then
+        local cap = effect.stacks or 3
+        if (game._evokeDrawsTurn or 0) < cap then
+            game._evokeDrawsTurn = (game._evokeDrawsTurn or 0) + 1
+            game:drawCard(0)
+            pushJokerProc(game, nil, context and context.sourceJoker, "+1", "buff")
+        end
+
+    elseif t == "on_exhaust_ash" and triggerType == "exhaust" then
+        local n = math.max(1, v)
+        for i = 1, n do game:drawCard((i - 1) * 0.06) end
+        local run = game.runManager and game.runManager.currentRun
+        local gain = effect.stacks or 1
+        if run then
+            run.ashBonus = (run.ashBonus or 0) + gain
+        else
+            game._ashBonus = (game._ashBonus or 0) + gain
+        end
+        pushJokerProc(game, context and context.procSink, context and context.sourceJoker,
+            "+" .. gain, "buff")
     end
 end
 

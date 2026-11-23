@@ -538,7 +538,7 @@ function Enemy:onTurnEnd()
     for i = #self.statusEffects, 1, -1 do
         local e = self.statusEffects[i]
         if decays(e.name) then
-            e.stacks = (e.stacks or 1) - 1
+            if not self.poisonNoDecay then e.stacks = (e.stacks or 1) - 1 end
             e.duration = e.stacks
         else
             e.duration = e.duration - 1
