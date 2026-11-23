@@ -9,7 +9,12 @@ return {
         bolsa_leve = { name = "Light Purse", desc = "Start with no gold and each victory pays $1 less." },
         elites_ferozes = { name = "Fierce Elites", desc = "Elites deal +15% damage." },
         escolha_curta = { name = "Short Choice", desc = "Battle rewards offer one card fewer." },
-        ultimo_selo = { name = "The Last Seal", desc = "Every enemy deals +10% damage." },
+        ultimo_selo = { name = "Seal of Blades", desc = "Every enemy deals +10% damage." },
+        cristal_rachado = { name = "Cracked Crystal", desc = "The Ether Crystal costs 50% more." },
+        chefes_vorazes = { name = "Ravenous Bosses", desc = "Bosses and mini-bosses get another +10% HP." },
+        cacada_noturna = { name = "Night Hunt", desc = "Elites show up 30% more often on the map." },
+        couraca_inimiga = { name = "Enemy Carapace", desc = "Enemies start each fight with Block equal to 5% of their HP." },
+        selo_abismo = { name = "The Abyss Seal", desc = "Every enemy deals another +10% damage." },
     },
     seal_ui = {
         title = "Grimoire Seals",

@@ -92,6 +92,34 @@ local function body(t)
     end
     t:eq("loja cobra o preço crescente do Cristal", seen and seen.cost, rm:getCrystalCost())
 
+    local RM = require("src.systems.RunModifiers")
+    t:eq("15 Selos", RM.SEAL_MAX, 15)
+    run.seal = 11
+    t:eq("Selo 11: Cristal 50% mais caro", rm:getCrystalCost(), math.floor(25 * 1.5 ^ 3 * 1.5 + 0.5))
+    run.seal = 10
+    t:eq("Selo 10 não traz o 11", rm:getCrystalCost(), 84)
+    local s15 = { seal = 15 }
+    local st = { health = 100, damage = 10 }
+    t:eq("Selo 15: chefe +15% e +10%", RM.enemyStats(s15, st, "boss").health,
+        math.floor(100 * 1.15 * 1.10 + 0.5))
+    t:eq("Selo 15: dano comum ×1,1 ×1,1", RM.enemyStats(s15, st, "battle").damage,
+        math.floor(10 * 1.10 * 1.10 + 0.5))
+    t:near("Selo 15: elites 1,5 × 1,3", RM.eliteWeightMul(s15), 1.5 * 1.3, 1e-9)
+    t:near("Selo 15: pontos ×2,5", RM.scoreMul(s15), 2.5, 1e-9)
+    local Enemy = require("src.entities.Enemy")
+    local en = Enemy:new(200, 10)
+    RM.decorateEnemy(s15, en)
+    t:eq("Selo 15: Bloqueio inicial 5% da vida", en.armor, 10)
+    local missing = {}
+    for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
+        local L = require("src.i18n.locales.run_modifiers." .. loc).seals
+        for _, s in ipairs(RM.SEALS) do
+            local e = L[s.id]
+            if not (e and e.name and e.desc) then missing[#missing + 1] = loc .. ":" .. s.id end
+        end
+    end
+    t:eq("todo Selo tem nome e descrição nos 5 idiomas", table.concat(missing, ","), "")
+
     local starters = require("src.systems.CardRegistry").STARTER_DECKS
     for cls, deck in pairs(starters or {}) do
         t:eq("grimório inicial com 2 cartas: " .. cls, #deck, 2)

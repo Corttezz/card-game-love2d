@@ -9,7 +9,12 @@ return {
         bolsa_leve = { name = "Leichter Beutel", desc = "Start ohne Gold, jeder Sieg zahlt $1 weniger." },
         elites_ferozes = { name = "Wilde Eliten", desc = "Eliten verursachen +15 % Schaden." },
         escolha_curta = { name = "Knappe Wahl", desc = "Kampfbelohnungen bieten eine Karte weniger." },
-        ultimo_selo = { name = "Das Letzte Siegel", desc = "Jeder Gegner verursacht +10 % Schaden." },
+        ultimo_selo = { name = "Siegel der Klingen", desc = "Jeder Gegner verursacht +10 % Schaden." },
+        cristal_rachado = { name = "Gesprungener Kristall", desc = "Der Ätherkristall kostet 50 % mehr." },
+        chefes_vorazes = { name = "Gierige Bosse", desc = "Bosse und Mini-Bosse haben weitere +10 % LP." },
+        cacada_noturna = { name = "Nachtjagd", desc = "Eliten erscheinen 30 % häufiger auf der Karte." },
+        couraca_inimiga = { name = "Feindlicher Panzer", desc = "Gegner beginnen den Kampf mit Block in Höhe von 5 % ihrer LP." },
+        selo_abismo = { name = "Das Abgrundsiegel", desc = "Jeder Gegner verursacht weitere +10 % Schaden." },
     },
     seal_ui = {
         title = "Siegel des Grimoires",

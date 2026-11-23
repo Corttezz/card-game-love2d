@@ -693,7 +693,8 @@ end
 function RunManager:getCrystalCost()
     local n = (self.currentRun and self.currentRun.crystalsBought) or 0
     local cfg = Config.Offers
-    return math.floor(cfg.CRYSTAL_COST_BASE * (cfg.CRYSTAL_COST_MULT ^ n) + 0.5)
+    local seal = require("src.systems.RunModifiers").rules(self.currentRun).crystal or 1
+    return math.floor(cfg.CRYSTAL_COST_BASE * (cfg.CRYSTAL_COST_MULT ^ n) * seal + 0.5)
 end
 
 function RunManager:registerCrystal()

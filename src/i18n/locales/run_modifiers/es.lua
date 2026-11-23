@@ -9,7 +9,12 @@ return {
         bolsa_leve = { name = "Bolsa Ligera", desc = "Empiezas sin oro y cada victoria paga $1 menos." },
         elites_ferozes = { name = "Élites Feroces", desc = "Las élites causan +15% de daño." },
         escolha_curta = { name = "Elección Corta", desc = "La recompensa de batalla ofrece una carta menos." },
-        ultimo_selo = { name = "El Último Sello", desc = "Todo enemigo causa +10% de daño." },
+        ultimo_selo = { name = "Sello de las Hojas", desc = "Todo enemigo causa +10% de daño." },
+        cristal_rachado = { name = "Cristal Agrietado", desc = "El Cristal de Éter cuesta un 50% más." },
+        chefes_vorazes = { name = "Jefes Voraces", desc = "Jefes y minijefes tienen otro +10% de vida." },
+        cacada_noturna = { name = "Cacería Nocturna", desc = "Las élites aparecen un 30% más en el mapa." },
+        couraca_inimiga = { name = "Coraza Enemiga", desc = "Los enemigos empiezan el combate con Bloqueo del 5% de su vida." },
+        selo_abismo = { name = "El Sello del Abismo", desc = "Todo enemigo causa otro +10% de daño." },
     },
     seal_ui = {
         title = "Sellos del Grimorio",

@@ -11,6 +11,11 @@ M.SEALS = {
     { id = "elites_ferozes",   rules = { dmgElite = 1.15 } },
     { id = "escolha_curta",    rules = { rewardCards = -1 } },
     { id = "ultimo_selo",      rules = { dmgAll = 1.10 } },
+    { id = "cristal_rachado",  rules = { crystal = 1.5 } },
+    { id = "chefes_vorazes",   rules = { hpBoss = 1.10 } },
+    { id = "cacada_noturna",   rules = { eliteWeight = 1.3 } },
+    { id = "couraca_inimiga",  rules = { enemyBlock = 0.05 } },
+    { id = "selo_abismo",      rules = { dmgAll = 1.10 } },
 }
 
 M.CURSES = {

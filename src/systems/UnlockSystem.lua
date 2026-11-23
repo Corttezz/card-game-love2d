@@ -99,7 +99,7 @@ local function state()
     return u, s
 end
 
-local SEAL_MAX = 10
+local SEAL_MAX = #require("src.data.run_modifiers").SEALS
 
 function UnlockSystem.getSealWon(classId)
     local u = state()

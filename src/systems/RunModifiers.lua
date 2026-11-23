@@ -13,7 +13,7 @@ for _, c in ipairs(Data.CURSES) do CURSE_BY_ID[c.id] = c end
 function RunModifiers.getCurse(id) return CURSE_BY_ID[id] end
 
 local MULT = { eliteWeight = true, restHeal = true, actHeal = true, price = true,
-    hpNormal = true, hpBoss = true, dmgElite = true, dmgAll = true, hpAll = true }
+    hpNormal = true, hpBoss = true, dmgElite = true, dmgAll = true, hpAll = true, crystal = true }
 local ADD = { victoryGold = true, rewardCards = true, enemyBlock = true }
 
 function RunModifiers.seal(run)

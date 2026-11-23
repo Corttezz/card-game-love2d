@@ -9,7 +9,12 @@ return {
         bolsa_leve = { name = "Bourse Légère", desc = "Vous commencez sans or et chaque victoire rapporte $1 de moins." },
         elites_ferozes = { name = "Élites Féroces", desc = "Les élites infligent +15 % de dégâts." },
         escolha_curta = { name = "Choix Réduit", desc = "La récompense de combat propose une carte de moins." },
-        ultimo_selo = { name = "Le Dernier Sceau", desc = "Chaque ennemi inflige +10 % de dégâts." },
+        ultimo_selo = { name = "Sceau des Lames", desc = "Chaque ennemi inflige +10 % de dégâts." },
+        cristal_rachado = { name = "Cristal Fêlé", desc = "Le Cristal d'Éther coûte 50 % de plus." },
+        chefes_vorazes = { name = "Boss Voraces", desc = "Boss et mini-boss gagnent encore +10 % de PV." },
+        cacada_noturna = { name = "Chasse Nocturne", desc = "Les élites apparaissent 30 % plus souvent sur la carte." },
+        couraca_inimiga = { name = "Carapace Ennemie", desc = "Les ennemis commencent le combat avec un Blocage de 5 % de leurs PV." },
+        selo_abismo = { name = "Le Sceau de l'Abîme", desc = "Chaque ennemi inflige encore +10 % de dégâts." },
     },
     seal_ui = {
         title = "Sceaux du Grimoire",
