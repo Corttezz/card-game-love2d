@@ -195,6 +195,16 @@ function DamagePreview.simulate(game, cards)
         elseif orb.type == "holy" then
             R.heal = R.heal + previewHeal(game, v)
         end
+        for _, j in ipairs(game.jokerSlots or {}) do
+            for _, e in ipairs(j.effects or {}) do
+                if e.type == "on_evoke_focus" then
+                    P.focus = P.focus + math.max(1, e.value or 1)
+                elseif e.type == "on_evoke_rechannel" and why ~= "overflow"
+                    and orb.type == (e.orbType or "lightning") and #P.orbs < P.orbSlots then
+                    P.orbs[#P.orbs + 1] = { type = orb.type, value = math.max(1, e.value or 1) }
+                end
+            end
+        end
     end
     local function channel(orb)
         if #P.orbs >= P.orbSlots then evoke(table.remove(P.orbs, 1), "overflow") end
@@ -304,9 +314,18 @@ function DamagePreview.simulate(game, cards)
         end
     end
     local echoCard = EffectSystem.jokerEffect(game, "echo_first_card")
+    local poison0 = (game.enemy.getStatusStacks and game.enemy:getStatusStacks("poison")) or 0
+    local ash, ashPerExhaust = EffectSystem.ashBonus(game), 0
+    for _, j in ipairs(game.jokerSlots or {}) do
+        for _, e in ipairs(j.effects or {}) do
+            if e.type == "on_exhaust_ash" then ashPerExhaust = ashPerExhaust + (e.stacks or 1) end
+        end
+    end
 
     for _, card in ipairs(cards) do
         local entry = { card = card, type = card.type }
+        ctx.simPoison = poison0 + R.poison
+        ctx.simAsh = ash
         if card.type == "attack" then
             if E.health <= 0 then
                 entry.skipped = true
@@ -360,8 +379,10 @@ function DamagePreview.simulate(game, cards)
             end
         end
         if card.type ~= "joker" and not entry.skipped then cardPlayed() end
+        if card.exhaust or hasEff(card, "exhaust") then ash = ash + ashPerExhaust end
         R.cards[#R.cards + 1] = entry
     end
+    ctx.simPoison, ctx.simAsh = nil, nil
 
     R.lethal = E.health <= 0 and R.enemyHealth > 0
     R.enemyHealthAfter = E.health

@@ -119,9 +119,11 @@ function M.run()
                     names[#names + 1] = c.id .. (c.edition and ("/" .. c.edition) or "")
                         .. (c.seal and ("/" .. c.seal) or "")
                 end
-                print(string.format("  [diverge] trial %d: dano real %d previa %d | bloqueio real %d previa %d | [%s] jokers=%d orbs=%d",
+                local jk = {}
+                for _, j in ipairs(g.jokerSlots) do jk[#jk + 1] = j.id end
+                print(string.format("  [diverge] trial %d: dano real %d previa %d | bloqueio real %d previa %d | [%s] jokers=[%s] orbs=%d",
                     trial, hpLoss, prev.damage, armorGain, prev.block,
-                    table.concat(names, ", "), #g.jokerSlots, #(p.orbs or {})))
+                    table.concat(names, ", "), table.concat(jk, ", "), #(p.orbs or {})))
             end
         end
     end

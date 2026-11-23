@@ -253,12 +253,13 @@ function EffectSystem:processEffect(effect, card, currentValue, turnContext, gam
 
     elseif t == "poison_scaling_bonus" and card.type == "attack" then
         local enemy = game and game.enemy
-        local stacks = (enemy and enemy.getStatusStacks and enemy:getStatusStacks("poison")) or 0
+        local stacks = (turnContext and turnContext.simPoison)
+            or (enemy and enemy.getStatusStacks and enemy:getStatusStacks("poison")) or 0
         local b = v * math.floor(stacks / math.max(1, effect.stacks or 2))
         if b > 0 then return currentValue + b, msg("dmg_bonus", { value = b }) end
 
     elseif t == "on_exhaust_ash" and card.type == "attack" then
-        local b = EffectSystem.ashBonus(game)
+        local b = (turnContext and turnContext.simAsh) or EffectSystem.ashBonus(game)
         if b > 0 then return currentValue + b, msg("dmg_bonus", { value = b }) end
     end
 
