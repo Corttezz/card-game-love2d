@@ -17,6 +17,7 @@ local InputFocus       = require("src.ui.InputFocus")
 local UiScale          = require("src.ui.UiScale")
 local BossCinematic    = require("src.ui.BossCinematic")
 local HandDeal         = require("src.ui.HandDeal")
+local HandFx           = require("src.ui.HandFx")
 
 local GameplayScene = {}
 
@@ -749,6 +750,7 @@ function GameplayScene.draw()
     if game.messageSystem and not uiWait then game.messageSystem:draw() end
 
     if not uiWait then drawJokersAsCards() end
+    HandFx.draw()
     GameplayScene._reportTutorialAnchors()
 
     ComboBanner.draw(topBarHeight)

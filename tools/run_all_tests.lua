@@ -11,6 +11,7 @@ local SUITES = {
     { group = "unit",  name = "test_forge_resize" },
     { group = "unit",  name = "test_cards" },
     { group = "unit",  name = "test_effects_full" },
+    { group = "unit",  name = "test_effect_feedback" },
     { group = "unit",  name = "test_combos_509" },
     { group = "unit",  name = "test_unique_art" },
     { group = "unit",  name = "test_counters_509" },

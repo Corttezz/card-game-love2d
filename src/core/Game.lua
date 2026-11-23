@@ -19,6 +19,7 @@ local BossMechanics = require("src.systems.BossMechanics")
 local ArchetypeCounters = require("src.systems.ArchetypeCounters")
 local Config = require("src.core.Config")
 local Sfx = require("src.systems.Sfx")
+local EffectFeedback = require("src.systems.EffectFeedback")
 local Debug = require("src.core.Debug")
 
 local I18nMod = require("src.i18n.I18n")
@@ -129,7 +130,7 @@ function Game:startGame()
     self:syncJokerFlags()
     self:applyJokerBattleStart()
 
-    self:promoteInnateCardsToTop()
+    self:promoteInnateCardsToTop(true)
 
     for i = 1, Config.Game.INITIAL_HAND_SIZE + self:getShopServiceCount("card_draw_upgrade") do
         self:drawCard((i - 1) * 0.08)
@@ -145,7 +146,7 @@ function Game:noteBestiary(kind)
     return require("src.systems.Bestiary").onFight(run, e.spriteId, kind)
 end
 
-function Game:promoteInnateCardsToTop()
+function Game:promoteInnateCardsToTop(markFx)
     local innates = {}
     local rest = {}
     for _, c in ipairs(self.deck) do
@@ -158,6 +159,7 @@ function Game:promoteInnateCardsToTop()
     self.deck = {}
     for _, c in ipairs(innates) do table.insert(self.deck, c) end
     for _, c in ipairs(rest) do table.insert(self.deck, c) end
+    if markFx then EffectFeedback.markInnate(innates) end
 end
 
 function Game:getDeckOrigin()
@@ -174,7 +176,7 @@ function Game:drawCard(staggerDelay)
         self.discard = {}
         self:shuffleDeck()
         self:promoteInnateCardsToTop()
-        Sfx.play("deckStart")
+        EffectFeedback.reshuffle(self, #self.deck)
     end
     if #self.deck > 0 then
         local card = table.remove(self.deck, 1)
@@ -199,8 +201,11 @@ function Game:drawCard(staggerDelay)
                 else
                     card.dissolve = 0
                 end
-                local Sfx = require("src.systems.Sfx")
-                pcall(Sfx.playWithVariation, "cardDraw", 1.0, 0.15)
+                local HandDeal = require("src.ui.HandDeal")
+                if HandDeal.holds(card) then return end
+                if not EffectFeedback.onCardArrives(card) then
+                    pcall(Sfx.playWithVariation, "cardDraw", 1.0, 0.15)
+                end
             end)
         end
 
@@ -726,7 +731,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             if turnContext then table.insert(turnContext.cardsProcessed, card) end
             if card.exhaust and card.id then
                 table.insert(self._exhaustedThisBattle, card.id)
-                Sfx.play("cardExhaust")
                 self:onCardExhausted(card, sink)
             end
             if card.type ~= "joker" and not card.exhaust then
@@ -854,7 +858,6 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
 
     if card.exhaust and card.id then
         table.insert(self._exhaustedThisBattle, card.id)
-        Sfx.play("cardExhaust")
         self:onCardExhausted(card, sink)
     end
 
@@ -915,6 +918,7 @@ function Game:discardHandEndOfTurn()
         end
     end
     self.hand = kept
+    EffectFeedback.retainKept(kept)
 end
 
 function Game:_announceEnrageIfPending(sink)
@@ -1628,7 +1632,7 @@ function Game:resetHandAndDeck()
     end
 
     self:shuffleDeck()
-    self:promoteInnateCardsToTop()
+    self:promoteInnateCardsToTop(true)
 
     for i = 1, Config.Game.INITIAL_HAND_SIZE + self:getShopServiceCount("card_draw_upgrade") do
         if #self.deck > 0 then

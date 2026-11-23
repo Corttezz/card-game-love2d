@@ -6,6 +6,7 @@ EffectSystem.__index = EffectSystem
 local I18n = require("src.i18n.I18n")
 local Sfx = require("src.systems.Sfx")
 local CardFeel = require("src.systems.CardFeel")
+local EffectFeedback = require("src.systems.EffectFeedback")
 local CombatBeats = require("src.systems.CombatBeats")
 local Resistances = require("src.systems.Resistances")
 local TagSystem = require("src.systems.TagSystem")
@@ -355,19 +356,27 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
         local before = game.player.health
         game.player:loseHealth(v)
         require("src.systems.ArchetypeCounters").onSelfDamage(game, before - game.player.health)
+        EffectFeedback.selfDamage(before - game.player.health)
         return true
 
     elseif t == "restore_mana" then
+        local before = game.player.mana
         game.player.mana = math.min(game.player.maxMana, game.player.mana + v)
+        if game.player.mana > before then
+            EffectFeedback.mana(game.player.mana - before)
+        end
         return true
 
     elseif t == "increase_max_mana" then
         game.player.maxMana = game.player.maxMana + v
         game.player.mana = game.player.mana + v
+        EffectFeedback.maxMana(v)
         return true
 
     elseif t == "add_armor" then
+        local before = game.player.armor or 0
         game.player:addArmor(v)
+        EffectFeedback.armor((game.player.armor or 0) - before)
         return true
 
     elseif t == "magic_damage" then
@@ -402,7 +411,7 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
             game.enemy:revealIntent(math.max(1, math.floor(v > 0 and v or 1)))
             if wasHidden then
                 game:addMessage(I18n.t("messages.intent_revealed", nil, "Intent revealed"), "info")
-                Sfx.play("effectChime")
+                EffectFeedback.reveal()
             end
         end
         return true
@@ -415,6 +424,7 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
                     require("src.systems.Rng").get():random("misc", #game.hand))
                 table.insert(game.discard, card)
                 discarded = discarded + 1
+                EffectFeedback.discard(game, card, discarded)
             end
         end
         return true
@@ -436,6 +446,7 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
         local stacks = effect.stacks or 1
         local duration = effect.duration or 3
         game.player:addBuff(name, duration, stacks)
+        EffectFeedback.buff()
         return true
 
     elseif t == "channel_orb" then
@@ -505,7 +516,6 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
             if game.onCardCopied then game:onCardCopied(prev, srcCard) end
         end
         game:addMessage(msg("card_copied", { name = I18n.cardName(prev) }), "arcane")
-        Sfx.play("effectChime")
         return true
 
     elseif t == "copy_to_discard" then
@@ -516,7 +526,6 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
                 if game.onCardCopied then game:onCardCopied(srcCard, srcCard) end
             end
         end
-        Sfx.play("effectChime")
         return true
 
     elseif t == "strength_scaling" or t == "dexterity_scaling"

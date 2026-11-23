@@ -1148,6 +1148,20 @@ function love.load(loveArgs)
             shopPackOpenTear  = { "audio/sfx/shop-pack-open-tear.mp3", 0.45 },
             shopPotionDrink   = { "audio/sfx/shop-potion-drink.mp3",   0.45 },
             shopCrystalShatter = { "audio/sfx/shop-crystal-shatter.mp3", 0.45 },
+            exhaustBurn       = { "audio/sfx/card-exhaust-ash.mp3",    0.60 },
+            cardCopy          = { "audio/sfx/card-copy.mp3",           0.60 },
+            cardRetain        = { "audio/sfx/card-retain.mp3",         0.50 },
+            cardDiscard       = { "audio/sfx/card-discard.mp3",        0.60 },
+            deckShuffle       = { "audio/sfx/deck-shuffle.mp3",        0.80 },
+            manaRestore       = { "audio/sfx/mana-restore.mp3",        0.50 },
+            manaMaxUp         = { "audio/sfx/mana-max-up.mp3",         0.40 },
+            selfDamage        = { "audio/sfx/self-damage.mp3",         0.45 },
+            buffApplied       = { "audio/sfx/buff-applied.mp3",        0.45 },
+            intentReveal      = { "audio/sfx/intent-reveal.mp3",       0.30 },
+            innateRise        = { "audio/sfx/innate-rise.mp3",         0.40 },
+            mapOpen           = { "audio/sfx/map-open.mp3",            0.55 },
+            mapClose          = { "audio/sfx/map-close.mp3",           0.50 },
+            mapHover          = { "audio/sfx/map-hover.mp3",           0.70 },
         }) do
             if love.filesystem.getInfo(cfg[1]) then
                 audioSystem:loadSound(code, cfg[1], cfg[2])

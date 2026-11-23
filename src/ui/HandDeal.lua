@@ -57,6 +57,8 @@ local function release(c, n)
     else
         c.dissolve = 0
     end
+    local okFb, EffectFeedback = pcall(require, "src.systems.EffectFeedback")
+    if okFb and EffectFeedback.onCardArrives(c, n) then return end
     local ok, Sfx = pcall(require, "src.systems.Sfx")
     if ok and Sfx.playWithVariation then
         pcall(Sfx.playWithVariation, "cardDraw", 1.0 + (n - 1) * 0.03, 0.06)

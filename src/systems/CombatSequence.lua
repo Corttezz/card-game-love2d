@@ -7,6 +7,8 @@ local CardFeel = require("src.systems.CardFeel")
 local JokerProcFx = require("src.ui.JokerProcFx")
 local ExhaustFx = require("src.ui.ExhaustFx")
 local CopyFx = require("src.ui.CopyFx")
+local HandFx = require("src.ui.HandFx")
+local EffectFeedback = require("src.systems.EffectFeedback")
 
 local CombatBeats = require("src.systems.CombatBeats")
 
@@ -203,7 +205,7 @@ end
 
 function CombatSequence:_startExhaust(card, g, removeFlying)
     ExhaustFx.start(card, g.x, g.y, g.w, g.h)
-    pcall(Sfx.play, "cardExhaust")
+    pcall(EffectFeedback.exhaust)
     if card.juice_up then card:juice_up(0.18, 0.06) end
     if card.setTargetPos then card:setTargetPos(ExhaustFx.cardTarget({ x = g.x, y = g.y })) end
     if card.start_dissolve then
@@ -221,7 +223,7 @@ function CombatSequence:playCopy(source, copy, tx, ty)
     local x = (source.renderX and source.renderX ~= 0) and source.renderX or source.x or 0
     local y = (source.renderY and source.renderY ~= 0) and source.renderY or source.y or 0
     CopyFx.start(copy, x, y, w, h, tx, ty)
-    pcall(Sfx.play, "cardDraw")
+    pcall(EffectFeedback.copy)
 end
 
 function CombatSequence:_finish(onComplete)
@@ -339,6 +341,7 @@ function CombatSequence:update(dt)
 
     ExhaustFx.update(dt)
     CopyFx.update(dt)
+    HandFx.update(dt)
 
     if not self.active and #self.damageNumbers == 0 and #self.flyingCards == 0 then
         return

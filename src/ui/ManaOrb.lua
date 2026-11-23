@@ -35,6 +35,7 @@ function ManaOrb:updatePosition()
     local sh = love.graphics.getHeight()
     self.x = sw - Config.Utils.getResponsiveSize(0.05, 50, "width")
     self.y = sh - Config.Utils.getResponsiveSize(0.06, 55, "height")
+    ManaOrb.lastX, ManaOrb.lastY = self.x, self.y
 end
 
 local function setColor(c, a)
