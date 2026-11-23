@@ -151,6 +151,7 @@ function M.run()
         immune        = "joker_counter_antidote", fog = "joker_counter_lantern",
         frost         = "joker_counter_brazier", frail = "joker_counter_frail",
         burn          = "joker_counter_salamander", resist = "joker_counter_whetstone",
+        metal         = "joker_001",
     }
     for _, kw in ipairs(Keywords) do
         t:truthy("keyword " .. kw.id .. " tem carta-exemplo", SAMPLE[kw.id])
