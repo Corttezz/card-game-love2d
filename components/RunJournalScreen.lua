@@ -107,8 +107,8 @@ function RunJournalScreen:_build()
             if b.isEndless then
                 row = j
             else
-                row = math.max(1, math.min(Layout.FLOORS, tonumber(e.floor) or j))
-                if row <= lastRow then row = math.min(Layout.FLOORS, lastRow + 1) end
+                row = math.max(1, math.min(MapManager.FLOORS_PER_ACT, tonumber(e.floor) or j))
+                if row <= lastRow then row = math.min(MapManager.FLOORS_PER_ACT, lastRow + 1) end
             end
             e._row = row
             lastRow = row
@@ -116,7 +116,7 @@ function RunJournalScreen:_build()
         b.pending = nil
         if i == #self.acts and run.pendingNodes and #run.pendingNodes > 0 then
             local row = lastRow + 1
-            if b.isEndless or row <= Layout.FLOORS then
+            if b.isEndless or row <= MapManager.FLOORS_PER_ACT then
                 b.pending = { row = row, types = {} }
                 for k, nd in ipairs(run.pendingNodes) do b.pending.types[k] = nd.type end
             end

@@ -16,17 +16,17 @@ local function body()
     CO.SUSTAIN_GUARANTEE, CO.SUSTAIN_WEIGHT_BONUS = false, 0
 
     local off1 = ActSystem.getEnemyStats(3, 1, "elite").health
-    local off8 = ActSystem.getEnemyStats(3, 8, "elite").health
+    local off8 = ActSystem.getEnemyStats(3, require("src.systems.MapManager").FLOORS_PER_ACT, "elite").health
     local base1 = ActSystem.getEnemyStats(3, 1, "battle").health
     CG.ELITE_RAMP = true
     local on1 = ActSystem.getEnemyStats(3, 1, "elite").health
-    local on8 = ActSystem.getEnemyStats(3, 8, "elite").health
-    local on4 = ActSystem.getEnemyStats(3, 4, "elite").health
+    local on8 = ActSystem.getEnemyStats(3, require("src.systems.MapManager").FLOORS_PER_ACT, "elite").health
+    local on4 = ActSystem.getEnemyStats(3, math.floor(require("src.systems.MapManager").FLOORS_PER_ACT / 2), "elite").health
     CG.ELITE_RAMP = false
     t:check("ramp: 1º andar do A3 cai (" .. off1 .. " -> " .. on1 .. ")", on1 < off1)
     t:check("ramp: 1º andar ≈ base × 1,4 (" .. on1 .. " vs " .. math.floor(base1 * 1.4) .. ")",
         math.abs(on1 - base1 * 1.4) <= 2)
-    t:eq("ramp: 8º andar inalterado", on8, off8)
+    t:eq("ramp: último andar inalterado", on8, off8)
     t:check("ramp: andar do meio fica entre os dois", on4 > on1 and on4 < off8)
     t:eq("ramp desligado volta ao valor antigo", ActSystem.getEnemyStats(3, 1, "elite").health, off1)
 

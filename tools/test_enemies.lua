@@ -70,8 +70,11 @@ function M.run()
     end
     t:eq("todo inimigo do roster pertence ao bioma do ato", table.concat(foreign, ","), "")
     local endlessOk = true
-    for floor = 25, 120 do
-        local shown = (((4 + math.floor((floor - 25) / 8)) - 1) % 6) + 1
+    local MM = require("src.systems.MapManager")
+    local start, F = MM.endlessStart(), MM.FLOORS_PER_ACT
+    local firstBiome = (start - 1) / F + 1
+    for floor = start, start + 12 * F do
+        local shown = (((firstBiome + math.floor((floor - start) / F)) - 1) % 6) + 1
         local run = { endlessMode = true, actNumber = 7, currentFloor = floor }
         local act = EnemyRoster.biomeAct(run)
         if act ~= shown then endlessOk = false end
@@ -79,7 +82,7 @@ function M.run()
         local id = EnemyRoster.pick(act, "battle", nil)
         if EnemyKits.HOME_BIOME[id] ~= shown then endlessOk = false end
     end
-    t:truthy("endless: inimigo do bioma que a cena mostra (andares 25-120)", endlessOk)
+    t:truthy("endless: inimigo do bioma que a cena mostra (12 ciclos do endless)", endlessOk)
 
     local missingKit, missingSprite = {}, {}
     for id in pairs(seenIds) do
