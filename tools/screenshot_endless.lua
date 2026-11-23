@@ -20,7 +20,7 @@ function M.run()
     require("src.systems.Rng").setActive(require("src.systems.Rng").new(4242))
     local run = game.runManager.currentRun
     run.actNumber, run.floorInAct = Config.TotalActs, 8
-    run.currentFloor = Config.TotalActs * 8
+    run.currentFloor = Config.TotalActs * require("src.systems.MapManager").FLOORS_PER_ACT
     run.campaignWon = true
     game.runManager:advanceFloorInAct()
     RM.chooseCurse(run, RM.pending(run)[1])

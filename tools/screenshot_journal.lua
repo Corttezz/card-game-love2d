@@ -39,7 +39,7 @@ local function visit(rm, act, floor, options, pick, snapIn, snapOut, notes, ev)
     local run = rm.currentRun
     run.actNumber = act
     run.floorInAct = floor
-    run.currentFloor = (act - 1) * 8 + floor
+    run.currentFloor = (act - 1) * require("src.systems.MapManager").FLOORS_PER_ACT + floor
     local opts = {}
     for i, t in ipairs(options) do opts[i] = { type = t } end
     local node = opts[pick]

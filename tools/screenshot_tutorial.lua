@@ -55,7 +55,7 @@ function M.run(arg)
         local RM = require("src.systems.RunModifiers")
         local run = game.runManager.currentRun
         run.actNumber, run.floorInAct = Config.TotalActs, 8
-        run.currentFloor = Config.TotalActs * 8
+        run.currentFloor = Config.TotalActs * require("src.systems.MapManager").FLOORS_PER_ACT
         run.campaignWon = true
         game.runManager:advanceFloorInAct()
         screen = require("components.EndlessCurseScreen"):new()
