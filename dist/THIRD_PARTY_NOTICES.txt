@@ -20,6 +20,18 @@ This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 http://scripts.sil.org/OFL
 
+Font: Jacquard 12 (assets/fonts/Jacquard12-Regular.ttf)
+--------------------------------------------------------
+Copyright 2023 The Soft Type Project Authors
+(https://github.com/scfried/soft-type-jacquard).
+Licensed under the SIL Open Font License, Version 1.1 (copied below).
+
+Font: Pirata One (assets/fonts/PirataOne-Regular.ttf)
+-----------------------------------------------------
+Copyright (c) 2012, Rodrigo Fuenzalida, Nicolas Massi
+(www.taip.com.ar / abc.taip.com.ar), with Reserved Font Name "Pirata".
+Licensed under the SIL Open Font License, Version 1.1 (copied below).
+
 -----------------------------------------------------------
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
 -----------------------------------------------------------

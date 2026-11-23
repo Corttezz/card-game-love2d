@@ -877,6 +877,17 @@ return {
         state_choice = "Choix disponible maintenant",
         state_reach = "Accessible par ce chemin",
         state_closed = "Hors de votre chemin",
+        how_title = "Lire la carte",
+        how_1 = "Avancez de gauche à droite, un étage à la fois.",
+        how_2 = "Chaque halte ouvre 2 ou 3 sentiers : choisissez-en un.",
+        how_3 = "Or : vos choix maintenant. Rouge : le chemin parcouru.",
+        legend_choice = "Votre choix maintenant",
+        floor_word = "Étage",
+        you_are_here = "Vous êtes ici",
+        exits_one = "1 sentier part d'ici",
+        exits_many = "{n} sentiers partent d'ici",
+        fork_button = "Voir la carte",
+        fork_button_sub = "planifiez la route",
     },
 
     victory = {

@@ -9,6 +9,7 @@ return {
         select = "Select a card",
         play = "Press Play Cards",
         end_turn = "Press End Turn",
+        open_map = "Open the map",
     },
     settings_tips = "Raven tutorial",
     settings_reset = "Restart the tutorial",
@@ -113,8 +114,19 @@ return {
         fork = {
             paths = "A *crossroads*. Each marker is a path: battle, *Elite*, rest, shop or event. Pick yours.",
         },
+        fork_map = {
+            map = "Before you choose, *check the map*. It shows the whole act and where each trail leads.",
+        },
+        act_map = {
+            read = "This is the *act map*. You travel left to right, one floor at a time, up to the *Boss*'s castle.",
+            here = "The red mark shows *where you are*. Red trails are the road you've already taken.",
+            branches = "Markers with a *gold ring* are your options now. Click one to follow it.",
+            legend = "Each stop opens *two or three trails*. The legend tells you each symbol: battle, *Elite*, event, shop, rest.",
+            boss = "At the end of the act every trail meets: first the *Mini-Boss*, then the *Boss*. Arrive strong.",
+            close = "Press *M* or the map icon at the top whenever you want to review your route.",
+        },
         endless = {
-            cycle = "Beyond the final boss lies the *Endless*. Every cycle of eight floors, you choose a *curse*.",
+            cycle = "Beyond the final boss lies the *Endless*. Every cycle of twelve floors, you choose a *curse*.",
             grow = "Enemies grow every cycle, with no limit. How far can your grimoire go?",
         },
         class_select = {

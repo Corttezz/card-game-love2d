@@ -58,9 +58,10 @@ function ScoreSystem:finishBattle(game)
         and game.runManager.currentRun or nil
     local act = (run and run.actNumber) or 1
     local floorN = (run and run.floorInAct) or math.min(8, game.currentPhase or 1)
+    if run then floorN = require("src.systems.MapManager").legacyFloor(floorN) end
 
     local tinta = (game.enemy and game.enemy.maxHealth or 0)
-        + 10 * floorN + 50 * (act - 1)
+        + math.floor(10 * floorN) + 50 * (act - 1)
     local nodeType = run and run.currentNode and run.currentNode.type
     if nodeType == "boss" then
         tinta = tinta * 2

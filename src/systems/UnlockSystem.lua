@@ -166,7 +166,7 @@ function UnlockSystem.computeRunXP(summary)
         acts = math.max(0, act - 1)
         if summary.victory or summary.endlessMode then acts = totalActs() end
     end
-    local xp = floors * X.PER_FLOOR + acts * X.PER_ACT
+    local xp = floors * X.PER_FLOOR * 8 / perAct + acts * X.PER_ACT
         + endlessFloors * X.PER_ENDLESS
     if summary.victory then xp = xp + X.VICTORY end
     return math.max(X.MINIMUM, math.floor(xp))

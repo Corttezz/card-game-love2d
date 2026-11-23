@@ -15,7 +15,7 @@ function EnemyRoster.biomeAct(run)
     if not run then return 1 end
     local a = run.actNumber or 1
     if run.endlessMode then
-        a = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+        a = require("src.systems.MapManager").endlessBiome(run)
     end
     return (((a or 1) - 1) % 6) + 1
 end

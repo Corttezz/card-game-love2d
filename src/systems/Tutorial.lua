@@ -265,7 +265,13 @@ Tutorial.ACTIONS = {
         done = function(g) return g.turn ~= "player" or g._enemyActing == true end,
         keys = { q = true, x = true }, label = "tutorial.act.end_turn",
     },
+    open_map = {
+        done = function() return _G.actMapScreen ~= nil and _G.actMapScreen:isVisible() end,
+        keys = {}, label = "tutorial.act.open_map",
+    },
 }
+
+local function mapOpen() return screenVisible("actMap") and anyAnchor("map_sheet") end
 
 Tutorial.SCRIPT = {
     { id = "intro", state = "playing",
@@ -415,6 +421,17 @@ Tutorial.SCRIPT = {
     { id = "fork", state = "mapSelection",
       when = function() return forkRect() ~= nil end,
       lines = { { id = "paths", spot = forkRect } } },
+    { id = "fork_map", state = "mapSelection", after = "fork",
+      when = function() return forkRect() ~= nil and anyAnchor("fork_map") and not Tutorial.isSeen("act_map") end,
+      lines = { { id = "map", spot = "fork_map", action = "open_map" } } },
+    { id = "act_map", state = "*", when = mapOpen,
+      lines = {
+          { id = "read", spot = "map_nodes" },
+          { id = "here", spot = "map_here", cond = function() return anyAnchor("map_here") end },
+          { id = "branches", spot = "map_choices", cond = function() return anyAnchor("map_choices") end },
+          { id = "legend", spot = "map_legend" },
+          { id = "boss", spot = "map_boss", cond = function() return anyAnchor("map_boss") end },
+          { id = "close", spot = "map_how" } } },
     { id = "endless", state = "*",
       when = function() return screenVisible("endless") and anyAnchor("curse_options") end,
       lines = { { id = "cycle", spot = "curse_options" }, { id = "grow" } } },
@@ -655,7 +672,8 @@ function Tutorial.update(dt, state, game)
     if cap and cap ~= Tutorial.overlay then
         local okD = screens.dice and cap == screens.dice
         local okE = screens.endless and cap == screens.endless
-        if not (okD or okE) then pendingId = nil return end
+        local okM = screens.actMap and cap == screens.actMap
+        if not (okD or okE or okM) then pendingId = nil return end
     end
 
     local found = nextCandidate(state, game)

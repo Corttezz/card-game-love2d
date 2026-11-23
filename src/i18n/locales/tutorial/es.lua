@@ -9,6 +9,7 @@ return {
         select = "Selecciona una carta",
         play = "Pulsa Jugar Cartas",
         end_turn = "Pulsa Terminar Turno",
+        open_map = "Abre el mapa",
     },
     settings_tips = "Tutorial del cuervo",
     settings_reset = "Reiniciar el tutorial",
@@ -113,8 +114,19 @@ return {
         fork = {
             paths = "Una *encrucijada*. Cada hito es un camino: batalla, *Élite*, descanso, tienda o evento. Elige el tuyo.",
         },
+        fork_map = {
+            map = "Antes de elegir, *mira el mapa*. Muestra el acto entero y adónde lleva cada sendero.",
+        },
+        act_map = {
+            read = "Este es el *mapa del acto*. Avanzas de izquierda a derecha, un piso a la vez, hasta el castillo del *Jefe*.",
+            here = "La marca roja indica *dónde estás*. Los senderos rojos son el camino que ya hiciste.",
+            branches = "Los hitos con *anillo dorado* son tus opciones ahora. Haz clic en uno para seguirlo.",
+            legend = "De cada parada salen *dos o tres senderos*. La leyenda explica cada símbolo: batalla, *Élite*, evento, tienda, descanso.",
+            boss = "Al final del acto todos los senderos se unen: primero el *Mini-Jefe*, luego el *Jefe*. Llega fuerte.",
+            close = "Pulsa *M* o el icono del mapa arriba cuando quieras revisar tu ruta.",
+        },
         endless = {
-            cycle = "Más allá del último jefe está el *Infinito*. En cada ciclo de ocho pisos eliges una *maldición*.",
+            cycle = "Más allá del último jefe está el *Infinito*. En cada ciclo de doce pisos eliges una *maldición*.",
             grow = "Los enemigos crecen en cada ciclo, sin límite. ¿Hasta dónde llegará tu grimorio?",
         },
         class_select = {

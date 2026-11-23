@@ -24,12 +24,13 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
         hp  = math.floor((act.bossHP or 200) * 0.7)
         dmg = math.floor((act.bossDmg or 20) * 0.8)
     else
-        hp  = math.floor(act.enemyHP(floorInAct))
-        dmg = math.floor(act.enemyDmg(floorInAct))
+        local lf = require("src.systems.MapManager").legacyFloor(floorInAct)
+        hp  = math.floor(act.enemyHP(lf))
+        dmg = math.floor(act.enemyDmg(lf))
         if nodeType == "elite" then
             local hpMul = act.eliteHPMul or 1.5
             if Config.Game and Config.Game.ELITE_RAMP and hpMul > (Config.Game.ELITE_RAMP_START or hpMul) then
-                local t = math.max(0, math.min(1, ((floorInAct or 1) - 1) / 7))
+                local t = math.max(0, math.min(1, (lf - 1) / 7))
                 local start = Config.Game.ELITE_RAMP_START
                 hpMul = start + (hpMul - start) * t
             end

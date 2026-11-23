@@ -382,10 +382,11 @@ function GameplayScene._drawWorldOnlyReal(topBarHeight)
     if run then currentAct = run.actNumber or 1 end
     local biomeIdx = currentAct
     if run and run.endlessMode then
-        biomeIdx = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+        biomeIdx = require("src.systems.MapManager").endlessBiome(run)
     end
     WorldRoad.draw(0, topBarHeight, width, height - topBarHeight, biomeIdx)
     WorldRoad.drawOverlays(0, topBarHeight, width, height - topBarHeight)
+    require("src.ui.ForkMapButton").draw(run)
     local f = WorldRoad._fork
     if f and f.markBoxes then
         for i = 1, (f.n or 3) do
@@ -508,7 +509,7 @@ function GameplayScene.draw()
     elseif GameplayScene.SCENE_MODE == "worldroad" then
         local biomeIdx = currentAct
         if run and run.endlessMode then
-            biomeIdx = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+            biomeIdx = require("src.systems.MapManager").endlessBiome(run)
         end
         WorldRoad.draw(0, topBarHeight, width, height - topBarHeight, biomeIdx)
     else
@@ -838,9 +839,9 @@ function GameplayScene.update(dt)
             if runT then
                 floorIn = runT.floorInAct or 1
             else
-                floorIn = ((game.currentPhase or 1) - 1) % 8 + 1
+                floorIn = ((game.currentPhase or 1) - 1) % require("src.systems.MapManager").FLOORS_PER_ACT + 1
             end
-            local prog = math.min(1, math.max(0, (floorIn - 1) / 7)) ^ 1.35
+            local prog = math.min(1, math.max(0, (require("src.systems.MapManager").legacyFloor(floorIn) - 1) / 7)) ^ 1.35
             WorldRoad.setTimeOfDay(0.62 + 0.38 * prog)
         end
         UiScale.outside(WorldRoad.update, dt)

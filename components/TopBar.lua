@@ -408,7 +408,8 @@ end
 
 function TopBar:_mapPending()
     local rm = self.game and self.game.runManager
-    local pend = rm and rm.pendingNodes
+    local run = rm and rm.currentRun
+    local pend = run and run.pendingNodes
     return pend ~= nil and #pend > 0
 end
 
@@ -427,6 +428,7 @@ function TopBar:drawMapIcon()
     local x, y, sz = self:_getMapRect()
     local hover = self.mapHover or 0
     local pending = self:_mapPending()
+    require("src.systems.Tutorial").anchor("topbar_map", x - 6, y - 6, sz + 12, sz + 12)
     local pad = 5
     local gd, gl = Palette.AGED_GOLD_DARK, Palette.AGED_GOLD_LIGHT
     local glow = hover

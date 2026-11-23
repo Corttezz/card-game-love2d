@@ -59,6 +59,34 @@ function FontManager.getFont(size)
     return fontCache[key]
 end
 
+FontManager.MAP_TITLE = "assets/fonts/Jacquard12-Regular.ttf"
+FontManager.MAP_TEXT  = "assets/fonts/PirataOne-Regular.ttf"
+
+local pathCache = {}
+
+function FontManager.getFontAt(path, size)
+    size = math.max(1, math.floor(size or 12))
+    UiScale = UiScale or require("src.ui.UiScale")
+    local dpi = UiScale.fontDpi()
+    local key = path .. "|" .. size .. "@" .. dpi
+    local font = pathCache[key]
+    if font == nil then
+        local ok, result = false, nil
+        if love.filesystem.getInfo(path) then
+            ok, result = pcall(love.graphics.newFont, path, size, "normal", dpi)
+        end
+        if ok then
+            font = result
+            font:setFilter("nearest", "nearest")
+        else
+            Debug.warn("[FontManager] " .. path .. " indisponível — usando a fonte padrão")
+            font = false
+        end
+        pathCache[key] = font
+    end
+    return font or FontManager.getFont(size)
+end
+
 function FontManager.getResponsiveFont(ratio, maxSize)
     local height = love.graphics.getHeight()
     local size = math.min(maxSize, math.floor(height * ratio))
@@ -67,6 +95,7 @@ end
 
 function FontManager.clearCache()
     fontCache = {}
+    pathCache = {}
 end
 
 function FontManager.getCacheStats()

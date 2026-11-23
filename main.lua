@@ -1395,7 +1395,8 @@ function love.load(loveArgs)
         IF.register("tutorialTip",  require("src.systems.Tutorial").overlay)
         require("src.systems.Tutorial").setScreens({
             cardReward = cardRewardScreen, rest = restScreen, event = eventScreen,
-            dice = _G.scribeDiceScreen, endless = _G.endlessCurseScreen })
+            dice = _G.scribeDiceScreen, endless = _G.endlessCurseScreen,
+            actMap = _G.actMapScreen })
     end
 
     _G.openBoosterPack = function(pack, onComplete)
@@ -2125,7 +2126,10 @@ function love.mousepressed(x, y, button)
     elseif currentState == "mapSelection" then
         local WorldRoad = require("src.ui.WorldRoad")
         if WorldRoad.isForkActive() then
-            WorldRoad.forkMousePressed(x, y)
+            local run = game.runManager and game.runManager.currentRun
+            if not require("src.ui.ForkMapButton").mousepressed(run, x, y, button) then
+                WorldRoad.forkMousePressed(x, y)
+            end
         else
             mapScreen:mousepressed(x, y, button)
         end

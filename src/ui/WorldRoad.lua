@@ -5570,7 +5570,7 @@ function WorldRoad.restoreProgress(actNumber, floorInAct)
     WorldRoad._segBase = 0
     WorldRoad._camZ = math.max(0, (floorInAct or 1) - 1) * WorldRoad.TRAVEL_DISTANCE
     WorldRoad.planStop(WorldRoad._camZ, true)
-    local prog = math.min(1, math.max(0, ((floorInAct or 1) - 1) / 7)) ^ 1.35
+    local prog = math.min(1, math.max(0, (require("src.systems.MapManager").legacyFloor(floorInAct) - 1) / 7)) ^ 1.35
     WorldRoad._timeOfDay = 0.62 + 0.38 * prog
     WorldRoad._timeOfDayTarget = WorldRoad._timeOfDay
 end

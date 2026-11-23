@@ -53,7 +53,7 @@ function M.run()
     t:eq("avanço normal retorna 'advanced'", rm2:advanceFloorInAct(), "advanced")
     t:eq("andar incrementou", rm2.currentRun.floorInAct, 4)
 
-    rm2.currentRun.floorInAct = 8; rm2.currentRun.actNumber = 1
+    rm2.currentRun.floorInAct = MapManager.FLOORS_PER_ACT; rm2.currentRun.actNumber = 1
     t:eq("fim de ato (não-final) retorna 'act_complete'", rm2:advanceFloorInAct(), "act_complete")
     t:eq("virou ato 2", rm2.currentRun.actNumber, 2)
     t:eq("andar reset p/ 1", rm2.currentRun.floorInAct, 1)
@@ -70,29 +70,30 @@ function M.run()
             rmFull.currentRun.endlessMode)
     end
 
-    rm2.currentRun.floorInAct = 8
+    rm2.currentRun.floorInAct = MapManager.FLOORS_PER_ACT
     rm2.currentRun.actNumber = Config.TotalActs
     t:eq("fim do ato final retorna 'endless_start'", rm2:advanceFloorInAct(), "endless_start")
     t:truthy("endlessMode ativado", rm2.currentRun.endlessMode)
 
-    t:eq("FLOORS_PER_ACT = 8", MapManager.FLOORS_PER_ACT, 8)
+    t:eq("FLOORS_PER_ACT = 12", MapManager.FLOORS_PER_ACT, 12)
+    local F = MapManager.FLOORS_PER_ACT
 
     local nodes = MapManager.generate(3, 1, 3)
     t:eq("generate andar 3 -> 3 nós", #nodes, 3)
     t:truthy("nó tem .type", nodes[1] and nodes[1].type ~= nil)
 
-    local boss = MapManager.generate(8, 1, 3)
-    t:eq("andar 8 -> 1 nó forçado", #boss, 1)
-    t:eq("andar 8 -> BOSS", boss[1].type, "boss")
+    local boss = MapManager.generate(F, 1, 3)
+    t:eq("andar 12 -> 1 nó forçado", #boss, 1)
+    t:eq("andar 12 -> BOSS", boss[1].type, "boss")
 
-    local mini = MapManager.generate(7, 1, 3)
-    t:eq("andar 7 -> MINI-BOSS", mini[1].type, "mini_boss")
+    local mini = MapManager.generate(F - 1, 1, 3)
+    t:eq("andar 11 -> MINI-BOSS", mini[1].type, "mini_boss")
 
     local function fa(g) local a, f = MapManager.floorToAct(g); return a, f end
     local a1, f1 = fa(1);  t:truthy("floor 1 -> ato 1 andar 1", a1 == 1 and f1 == 1)
-    local a8, f8 = fa(8);  t:truthy("floor 8 -> ato 1 andar 8", a8 == 1 and f8 == 8)
-    local a9, f9 = fa(9);  t:truthy("floor 9 -> ato 2 andar 1", a9 == 2 and f9 == 1)
-    local a24, f24 = fa(24); t:truthy("floor 24 -> ato 3 andar 8", a24 == 3 and f24 == 8)
+    local a8, f8 = fa(12);  t:truthy("floor 12 -> ato 1 andar 12", a8 == 1 and f8 == 12)
+    local a9, f9 = fa(13);  t:truthy("floor 13 -> ato 2 andar 1", a9 == 2 and f9 == 1)
+    local a24, f24 = fa(36); t:truthy("floor 36 -> ato 3 andar 12", a24 == 3 and f24 == 12)
 
     local savedPower = Config.Game.ENEMY_POWER
     local savedByActRaw = Config.Game.ENEMY_POWER_BY_ACT
@@ -101,7 +102,7 @@ function M.run()
     local s = ActSystem.getEnemyStats(1, 1, "battle")
     t:eq("ato1 andar1 battle HP = 14", s.health, 14)
     t:eq("ato1 andar1 battle dano = 4", s.damage, 4)
-    t:eq("ato1 andar8 battle HP = 56", ActSystem.getEnemyStats(1, 8, "battle").health, 56)
+    t:eq("ato1 andar12 battle HP = 56 (mesma curva de 8 andares)", ActSystem.getEnemyStats(1, F, "battle").health, 56)
 
     t:eq("boss ato1 HP = 110", ActSystem.getEnemyStats(1, 8, "boss").health, 110)
     t:eq("boss ato1 dano = 12", ActSystem.getEnemyStats(1, 8, "boss").damage, 12)

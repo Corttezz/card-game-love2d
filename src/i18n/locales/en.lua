@@ -877,6 +877,17 @@ return {
         state_choice = "Choice available now",
         state_reach = "Reachable along this path",
         state_closed = "Off your path",
+        how_title = "How to read the map",
+        how_1 = "Travel left to right, one floor at a time.",
+        how_2 = "Each stop opens 2 or 3 trails: pick one.",
+        how_3 = "Gold: your options now. Red: the road you took.",
+        legend_choice = "Your choice now",
+        floor_word = "Floor",
+        you_are_here = "You are here",
+        exits_one = "1 trail leaves here",
+        exits_many = "{n} trails leave here",
+        fork_button = "View the map",
+        fork_button_sub = "plan your route",
     },
 
     victory = {

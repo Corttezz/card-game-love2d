@@ -877,6 +877,17 @@ return {
         state_choice = "Jetzt wählbar",
         state_reach = "Über diesen Weg erreichbar",
         state_closed = "Abseits deines Weges",
+        how_title = "So liest du die Karte",
+        how_1 = "Reise von links nach rechts, eine Etage nach der anderen.",
+        how_2 = "Von jedem Halt gehen 2 oder 3 Pfade ab: wähle einen.",
+        how_3 = "Gold: deine Optionen jetzt. Rot: dein bisheriger Weg.",
+        legend_choice = "Deine Wahl jetzt",
+        floor_word = "Etage",
+        you_are_here = "Du bist hier",
+        exits_one = "Von hier geht 1 Pfad ab",
+        exits_many = "Von hier gehen {n} Pfade ab",
+        fork_button = "Karte ansehen",
+        fork_button_sub = "plane die Route",
     },
 
     victory = {

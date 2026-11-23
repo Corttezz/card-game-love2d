@@ -9,6 +9,7 @@ return {
         select = "Wähle eine Karte",
         play = "Drücke Karten spielen",
         end_turn = "Drücke Zug Beenden",
+        open_map = "Öffne die Karte",
     },
     settings_tips = "Raben-Tutorial",
     settings_reset = "Tutorial neu starten",
@@ -113,8 +114,19 @@ return {
         fork = {
             paths = "Eine *Weggabelung*. Jede Marke ist ein Weg: Kampf, *Elite*, Rast, Laden oder Ereignis. Wähle deinen.",
         },
+        fork_map = {
+            map = "Bevor du wählst, *sieh auf die Karte*. Sie zeigt den ganzen Akt und wohin jeder Pfad führt.",
+        },
+        act_map = {
+            read = "Das ist die *Aktkarte*. Du reist von links nach rechts, Etage für Etage, bis zur Burg des *Bosses*.",
+            here = "Die rote Marke zeigt, *wo du bist*. Rote Pfade sind der Weg, den du schon gegangen bist.",
+            branches = "Marken mit *goldenem Ring* sind deine Optionen jetzt. Klicke eine an, um ihr zu folgen.",
+            legend = "Von jedem Halt gehen *zwei oder drei Pfade* ab. Die Legende erklärt jedes Symbol: Kampf, *Elite*, Ereignis, Laden, Rast.",
+            boss = "Am Ende des Akts treffen sich alle Pfade: zuerst der *Mini-Boss*, dann der *Boss*. Komm stark an.",
+            close = "Drücke *M* oder das Kartensymbol oben, um deine Route jederzeit anzusehen.",
+        },
         endless = {
-            cycle = "Hinter dem letzten Boss liegt *Endlos*. In jedem Zyklus aus acht Etagen wählst du einen *Fluch*.",
+            cycle = "Hinter dem letzten Boss liegt *Endlos*. In jedem Zyklus aus zwölf Etagen wählst du einen *Fluch*.",
             grow = "Die Gegner wachsen mit jedem Zyklus, ohne Grenze. Wie weit trägt dich dein Grimoire?",
         },
         class_select = {

@@ -25,7 +25,7 @@ function IntentVisibility.biomeIdFor(run)
     if not run then return nil end
     local a = run.actNumber or 1
     if run.endlessMode then
-        a = 4 + math.floor(math.max(0, (run.currentFloor or 25) - 25) / 8)
+        a = require("src.systems.MapManager").endlessBiome(run)
     end
     a = ((a - 1) % 6) + 1
     local biomes = require("src.data.biomes")
@@ -45,7 +45,7 @@ function IntentVisibility.contextFor(run, nodeType)
     if not rule then return nil end
     nodeType = nodeType or (run.currentNode and run.currentNode.type) or "battle"
     local floor = run.floorInAct or 1
-    local progress = math.min(1, math.max(0, (floor - 1) / 7))
+    local progress = math.min(1, math.max(0, (require("src.systems.MapManager").legacyFloor(floor) - 1) / 7))
     local ctx = { biomeId = bid, progress = progress, hall = (nodeType == "boss") }
     ctx.density = IntentVisibility.density(ctx)
     return ctx

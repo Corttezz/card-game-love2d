@@ -87,7 +87,7 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
                 if a.pending then rows = math.max(rows, a.pending.row or 0) end
                 rows = math.max(1, rows)
             else
-                rows = R.FLOORS or 8
+                rows = R.FLOORS or require("src.systems.MapManager").FLOORS_PER_ACT
             end
             local nLegend = a.legend or 0
             local legendRows = 0
@@ -200,7 +200,6 @@ function RunJournalLayout.compute(sw, sh, acts, scroll, seed)
     return L
 end
 
-R.FLOORS = 8
 
 function RunJournalLayout.glyphRect(L, p)
     local g = L.glyph

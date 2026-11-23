@@ -877,6 +877,17 @@ return {
         state_choice = "Elección disponible ahora",
         state_reach = "Alcanzable por este camino",
         state_closed = "Fuera de tu camino",
+        how_title = "Cómo leer el mapa",
+        how_1 = "Avanza de izquierda a derecha, un piso a la vez.",
+        how_2 = "De cada parada salen 2 o 3 senderos: elige uno.",
+        how_3 = "Oro: tus opciones ahora. Rojo: el camino recorrido.",
+        legend_choice = "Tu elección ahora",
+        floor_word = "Piso",
+        you_are_here = "Estás aquí",
+        exits_one = "De aquí sale 1 sendero",
+        exits_many = "De aquí salen {n} senderos",
+        fork_button = "Ver el mapa",
+        fork_button_sub = "planea la ruta",
     },
 
     victory = {

@@ -9,6 +9,7 @@ return {
         select = "Selecione uma carta",
         play = "Aperte Jogar Cartas",
         end_turn = "Aperte Encerrar Turno",
+        open_map = "Abra o mapa",
     },
     settings_tips = "Tutorial do corvo",
     settings_reset = "Recomeçar o tutorial",
@@ -113,8 +114,19 @@ return {
         fork = {
             paths = "Uma *encruzilhada*. Cada marco é um caminho: batalha, *Elite*, descanso, loja ou evento. Escolha o seu.",
         },
+        fork_map = {
+            map = "Antes de escolher, *olhe o mapa*. Ele mostra o ato inteiro e para onde cada trilha leva.",
+        },
+        act_map = {
+            read = "Este é o *mapa do ato*. Você anda da esquerda para a direita, um andar por vez, até o castelo do *Chefe*.",
+            here = "A marca vermelha diz *onde você está*. As trilhas em vermelho são o caminho que você já fez.",
+            branches = "Os marcos com *anel dourado* são suas opções agora. Clique em um para seguir por ele.",
+            legend = "De cada parada saem *duas ou três trilhas*. A legenda diz o que é cada símbolo: batalha, *Elite*, evento, loja, descanso.",
+            boss = "No fim do ato, todas as trilhas se juntam: primeiro o *Mini-Chefe*, depois o *Chefe*. Chegue lá forte.",
+            close = "Aperte *M* ou o ícone do mapa no topo quando quiser rever a rota.",
+        },
         endless = {
-            cycle = "Além do último chefe, o *Sem Fim*. A cada ciclo de oito andares, você escolhe uma *maldição*.",
+            cycle = "Além do último chefe, o *Sem Fim*. A cada ciclo de doze andares, você escolhe uma *maldição*.",
             grow = "Os inimigos crescem a cada ciclo, sem limite. Até onde o seu grimório aguenta?",
         },
         class_select = {

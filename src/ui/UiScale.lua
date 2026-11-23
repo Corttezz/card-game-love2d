@@ -221,6 +221,7 @@ UiScale.SCREENS = {
     "components.EventScreen", "components.PackOpenScreen",
     "components.RoundEvalScreen", "components.PauseMenu",
     "components.SettingsMenu", "components.EndlessCurseScreen",
+    "components.ActMapScreen",
 }
 UiScale.MODULES = { "src.scenes.EndScreens", "src.ui.ConfirmDialog", "src.ui.AchievementToast",
     "src.scenes.GameplayScene", "components.CheatPanel" }
