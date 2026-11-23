@@ -92,17 +92,13 @@ function M.run()
 
     clear(played)
     HandFx.clear()
-    local keep = g.hand[1]
-    if keep then
-        keep.retain = true
-        g:discardHandEndOfTurn()
-        t:check("reter toca cardRetain", has(played, "cardRetain"))
-        t:eq("reter anima a carta que ficou", HandFx.count("retain"), 1)
-        t:falsy("flag de reter é limpa depois do efeito", keep._fxRetained)
-        keep.retain = nil
-    else
-        t:check("mão vazia para testar reter", false)
-    end
+    local keep = { id = "r", type = "attack", attack = 1, cost = 0, retain = true }
+    g.hand = { keep, { id = "s", type = "attack", attack = 1, cost = 0 } }
+    g:discardHandEndOfTurn()
+    t:eq("só a carta com reter fica na mão", g.hand[1] == keep and #g.hand, 1)
+    t:check("reter toca cardRetain", has(played, "cardRetain"))
+    t:eq("reter anima a carta que ficou", HandFx.count("retain"), 1)
+    t:falsy("flag de reter é limpa depois do efeito", keep._fxRetained)
 
     clear(played)
     HandFx.clear()

@@ -159,7 +159,7 @@ function M.run()
     g = TK.newRunGame("warrior"); TK.pump(g, 0.5)
     local run = g.runManager.currentRun
     run.actNumber = require("src.core.Config").TotalActs
-    run.floorInAct = 8; run.endlessMode = false
+    run.floorInAct = require("src.systems.MapManager").FLOORS_PER_ACT; run.endlessMode = false
     run.currentNode = { type = "boss" }
     g.enemy.health = 0
     t:truthy("checkVictory no boss final", g:checkVictory())

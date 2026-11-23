@@ -62,54 +62,56 @@ function M.run()
     end
     t:eq("sem run = sem contexto", IV.contextFor(nil), nil)
 
+    local F = require("src.systems.MapManager").FLOORS_PER_ACT
     local function ctxAt(floor, nodeType)
         return IV.contextFor({ actNumber = 4, floorInAct = floor, currentNode = { type = nodeType or "battle" } })
     end
     local fr = Fog.biomes.frost
     t:near("frost andar 1 = base", IV.density(ctxAt(1)), fr.base, 1e-6)
-    t:near("frost andar 8 (estrada) = peak", IV.density(ctxAt(8)), fr.peak, 1e-6)
+    t:near("frost último andar (estrada) = peak", IV.density(ctxAt(F)), fr.peak, 1e-6)
     local prev = -1
     local mono = true
-    for f = 1, 8 do
+    for f = 1, F do
         local d = IV.density(ctxAt(f))
         if d < prev - 1e-9 then mono = false end
         prev = d
     end
     t:truthy("densidade cresce com o andar (como a neve)", mono)
-    t:near("salão do chefe = densidade fixa `hall`", IV.density(ctxAt(8, "boss")), fr.hall, 1e-6)
-    t:truthy("salão marcado no contexto", ctxAt(8, "boss").hall == true)
+    t:near("salão do chefe = densidade fixa `hall`", IV.density(ctxAt(F, "boss")), fr.hall, 1e-6)
+    t:truthy("salão marcado no contexto", ctxAt(F, "boss").hall == true)
     t:eq("densidade sem contexto = 0", IV.density(nil), 0)
 
     local s1 = IV.expectedShares(ctxAt(1))
     t:eq("frost andar 1: NUNCA some o tipo (hidden = 0)", s1.hidden, 0)
     t:check("frost andar 1: um terço dos anúncios sem número", s1.type_only > 0.3 and s1.type_only < 0.4)
-    local s7 = IV.expectedShares(ctxAt(7))
-    t:check("frost andar 7 (pico): hidden entre 15% e 30%", s7.hidden >= 0.15 and s7.hidden <= 0.30)
-    local sh = IV.expectedShares(ctxAt(8, "boss"))
+    local s7 = IV.expectedShares(ctxAt(F - 1))
+    t:check("frost penúltimo andar (pico): hidden entre 15% e 30%", s7.hidden >= 0.15 and s7.hidden <= 0.30)
+    local sh = IV.expectedShares(ctxAt(F, "boss"))
     t:check("frost salão: hidden entre 10% e 25%", sh.hidden >= 0.10 and sh.hidden <= 0.25)
     for _, bid in ipairs({ "frost", "dusk" }) do
         local sAct = 0
-        for f = 1, 7 do
+        for f = 1, F - 1 do
             sAct = sAct + IV.expectedShares(IV.contextFor({ actNumber = (bid == "frost") and 4 or 6,
                 floorInAct = f, currentNode = { type = "battle" } })).hidden
         end
-        t:check(bid .. ": hidden médio na estrada abaixo de 10%", sAct / 7 < 0.10)
+        t:check(bid .. ": hidden médio na estrada abaixo de 10%", sAct / (F - 1) < 0.10)
     end
-    t:eq("stormCurve no salão = 1", IV.stormCurve(ctxAt(8, "boss")), 1)
+    t:eq("stormCurve no salão = 1", IV.stormCurve(ctxAt(F, "boss")), 1)
     t:eq("stormCurve no andar 1 = 0", IV.stormCurve(ctxAt(1)), 0)
 
     local function endlessCtx(floor)
         return IV.contextFor({ actNumber = 6, endlessMode = true, currentFloor = floor,
             floorInAct = 2, currentNode = { type = "battle" } })
     end
-    t:eq("endless andar 25 = geleira", IV.biomeIdFor({ actNumber = 6, endlessMode = true, currentFloor = 25 }), "frost")
-    t:eq("endless andar 41 = crepúsculo", IV.biomeIdFor({ actNumber = 6, endlessMode = true, currentFloor = 41 }), "dusk")
-    t:eq("endless andar 49 = campos (sem névoa)", endlessCtx(49), nil)
-    t:truthy("endless andar 25 tem névoa", endlessCtx(25) ~= nil)
+    local E0 = require("src.systems.MapManager").endlessStart()
+    t:eq("endless 4º ciclo = geleira", IV.biomeIdFor({ actNumber = 6, endlessMode = true, currentFloor = E0 + 3 * F }), "frost")
+    t:eq("endless 6º ciclo = crepúsculo", IV.biomeIdFor({ actNumber = 6, endlessMode = true, currentFloor = E0 + 5 * F }), "dusk")
+    t:eq("endless 1º ciclo = campos (sem névoa)", endlessCtx(E0), nil)
+    t:truthy("endless 4º ciclo tem névoa", endlessCtx(E0 + 3 * F) ~= nil)
 
     local wolf = Enemy:new(100, 10, "frost_wolf")
     t:eq("inimigo sem contexto nasce com visibilidade cheia", wolf:getIntentVisibility(), "full")
-    wolf.fogContext = ctxAt(8)
+    wolf.fogContext = ctxAt(F)
     local dens = IV.density(wolf.fogContext)
     local function roll(v) return function() return v end end
     local lvl, cause = IV.resolve(wolf, roll(0.99))
@@ -128,7 +130,7 @@ function M.run()
     t:eq("sem névoa/véu: full", lvl, "full")
     t:falsy("sem névoa/véu: a rolagem NÃO é chamada", called)
 
-    wolf.fogContext = ctxAt(8)
+    wolf.fogContext = ctxAt(F)
     local rng = TK.seedRng(9001)
     local function snap(stream)
         local st = rng:getStreamState(stream)
@@ -195,7 +197,7 @@ function M.run()
     t:eq("xamã: rolagem baixa = type_only", (IV.resolve(shaman, roll(0.1))), "type_only")
 
     local shade = Enemy:new(100, 10, "dusk_shade")
-    shade.fogContext = IV.contextFor({ actNumber = 6, floorInAct = 8, currentNode = { type = "battle" } })
+    shade.fogContext = IV.contextFor({ actNumber = 6, floorInAct = F, currentNode = { type = "battle" } })
     local dd = IV.density(shade.fogContext)
     local hv = Fog.biomes.dusk.heavy
     local seq = { dd * hv * 0.5, 0.1 }
