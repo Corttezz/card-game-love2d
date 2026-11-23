@@ -413,11 +413,14 @@ ANIMS = {
     },
 
     # ===== BLOCO 5: uncommons mago (sutil, fps 6-7) =====
-    "question": {
-        # pergaminho com "?" — effect_mystery_card
-        "anim": ("a faint golden glow pulsing very subtly on the question "
-                 "mark, the parchment completely static"),
-        "fps": 6,
+    "effect_mystery_card": {
+        # espelho de mão com carta refletida (arte nova #533)
+        "anim": ("the whole image is a frozen statue with exactly the same "
+                 "colors in every frame, the red card inside the mirror never "
+                 "changes, the ONLY motion is one thin white glint line "
+                 "sliding across the glass"),
+        "frames": 6,
+        "fps": 7,
     },
     "mage_aggregate": {
         # vórtice espiral de fogo
@@ -520,11 +523,10 @@ ANIMS = {
     "mage_overcharge": {
         # orbe de energia. v2: v1 escurecia até vinho (loop pipocava).
         # Brilho e cor CONSTANTES, só shimmer interno.
-        "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc",
-        "anim": ("the orb's brightness and color stay exactly constant "
-                 "the whole time, only the energy texture inside "
-                 "shimmering and swirling subtly, tiny sparks glinting, "
-                 "no dimming no color change, silhouette unchanged"),
+        # punho segurando para-raios (arte nova #533)
+        "anim": ("the fist and rod are a frozen statue, the ONLY moving "
+                 "things are small electric sparks crackling along the rod "
+                 "and its tip glinting, no dimming no color change"),
         "fps": 7,
     },
     "rogue_accuracy": {
@@ -746,8 +748,11 @@ ANIMS = {
         "fps": 6,
     },
     "mage_dualcast": {
-        "anim": ("the twin flame columns flickering gently in alternation, "
-                 "tiny sparks glinting, the overall silhouette unchanged"),
+        "anim": ("the hands and sleeves are a frozen statue with exactly "
+                 "the same skin color in every frame, the ONLY motion is the "
+                 "yellow lightning bolt above the left hand flickering "
+                 "slightly, the bolt always visible"),
+        "frames": 6,
         "fps": 6,
     },
     "fireball": {
@@ -917,11 +922,11 @@ ANIMS = {
         "fps": 6,
     },
     "warrior_war_cry": {
-        # elmo de visor fechado com arcos gravados (arte nova)
-        "object_id": "ba7d5f95-e194-44e8-b159-df85abf3d4cd",
-        "anim": ("the helmet is a frozen statue, the ONLY moving things "
-                 "are: the golden battle aura shimmering gently, and the "
-                 "carved sound wave arcs glinting one at a time"),
+        # guerreiro barbado rugindo (arte nova #533)
+        "anim": ("the warrior's face and body are a frozen statue, the ONLY "
+                 "moving things are faint shout wave lines pulsing gently "
+                 "out of the open mouth and the beard hairs swaying "
+                 "slightly"),
         "fps": 7,
     },
     "mage_torn_pages": {

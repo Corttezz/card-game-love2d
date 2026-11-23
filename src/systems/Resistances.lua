@@ -18,8 +18,8 @@ Resistances.MULT = { immune = 0, resist = 0.5, weak = 1.5 }
 Resistances.LEVEL_ORDER = { immune = 1, resist = 2, weak = 3 }
 
 Resistances.ICON = {
-    physical = "sword_short", fire = "flame", ice = "snowflake", lightning = "bolt",
-    dark = "moon", arcane = "rune", poison = "status_poison", holy = "star",
+    physical = "res_physical", fire = "res_fire", ice = "res_ice", lightning = "res_lightning",
+    dark = "res_dark", arcane = "res_arcane", poison = "status_poison", holy = "res_holy",
 }
 
 Resistances.THEME = {

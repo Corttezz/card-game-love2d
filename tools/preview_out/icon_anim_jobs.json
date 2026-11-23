@@ -260,8 +260,9 @@
     "group": "c5e55c83-41d1-4ec6-bcd7-6ee084583f21"
   },
   "mage_overcharge": {
-    "object_id": "ef4e4581-a927-4cce-89cf-bbae71780edc",
-    "group": "083e7abf-6b67-4a43-b7ef-0d718bcbce49"
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "c70e2843-cc8c-4ce6-8f73-7866960b3162",
+    "anim_hash": "273ccd63fd7c"
   },
   "rogue_catalyst": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -297,7 +298,8 @@
   },
   "mage_dualcast": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
-    "group": "96863727-2a31-4296-9f13-a73c2d2fab0a"
+    "group": "60159d22-e02e-4bf2-bfc3-de5d757a38ed",
+    "anim_hash": "0db2a1b56bee"
   },
   "flame": {
     "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
@@ -400,8 +402,9 @@
     "group": "d37bdda2-7711-4fe5-b66d-0bedd5da7f5d"
   },
   "warrior_war_cry": {
-    "object_id": "ba7d5f95-e194-44e8-b159-df85abf3d4cd",
-    "group": "769084d7-86b9-45d8-9ecd-c5e8063cacfa"
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "3aadb71f-aaea-4d99-a82b-77a9c7e18eca",
+    "anim_hash": "dc520a347e8f"
   },
   "mage_torn_pages": {
     "object_id": "404ca019-b5cb-442a-a428-7eca173323f3",
@@ -563,5 +566,10 @@
     "object_id": "8ff5ee4c-93eb-40be-b598-1a522b3b252c",
     "group": "e4f7597c-e1b0-493f-8eca-2c1369ebb0b9",
     "anim_hash": "0b7788534990"
+  },
+  "effect_mystery_card": {
+    "object_id": "acbad108-e76b-4cf6-8247-dee3ab2427ab",
+    "group": "b5d36937-44e3-4405-8071-7bf5cd9d3ced",
+    "anim_hash": "6ed6ea8383cf"
   }
 }

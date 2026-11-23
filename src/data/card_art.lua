@@ -119,7 +119,7 @@ return {
     rogue_moonshadow        = { icon = "moon",                   bg = "shadow",  accent = "PURPLE",       decoration = "smoke"  },
     rogue_shooting_star     = { icon = "star",                   bg = "wind",    accent = "YELLOW",       decoration = "sparks", effect = "glow" },
     effect_scroll_wisdom    = { icon = "scroll",                 bg = "soft",    accent = "AGED_GOLD",    decoration = "sparks" },
-    effect_mystery_card     = { icon = "question",               bg = "arcane",  accent = "PURPLE",       decoration = "sparks", artOffsetY = -9 },
+    effect_mystery_card     = { icon = "effect_mystery_card",    bg = "arcane",  accent = "PURPLE",       decoration = "sparks", artOffsetY = -9 },
     joker_005               = { icon = "jester_hat",             bg = "abyss",   accent = "AGED_GOLD",    effect = "holo" },
     joker_combo_volley      = { icon = "combo_volley",           bg = "storm",   accent = "AGED_GOLD",    decoration = "sparks" },
     joker_combo_wall        = { icon = "combo_wall",             bg = "metal",   accent = "AGED_GOLD",    decoration = "dust" },
