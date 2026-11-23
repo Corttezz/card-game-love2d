@@ -1323,6 +1323,7 @@ function CardRewardScreen:applyUpgrade(upgrade)
         self.game.player.baseMaxMana = self.game.player.baseMaxMana + upgrade.value
         self.game.player.maxMana = self.game.player.maxMana + upgrade.value
         self.game.player.mana = self.game.player.mana + upgrade.value
+        if rm and rm.registerCrystal then rm:registerCrystal() end
 
     elseif upgrade.effect == "add_joker_slot" then
         if rm and rm.registerService then rm:registerService(upgrade.id) end

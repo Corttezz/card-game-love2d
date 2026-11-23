@@ -154,6 +154,116 @@ function MapManager.generate(floorInAct, actNumber, numNodes, opts)
     return nodes
 end
 
+MapManager.LANES = 3
+MapManager.LINK_CHANCE = 0.45
+
+local function sortedLanes(set)
+    local out = {}
+    for lane in pairs(set) do out[#out + 1] = lane end
+    table.sort(out)
+    return out
+end
+
+function MapManager.buildActMap(actNumber, opts)
+    local F = MapManager.FLOORS_PER_ACT
+    local floors = {}
+    for f = 1, F do
+        local row = MapManager.generate(f, actNumber, MapManager.LANES, opts)
+        for i, n in ipairs(row) do
+            n.mapFloor, n.mapLane = f, i
+        end
+        floors[f] = row
+    end
+    local crossed = false
+    for f = 1, F - 1 do
+        local cur, nxt = floors[f], floors[f + 1]
+        local links = {}
+        for i = 1, #cur do links[i] = {} end
+        if #nxt == 1 or #cur == 1 then
+            for i = 1, #cur do
+                for j = 1, #nxt do links[i][j] = true end
+            end
+        else
+            for i = 1, #cur do
+                links[i][math.min(i, #nxt)] = true
+                if Rng.get():random("map") < MapManager.LINK_CHANCE then
+                    local side = (Rng.get():random("map") < 0.5) and -1 or 1
+                    local j = i + side
+                    if j < 1 or j > #nxt then j = i - side end
+                    if j >= 1 and j <= #nxt then links[i][j] = true end
+                end
+            end
+            for i = 1, #cur - 1 do
+                if links[i][i + 1] and links[i + 1][i] then crossed = true end
+            end
+        end
+        for i, n in ipairs(cur) do n.mapNext = sortedLanes(links[i]) end
+    end
+    if not crossed then
+        for f = 1, F - 1 do
+            local cur, nxt = floors[f], floors[f + 1]
+            if #cur >= 2 and #nxt >= 2 then
+                local i = 1 + math.floor(Rng.get():random("map") * (math.min(#cur, #nxt) - 1))
+                local a, b = {}, {}
+                for _, j in ipairs(cur[i].mapNext) do a[j] = true end
+                for _, j in ipairs(cur[i + 1].mapNext) do b[j] = true end
+                a[i + 1], b[i] = true, true
+                cur[i].mapNext, cur[i + 1].mapNext = sortedLanes(a), sortedLanes(b)
+                break
+            end
+        end
+    end
+    floors[F][1].mapNext = {}
+    return { act = actNumber, floors = floors }
+end
+
+function MapManager.copyNode(node)
+    local c = {}
+    for k, v in pairs(node) do c[k] = v end
+    if node.mapNext then
+        c.mapNext = {}
+        for i, j in ipairs(node.mapNext) do c.mapNext[i] = j end
+    end
+    return c
+end
+
+function MapManager.choicesFrom(map, floorInAct, prev)
+    local row = map and map.floors and map.floors[floorInAct]
+    if not row then return nil end
+    local lanes
+    if prev and prev.mapFloor == floorInAct - 1 and type(prev.mapNext) == "table"
+        and #prev.mapNext > 0 then
+        lanes = prev.mapNext
+    end
+    local out = {}
+    if lanes then
+        for _, j in ipairs(lanes) do
+            if row[j] then out[#out + 1] = MapManager.copyNode(row[j]) end
+        end
+    end
+    if #out == 0 then
+        for _, n in ipairs(row) do out[#out + 1] = MapManager.copyNode(n) end
+    end
+    return out
+end
+
+function MapManager.hasCrossing(map)
+    for f = 1, #map.floors - 1 do
+        local cur = map.floors[f]
+        for i = 1, #cur - 1 do
+            local a, b = {}, {}
+            for _, j in ipairs(cur[i].mapNext or {}) do a[j] = true end
+            for _, j in ipairs(cur[i + 1].mapNext or {}) do b[j] = true end
+            for ja in pairs(a) do
+                for jb in pairs(b) do
+                    if ja > jb then return true end
+                end
+            end
+        end
+    end
+    return false
+end
+
 function MapManager.dedupeNodes(nodes)
     if type(nodes) ~= "table" then return nodes, 0 end
     local seen, out, removed = {}, {}, 0

@@ -1830,6 +1830,7 @@ local function applyUpgradeOffer(game, o)
         p.baseMaxMana = (p.baseMaxMana or p.maxMana) + (o.value or 1)
         p.maxMana = p.maxMana + (o.value or 1)
         p.mana = p.mana + (o.value or 1)
+        if rm and rm.registerCrystal then rm:registerCrystal() end
     elseif efeito == "increase_max_health" then
         p.maxHealth = p.maxHealth + (o.value or 0)
         p.health = p.health + (o.value or 0)

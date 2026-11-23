@@ -1680,6 +1680,7 @@ function love.draw()
         local WorldRoad = require("src.ui.WorldRoad")
         if WorldRoad.isForkActive() then
             GameplayScene.drawWorldOnly()
+            require("src.ui.ActMapPanel").draw(game)
         else
             GameplayScene.draw()
             IF.push("map"); mapScreen:draw(); IF.pop()

@@ -305,11 +305,35 @@ function RunManager:generateNextNodes(numNodes)
     local MapManager = require("src.systems.MapManager")
     local act = self.currentRun.actNumber or 1
     local floorInAct = self.currentRun.floorInAct or 1
-    self.currentRun.pendingNodes = MapManager.generate(floorInAct, act, numNodes or 3,
-        { eliteMul = require("src.systems.RunModifiers").eliteWeightMul(self.currentRun) })
+    local map = self:ensureActMap()
+    self.currentRun.pendingNodes = MapManager.choicesFrom(map, floorInAct,
+        self.currentRun.currentNode)
+        or MapManager.generate(floorInAct, act, numNodes or 3,
+            { eliteMul = require("src.systems.RunModifiers").eliteWeightMul(self.currentRun) })
     require("src.systems.EnemyRoster").assignNodes(self.currentRun,
         self.currentRun.pendingNodes)
     return self.currentRun.pendingNodes
+end
+
+function RunManager:ensureActMap()
+    local run = self.currentRun
+    if not run then return nil end
+    local MapManager = require("src.systems.MapManager")
+    local act = run.actNumber or 1
+    local base = (run.currentFloor or 1) - (run.floorInAct or 1) + 1
+    local map = run.actMap
+    if map and map.act == act and map.baseFloor == base
+        and #(map.floors or {}) == MapManager.FLOORS_PER_ACT then
+        return map
+    end
+    map = MapManager.buildActMap(act,
+        { eliteMul = require("src.systems.RunModifiers").eliteWeightMul(run) })
+    map.baseFloor = base
+    local boss = map.floors[#map.floors][1]
+    local EnemyRoster = require("src.systems.EnemyRoster")
+    boss.enemyId = EnemyRoster.pick(EnemyRoster.biomeAct(run), boss.type, run.recentEnemies)
+    run.actMap = map
+    return map
 end
 
 function RunManager:repairPendingNodes()
@@ -664,6 +688,17 @@ end
 function RunManager:registerPaidForge()
     if not self.currentRun then return end
     self.currentRun.paidForges = (self.currentRun.paidForges or 0) + 1
+end
+
+function RunManager:getCrystalCost()
+    local n = (self.currentRun and self.currentRun.crystalsBought) or 0
+    local cfg = Config.Offers
+    return math.floor(cfg.CRYSTAL_COST_BASE * (cfg.CRYSTAL_COST_MULT ^ n) + 0.5)
+end
+
+function RunManager:registerCrystal()
+    if not self.currentRun then return end
+    self.currentRun.crystalsBought = (self.currentRun.crystalsBought or 0) + 1
 end
 
 function RunManager:unregisterPaidForge()

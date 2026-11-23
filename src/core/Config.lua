@@ -198,6 +198,9 @@ Config.Offers = {
     FORGE_COST_MULT = 1.35,
     FORGE_COST_MAX  = 60,
 
+    CRYSTAL_COST_BASE = 25,
+    CRYSTAL_COST_MULT = 1.5,
+
     FORGE_ATK_PER_LVL    = 2,
     FORGE_DEF_PER_LVL    = 2,
     FORGE_EFFECT_PER_LVL = 1,

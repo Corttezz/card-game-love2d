@@ -865,6 +865,10 @@ return {
         final_score  = "Final Score: {score}",
     },
 
+    act_map = {
+        title = "Act {act} Map",
+    },
+
     victory = {
         title        = "VICTORY!",
         final_score  = "Final Score: {score}",

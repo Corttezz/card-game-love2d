@@ -415,12 +415,16 @@ function ShopSystem:generateUpgradeOffer()
     end
 
     for _, pick in ipairs(self.shopUpgradePool) do
+        local cost = pick.cost
+        if pick.id == "mana_upgrade" and runManager and runManager.getCrystalCost then
+            cost = runManager:getCrystalCost()
+        end
         candidate({
             type = "upgrade",
             id = pick.id,
             name = itemName(pick.id, pick.name),
             description = itemDesc(pick.id, pick.description, { value = pick.value }),
-            cost = pick.cost,
+            cost = cost,
             effect = pick.effect,
             value = pick.value,
         }, CLASSIC_UPGRADE_WEIGHT[pick.id] or 1.0)

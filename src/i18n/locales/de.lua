@@ -865,6 +865,10 @@ return {
         final_score  = "Endpunktzahl: {score}",
     },
 
+    act_map = {
+        title = "Karte von Akt {act}",
+    },
+
     victory = {
         title        = "SIEG!",
         final_score  = "Endpunktzahl: {score}",
