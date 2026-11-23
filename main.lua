@@ -847,6 +847,11 @@ function love.load(loveArgs)
         return
     end
 
+    if loveArgs and loveArgs[1] == "screenshot_exhaust_copy" then
+        require("tools.screenshot_exhaust_copy").run()
+        return
+    end
+
     if loveArgs and loveArgs[1] == "screenshot_combobanner" then
         require("tools.screenshot_combobanner").run()
         return

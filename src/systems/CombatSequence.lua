@@ -5,6 +5,8 @@ local FontManager = require("src.ui.FontManager")
 local DissolveShader = require("src.ui.DissolveShader")
 local CardFeel = require("src.systems.CardFeel")
 local JokerProcFx = require("src.ui.JokerProcFx")
+local ExhaustFx = require("src.ui.ExhaustFx")
+local CopyFx = require("src.ui.CopyFx")
 
 local CombatBeats = require("src.systems.CombatBeats")
 
@@ -171,15 +173,24 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
 
             CombatBeats.pushAll(sink)
 
-            CombatBeats.push("card.dissolve", function()
-                if card.start_dissolve then
-                    local palette = DissolveShader.palette(card.type or "default")
-                    card:start_dissolve(palette, true, self.timings.dissolveTime, true,
-                        function() removeFlying(card) end)
-                else
-                    removeFlying(card)
-                end
-            end, "CARD_GAP")
+            if CopyFx.isActive() then
+                CombatBeats.push("card.copy", nil, math.max(0.05, CopyFx.remaining() - 0.25))
+            end
+            if ExhaustFx.isExhausting(card) then
+                CombatBeats.push("card.exhaust", function()
+                    self:_startExhaust(card, g, removeFlying)
+                end, ExhaustFx.HOLD)
+            else
+                CombatBeats.push("card.dissolve", function()
+                    if card.start_dissolve then
+                        local palette = DissolveShader.palette(card.type or "default")
+                        card:start_dissolve(palette, true, self.timings.dissolveTime, true,
+                            function() removeFlying(card) end)
+                    else
+                        removeFlying(card)
+                    end
+                end, "CARD_GAP")
+            end
 
             CombatBeats.push("card.next", function() resolveCard(idx + 1) end, "MICRO")
         end, "CARD_IMPACT")
@@ -188,6 +199,29 @@ function CombatSequence:startCombat(cards, onComplete, onCardProcessed)
     CombatBeats.push("combat.cards_landed", function()
         resolveCard(1)
     end, allLandedAt + 0.10)
+end
+
+function CombatSequence:_startExhaust(card, g, removeFlying)
+    ExhaustFx.start(card, g.x, g.y, g.w, g.h)
+    pcall(Sfx.play, "cardExhaust")
+    if card.juice_up then card:juice_up(0.18, 0.06) end
+    if card.setTargetPos then card:setTargetPos(ExhaustFx.cardTarget({ x = g.x, y = g.y })) end
+    if card.start_dissolve then
+        card:start_dissolve(DissolveShader.palette("exhaust"), true, ExhaustFx.DISSOLVE_FAC, true,
+            function() removeFlying(card) end)
+    else
+        removeFlying(card)
+    end
+end
+
+function CombatSequence:playCopy(source, copy, tx, ty)
+    if not source or not copy then return end
+    local w = (source.image and source.image:getWidth() or 100) * (source.currentScale or 1)
+    local h = (source.image and source.image:getHeight() or 140) * (source.currentScale or 1)
+    local x = (source.renderX and source.renderX ~= 0) and source.renderX or source.x or 0
+    local y = (source.renderY and source.renderY ~= 0) and source.renderY or source.y or 0
+    CopyFx.start(copy, x, y, w, h, tx, ty)
+    pcall(Sfx.play, "cardDraw")
 end
 
 function CombatSequence:_finish(onComplete)
@@ -303,6 +337,9 @@ function CombatSequence:update(dt)
         end
     end
 
+    ExhaustFx.update(dt)
+    CopyFx.update(dt)
+
     if not self.active and #self.damageNumbers == 0 and #self.flyingCards == 0 then
         return
     end
@@ -327,7 +364,8 @@ function CombatSequence:update(dt)
 end
 
 function CombatSequence:draw()
-    if #self.flyingCards == 0 and #self.damageNumbers == 0 then return end
+    if #self.flyingCards == 0 and #self.damageNumbers == 0
+        and not ExhaustFx.isActive() and not CopyFx.isActive() then return end
 
     local now = love.timer and love.timer.getTime() or 0
     local sample = false
@@ -336,8 +374,11 @@ function CombatSequence:draw()
         sample = true
     end
 
+    local focused = {}
     for _, card in ipairs(self.flyingCards) do
-        if card.draw and card.image then
+        if ExhaustFx.isFocused(card) then
+            focused[#focused + 1] = card
+        elseif card.draw and card.image then
             local x = (card.renderX and card.renderX ~= 0) and card.renderX or card.x
             local y = (card.renderY and card.renderY ~= 0) and card.renderY or card.y
             if sample and card.juice and (card.juice.hop_amt or (card.juice.timer or 99) < (card.juice.duration or 0)) then
@@ -350,6 +391,17 @@ function CombatSequence:draw()
             card:draw(x, y, false, false)
         end
     end
+
+    ExhaustFx.drawDim()
+    for _, card in ipairs(focused) do
+        if card.draw and card.image then
+            local x = (card.renderX and card.renderX ~= 0) and card.renderX or card.x
+            local y = (card.renderY and card.renderY ~= 0) and card.renderY or card.y
+            card:draw(x, y, false, false)
+        end
+    end
+    ExhaustFx.drawOver()
+    CopyFx.draw()
 
     if #self.damageNumbers > 0 then
         local font = FontManager.getResponsiveFont(0.04, 32, "height")

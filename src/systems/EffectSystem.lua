@@ -500,7 +500,10 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
             game.runManager:addCardToDeck(prev.id, { edition = prev.edition, seal = prev.seal })
         end
         local copy = game:spawnBattleCopy(prev, true)
-        if copy then table.insert(game.discard, copy) end
+        if copy then
+            table.insert(game.discard, copy)
+            if game.onCardCopied then game:onCardCopied(prev, srcCard) end
+        end
         game:addMessage(msg("card_copied", { name = I18n.cardName(prev) }), "arcane")
         Sfx.play("effectChime")
         return true
@@ -508,7 +511,10 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
     elseif t == "copy_to_discard" then
         for _ = 1, math.max(1, math.floor(v)) do
             local copy = srcCard and game:spawnBattleCopy(srcCard, false)
-            if copy then table.insert(game.discard, copy) end
+            if copy then
+                table.insert(game.discard, copy)
+                if game.onCardCopied then game:onCardCopied(srcCard, srcCard) end
+            end
         end
         Sfx.play("effectChime")
         return true

@@ -519,6 +519,15 @@ function Game:onCardExhausted(card, sink)
     ArchetypeCounters.onExhaust(self)
 end
 
+function Game:onCardCopied(original, source)
+    local seq = self.combatAnimationSystem
+    if not (seq and seq.playCopy and love.graphics) then return end
+    local visual = self:spawnBattleCopy(original, true)
+    if not visual then return end
+    local tx, ty = self:getDeckOrigin()
+    seq:playCopy(source or original, visual, tx, ty)
+end
+
 function Game:spawnBattleCopy(card, keepSeal)
     if not card or not card.id then return nil end
     local db = (self.runManager and self.runManager.cardDatabase)
