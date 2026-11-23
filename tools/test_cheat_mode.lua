@@ -276,7 +276,7 @@ local function checkFullFlow(t, CheatMode)
     end)
     t:truthy("IR PARA ATO 4 CHEFE: chega na luta do chefe", bossNode)
     t:eq("ATO 4 CHEFE: ato 4", run().actNumber, 4)
-    t:eq("ATO 4 CHEFE: andar 8", run().floorInAct, 8)
+    t:eq("ATO 4 CHEFE: último andar do ato", run().floorInAct, require("src.systems.MapManager").FLOORS_PER_ACT)
     t:eq("ATO 4 CHEFE: e o chefe do bioma", run().currentNode.enemyId,
         EnemyRoster.poolFor(4, "boss")[1])
 
