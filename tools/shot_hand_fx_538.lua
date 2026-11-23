@@ -60,6 +60,8 @@ function M.run()
         for _ = 1, n do
             _G.EventManager.update(1 / 60)
             Scene.update(1 / 60)
+            require("src.ui.FloatingText").update(1 / 60)
+            require("src.systems.CardParticles").update(1 / 60)
         end
     end
     local function shoot(name)
@@ -67,6 +69,8 @@ function M.run()
         love.graphics.clear(0, 0, 0, 1)
         love.graphics.origin()
         Scene.draw()
+        require("src.systems.CardParticles").draw()
+        require("src.ui.FloatingText").draw()
         love.graphics.setCanvas()
         local d = cv:newImageData()
         d:encode("png", dir .. "/" .. name .. ".png")

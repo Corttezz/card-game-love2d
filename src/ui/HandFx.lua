@@ -56,7 +56,7 @@ end
 function HandFx.reshuffle(n, x, y)
     local sw, sh = screen()
     local fx = { kind = "shuffle", t = 0, dur = HandFx.SHUFFLE,
-        x = x or sw * 0.92, y = y or sh * 0.82, n = math.max(3, math.min(7, n or 5)) }
+        x = x or sw * 0.92, y = y or sh * 0.82, n = math.max(5, math.min(8, n or 6)) }
     active[#active + 1] = fx
     return fx
 end
@@ -172,28 +172,33 @@ local function drawInnate(fx)
     local t = fx.t / fx.dur
     local a = smooth(t / 0.2) * (1 - smooth((t - 0.6) / 0.4))
     if a <= 0.01 then return end
-    local rise = smooth(t) * 26
+    local rise = smooth(t) * 34
     love.graphics.setColor(1.0, 0.93, 0.62, 0.30 * a)
     love.graphics.rectangle("fill", x - 4, y - 4, w + 8, h + 8, 8, 8)
     love.graphics.setColor(1.0, 0.93, 0.62, 0.9 * a)
     love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", x - 4, y - 4, w + 8, h + 8, 8, 8)
     love.graphics.setLineWidth(1)
-    local cx, cy = x + w / 2, y - 14 - rise
-    love.graphics.polygon("fill", cx, cy - 9, cx + 9, cy, cx, cy + 9, cx - 9, cy)
+    local cx, cy = x + w / 2, y - 22 - rise
+    love.graphics.setColor(1.0, 0.93, 0.62, 0.25 * a)
+    love.graphics.circle("fill", cx, cy, 26)
+    love.graphics.setColor(0.10, 0.07, 0.04, a)
+    love.graphics.polygon("fill", cx, cy - 19, cx + 19, cy, cx, cy + 19, cx - 19, cy)
+    love.graphics.setColor(1.0, 0.93, 0.62, a)
+    love.graphics.polygon("fill", cx, cy - 16, cx + 16, cy, cx, cy + 16, cx - 16, cy)
     love.graphics.setColor(0.35, 0.22, 0.05, a)
-    love.graphics.polygon("fill", cx, cy - 4, cx + 4, cy, cx, cy + 4, cx - 4, cy)
+    love.graphics.polygon("fill", cx, cy - 7, cx + 7, cy, cx, cy + 7, cx - 7, cy)
 end
 
 local function drawShuffle(fx)
     local t = fx.t / fx.dur
     local a = 1 - smooth((t - 0.75) / 0.25)
-    local cw, ch = 34, 48
+    local cw, ch = 52, 74
     for i = 1, fx.n do
         local phase = (i - 1) / fx.n
         local k = smooth(clamp01((t - phase * 0.35) / 0.55))
         local ang = phase * math.pi * 2 + k * math.pi * 2
-        local r = 46 * math.sin(k * math.pi)
+        local r = 84 * math.sin(k * math.pi)
         local cx = fx.x + math.cos(ang) * r
         local cy = fx.y + math.sin(ang) * r * 0.55
         love.graphics.push()
