@@ -90,7 +90,8 @@ function M.run()
         end
         t:eq("andar 10 do endless alcancado", run.floorsInEndless, 10)
         t:eq("'endless_start' NAO repete a cada ciclo", statuses.endless_start, nil)
-        t:eq("virada de ciclo vira 'endless_cycle'", statuses.endless_cycle, 1)
+        t:eq("nenhuma virada de ciclo antes do andar " .. (require("src.systems.MapManager").FLOORS_PER_ACT + 1),
+            statuses.endless_cycle, nil)
 
         local s = PS.get()
         s.achievements, s.achievementDates = {}, {}
@@ -130,6 +131,13 @@ function M.run()
         local winsAntes = PS.get().wins
         g3:enterEndless()
         g3.runManager:advanceFloorInAct()
+        local cycles = {}
+        for _ = 1, require("src.systems.MapManager").FLOORS_PER_ACT do
+            local st = g3.runManager:advanceFloorInAct()
+            cycles[st] = (cycles[st] or 0) + 1
+        end
+        t:eq("virada de ciclo vira 'endless_cycle'", cycles.endless_cycle, 1)
+        t:eq("ciclo volta ao andar 1 do ato", run3.floorInAct, 1)
         g3:abandonRun()
         t:eq("abandono no endless nao conta derrota", PS.get().losses, 0)
         t:eq("abandono no endless nao conta outra vitoria", PS.get().wins, winsAntes)
