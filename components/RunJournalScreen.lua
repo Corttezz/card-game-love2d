@@ -109,6 +109,7 @@ function RunJournalScreen:_build()
             else
                 row = math.max(1, math.min(MapManager.FLOORS_PER_ACT, tonumber(e.floor) or j))
                 if row <= lastRow then row = math.min(MapManager.FLOORS_PER_ACT, lastRow + 1) end
+                if e.type == "boss" then row = MapManager.FLOORS_PER_ACT end
             end
             e._row = row
             lastRow = row

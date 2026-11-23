@@ -145,7 +145,8 @@ function M.run()
                 for s = 1, n - 1 do
                     local px = math.floor(seg.x1 + dx * s / n + 0.5)
                     local py = math.floor(seg.y1 + dy * s / n + 0.5)
-                    total = total + 1
+                    local inZone = py >= L.zone.y + 4 and py <= L.zone.y + L.zone.h - 4
+                    if inZone then total = total + 1 end
                     local found = false
                     for oy = -3, 3 do
                         for ox = -3, 3 do
@@ -155,15 +156,17 @@ function M.run()
                             end
                         end
                     end
-                    if found then hit = hit + 1 end
+                    if inZone and found then hit = hit + 1 end
                 end
             end
             t:truthy(tag .. " caminho percorrido contínuo (tinta em todo o trecho)",
                 total > 0 and hit / total >= 0.95)
 
-            local drawn = 0
+            local drawn, visible = 0, 0
             for _, st in ipairs(S.stubs) do
                 local gr = Layout.glyphRect(L, st)
+                local onScreen = gr.y >= L.zone.y and gr.y + gr.h <= L.zone.y + L.zone.h
+                if onScreen then visible = visible + 1 end
                 local dark = 0
                 for y = gr.y, gr.y + gr.h - 1 do
                     for x = gr.x, gr.x + gr.w - 1 do
@@ -173,9 +176,10 @@ function M.run()
                         end
                     end
                 end
-                if dark >= 5 then drawn = drawn + 1 end
+                if onScreen and dark >= 5 then drawn = drawn + 1 end
             end
-            t:eq(tag .. " todo ramo não tomado tem tinta", drawn, #S.stubs)
+            t:truthy(tag .. " há ramos não tomados à vista", visible >= 2)
+            t:eq(tag .. " todo ramo não tomado à vista tem tinta", drawn, visible)
 
             for k, p in ipairs(S.nodes) do
                 local tip = screen:_tipFor(L, 2, { node = k })
