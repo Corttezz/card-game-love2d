@@ -38,6 +38,10 @@ M.ALLOWED = {
     ["reward.extra_draw"]            = "compras por turno",
     ["joker_manager.cap_reached"]    = "ação recusada",
     ["messages.endless_unlocked"]    = "modo novo liberado",
+    ["messages.nothing_to_copy"]     = "Espelho de Forja sem carta anterior",
+    ["messages.card_copied"]         = "Espelho de Forja copiou a carta",
+    ["enemy_kit.msg.counter_intro"]  = "chefe avisa o contra ao começar a luta (#509)",
+    ["enemy_kit.msg.counter_*"]      = "contra do chefe disparou (#509)",
 }
 
 local FILES_DIRS = { "src", "components" }
@@ -66,6 +70,8 @@ local function scan(path)
                 or body:match('^%s*I18n%.t%("([%w_%.]+)"')
                 or (body:match("^%s*I18n%.t%(key %.%. \"%.msg\"") and "enemy_kit.phases.*")
                 or (body:match("^%s*text,") and "effect_desc_fallback")
+                or (body:match('^%s*text%("([%w_%.]+)"') and ("enemy_kit." .. body:match('^%s*text%("([%w_%.]+)"')))
+                or (body:match("^%s*line,") and path:find("ArchetypeCounters", 1, true) and "enemy_kit.msg.counter_*")
             found[#found + 1] = { line = i, key = key, src = l }
         end
     end

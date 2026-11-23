@@ -1358,7 +1358,7 @@ return {
         rogue_moonshadow        = { name = "Mondschatten",           desc = "Erhalte {def} Block. Ziehe {value} Karte." },
         rogue_shooting_star     = { name = "Sternenmedaillon",       desc = "Verursache {atk} Schaden {value}-mal." },
         effect_scroll_wisdom    = { name = "Schriftrolle der Weisheit",desc = "Ziehe {value} Karten vom Deck. Enthüllt die Absicht für {value2} Züge." },
-        effect_mystery_card     = { name = "Schmiedespiegel",         desc = "Lege eine Kopie der zuvor gespielten Karte in dein Grimoire (und eine auf den Ablagestapel). Erschöpfen." },
+        effect_mystery_card     = { name = "Schmiedespiegel",         desc = "Kopiert die zuvor gespielte Karte ins Grimoire (und auf den Ablagestapel). Erschöpfen." },
         joker_005               = { name = "Narrenhut",              desc = "+{pct}% Schaden und Block für jede aktive Kombo im Zug (multipliziert)." },
         joker_combo_volley      = { name = "Klingenregen", desc = "Salve zählt ×{value} und hat keine Obergrenze." },
         joker_combo_wall        = { name = "Schildwall", desc = "Bollwerk zählt ×{value} und hat keine Obergrenze." },

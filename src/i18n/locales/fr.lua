@@ -1358,7 +1358,7 @@ return {
         rogue_moonshadow        = { name = "Ombre Lunaire",          desc = "Gagne {def} Blocage. Pioche {value} carte." },
         rogue_shooting_star     = { name = "Médaillon Stellaire",    desc = "Inflige {atk} dégâts {value} fois." },
         effect_scroll_wisdom    = { name = "Parchemin de Sagesse",   desc = "Pioche {value} cartes du paquet. Révèle l'intention pendant {value2} tours." },
-        effect_mystery_card     = { name = "Miroir de Forge",          desc = "Ajoute à votre grimoire une copie de la carte jouée avant celle-ci (et une autre dans la défausse). Épuiser." },
+        effect_mystery_card     = { name = "Miroir de Forge",          desc = "Copie la carte jouée avant celle-ci dans le grimoire (et dans la défausse). Épuiser." },
         joker_005               = { name = "Chapeau de Bouffon",     desc = "+{pct}% de dégâts et de Blocage pour chaque combo actif dans le coup (se multiplie)." },
         joker_combo_volley      = { name = "Pluie de Lames", desc = "La Salve vaut ×{value} et n'a pas de plafond." },
         joker_combo_wall        = { name = "Mur de Boucliers", desc = "Le Rempart vaut ×{value} et n'a pas de plafond." },
