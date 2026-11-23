@@ -36,6 +36,7 @@ StatusPill.COLORS = {
     roots           = { 0.40, 0.55, 0.25 },
     moon            = { 0.55, 0.40, 0.75 },
     eclipse         = { 0.55, 0.30, 0.75 },
+    counter         = { 0.95, 0.30, 0.45 },
 }
 StatusPill.ICONS = {
     poison       = "status_poison",
@@ -65,7 +66,8 @@ StatusPill.ICONS = {
     roots           = "status_roots",
     moon            = "status_moon",
     eclipse         = "status_eclipse",
-    stars           = "status_stars",
+    counter         = "eye",
+    stars          = "status_stars",
     flare           = "status_flare",
     totality        = "status_totality",
     corona          = "status_corona",

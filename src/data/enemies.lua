@@ -93,6 +93,7 @@ Enemies.KITS = {
         },
     },
     carrion_king = {
+        counter = { kind = "no_thorns" },
         opener = "call_of_crows",
         moves = {
             { id = "call_of_crows", kind = "summon", weight = 0, summon = 2,
@@ -117,6 +118,7 @@ Enemies.KITS = {
         },
     },
     rune_golem = {
+        counter = { kind = "magnet", value = 4 },
         hpMul = 1.1,
         opener = "rune_ward",
         moves = {
@@ -128,6 +130,7 @@ Enemies.KITS = {
         },
     },
     tower_lich = {
+        counter = { kind = "card_flood", from = 9, value = 3 },
         opener = "essence_drain",
         mechanic = { kind = "runes", status = "runes", start = 0, gain = 1, max = 4,
                      breakPct = 0.12, move = "rune_cataclysm" },
@@ -178,6 +181,7 @@ Enemies.KITS = {
         },
     },
     blood_duke = {
+        counter = { kind = "blood_mirror" },
         hpMul = 1.0, dmgMul = 1.05,
         opener = "blood_feast",
         moves = {
@@ -190,6 +194,7 @@ Enemies.KITS = {
         },
     },
     abyss_tyrant = {
+        counter = { kind = "strength_tax", min = 4 },
         opener = "abyssal_claws",
         mechanic = { kind = "chains", status = "chains", marks = { 0.75, 0.5, 0.25 },
                      strengthPct = 0.08, stagger = 0.5,
@@ -227,6 +232,7 @@ Enemies.KITS = {
         },
     },
     winter_monarch = {
+        counter = { kind = "metal_freeze", value = 1 },
         opener = "winter_blade",
         mechanic = { kind = "frost", threshold = 4, freeze = 2, attackMelt = 1, fireMelt = 2,
                      gains = { winter_blade = 1, royal_blizzard = 2, eternal_winter = 2,
@@ -257,6 +263,7 @@ Enemies.KITS = {
         },
     },
     rot_colossus = {
+        counter = { kind = "drink_poison", value = 2 },
         hpMul = 1.0,
         mechanic = { kind = "roots", status = "roots", start = 2, max = 3, growEvery = 2,
                      regenPct = 0.0065, cutPct = 0.04,
@@ -274,6 +281,7 @@ Enemies.KITS = {
     },
 
     eclipse_queen = {
+        counter = { kind = "eclipse_first", value = 50 },
         opener = "waning_light",
         noEnrage = true,
         strikes = { spark_rain = "spark", sunset_ray = "spark" },
@@ -394,6 +402,7 @@ Enemies.KITS = {
         },
     },
     spectral_knight = {
+        counter = { kind = "pierce_all" },
         hpMul = 1.1,
         opener = "tower_shield",
         moves = {
@@ -404,6 +413,7 @@ Enemies.KITS = {
         },
     },
     storm_griffin = {
+        counter = { kind = "lightning_rod", value = 1 },
         opener = "thunder_roar",
         moves = {
             { id = "lightning_talons", kind = "multi",  weight = 35, mult = 0.45, hits = 3 },
@@ -530,6 +540,7 @@ Enemies.KITS = {
         },
     },
     spore_mother = {
+        counter = { kind = "exhaust_tax", value = 1 },
         passive = { regenPct = 0.02 },
         opener = "spore_cloud",
         moves = {
@@ -576,6 +587,7 @@ Enemies.KITS = {
         },
     },
     fallen_angel = {
+        counter = { kind = "copy_exile" },
         opener = "unholy_wings",
         moves = {
             { id = "fallen_blade",  kind = "strong", weight = 30, mult = 1.35 },

@@ -16,6 +16,7 @@ local AchievementSystem = require("src.systems.AchievementSystem")
 local UnlockSystem = require("src.systems.UnlockSystem")
 local ActSystem = require("src.systems.ActSystem")
 local BossMechanics = require("src.systems.BossMechanics")
+local ArchetypeCounters = require("src.systems.ArchetypeCounters")
 local Config = require("src.core.Config")
 local Sfx = require("src.systems.Sfx")
 local Debug = require("src.core.Debug")
@@ -214,6 +215,8 @@ function Game:drawForTurn()
     self._toxinGrowFiredThisTurn = false
     self._jokerThornFiredThisTurn = {}
     self._echoFiredThisTurn = false
+    self._eclipseUsedThisTurn = false
+    self._playedIdsTurn = {}
     self._cardsPlayedTurn = 0
     self._evokeDrawsTurn = 0
     local baseDraw = (Config.Game.CARDS_PER_TURN or 5)
@@ -482,6 +485,8 @@ function Game:applyClassBattleStartPassive()
     self._toxinBonus = 0
     self._jokerThornFiredThisTurn = {}
     self._echoFiredThisTurn = false
+    self._eclipseUsedThisTurn = false
+    self._playedIdsTurn = {}
     self._cardsPlayedTurn = 0
     self._cardsPlayedBattle = 0
     self._defensesPlayedBattle = 0
@@ -511,6 +516,7 @@ end
 
 function Game:onCardExhausted(card, sink)
     self.effectSystem:applyTriggerEffects(self, "exhaust", { card = card, beatSink = sink })
+    ArchetypeCounters.onExhaust(self)
 end
 
 function Game:spawnBattleCopy(card, keepSeal)
@@ -656,9 +662,14 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
     turnContext = turnContext or self._currentTurnContext
 
     local function computeCardValue()
+        local st = DamagePreview.liveState(self)
         local v, steps, entries, echoUsed = DamagePreview.cardValue(self, card,
-            turnContext, DamagePreview.liveState(self))
+            turnContext, st)
         if echoUsed then self._echoFiredThisTurn = true end
+        if st.eclipseUsed and not self._eclipseUsedThisTurn then
+            self._eclipseUsedThisTurn = true
+            ArchetypeCounters.fire(self, "eclipse_first", 0)
+        end
         for _, s in ipairs(steps) do
             if s.kind == "combo" then ComboSystem.raiseBanner(turnContext) break end
         end
@@ -828,6 +839,7 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
             card = card, turnContext = turnContext,
             procSink = result.jokerProcs, beatSink = sink,
         })
+        ArchetypeCounters.onCardPlayed(self, card)
     end
 
     if card.exhaust and card.id then
@@ -836,7 +848,8 @@ function Game:_resolveCardInCombat(card, turnContext, sink)
         self:onCardExhausted(card, sink)
     end
 
-    if card.type ~= "joker" and not card.exhaust then
+    if card.type ~= "joker" and not card.exhaust
+        and not ArchetypeCounters.exiles(self, card) then
         table.insert(self.discard, card)
     end
 
@@ -868,6 +881,7 @@ function Game:endTurn()
         self:selectCard(self.selectedCards[i])
     end
     self:discardHandEndOfTurn()
+    ArchetypeCounters.onPlayerTurnEnd(self)
     if self.effectSystem and self.effectSystem.orbPassiveTick then
         local pulses = {}
         self.effectSystem:orbPassiveTick(self, pulses)
@@ -1303,6 +1317,7 @@ function Game:_pushEnemyTurnTail(beat)
     end
 
     CombatBeats.push("enemy.dot", beat(function()
+        ArchetypeCounters.drinkPoison(self)
         self.effectSystem:holdPoison(self)
         local poisonDmg, burnDmg = self.enemy:onTurnEnd()
         local dotInfo = self.enemy.lastDot
@@ -1670,6 +1685,7 @@ function Game:nextPhase()
         run.battleEnemyRng = require("src.systems.Rng").get():getStreamState("enemy")
         self.enemy = EnemyRoster.spawn(Enemy, enemyId, stats, run.actNumber)
         RunModifiers.decorateEnemy(run, self.enemy)
+        ArchetypeCounters.announce(self)
         EnemyRoster.remember(run, enemyId)
         self.battleTurn = 0
         self.enemy.isBoss = (nodeType == "boss" or nodeType == "mini_boss")

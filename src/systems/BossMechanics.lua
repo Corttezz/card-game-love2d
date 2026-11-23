@@ -320,12 +320,16 @@ function BM.applyIntentStep(game, step)
     return nil
 end
 
-function BM.freezePicks(hand, n)
+function BM.freezePicks(hand, n, preferTag)
     local idx = {}
     for i, c in ipairs(hand or {}) do
         if c.type ~= "joker" and not c.frozen then idx[#idx + 1] = i end
     end
+    local TagSystem = preferTag and require("src.systems.TagSystem")
+    local function pref(c) return TagSystem and TagSystem.cardHasTag(c, preferTag) or false end
     table.sort(idx, function(a, b)
+        local pa, pb = pref(hand[a]), pref(hand[b])
+        if pa ~= pb then return pa end
         local ca, cb = hand[a].cost or 0, hand[b].cost or 0
         if ca ~= cb then return ca > cb end
         return a < b
@@ -344,7 +348,8 @@ function BM.onPlayerDraw(game)
         p.frost = p.frost - m.threshold
         return nil
     end
-    local picks = BM.freezePicks(game.hand, freeze)
+    local picks = BM.freezePicks(game.hand, freeze,
+        require("src.systems.ArchetypeCounters").freezeTag(game))
     for _, c in ipairs(picks) do
         c.frozen = true
         c._thawAt = nil
@@ -409,6 +414,7 @@ function BM.playerPillVars(game, name)
 end
 
 function BM.pillVars(enemy, name)
+    if name == "counter" then return require("src.systems.ArchetypeCounters").pillVars(enemy) end
     local m = BM.spec(enemy)
     if not m or m.status ~= name then return nil end
     if m.kind == "runes" then

@@ -212,6 +212,9 @@ local function stepChips(steps)
                 color = Palette.CYAN }
         elseif s.kind == "seal" then
             chips[#chips + 1] = { text = "×" .. fmtNum(s.value), color = COL_ATK }
+        elseif s.kind == "counter" then
+            chips[#chips + 1] = { text = "×" .. fmtNum(s.value), color = Palette.PINK,
+                icon = "status_eclipse" }
         elseif s.kind == "weak" or s.kind == "frail" then
             chips[#chips + 1] = { text = "×" .. fmtNum(s.value), color = Palette.PINK,
                 icon = "status_" .. s.kind }

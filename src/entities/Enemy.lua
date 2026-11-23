@@ -4,6 +4,7 @@ local EnemyKits = require("src.data.enemies")
 local Rng = require("src.systems.Rng")
 local IntentVisibility = require("src.systems.IntentVisibility")
 local BossMechanics = require("src.systems.BossMechanics")
+local ArchetypeCounters = require("src.systems.ArchetypeCounters")
 local Resistances = require("src.systems.Resistances")
 
 local Enemy = {}
@@ -49,6 +50,7 @@ function Enemy:setKit(kitId)
         self:addStatusEffect({ name = "regen", stacks = n, duration = 999 })
     end
     BossMechanics.onSpawn(self)
+    ArchetypeCounters.onSpawn(self)
     self:rollIntent()
 end
 
@@ -177,7 +179,7 @@ function Enemy:rollIntent(player)
         raw = D,
         perHit = hasDmg and math.max(1, math.floor(D * m.mult)) or 0,
         hits = hasDmg and hits or 0,
-        pierce = m.pierce or nil,
+        pierce = (m.pierce or (hasDmg and ArchetypeCounters.piercesAll(self))) or nil,
         armor = m.armor and math.floor(self:getDefendAmount() * m.armor) or 0,
         strength = strength or 0,
         heal = m.heal and math.max(1, math.floor(self.maxHealth * m.heal)) or 0,

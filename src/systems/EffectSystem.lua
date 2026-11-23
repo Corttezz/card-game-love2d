@@ -118,7 +118,7 @@ function EffectSystem.heldTagCount(game, tag, turnContext)
     for _, c in ipairs((game and game.selectedCards) or {}) do inPlay[c] = true end
     local n = 0
     for _, c in ipairs((game and game.hand) or {}) do
-        if not inPlay[c] and TagSystem.cardHasTag(c, tag) then n = n + 1 end
+        if not inPlay[c] and not c.frozen and TagSystem.cardHasTag(c, tag) then n = n + 1 end
     end
     return n
 end
@@ -338,7 +338,9 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
         return true
 
     elseif t == "self_damage" then
+        local before = game.player.health
         game.player:loseHealth(v)
+        require("src.systems.ArchetypeCounters").onSelfDamage(game, before - game.player.health)
         return true
 
     elseif t == "restore_mana" then
@@ -546,6 +548,7 @@ end
 
 function EffectSystem:_evokeOrbEffect(game, orb)
     if not orb then return end
+    require("src.systems.ArchetypeCounters").onEvoke(game, orb)
     local v = orb.value or 1
     local focus = 0
     if game.player and game.player.getBuffStacks then
@@ -764,6 +767,7 @@ end
 function EffectSystem:fireThornReflect(game)
     local v = EffectSystem.thornStacks(game)
     if v <= 0 then return 0 end
+    if require("src.systems.ArchetypeCounters").blocksThorns(game) then return 0 end
     local enemy = game.enemy
     if not enemy or not enemy.isAlive or not enemy:isAlive() then return 0 end
     local landed, lvl = enemy:takeDamage(v, "physical")

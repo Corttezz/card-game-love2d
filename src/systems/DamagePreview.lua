@@ -2,6 +2,7 @@ local EffectSystem = require("src.systems.EffectSystem")
 local ComboSystem  = require("src.systems.ComboSystem")
 local TagSystem    = require("src.systems.TagSystem")
 local Resistances  = require("src.systems.Resistances")
+local ArchetypeCounters = require("src.systems.ArchetypeCounters")
 
 local DamagePreview = {}
 
@@ -24,6 +25,7 @@ local function liveState(game)
         strength  = (p and p.strength) or 0,
         dexterity = (p and p.dexterity) or 0,
         echoFired = game._echoFiredThisTurn and true or false,
+        eclipseUsed = game._eclipseUsedThisTurn and true or false,
         weak  = p and p.hasDebuff and p:hasDebuff("weak") or false,
         frail = p and p.hasDebuff and p:hasDebuff("frail") or false,
     }
@@ -87,6 +89,16 @@ function DamagePreview.cardValue(game, card, turnContext, st)
             value = sm, after = v }
     end
 
+    if (isAtk or card.type == "defense") and not st.eclipseUsed then
+        local ec = ArchetypeCounters.eclipseMult(game)
+        if ec then
+            st.eclipseUsed = true
+            v = v * ec
+            steps[#steps + 1] = { kind = "counter", counter = "eclipse_first", op = "mult",
+                value = ec, after = v }
+        end
+    end
+
     v = math.floor(v)
 
     if isAtk and st.weak then
@@ -117,7 +129,7 @@ end
 local function simEnemy(enemy)
     local vuln = enemy and enemy.hasStatus and enemy:hasStatus("vulnerable") or false
     return { health = (enemy and enemy.health) or 0, armor = (enemy and enemy.armor) or 0,
-        vuln = vuln }
+        maxArmor = (enemy and enemy.maxArmor) or math.huge, vuln = vuln }
 end
 
 local function simPlayer(game)
@@ -300,8 +312,10 @@ function DamagePreview.simulate(game, cards)
     end
 
     local played = game._cardsPlayedBattle or 0
-    local function cardPlayed()
+    local playedTurn = game._cardsPlayedTurn or 0
+    local function cardPlayed(card)
         played = played + 1
+        playedTurn = playedTurn + 1
         for _, j in ipairs(game.jokerSlots or {}) do
             for _, e in ipairs(j.effects or {}) do
                 if e.type == "on_card_played_damage" and E.health > 0 then
@@ -312,6 +326,9 @@ function DamagePreview.simulate(game, cards)
                 end
             end
         end
+        local gain = ArchetypeCounters.magnetArmor(game, card)
+            + ArchetypeCounters.floodArmor(game, playedTurn)
+        if gain > 0 then E.armor = math.min(E.maxArmor, E.armor + gain) end
     end
     local echoCard = EffectSystem.jokerEffect(game, "echo_first_card")
     local poison0 = (game.enemy.getStatusStacks and game.enemy:getStatusStacks("poison")) or 0
@@ -378,7 +395,7 @@ function DamagePreview.simulate(game, cards)
                 for _, e in ipairs(card.effects or {}) do effect(e, card) end
             end
         end
-        if card.type ~= "joker" and not entry.skipped then cardPlayed() end
+        if card.type ~= "joker" and not entry.skipped then cardPlayed(card) end
         if card.exhaust or hasEff(card, "exhaust") then ash = ash + ashPerExhaust end
         R.cards[#R.cards + 1] = entry
     end
