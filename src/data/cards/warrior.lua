@@ -406,13 +406,13 @@ return {
         id = "warrior_eternal_bulwark", name = "Baluarte Eterno",
         type = "joker", subtype = "power",
         cost = 2, attack = 0, defense = 0,
-        description = "+2 de Bloqueio em cartas de defesa. A primeira defesa de cada turno arma 8 de Espinhos.",
+        description = "+2 de Bloqueio em cartas de defesa. A primeira defesa de cada turno arma 8 de Espinhos, +1 a cada 2 defesas jogadas na luta.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "legendary", class = "warrior",
         tags = { "defend", "thorn", "passive" },
         effects = {
             { type = "defense_bonus", target = "defense", value = 2 },
-            { type = "on_defend_damage", value = 8, description = "Arma Espinhos 8 no primeiro Bloqueio do turno" },
+            { type = "on_defend_damage", value = 8, growEvery = 2, description = "Arma Espinhos 8 no primeiro Bloqueio do turno, crescendo com as defesas da luta" },
         },
     },
 }

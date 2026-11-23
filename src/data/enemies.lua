@@ -118,7 +118,7 @@ Enemies.KITS = {
         },
     },
     rune_golem = {
-        counter = { kind = "magnet", value = 4 },
+        counter = { kind = "magnet", value = 8 },
         hpMul = 1.1,
         opener = "rune_ward",
         moves = {
@@ -130,7 +130,7 @@ Enemies.KITS = {
         },
     },
     tower_lich = {
-        counter = { kind = "card_flood", from = 9, value = 3 },
+        counter = { kind = "card_flood", from = 7, value = 5 },
         opener = "essence_drain",
         mechanic = { kind = "runes", status = "runes", start = 0, gain = 1, max = 4,
                      breakPct = 0.12, move = "rune_cataclysm" },
@@ -181,7 +181,7 @@ Enemies.KITS = {
         },
     },
     blood_duke = {
-        counter = { kind = "blood_mirror" },
+        counter = { kind = "blood_mirror", value = 2 },
         hpMul = 1.0, dmgMul = 1.05,
         opener = "blood_feast",
         moves = {
@@ -263,7 +263,7 @@ Enemies.KITS = {
         },
     },
     rot_colossus = {
-        counter = { kind = "drink_poison", value = 2 },
+        counter = { kind = "drink_poison", value = 4 },
         hpMul = 1.0,
         mechanic = { kind = "roots", status = "roots", start = 2, max = 3, growEvery = 2,
                      regenPct = 0.0065, cutPct = 0.04,
@@ -281,7 +281,7 @@ Enemies.KITS = {
     },
 
     eclipse_queen = {
-        counter = { kind = "eclipse_first", value = 50 },
+        counter = { kind = "eclipse_first", value = 25 },
         opener = "waning_light",
         noEnrage = true,
         strikes = { spark_rain = "spark", sunset_ray = "spark" },
@@ -413,7 +413,7 @@ Enemies.KITS = {
         },
     },
     storm_griffin = {
-        counter = { kind = "lightning_rod", value = 1 },
+        counter = { kind = "lightning_rod", value = 2 },
         opener = "thunder_roar",
         moves = {
             { id = "lightning_talons", kind = "multi",  weight = 35, mult = 0.45, hits = 3 },

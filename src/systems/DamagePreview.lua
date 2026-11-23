@@ -275,7 +275,7 @@ function DamagePreview.simulate(game, cards)
                     local real = game._jokerThornFiredThisTurn or {}
                     if not P.thornFired[jid] and not real[jid] then
                         P.thornFired[jid] = true
-                        R.thorn = R.thorn + (e.value or 0)
+                        R.thorn = R.thorn + EffectSystem.defendThornValue(game, e, 1)
                     end
                 else
                     R.thorn = R.thorn + (e.value or 0)

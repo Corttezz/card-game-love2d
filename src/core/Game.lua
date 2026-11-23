@@ -530,6 +530,7 @@ function Game:spawnBattleCopy(card, keepSeal)
         self.runManager:applyUpgradesToInstance(inst, card.upgrades)
     end
     inst.edition = card.edition
+    inst.battleCopy = true
     if keepSeal then inst.seal = card.seal end
     return inst
 end

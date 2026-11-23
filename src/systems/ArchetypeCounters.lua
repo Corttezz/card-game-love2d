@@ -140,7 +140,7 @@ function AC.exiles(game, card)
     game._playedIdsTurn = game._playedIdsTurn or {}
     local n = (game._playedIdsTurn[card.id] or 0) + 1
     game._playedIdsTurn[card.id] = n
-    if n >= 2 then
+    if n >= 2 or card.battleCopy then
         AC.fire(game, "copy_exile", n)
         return true
     end
@@ -164,7 +164,7 @@ end
 function AC.onSelfDamage(game, lost)
     local s = AC.active(game, "blood_mirror")
     if not s or not lost or lost <= 0 then return end
-    local healed = game.enemy:healSelf(lost)
+    local healed = game.enemy:healSelf(lost * (s.value or 1))
     if healed > 0 then AC.fire(game, "blood_mirror", healed) end
 end
 

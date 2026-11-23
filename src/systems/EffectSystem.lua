@@ -103,6 +103,18 @@ local function multLabel(v)
     return "×" .. string.format("%g", v or 1)
 end
 
+function EffectSystem.echoFactor(game, effect)
+    local turn = math.max(1, (game and game.battleTurn) or 1)
+    return (effect.value or 2) + (effect.grow or 0) * (turn - 1)
+end
+
+function EffectSystem.defendThornValue(game, effect, pending)
+    local v = effect.value or 0
+    local every = effect.growEvery
+    if not every or every <= 0 then return v end
+    return v + math.floor((((game and game._defensesPlayedBattle) or 0) + (pending or 0)) / every)
+end
+
 function EffectSystem.jokerEffect(game, effectType)
     for _, joker in ipairs((game and game.jokerSlots) or {}) do
         for _, e in ipairs(joker.effects or {}) do
@@ -171,7 +183,7 @@ function EffectSystem:jokerSteps(game, card, baseValue, turnContext, echoFired)
                 if (effect.type == "echo_first_attack" and isAtk)
                     or effect.type == "echo_first_card" then
                     echoUsed = true
-                    local fator = effect.value or 2
+                    local fator = EffectSystem.echoFactor(game, effect)
                     mult(joker, fator, msg("echo_first", { value = fator }))
                     break
                 end
@@ -874,6 +886,7 @@ function EffectSystem:processTriggerEffect(game, effect, triggerType, context)
             "+" .. amount .. " PV", "heal")
 
     elseif t == "on_defend_damage" and triggerType == "defend" then
+        v = EffectSystem.defendThornValue(game, effect)
         local fired = true
         local joker = context and context.sourceJoker
         if joker then

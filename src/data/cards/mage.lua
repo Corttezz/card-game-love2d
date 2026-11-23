@@ -398,13 +398,13 @@ return {
         id = "mage_echo_form", name = "Forma de Eco",
         type = "joker", subtype = "power",
         cost = 3, attack = 0, defense = 0,
-        description = "Dobra o dano da sua primeira carta de ataque do turno.",
+        description = "Multiplica por 2 o dano da sua primeira carta de ataque do turno; o fator sobe 0,5 a cada turno da luta.",
         image = "assets/cards/defense/ironShield.png",
         rarity = "rare", class = "mage",
         tags = { "magic", "scaling", "passive" },
         effects = {
-            { type = "echo_first_attack", value = 2,
-              description = "Dobra a primeira carta de ataque do turno" },
+            { type = "echo_first_attack", value = 2, grow = 0.5,
+              description = "Multiplica a primeira carta de ataque do turno; cresce a cada turno" },
         },
     },
     mage_electrodynamics = {

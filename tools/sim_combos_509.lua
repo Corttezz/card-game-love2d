@@ -8,14 +8,15 @@ M.ENGINES = {
     { arch = "lightning", class = "mage",
       deck = { "mage_zap", "mage_zap", "mage_lightning", "mage_ball_lightning", "mage_boot_sequence",
           "mage_dualcast", "mage_overcharge", "mage_twin_bolts", "mage_magic_barrier", "mage_magic_barrier" },
-      jokers = { "mage_rune_of_power", "mage_electrodynamics" }, counters = { "storm_griffin" } },
+      jokers = { "mage_creative_ai", "mage_electrodynamics" }, counters = { "storm_griffin" } },
     { arch = "loop", class = "rogue",
       deck = { "rogue_doppelganger", "rogue_doppelganger", "rogue_calculated_gamble", "rogue_acrobatics",
           "rogue_neutralize", "rogue_poison_dart", "rogue_backstab", "rogue_stiletto", "rogue_strike", "rogue_defend" },
       jokers = { "rogue_a_thousand_cuts", "rogue_after_image" }, counters = { "tower_lich" } },
     { arch = "copies", class = "warrior",
-      deck = { "effect_mystery_card", "effect_mystery_card", "warrior_heavy_blade", "warrior_colossus_blow",
-          "warrior_war_cry", "attack_cleave", "warrior_strike", "warrior_strike", "warrior_defend", "warrior_defend" },
+      deck = { "effect_mystery_card", "effect_mystery_card", "warrior_heavy_blade", "warrior_heavy_blade",
+          "warrior_heavy_blade", "warrior_colossus_blow", "warrior_colossus_blow", "warrior_war_cry",
+          "warrior_defend", "warrior_defend" },
       jokers = { "joker_005", "warrior_berserk" }, counters = { "fallen_angel" } },
     { arch = "strength", class = "warrior",
       deck = { "warrior_rage", "warrior_seeing_red", "warrior_inflame", "warrior_war_cry", "warrior_heavy_blade",
@@ -30,8 +31,9 @@ M.ENGINES = {
           "defense_bulwark", "warrior_taunt", "warrior_defend", "warrior_defend", "warrior_strike", "warrior_strike" },
       jokers = { "warrior_eternal_bulwark", "joker_002" }, counters = { "carrion_king" } },
     { arch = "block", class = "warrior",
-      deck = { "warrior_defend", "warrior_defend", "warrior_defend", "defense_bulwark", "warrior_iron_wave",
-          "warrior_kite_guard", "warrior_power_through", "warrior_shield_slam", "warrior_strike", "warrior_strike" },
+      deck = { "warrior_defend", "warrior_defend", "warrior_defend", "defense_bulwark", "warrior_plate_mail",
+          "warrior_plate_mail", "warrior_inflame", "warrior_kite_guard", "warrior_power_through", "warrior_shield_slam",
+          "warrior_strike", "warrior_strike" },
       jokers = { "warrior_juggernaut", "warrior_bastion" }, counters = { "spectral_knight" } },
     { arch = "exhaust", class = "warrior",
       deck = { "warrior_ghostly_armor", "warrior_ghostly_armor", "warrior_feed", "warrior_immolate",
@@ -106,7 +108,7 @@ function M.run(seedsArg)
             services = {}, maxJokerSlots = 2,
             act = act, floorInAct = tier == "boss" and 8 or (tier == "mini_boss" and 7 or 5),
             node = { type = tier, enemyId = kitId },
-            hp = 80, maxHp = 80, baseMana = 4,
+            hp = opts.hp or 80, maxHp = opts.hp or 80, baseMana = 4,
         }
         AC.spec = opts.counterOff and function() return nil end or realSpec
         trace = { hp = {}, hpMul = opts.hpMul }
@@ -126,8 +128,13 @@ function M.run(seedsArg)
 
     local out = {}
     local function line(s) out[#out + 1] = s; realPrint(s) end
+    local function pick(d, a, b)
+        local t = {}
+        for i = a, b do if d[i] then t[#t + 1] = d[i] end end
+        return t
+    end
 
-    line("## Bola de neve (vida do inimigo ×8, contra desligado, " .. seeds .. " sementes)")
+    line("## Bola de neve (vida do inimigo ×8, jogador com 999 de vida, contra desligado, " .. seeds .. " sementes)")
     line("")
     line("| Motor | Coringas | Dano T1-2 | Dano T5-6 | Pico | Crescimento | Sem coringa T5-6 |")
     line("|---|---|---|---|---|---|---|")
@@ -135,14 +142,16 @@ function M.run(seedsArg)
     for _, e in ipairs(M.ENGINES) do
         local early, late, peak, lateNo = {}, {}, 0, {}
         for s = 1, seeds do
-            local r = fight(e, e.counters[1], { counterOff = true, hpMul = 8 }, 509000 + s * 17)
+            local r = fight(e, e.counters[1], { counterOff = true, hpMul = 8, hp = 999 }, 509000 + s * 17)
             if r.dealt then
-                early[#early + 1] = mean({ r.dealt[1] or 0, r.dealt[2] or 0 })
-                late[#late + 1] = mean({ r.dealt[5] or 0, r.dealt[6] or 0 })
+                local a, b = pick(r.dealt, 1, 2), pick(r.dealt, 5, 6)
+                if #a > 0 then early[#early + 1] = mean(a) end
+                if #b > 0 then late[#late + 1] = mean(b) end
                 for _, d in ipairs(r.dealt) do peak = math.max(peak, d) end
             end
-            local r0 = fight(e, e.counters[1], { counterOff = true, hpMul = 8, noJokers = true }, 509000 + s * 17)
-            if r0.dealt then lateNo[#lateNo + 1] = mean({ r0.dealt[5] or 0, r0.dealt[6] or 0 }) end
+            local r0 = fight(e, e.counters[1], { counterOff = true, hpMul = 8, hp = 999, noJokers = true }, 509000 + s * 17)
+            local b0 = r0.dealt and pick(r0.dealt, 5, 6) or {}
+            if #b0 > 0 then lateNo[#lateNo + 1] = mean(b0) end
         end
         local a, b = mean(early), mean(late)
         snowRows[e.arch] = { early = a, late = b, peak = peak, lateNo = mean(lateNo) }
@@ -151,7 +160,7 @@ function M.run(seedsArg)
     end
 
     line("")
-    line("## Contra (mesmo chefe, contra ligado × desligado, " .. seeds .. " sementes)")
+    line("## Contra (mesmo chefe, contra ligado × desligado, jogador com 300 de vida, " .. seeds .. " sementes)")
     line("")
     line("| Motor | Inimigo | Vitórias sem contra | Vitórias com contra | Turnos sem → com | Vida perdida sem → com | Dano/turno sem → com |")
     line("|---|---|---|---|---|---|---|")
@@ -161,14 +170,14 @@ function M.run(seedsArg)
             local agg = { off = { w = 0, t = {}, h = {}, d = {} }, on = { w = 0, t = {}, h = {}, d = {} } }
             for s = 1, seeds do
                 for key, off in pairs({ off = true, on = false }) do
-                    local r = fight(e, kitId, { counterOff = off }, 709000 + s * 29)
+                    local r = fight(e, kitId, { counterOff = off, hp = 300 }, 709000 + s * 29)
                     local a = agg[key]
                     if r.err then
                         realPrint("[sim509] erro " .. e.arch .. "/" .. kitId .. ": " .. r.err)
                     else
                         if r.won then a.w = a.w + 1 end
                         a.t[#a.t + 1] = tonumber(r.turns) or 40
-                        a.h[#a.h + 1] = math.min(r.hpLost or 0, r.maxHp or 80)
+                        a.h[#a.h + 1] = r.hpLost or 0
                         a.d[#a.d + 1] = mean(r.dealt or {})
                     end
                 end
