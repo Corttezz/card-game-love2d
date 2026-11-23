@@ -77,6 +77,35 @@ local function body(t)
     t:eq("Espelho de Forja sozinho avisa e não copia", #g.discard, 0)
 
     g = fresh()
+    local mirror2 = card("effect_mystery_card")
+    g._currentTurnContext = { allSelectedCards = { strike, mirror, mirror2 } }
+    es:processEffectCard(g, mirror2.effects[1], mirror2)
+    t:eq("Espelho de Forja não copia outro Espelho (sem laço)", #g.discard, 0)
+    local exhaustCard
+    for id, cd in pairs(db:getAllCards()) do
+        if id ~= "effect_mystery_card" and cd.type ~= "joker" then
+            for _, e in ipairs(cd.effects or {}) do
+                if e.type == "exhaust" then exhaustCard = exhaustCard or id end
+            end
+        end
+    end
+    t:check("existe carta com Exaurir para o teste", exhaustCard ~= nil)
+    if exhaustCard then
+        g = fresh()
+        local ex = card(exhaustCard)
+        g._currentTurnContext = { allSelectedCards = { ex, mirror } }
+        es:processEffectCard(g, mirror.effects[1], mirror)
+        t:eq("Espelho de Forja não copia carta com Exaurir (" .. exhaustCard .. ")", #g.discard, 0)
+    end
+    t:check("Espelho é incopiável", EffectSystem.isUncopiable(mirror))
+    t:check("Golpe comum é copiável", not EffectSystem.isUncopiable(strike))
+    local copiaveis = 0
+    for _, cd in pairs(db:getAllCards()) do
+        if cd.type ~= "joker" and not EffectSystem.isUncopiable(cd) then copiaveis = copiaveis + 1 end
+    end
+    t:check("a maioria das cartas segue copiável (" .. copiaveis .. ")", copiaveis >= 60)
+
+    g = fresh()
     local leech = card("rogue_leech_blade")
     for _, e in ipairs(leech.effects) do
         if e.type == "copy_to_discard" then es:processEffectCard(g, e, leech) end

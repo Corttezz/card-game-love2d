@@ -492,6 +492,10 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
             game:addMessage(msg("nothing_to_copy"), "warning")
             return true
         end
+        if EffectSystem.isUncopiable(prev) then
+            game:addMessage(msg("cant_copy_exhaust", { name = I18n.cardName(prev) }), "warning")
+            return true
+        end
         if game.isRunMode and game.runManager and game.runManager.currentRun then
             game.runManager:addCardToDeck(prev.id, { edition = prev.edition, seal = prev.seal })
         end
@@ -518,6 +522,16 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
         return true
     end
 
+    return false
+end
+
+function EffectSystem.isUncopiable(card)
+    for _, e in ipairs((card and card.effects) or {}) do
+        if e.type == "exhaust" or e.type == "duplicate_prev" then return true end
+    end
+    for _, t in ipairs((card and card.tags) or {}) do
+        if t == "exhaust" then return true end
+    end
     return false
 end
 
