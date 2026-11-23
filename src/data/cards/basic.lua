@@ -282,7 +282,7 @@ return {
     effect_mystery_card = {
         id = "effect_mystery_card", name = "Espelho de Forja",
         type = "effect", subtype = "skill",
-        cost = 1, attack = 0, defense = 0,
+        cost = 2, attack = 0, defense = 0,
         description = "Copia a carta jogada antes desta para o seu grimório. Não copia cartas com Exaurir. Exaurir.",
         image = "assets/cards/effect/potionOfHealing.png",
         rarity = "uncommon", class = "basic",
