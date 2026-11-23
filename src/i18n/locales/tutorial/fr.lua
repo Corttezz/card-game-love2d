@@ -118,10 +118,10 @@ return {
             map = "Avant de choisir, *regardez la carte*. Elle montre tout l'acte et où mène chaque sentier.",
         },
         act_map = {
-            read = "Voici la *carte de l'acte*. Vous avancez de gauche à droite, un étage à la fois, jusqu'au château du *Boss*.",
+            read = "Voici la *carte de l'acte*. Vous montez du bas vers le haut, un étage à la fois, jusqu'au château du *Boss* tout en haut.",
             here = "La marque rouge indique *où vous êtes*. Les sentiers rouges sont le chemin déjà parcouru.",
             branches = "Les bornes à *anneau doré* sont vos choix maintenant. Cliquez sur l'une pour la suivre.",
-            legend = "Chaque halte ouvre *deux ou trois sentiers*. La légende explique chaque symbole : combat, *Élite*, événement, boutique, repos.",
+            legend = "Certaines haltes *ouvrent des sentiers*, d'autres se rejoignent. La légende à droite montre chaque symbole : combat, *Élite*, événement, boutique, repos.",
             boss = "À la fin de l'acte, tous les sentiers se rejoignent : d'abord le *Mini-Boss*, puis le *Boss*. Arrivez-y en forme.",
             close = "Appuyez sur *M* ou sur l'icône de carte en haut pour revoir votre route.",
         },

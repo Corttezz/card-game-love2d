@@ -118,10 +118,10 @@ return {
             map = "Bevor du wählst, *sieh auf die Karte*. Sie zeigt den ganzen Akt und wohin jeder Pfad führt.",
         },
         act_map = {
-            read = "Das ist die *Aktkarte*. Du reist von links nach rechts, Etage für Etage, bis zur Burg des *Bosses*.",
+            read = "Das ist die *Aktkarte*. Du steigst von unten nach oben, Etage für Etage, bis zur Burg des *Bosses* ganz oben.",
             here = "Die rote Marke zeigt, *wo du bist*. Rote Pfade sind der Weg, den du schon gegangen bist.",
             branches = "Marken mit *goldenem Ring* sind deine Optionen jetzt. Klicke eine an, um ihr zu folgen.",
-            legend = "Von jedem Halt gehen *zwei oder drei Pfade* ab. Die Legende erklärt jedes Symbol: Kampf, *Elite*, Ereignis, Laden, Rast.",
+            legend = "Manche Halte *teilen den Pfad*, andere führen zusammen. Die Legende rechts zeigt jedes Symbol: Kampf, *Elite*, Ereignis, Laden, Rast.",
             boss = "Am Ende des Akts treffen sich alle Pfade: zuerst der *Mini-Boss*, dann der *Boss*. Komm stark an.",
             close = "Drücke *M* oder das Kartensymbol oben, um deine Route jederzeit anzusehen.",
         },

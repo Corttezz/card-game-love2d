@@ -154,8 +154,9 @@ function MapManager.generate(floorInAct, actNumber, numNodes, opts)
     return nodes
 end
 
-MapManager.MAP_MIN_W = 3
-MapManager.MAP_MAX_W = 6
+MapManager.MAP_MIN_W = 2
+MapManager.MAP_MAX_W = 4
+MapManager.MAP_START_W = 3
 MapManager.MAP_COLS = MapManager.MAP_MAX_W * 2 - 1
 MapManager.MAP_TRIES = 24
 
@@ -189,14 +190,13 @@ function MapManager.legacyFloor(floorInAct, F)
 end
 
 local function rowWidths(rows)
-    local w = { MapManager.MAP_MIN_W }
+    local w = { MapManager.MAP_START_W }
     for r = 2, rows do
         local prev, roll = w[r - 1], rnd()
         local d
-        if prev <= 3 then d = roll < 0.7 and 1 or 2
-        elseif prev == 4 then d = roll < 0.75 and 1 or 0
-        elseif prev < MapManager.MAP_MAX_W then d = roll < 0.5 and 1 or (roll < 0.95 and 0 or -1)
-        else d = roll < 0.85 and 0 or -1 end
+        if prev <= MapManager.MAP_MIN_W then d = roll < 0.7 and 1 or 0
+        elseif prev >= MapManager.MAP_MAX_W then d = roll < 0.55 and 0 or -1
+        else d = roll < 0.2 and -1 or (roll < 0.6 and 0 or 1) end
         w[r] = math.max(MapManager.MAP_MIN_W, math.min(MapManager.MAP_MAX_W, prev + d))
     end
     return w
@@ -391,6 +391,23 @@ function MapManager.hasCrossing(map)
         end
     end
     return false
+end
+
+function MapManager.tangledEdges(map)
+    local n = 0
+    for f = 1, #map.floors - 1 do
+        local row = map.floors[f]
+        for i = 1, #row do
+            for _, j in ipairs(row[i].mapNext or {}) do
+                for k = i + 1, #row do
+                    for _, jb in ipairs(row[k].mapNext or {}) do
+                        if jb < j then n = n + 1 end
+                    end
+                end
+            end
+        end
+    end
+    return n
 end
 
 function MapManager.dedupeNodes(nodes)

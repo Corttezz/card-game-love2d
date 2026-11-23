@@ -118,10 +118,10 @@ return {
             map = "Before you choose, *check the map*. It shows the whole act and where each trail leads.",
         },
         act_map = {
-            read = "This is the *act map*. You travel left to right, one floor at a time, up to the *Boss*'s castle.",
+            read = "This is the *act map*. You climb from the bottom up, one floor at a time, to the *Boss*'s castle at the top.",
             here = "The red mark shows *where you are*. Red trails are the road you've already taken.",
             branches = "Markers with a *gold ring* are your options now. Click one to follow it.",
-            legend = "Each stop opens *two or three trails*. The legend tells you each symbol: battle, *Elite*, event, shop, rest.",
+            legend = "Some stops *split the trail*, others merge. The legend on the right shows each symbol: battle, *Elite*, event, shop, rest.",
             boss = "At the end of the act every trail meets: first the *Mini-Boss*, then the *Boss*. Arrive strong.",
             close = "Press *M* or the map icon at the top whenever you want to review your route.",
         },

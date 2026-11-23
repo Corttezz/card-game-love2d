@@ -118,10 +118,10 @@ return {
             map = "Antes de elegir, *mira el mapa*. Muestra el acto entero y adónde lleva cada sendero.",
         },
         act_map = {
-            read = "Este es el *mapa del acto*. Avanzas de izquierda a derecha, un piso a la vez, hasta el castillo del *Jefe*.",
+            read = "Este es el *mapa del acto*. Subes de abajo hacia arriba, un piso a la vez, hasta el castillo del *Jefe* en la cima.",
             here = "La marca roja indica *dónde estás*. Los senderos rojos son el camino que ya hiciste.",
             branches = "Los hitos con *anillo dorado* son tus opciones ahora. Haz clic en uno para seguirlo.",
-            legend = "De cada parada salen *dos o tres senderos*. La leyenda explica cada símbolo: batalla, *Élite*, evento, tienda, descanso.",
+            legend = "Algunas paradas *abren senderos*, otras se juntan. La leyenda a la derecha muestra cada símbolo: batalla, *Élite*, evento, tienda, descanso.",
             boss = "Al final del acto todos los senderos se unen: primero el *Mini-Jefe*, luego el *Jefe*. Llega fuerte.",
             close = "Pulsa *M* o el icono del mapa arriba cuando quieras revisar tu ruta.",
         },

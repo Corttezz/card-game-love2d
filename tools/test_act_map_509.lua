@@ -60,6 +60,54 @@ local function body(t)
     t:eq("ramos irmãos nunca repetem o tipo", twins, 0)
     t:truthy("mapa ramificado e desigual (" .. minN .. "-" .. maxN .. " nós)", minN >= 12 and maxN > 20 and maxN > minN)
 
+    local ActMapScreen = require("components.ActMapScreen")
+    local function cross(a, b, c, d)
+        local function o(p, q, r) return (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x) end
+        local d1, d2 = o(a, b, c), o(a, b, d)
+        local d3, d4 = o(c, d, a), o(c, d, b)
+        return ((d1 > 0 and d2 < 0) or (d1 < 0 and d2 > 0)) and ((d3 > 0 and d4 < 0) or (d3 < 0 and d4 > 0))
+    end
+    local geo, order, cramped, widest, tangledAll = 0, 0, 0, 0, 0
+    for seed = 1, 300 do
+        Rng.setActive(Rng.new(seed * 7 + 1))
+        local map = MapManager.buildActMap(1 + (seed % 6))
+        tangledAll = tangledAll + MapManager.tangledEdges(map)
+        local L = ActMapScreen.layout(map, 1280, 720, seed, 0)
+        for f = 1, F - 2 do
+            local edges = {}
+            local row = map.floors[f]
+            widest = math.max(widest, #row)
+            for i, n in ipairs(row) do
+                for _, j in ipairs(n.mapNext or {}) do
+                    edges[#edges + 1] = { a = L.pts[f][i], b = L.pts[f + 1][j], i = i, j = j }
+                end
+                if i > 1 then
+                    if L.pts[f][i].x <= L.pts[f][i - 1].x then order = order + 1 end
+                    if L.pts[f][i].x - L.pts[f][i - 1].x < ActMapScreen.NODE_R * 2 + 40 then cramped = cramped + 1 end
+                end
+            end
+            for p = 1, #edges do
+                for q = p + 1, #edges do
+                    local e1, e2 = edges[p], edges[q]
+                    if e1.i ~= e2.i and e1.j ~= e2.j and cross(e1.a, e1.b, e2.a, e2.b) then geo = geo + 1 end
+                end
+            end
+        end
+    end
+    t:eq("gerador: nenhuma aresta fora de ordem (300 mapas)", tangledAll, 0)
+    t:eq("tela: nenhuma linha cruza outra (300 mapas)", geo, 0)
+    t:eq("tela: trilhas do mesmo andar em ordem da esquerda para a direita", order, 0)
+    t:eq("tela: nós do mesmo andar bem espaçados", cramped, 0)
+    t:truthy("no máximo 4 trilhas lado a lado (" .. widest .. ")", widest >= 3 and widest <= MapManager.MAP_MAX_W)
+
+    local Lv = ActMapScreen.layout(MapManager.buildActMap(1), 1280, 720, 1, 0)
+    t:truthy("mapa rola: andares 1 a 11 não cabem espremidos", Lv.maxScroll > 0 and Lv.rowH >= 54)
+    t:truthy("chefe fica fixo no topo, acima da área que rola",
+        Lv.pts[F][1].y < Lv.view.y and Lv.pts[F][1].y > Lv.y)
+    local Ls = ActMapScreen.layout(MapManager.buildActMap(1), 1280, 720, 1, Lv.maxScroll)
+    t:truthy("rolagem leva o andar 1 para dentro da vista",
+        Ls.rowY[1] < Ls.view.y + Ls.view.h and Lv.rowY[1] > Ls.rowY[1])
+
     Rng.setActive(Rng.new(4242))
     local rm = RunManager:new()
     rm:startNewRun("warrior")

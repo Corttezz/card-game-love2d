@@ -118,10 +118,10 @@ return {
             map = "Antes de escolher, *olhe o mapa*. Ele mostra o ato inteiro e para onde cada trilha leva.",
         },
         act_map = {
-            read = "Este é o *mapa do ato*. Você anda da esquerda para a direita, um andar por vez, até o castelo do *Chefe*.",
+            read = "Este é o *mapa do ato*. Você sobe de baixo para cima, um andar por vez, até o castelo do *Chefe* no topo.",
             here = "A marca vermelha diz *onde você está*. As trilhas em vermelho são o caminho que você já fez.",
             branches = "Os marcos com *anel dourado* são suas opções agora. Clique em um para seguir por ele.",
-            legend = "De cada parada saem *duas ou três trilhas*. A legenda diz o que é cada símbolo: batalha, *Elite*, evento, loja, descanso.",
+            legend = "Umas paradas *abrem trilhas*, outras se juntam. A legenda à direita mostra cada símbolo: batalha, *Elite*, evento, loja, descanso.",
             boss = "No fim do ato, todas as trilhas se juntam: primeiro o *Mini-Chefe*, depois o *Chefe*. Chegue lá forte.",
             close = "Aperte *M* ou o ícone do mapa no topo quando quiser rever a rota.",
         },
