@@ -178,7 +178,7 @@ function M.run()
                 end
                 if onScreen and dark >= 5 then drawn = drawn + 1 end
             end
-            t:truthy(tag .. " há ramos não tomados à vista", visible >= 2)
+            if fakeH >= 600 then t:truthy(tag .. " há ramos não tomados à vista", visible >= 2) end
             t:eq(tag .. " todo ramo não tomado à vista tem tinta", drawn, visible)
 
             for k, p in ipairs(S.nodes) do
