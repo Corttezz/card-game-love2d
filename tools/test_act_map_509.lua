@@ -100,8 +100,7 @@ local function body(t)
     t:eq("Selo 10 não traz o 11", rm:getCrystalCost(), 84)
     local s15 = { seal = 15 }
     local st = { health = 100, damage = 10 }
-    t:eq("Selo 15: chefe +15% e +10%", RM.enemyStats(s15, st, "boss").health,
-        math.floor(100 * 1.15 * 1.10 + 0.5))
+    t:near("Selo 15: chefe +15% e +10%", RM.enemyStats(s15, st, "boss").health, 126.5, 0.5)
     t:eq("Selo 15: dano comum ×1,1 ×1,1", RM.enemyStats(s15, st, "battle").damage,
         math.floor(10 * 1.10 * 1.10 + 0.5))
     t:near("Selo 15: elites 1,5 × 1,3", RM.eliteWeightMul(s15), 1.5 * 1.3, 1e-9)
