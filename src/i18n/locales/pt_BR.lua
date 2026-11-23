@@ -132,7 +132,8 @@ return {
         info_deck       = "BARALHO",
         shortcut_deck   = "Deck [D]",
         shortcut_jokers = "Coringas [J]",
-        shortcut_journal = "Roteiro [M]",
+        shortcut_journal = "Roteiro [L]",
+        shortcut_map = "Mapa [M]",
         resume          = "Continuar",
         resume_desc     = "Volta para onde você estava. Nada muda.",
         settings        = "Configurações",
@@ -879,6 +880,15 @@ return {
 
     act_map = {
         title = "Mapa do Ato {act}",
+        journal_button = "Roteiro [L]",
+        none = "Sem mapa nesta parte da jornada",
+        floor_of = "Andar {x} de {total}",
+        boss_line = "Chefe: {name}",
+        hint = "M ou ESC fecha  ·  clique numa marca dourada para seguir",
+        state_done = "Já percorrido",
+        state_choice = "Escolha disponível agora",
+        state_reach = "Alcançável por este caminho",
+        state_closed = "Fora do seu caminho",
     },
 
     victory = {
@@ -1093,6 +1103,7 @@ return {
         topbar_deck = { name = "Grimório", desc = "{deck} cartas no seu grimório, {hand} na mão agora. No fim do turno a mão é descartada e você compra novas. Selecione para folhear o deck." },
         topbar_progress = { name = "Progresso da Jornada", desc = "Ato {act}, andar {floor} de {total}. No andar 7 aguarda um MINI-CHEFE; no andar {total}, o CHEFE do ato. Vença o chefe do Ato {last} para encerrar a crônica. Selecione para abrir o Roteiro da jornada.{mods}" },
         topbar_config = { name = "Menu de Pausa", desc = "Pausa a jornada: configurações, salvar e voltar ao menu, ou abandonar a jornada." },
+        topbar_map = { name = "Mapa do Ato", desc = "Abre o mapa do ato: todos os caminhos até o chefe, o trecho que você já percorreu e as próximas escolhas. Atalho: M." },
         scribe_dice_help = { name = "Dados do Escriba", desc = "Uma aposta por visita: clique no copo de dados da mesa. Este botão abre a explicação do corvo." },
         reward_rules = { name = "Como funcionam as ofertas", desc = "As cartas oferecidas são da SUA classe. A qualidade melhora a cada ato, e a cada oferta sem RARA, a chance da próxima sobe (após um longo jejum, a rara é garantida). Cartas marcadas com AFINIDADE combinam com as tags fortes do seu grimório. Cartas que você já tem em cópias aparecem menos." },
         shop_bell   = { name = "Sino de novas ofertas", desc = "Toque o sino e o mercador repõe as duas prateleiras. Custa ${n} nesta visita e sobe $2 a cada toque." },

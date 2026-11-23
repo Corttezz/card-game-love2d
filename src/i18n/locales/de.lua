@@ -120,7 +120,8 @@ return {
         info_deck       = "DECK",
         shortcut_deck   = "Deck [D]",
         shortcut_jokers = "Joker [J]",
-        shortcut_journal = "Chronik [M]",
+        shortcut_journal = "Chronik [L]",
+        shortcut_map = "Karte [M]",
         resume          = "Weiterspielen",
         resume_desc     = "Zurück zu deinem Standort. Nichts ändert sich.",
         settings        = "Einstellungen",
@@ -867,6 +868,15 @@ return {
 
     act_map = {
         title = "Karte von Akt {act}",
+        journal_button = "Chronik [L]",
+        none = "Keine Karte für diesen Teil der Reise",
+        floor_of = "Etage {x} von {total}",
+        boss_line = "Boss: {name}",
+        hint = "M oder ESC schließt  ·  klicke auf eine goldene Markierung, um weiterzuziehen",
+        state_done = "Bereits zurückgelegt",
+        state_choice = "Jetzt wählbar",
+        state_reach = "Über diesen Weg erreichbar",
+        state_closed = "Abseits deines Weges",
     },
 
     victory = {
@@ -1078,6 +1088,7 @@ return {
         topbar_deck = { name = "Grimoire", desc = "{deck} Karten in deinem Grimoire, {hand} gerade auf der Hand. Am Zugende wird deine Hand abgeworfen und du ziehst neue Karten. Auswählen, um das Deck zu durchsuchen." },
         topbar_progress = { name = "Reisefortschritt", desc = "Akt {act}, Etage {floor} von {total}. Ein MINI-BOSS wartet auf Etage 7; der Akt-BOSS auf Etage {total}. Besiege den Boss von Akt {last}, um die Chronik zu vollenden. Auswählen für die Reisechronik.{mods}" },
         topbar_config = { name = "Pausenmenü", desc = "Pausiert die Reise: Optionen, speichern und zum Menü, oder den Lauf abbrechen." },
+        topbar_map = { name = "Aktkarte", desc = "Öffnet die Aktkarte: alle Wege bis zum Boss, die bereits zurückgelegte Strecke und deine nächsten Entscheidungen. Kürzel: M." },
         scribe_dice_help = { name = "Würfel des Schreibers", desc = "Eine Wette pro Besuch: klicke auf den Würfelbecher auf dem Tresen. Dieser Knopf öffnet die Erklärung des Raben." },
         reward_rules = { name = "Wie Angebote funktionieren", desc = "Angebotene Karten gehören ZU DEINER Klasse. Die Qualität steigt mit jedem Akt, und jedes Angebot ohne eine SELTENE erhöht die Chance des nächsten (nach einer langen Durststrecke ist eine seltene garantiert). Mit AFFINITÄT markierte Karten passen zu den starken Tags deines Decks. Karten, die du bereits mehrfach besitzt, erscheinen seltener." },
         shop_bell   = { name = "Glocke für neue Angebote", desc = "Läute die Glocke und der Händler füllt beide Regale neu. Kostet ${n} bei diesem Besuch und steigt mit jedem Läuten um $2." },

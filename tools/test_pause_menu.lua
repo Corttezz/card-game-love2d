@@ -75,7 +75,7 @@ function M.run()
         local callbacks = {
             onOpenSettings = cb("settings"), onSaveQuit = cb("save_quit"),
             onAbandon = cb("abandon"), onOpenDeck = cb("deck"),
-            onOpenJokers = cb("jokers"), onOpenJournal = cb("journal"),
+            onOpenJokers = cb("jokers"), onOpenJournal = cb("journal"), onOpenMap = cb("map"),
         }
 
         local pause = PauseMenu:new()
@@ -83,7 +83,7 @@ function M.run()
         t:truthy("pausa abre", pause:isVisible())
         t:eq("foco nasce em Continuar", pause:focusedKey(), "resume")
         t:eq("4 acoes com run ativa", #pause.rows, 4)
-        t:eq("4 atalhos com run ativa (deck, coringas, roteiro, guia)", #pause.shortcuts, 4)
+        t:eq("5 atalhos com run ativa (deck, coringas, mapa, roteiro, guia)", #pause.shortcuts, 5)
         t:truthy("resumo da run tem 6 celulas", #(pause:runSummary() or {}) == 6)
         pause:keypressed("escape")
         t:falsy("ESC fecha a pausa", pause:isVisible())
@@ -136,7 +136,7 @@ function M.run()
         t:eq("Sim abandona UMA vez", calls.abandon, 1)
         t:falsy("e fecha a pausa", pause:isVisible())
 
-        for _, k in ipairs({ { "d", "deck" }, { "j", "jokers" }, { "m", "journal" } }) do
+        for _, k in ipairs({ { "d", "deck" }, { "j", "jokers" }, { "m", "map" }, { "l", "journal" } }) do
             pause:show(game, callbacks)
             pause:keypressed(k[1])
             t:eq("tecla " .. k[1] .. " abre " .. k[2], calls[k[2]], 1)

@@ -476,7 +476,7 @@ local function scenarioRunAct1()
         expectTrack(nt, "musicAct1", 3.2)
     end
     waitReady(30)
-    for _, key in ipairs({ "d", "j", "m", "g", "escape" }) do
+    for _, key in ipairs({ "d", "j", "m", "l", "g", "escape" }) do
         setScene("overlay [" .. key .. "] na batalha")
         expectContinuous("abrir", "musicAct1", 1.2, function() love.keypressed(key) end)
         expectContinuous("fechar", "musicAct1", 1.2, function()

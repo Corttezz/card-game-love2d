@@ -3930,29 +3930,31 @@ function WorldRoad.forkMousePressed(mx, my)
     if f.converge then return true end
     local i = WorldRoad.forkHitTest(mx, my)
     if i then
-        f.chosen = i
-        f.hover = i
-        f.converge = { t = 0, k = 0, duration = 2.4,
-                       z0 = WorldRoad._camZ, dist = MARK_REL - ARRIVE_REL }
-        Sfx.play("cardSelect")
-        local node = f.nodes[i]
-        local nt = node and node.type
-        local fights = nt == "battle" or nt == "elite" or nt == "mini_boss"
-        WorldRoad.planStop(WorldRoad._camZ + MARK_REL - ARRIVE_REL
-            + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), fights)
-        local pg, pw = LMG.planGeom()
-        require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL, nt == "boss",
-            WorldRoad.isWalkType(nt), WorldRoad.branchTurn(f, i, pg, pw))
-        if node then
-            local key = landmarkKeyFor(node.type)
-            local img = key and getLandmark(key)
-            if img then
-                f.chosenPulse = 0.35
-            end
-        end
+        WorldRoad.forkChoose(i)
     else
         WorldRoad.pokeSceneAt(mx, my)
     end
+    return true
+end
+
+function WorldRoad.forkChoose(i)
+    local f = WorldRoad._fork
+    if not f or f.converge or not f.nodes[i] or i > f.n then return false end
+    f.chosen = i
+    f.hover = i
+    f.converge = { t = 0, k = 0, duration = 2.4,
+                   z0 = WorldRoad._camZ, dist = MARK_REL - ARRIVE_REL }
+    Sfx.play("cardSelect")
+    local node = f.nodes[i]
+    local nt = node.type
+    local fights = nt == "battle" or nt == "elite" or nt == "mini_boss"
+    WorldRoad.planStop(WorldRoad._camZ + MARK_REL - ARRIVE_REL
+        + ((fights or nt == "boss") and WorldRoad.TRAVEL_DISTANCE or 0), fights)
+    local pg, pw = LMG.planGeom()
+    require("src.ui.CastleDrift").pick(f.dirs[i], WorldRoad._camZ, MARK_REL - ARRIVE_REL, nt == "boss",
+        WorldRoad.isWalkType(nt), WorldRoad.branchTurn(f, i, pg, pw))
+    local key = landmarkKeyFor(nt)
+    if key and getLandmark(key) then f.chosenPulse = 0.35 end
     return true
 end
 

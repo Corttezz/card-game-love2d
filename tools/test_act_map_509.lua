@@ -11,6 +11,7 @@ local function body(t)
     local F = MapManager.FLOORS_PER_ACT
 
     local crossings, maps = 0, 0
+    local tangled, wide, twins, minN, maxN = 0, 0, 0, math.huge, 0
     for seed = 1, 60 do
         Rng.setActive(Rng.new(seed))
         local map = MapManager.buildActMap(1 + (seed % 6))
@@ -26,9 +27,38 @@ local function body(t)
             for j = 1, #map.floors[f + 1] do ok = ok and seen[j] == true end
         end
         ok = ok and map.floors[F][1].type == "boss" and map.floors[F - 1][1].type == "mini_boss"
+        local total = 0
+        for f = 1, F do
+            local row = map.floors[f]
+            total = total + #row
+            for i, a in ipairs(row) do
+                if #(a.mapNext or {}) > 3 then wide = wide + 1 end
+                local kidTypes = {}
+                for _, j in ipairs(a.mapNext or {}) do
+                    local ty = map.floors[f + 1][j].type
+                    if kidTypes[ty] and #map.floors[f + 1] > 1 then twins = twins + 1 end
+                    kidTypes[ty] = true
+                    for k = i + 1, #row do
+                        for _, jb in ipairs(row[k].mapNext or {}) do
+                            if jb < j then tangled = tangled + 1 end
+                        end
+                    end
+                end
+            end
+        end
+        local starts = {}
+        for _, n in ipairs(map.floors[1]) do
+            if starts[n.type] then twins = twins + 1 end
+            starts[n.type] = true
+        end
+        minN, maxN = math.min(minN, total), math.max(maxN, total)
         if not ok then t:check("mapa válido seed " .. seed, false) end
     end
-    t:eq("todo mapa do ato tem caminhos que se cruzam", crossings, maps)
+    t:eq("todo mapa do ato tem caminhos que se juntam", crossings, maps)
+    t:eq("trilhas nunca se cruzam por cima", tangled, 0)
+    t:eq("cada nó abre no máximo 3 ramos", wide, 0)
+    t:eq("ramos irmãos nunca repetem o tipo", twins, 0)
+    t:truthy("mapa ramificado e desigual (" .. minN .. "-" .. maxN .. " nós)", minN >= 12 and maxN > 20 and maxN > minN)
 
     Rng.setActive(Rng.new(4242))
     local rm = RunManager:new()

@@ -238,7 +238,7 @@ end
 
 function RunJournalScreen:keypressed(key)
     if not self.visible then return false end
-    if key == "escape" or key == "m" then
+    if key == "escape" or key == "l" then
         self:hide()
     elseif key == "up" then
         self.scroll = math.max(0, self.scroll - SCROLL_STEP)

@@ -120,7 +120,8 @@ return {
         info_deck       = "DECK",
         shortcut_deck   = "Deck [D]",
         shortcut_jokers = "Jokers [J]",
-        shortcut_journal = "Log [M]",
+        shortcut_journal = "Log [L]",
+        shortcut_map = "Map [M]",
         resume          = "Resume",
         resume_desc     = "Back to where you were. Nothing changes.",
         settings        = "Settings",
@@ -867,6 +868,15 @@ return {
 
     act_map = {
         title = "Act {act} Map",
+        journal_button = "Log [L]",
+        none = "No map for this part of the journey",
+        floor_of = "Floor {x} of {total}",
+        boss_line = "Boss: {name}",
+        hint = "M or ESC closes  ·  click a gold mark to move on",
+        state_done = "Already travelled",
+        state_choice = "Choice available now",
+        state_reach = "Reachable along this path",
+        state_closed = "Off your path",
     },
 
     victory = {
@@ -1078,6 +1088,7 @@ return {
         topbar_deck = { name = "Grimoire", desc = "{deck} cards in your grimoire, {hand} in hand right now. At end of turn your hand is discarded and you draw fresh cards. Select to browse the deck." },
         topbar_progress = { name = "Journey Progress", desc = "Act {act}, floor {floor} of {total}. A MINI-BOSS waits at floor 7; the act BOSS at floor {total}. Defeat the Act {last} boss to finish the chronicle. Select to open the Journey Log.{mods}" },
         topbar_config = { name = "Pause Menu", desc = "Pauses the journey: settings, save and quit to menu, or abandon the run." },
+        topbar_map = { name = "Act Map", desc = "Opens the act map: every path to the boss, the stretch you already travelled and your next choices. Shortcut: M." },
         scribe_dice_help = { name = "Scribe's Dice", desc = "One bet per visit: click the dice cup on the counter. This button opens the raven's explanation." },
         reward_rules = { name = "How offers work", desc = "Offered cards belong to YOUR class. Quality improves each act, and every offer without a RARE raises the next one's odds (after a long dry streak, a rare is guaranteed). Cards marked AFFINITY match your deck's strong tags. Cards you already own in copies show up less often." },
         shop_bell   = { name = "Bell: new offers", desc = "Ring the bell and the merchant restocks both shelves. Costs ${n} on this visit and rises by $2 each ring." },

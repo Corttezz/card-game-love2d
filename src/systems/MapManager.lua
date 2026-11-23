@@ -154,67 +154,146 @@ function MapManager.generate(floorInAct, actNumber, numNodes, opts)
     return nodes
 end
 
-MapManager.LANES = 3
-MapManager.LINK_CHANCE = 0.45
+MapManager.MAP_COLS = 7
+MapManager.MAP_PATHS = 6
+MapManager.MAP_TRIES = 24
 
-local function sortedLanes(set)
+local function rnd() return Rng.get():random("map") end
+
+local function sortedKeys(set)
     local out = {}
-    for lane in pairs(set) do out[#out + 1] = lane end
+    for k in pairs(set) do out[#out + 1] = k end
     table.sort(out)
     return out
 end
 
-function MapManager.buildActMap(actNumber, opts)
-    local F = MapManager.FLOORS_PER_ACT
-    local floors = {}
-    for f = 1, F do
-        local row = MapManager.generate(f, actNumber, MapManager.LANES, opts)
-        for i, n in ipairs(row) do
-            n.mapFloor, n.mapLane = f, i
-        end
-        floors[f] = row
-    end
-    local crossed = false
-    for f = 1, F - 1 do
-        local cur, nxt = floors[f], floors[f + 1]
-        local links = {}
-        for i = 1, #cur do links[i] = {} end
-        if #nxt == 1 or #cur == 1 then
-            for i = 1, #cur do
-                for j = 1, #nxt do links[i][j] = true end
+local function walkPaths(rows, cols)
+    local starts = {
+        1 + math.floor(rnd() * 2),
+        3 + math.floor(rnd() * 3),
+        cols - 1 + math.floor(rnd() * 2),
+    }
+    local cells, edges = {}, {}
+    for r = 1, rows do cells[r], edges[r] = {}, {} end
+    for p = 1, MapManager.MAP_PATHS do
+        local c = starts[((p - 1) % #starts) + 1]
+        cells[1][c] = true
+        for r = 1, rows - 1 do
+            local opts = {}
+            for d = math.max(1, c - 1), math.min(cols, c + 1) do
+                local side = edges[r][d]
+                local crosses = d ~= c and side and side[c]
+                if not crosses then opts[#opts + 1] = d end
             end
-        else
-            for i = 1, #cur do
-                links[i][math.min(i, #nxt)] = true
-                if Rng.get():random("map") < MapManager.LINK_CHANCE then
-                    local side = (Rng.get():random("map") < 0.5) and -1 or 1
-                    local j = i + side
-                    if j < 1 or j > #nxt then j = i - side end
-                    if j >= 1 and j <= #nxt then links[i][j] = true end
+            local d = opts[1 + math.floor(rnd() * #opts)]
+            edges[r][c] = edges[r][c] or {}
+            edges[r][c][d] = true
+            cells[r + 1][d] = true
+            c = d
+        end
+    end
+    return cells, edges
+end
+
+local function hasMerge(cells, edges, rows)
+    for r = 2, rows do
+        for c in pairs(cells[r]) do
+            local n = 0
+            for p in pairs(cells[r - 1]) do
+                if edges[r - 1][p] and edges[r - 1][p][c] then n = n + 1 end
+            end
+            if n >= 2 then return true end
+        end
+    end
+    return false
+end
+
+local CALM = { rest = true, shop = true, elite = true, event = true }
+
+local function assignTypes(cells, edges, rows, actNumber, opts)
+    local typeAt = {}
+    for r = 1, rows do typeAt[r] = {} end
+    for r = 1, rows do
+        local weights = MapManager.weightsFor(r, actNumber)
+        if opts.eliteMul and opts.eliteMul ~= 1 then
+            for _, w in ipairs(weights) do
+                if w.type == MapManager.NODE_TYPES.ELITE then w.weight = w.weight * opts.eliteMul end
+            end
+        end
+        for _, c in ipairs(sortedKeys(cells[r])) do
+            local banned, parentTypes = {}, {}
+            if r == 1 then
+                for o, t in pairs(typeAt[1]) do if o ~= c then banned[t] = true end end
+            else
+                for p in pairs(cells[r - 1]) do
+                    local kids = edges[r - 1][p]
+                    if kids and kids[c] then
+                        parentTypes[typeAt[r - 1][p]] = true
+                        for k in pairs(kids) do
+                            if k ~= c and typeAt[r][k] then banned[typeAt[r][k]] = true end
+                        end
+                    end
                 end
             end
-            for i = 1, #cur - 1 do
-                if links[i][i + 1] and links[i + 1][i] then crossed = true end
+            local pool = {}
+            for _, w in ipairs(weights) do
+                local t = w.type
+                if not banned[t] and not (CALM[t] and parentTypes[t]) and (w.weight or 1) > 0 then
+                    pool[#pool + 1] = w
+                end
             end
-        end
-        for i, n in ipairs(cur) do n.mapNext = sortedLanes(links[i]) end
-    end
-    if not crossed then
-        for f = 1, F - 1 do
-            local cur, nxt = floors[f], floors[f + 1]
-            if #cur >= 2 and #nxt >= 2 then
-                local i = 1 + math.floor(Rng.get():random("map") * (math.min(#cur, #nxt) - 1))
-                local a, b = {}, {}
-                for _, j in ipairs(cur[i].mapNext) do a[j] = true end
-                for _, j in ipairs(cur[i + 1].mapNext) do b[j] = true end
-                a[i + 1], b[i] = true, true
-                cur[i].mapNext, cur[i + 1].mapNext = sortedLanes(a), sortedLanes(b)
-                break
+            if #pool == 0 then
+                for _, w in ipairs(weights) do
+                    if not banned[w.type] then pool[#pool + 1] = { type = w.type, weight = 1 } end
+                end
             end
+            typeAt[r][c] = rollWeighted(pool)
         end
     end
+    return typeAt
+end
+
+function MapManager.buildActMap(actNumber, opts)
+    opts = opts or {}
+    local F = MapManager.FLOORS_PER_ACT
+    local rows = F - 2
+    local cols = MapManager.MAP_COLS
+    local cells, edges
+    for _ = 1, MapManager.MAP_TRIES do
+        cells, edges = walkPaths(rows, cols)
+        if hasMerge(cells, edges, rows) then break end
+    end
+    local typeAt = assignTypes(cells, edges, rows, actNumber, opts)
+
+    local floors, laneOf = {}, {}
+    for r = 1, rows do
+        floors[r], laneOf[r] = {}, {}
+        for i, c in ipairs(sortedKeys(cells[r])) do
+            local n = MapManager._makeNode(typeAt[r][c], r, actNumber)
+            n.mapFloor, n.mapLane, n.mapCol = r, i, c
+            floors[r][i] = n
+            laneOf[r][c] = i
+        end
+    end
+    for r = 1, rows - 1 do
+        for _, n in ipairs(floors[r]) do
+            local kids = {}
+            for _, d in ipairs(sortedKeys(edges[r][n.mapCol] or {})) do
+                kids[#kids + 1] = laneOf[r + 1][d]
+            end
+            n.mapNext = kids
+        end
+    end
+    local mid = math.floor((cols + 1) / 2)
+    for f = rows + 1, F do
+        local n = MapManager.generate(f, actNumber, 1, opts)[1]
+        n.mapFloor, n.mapLane, n.mapCol = f, 1, mid
+        floors[f] = { n }
+    end
+    for _, n in ipairs(floors[rows]) do n.mapNext = { 1 } end
+    floors[F - 1][1].mapNext = { 1 }
     floors[F][1].mapNext = {}
-    return { act = actNumber, floors = floors }
+    return { act = actNumber, floors = floors, cols = cols }
 end
 
 function MapManager.copyNode(node)
@@ -242,22 +321,35 @@ function MapManager.choicesFrom(map, floorInAct, prev)
         end
     end
     if #out == 0 then
-        for _, n in ipairs(row) do out[#out + 1] = MapManager.copyNode(n) end
+        local c0 = (prev and prev.mapCol) or math.floor(((map.cols or 3) + 1) / 2)
+        local idx = {}
+        for i = 1, #row do idx[i] = i end
+        if #idx > 3 then
+            table.sort(idx, function(a, b)
+                local da = math.abs((row[a].mapCol or a) - c0)
+                local db = math.abs((row[b].mapCol or b) - c0)
+                if da ~= db then return da < db end
+                return a < b
+            end)
+            idx = { idx[1], idx[2], idx[3] }
+            table.sort(idx)
+        end
+        for _, i in ipairs(idx) do out[#out + 1] = MapManager.copyNode(row[i]) end
+        if MapManager.dedupeNodes then out = MapManager.dedupeNodes(out) end
     end
     return out
 end
 
 function MapManager.hasCrossing(map)
-    for f = 1, #map.floors - 1 do
-        local cur = map.floors[f]
-        for i = 1, #cur - 1 do
-            local a, b = {}, {}
-            for _, j in ipairs(cur[i].mapNext or {}) do a[j] = true end
-            for _, j in ipairs(cur[i + 1].mapNext or {}) do b[j] = true end
-            for ja in pairs(a) do
-                for jb in pairs(b) do
-                    if ja > jb then return true end
-                end
+    for f = 2, #map.floors do
+        local row = map.floors[f]
+        if #row > 1 then
+            local parents = {}
+            for _, p in ipairs(map.floors[f - 1]) do
+                for _, j in ipairs(p.mapNext or {}) do parents[j] = (parents[j] or 0) + 1 end
+            end
+            for _, n in pairs(parents) do
+                if n >= 2 then return true end
             end
         end
     end

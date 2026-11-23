@@ -75,6 +75,12 @@ SPECS = {
                   "center, two more coins stacked flat behind it to the lower "
                   "right, warm aged gold with hard pixel highlights, bold and "
                   "readable when tiny, gold currency emblem. "),
+    "ui_map": ("an unrolled old parchment world map seen face on, both "
+               "ends curled into small wooden-handled scrolls, the sheet shows "
+               "a branching dotted ink trail climbing from the bottom through "
+               "small round waypoints to a tiny red skull mark at the top, a "
+               "little ink mountain and a tiny compass star in a corner, "
+               "adventure route map emblem. "),
 }
 
 

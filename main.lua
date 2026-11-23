@@ -1287,6 +1287,10 @@ function love.load(loveArgs)
     _G.toggleRunJournal = function()
         if _G.runJournalScreen then _G.runJournalScreen:toggle(game) end
     end
+    _G.actMapScreen = require("components.ActMapScreen"):new()
+    _G.toggleActMap = function()
+        if _G.actMapScreen then _G.actMapScreen:toggle(game) end
+    end
     _G.guideScreen = require("components.GuideScreen"):new()
     _G.toggleGuide = function()
         if _G.guideScreen then _G.guideScreen:toggle(game) end
@@ -1320,6 +1324,9 @@ function love.load(loveArgs)
             onOpenJournal = function()
                 if _G.toggleRunJournal then _G.toggleRunJournal() end
             end,
+            onOpenMap = function()
+                if _G.toggleActMap then _G.toggleActMap() end
+            end,
             onOpenGuide = function()
                 if _G.toggleGuide then _G.toggleGuide() end
             end,
@@ -1351,6 +1358,10 @@ function love.load(loveArgs)
         if _G.toggleRunJournal then _G.toggleRunJournal() end
     end)
 
+    topBar:setMapClickCallback(function()
+        if _G.toggleActMap then _G.toggleActMap() end
+    end)
+
     mapScreen = MapScreen:new()
 
     restScreen = RestScreen:new()
@@ -1374,6 +1385,7 @@ function love.load(loveArgs)
         IF.register("deckViewer",   deckViewerScreen)
         IF.register("jokerManager", _G.jokerManagerScreen)
         IF.register("runJournal",   _G.runJournalScreen)
+        IF.register("actMap",       _G.actMapScreen)
         IF.register("pause",        pauseMenu)
         IF.register("settings",     settingsMenu)
         IF.register("unlockShowcase", _G.unlockShowcase)
@@ -1685,7 +1697,6 @@ function love.draw()
         local WorldRoad = require("src.ui.WorldRoad")
         if WorldRoad.isForkActive() then
             GameplayScene.drawWorldOnly()
-            require("src.ui.ActMapPanel").draw(game)
         else
             GameplayScene.draw()
             IF.push("map"); mapScreen:draw(); IF.pop()
@@ -1769,6 +1780,10 @@ function love.draw()
         IF.push("runJournal"); _G.runJournalScreen:draw(); IF.pop()
     end
 
+    if _G.actMapScreen and _G.actMapScreen:isVisible() then
+        IF.push("actMap"); _G.actMapScreen:draw(); IF.pop()
+    end
+
     if pauseMenu then IF.push("pause"); pauseMenu:draw(); IF.pop() end
     if settingsMenu then IF.push("settings"); settingsMenu:draw(); IF.pop() end
     if _G.unlockShowcase then
@@ -1830,6 +1845,7 @@ function love.resize(w, h)
     if _G.runJournalScreen and _G.runJournalScreen.resize then
         _G.runJournalScreen:resize()
     end
+    if _G.actMapScreen then _G.actMapScreen:resize() end
     if topBar and topBar.resize then topBar:resize() end
     if settingsMenu and settingsMenu.rebuild and settingsMenu.visible then
         settingsMenu:rebuild()
@@ -1883,6 +1899,11 @@ function love.keypressed(key)
     end
 
     if key == "m" and runScreen and game and game.isRunMode then
+        _G.toggleActMap()
+        return
+    end
+
+    if key == "l" and runScreen and game and game.isRunMode then
         _G.toggleRunJournal()
         return
     end

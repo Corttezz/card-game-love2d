@@ -120,7 +120,8 @@ return {
         info_deck       = "MAZO",
         shortcut_deck   = "Mazo [D]",
         shortcut_jokers = "Comodines [J]",
-        shortcut_journal = "Crónica [M]",
+        shortcut_journal = "Crónica [L]",
+        shortcut_map = "Mapa [M]",
         resume          = "Continuar",
         resume_desc     = "Vuelve a donde estabas. Nada cambia.",
         settings        = "Configuración",
@@ -867,6 +868,15 @@ return {
 
     act_map = {
         title = "Mapa del Acto {act}",
+        journal_button = "Crónica [L]",
+        none = "Sin mapa en esta parte del viaje",
+        floor_of = "Piso {x} de {total}",
+        boss_line = "Jefe: {name}",
+        hint = "M o ESC cierra  ·  haz clic en una marca dorada para avanzar",
+        state_done = "Ya recorrido",
+        state_choice = "Elección disponible ahora",
+        state_reach = "Alcanzable por este camino",
+        state_closed = "Fuera de tu camino",
     },
 
     victory = {
@@ -1078,6 +1088,7 @@ return {
         topbar_deck = { name = "Grimorio", desc = "{deck} cartas en tu grimorio, {hand} en mano ahora. Al final del turno tu mano se descarta y robas cartas nuevas. Selecciona para ver el mazo." },
         topbar_progress = { name = "Progreso del Viaje", desc = "Acto {act}, piso {floor} de {total}. Un MINI-JEFE espera en el piso 7; el JEFE del acto en el piso {total}. Derrota al jefe del Acto {last} para terminar la crónica. Selecciona para abrir la Crónica del viaje.{mods}" },
         topbar_config = { name = "Menú de Pausa", desc = "Pausa el viaje: ajustes, guardar y salir al menú, o abandonar la partida." },
+        topbar_map = { name = "Mapa del Acto", desc = "Abre el mapa del acto: todos los caminos hasta el jefe, el tramo que ya recorriste y tus próximas elecciones. Atajo: M." },
         scribe_dice_help = { name = "Dados del Escriba", desc = "Una apuesta por visita: pulsa el cubilete de la mesa. Este botón abre la explicación del cuervo." },
         reward_rules = { name = "Cómo funcionan las ofertas", desc = "Las cartas ofrecidas son de TU clase. La calidad mejora cada acto, y cada oferta sin una RARA aumenta las probabilidades de la siguiente (tras una racha larga sin raras, una rara está garantizada). Las cartas marcadas con AFINIDAD coinciden con las etiquetas fuertes de tu mazo. Las cartas que ya tienes en copias aparecen menos." },
         shop_bell   = { name = "Campana de nuevas ofertas", desc = "Toca la campana y el mercader repone las dos estanterías. Cuesta ${n} en esta visita y sube $2 con cada toque." },

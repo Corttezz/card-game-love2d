@@ -21,6 +21,9 @@ function TopBar:new()
     instance.configHover = 0
     instance.configSpin = 0
     instance.isConfigHovered = false
+    instance.mapHover = 0
+    instance.isMapHovered = false
+    instance.mapTime = 0
 
     instance.disp = {}
 
@@ -41,6 +44,11 @@ function TopBar:update(dt, game)
     self.configHover = self.configHover
         + (hoverTarget - self.configHover) * math.min(1, dt * 12)
     self.configSpin = self.configSpin + dt * 3.2 * self.configHover
+
+    self.isMapHovered = self:_mapVisible() and self:isMapIconClicked(mx, my)
+    self.mapHover = self.mapHover
+        + ((self.isMapHovered and 1 or 0) - self.mapHover) * math.min(1, dt * 12)
+    self.mapTime = self.mapTime + dt
 
     local g = game or self.game
     if g and g ~= self.game then self.game = g end
@@ -173,6 +181,7 @@ function TopBar:draw()
 
     self:drawFrame(screenWidth)
     self:drawGameInfo()
+    self:drawMapIcon()
     self:drawConfigIcon()
 end
 
@@ -386,7 +395,61 @@ function TopBar:_navTargets()
     local NavCursor = require("src.ui.NavCursor")
     local cx, cy, sz = self:_getConfigRect()
     NavCursor.target("topbar:gear", cx - 4, cy - 4, sz + 8, sz + 8)
+    if self:_mapVisible() then
+        local mx, my, msz = self:_getMapRect()
+        NavCursor.target("topbar:map", mx - 4, my - 4, msz + 8, msz + 8)
+    end
 end
+
+function TopBar:_mapVisible()
+    local run = self.game and self.game.runManager and self.game.runManager.currentRun
+    return self.onMapClick ~= nil and run ~= nil and run.actMap ~= nil
+end
+
+function TopBar:_mapPending()
+    local rm = self.game and self.game.runManager
+    local pend = rm and rm.pendingNodes
+    return pend ~= nil and #pend > 0
+end
+
+function TopBar:_getMapRect()
+    local cx, cy, sz = self:_getConfigRect()
+    return cx - sz - 18, cy, sz
+end
+
+function TopBar:isMapIconClicked(x, y)
+    local mx, my, sz = self:_getMapRect()
+    return x >= mx and x <= mx + sz and y >= my and y <= my + sz
+end
+
+function TopBar:drawMapIcon()
+    if not self:_mapVisible() then return end
+    local x, y, sz = self:_getMapRect()
+    local hover = self.mapHover or 0
+    local pending = self:_mapPending()
+    local pad = 5
+    local gd, gl = Palette.AGED_GOLD_DARK, Palette.AGED_GOLD_LIGHT
+    local glow = hover
+    if pending then glow = math.max(glow, 0.35 + 0.3 * math.sin(self.mapTime * 4)) end
+    if glow > 0.02 then
+        PixelCanvas.rectRounded(x - pad, y - pad, sz + pad * 2, sz + pad * 2, 3,
+            { gd[1], gd[2], gd[3], 0.55 * glow })
+        PixelCanvas.rectRoundedOutline(x - pad, y - pad, sz + pad * 2, sz + pad * 2, 3,
+            { gl[1], gl[2], gl[3], 0.9 * glow })
+    end
+    if self.isMapHovered then
+        local okST, StatusTooltip = pcall(require, "src.ui.StatusTooltip")
+        if okST and StatusTooltip.show then
+            local mx, my = love.mouse.getPosition()
+            StatusTooltip.show("topbar_map", mx, my)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+    IconLoader.drawFit("ui_map", x + sz / 2, y + sz / 2 - hover, sz * (1 + 0.12 * hover))
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+function TopBar:setMapClickCallback(cb) self.onMapClick = cb end
 
 function TopBar:_getConfigRect()
     local iconPxSize = 32
@@ -442,6 +505,10 @@ function TopBar:mousepressed(x, y, button)
             elseif self.game and self.game.toggleMenu then
                 self.game:toggleMenu()
             end
+            return true
+        end
+        if self:_mapVisible() and self:isMapIconClicked(x, y) then
+            self.onMapClick()
             return true
         end
         local L = self:_layout()

@@ -355,6 +355,11 @@ function RunManager:chooseNode(index, snapshot)
     local options = self.currentRun.pendingNodes
     self.currentRun.currentNode = node
     self.currentRun.pendingNodes = nil
+    local map = self.currentRun.actMap
+    if map and node.mapFloor and node.mapLane and map.act == self.currentRun.actNumber then
+        map.path = map.path or {}
+        map.path[node.mapFloor] = node.mapLane
+    end
     table.insert(self.currentRun.mapHistory, {
         actNumber = self.currentRun.actNumber,
         floorInAct = self.currentRun.floorInAct,

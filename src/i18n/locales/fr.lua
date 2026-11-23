@@ -120,7 +120,8 @@ return {
         info_deck       = "DECK",
         shortcut_deck   = "Deck [D]",
         shortcut_jokers = "Jokers [J]",
-        shortcut_journal = "Chronique [M]",
+        shortcut_journal = "Chronique [L]",
+        shortcut_map = "Carte [M]",
         resume          = "Reprendre",
         resume_desc     = "Retour là où vous étiez. Rien ne change.",
         settings        = "Paramètres",
@@ -867,6 +868,15 @@ return {
 
     act_map = {
         title = "Carte de l'Acte {act}",
+        journal_button = "Chronique [L]",
+        none = "Pas de carte pour cette partie du voyage",
+        floor_of = "Étage {x} sur {total}",
+        boss_line = "Boss : {name}",
+        hint = "M ou ÉCHAP ferme  ·  cliquez sur une marque dorée pour avancer",
+        state_done = "Déjà parcouru",
+        state_choice = "Choix disponible maintenant",
+        state_reach = "Accessible par ce chemin",
+        state_closed = "Hors de votre chemin",
     },
 
     victory = {
@@ -1078,6 +1088,7 @@ return {
         topbar_deck = { name = "Grimoire", desc = "{deck} cartes dans ton grimoire, {hand} en main maintenant. En fin de tour ta main est défaussée et tu pioches de nouvelles cartes. Sélectionne pour parcourir le deck." },
         topbar_progress = { name = "Progression du Voyage", desc = "Acte {act}, étage {floor} sur {total}. Un MINI-BOSS attend à l'étage 7 ; le BOSS de l'acte à l'étage {total}. Bats le boss de l'Acte {last} pour achever la chronique. Sélectionne pour ouvrir la Chronique du voyage.{mods}" },
         topbar_config = { name = "Menu Pause", desc = "Met le voyage en pause : options, sauvegarder et quitter au menu, ou abandonner la partie." },
+        topbar_map = { name = "Carte de l'Acte", desc = "Ouvre la carte de l'acte : tous les chemins jusqu'au boss, le trajet déjà parcouru et vos prochains choix. Raccourci : M." },
         scribe_dice_help = { name = "Dés du Scribe", desc = "Un pari par visite : cliquez sur le gobelet à dés du comptoir. Ce bouton ouvre l'explication du corbeau." },
         reward_rules = { name = "Fonctionnement des offres", desc = "Les cartes proposées sont de TA classe. La qualité s'améliore à chaque acte, et chaque offre sans carte RARE augmente les chances de la suivante (après une longue série sans rare, une rare est garantie). Les cartes marquées AFFINITÉ correspondent aux tags forts de ton deck. Les cartes que tu possèdes déjà en plusieurs exemplaires apparaissent moins souvent." },
         shop_bell   = { name = "Cloche des nouvelles offres", desc = "Sonnez la cloche et le marchand regarnit les deux étagères. Coûte ${n} lors de cette visite et augmente de $2 à chaque coup." },
