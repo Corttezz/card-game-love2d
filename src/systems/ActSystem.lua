@@ -44,7 +44,8 @@ function ActSystem.getEnemyStats(actNumber, floorInAct, nodeType, endlessFloor)
         if (nodeType == "boss" or nodeType == "mini_boss") and endlessFloor and floorInAct then
             n = math.max(1, endlessFloor - floorInAct + 1)
         end
-        local fh, fd = ActSystem.endlessFactors(n)
+        local F = require("src.systems.MapManager").FLOORS_PER_ACT
+        local fh, fd = ActSystem.endlessFactors(1 + (n - 1) * 8 / F)
         hp  = math.floor(hp * fh)
         dmg = math.floor(dmg * fd)
     end

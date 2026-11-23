@@ -13,17 +13,19 @@ local SIGNALS = {
                   "start_materialize", "start_dissolve" },
     tela      = { "triggerShake", "jiggleScreen" },
     inimigo   = { "ER%.trigger", "EnemyRenderer%.trigger" },
+    efeito    = { "EffectFeedback%.", "%.playCopy", "HandFx%." },
     toast     = { "addMessage" },
 }
 
 local PERCEIVED = { "som", "particula", "numero", "proc", "orbe", "fisica",
-                    "tela", "inimigo" }
+                    "tela", "inimigo", "efeito" }
 
 local SOURCES = {
     "src/systems/EffectSystem.lua",
     "src/core/Game.lua",
     "src/systems/ComboSystem.lua",
     "src/systems/CounterJokers.lua",
+    "src/systems/CombatSequence.lua",
 }
 
 local FUNCTION_ATTRIBUTION = {
@@ -48,20 +50,14 @@ local DELEGATION = {
     ["enemyHurt"]         = "enemyHurt",
     ["landPulse"]         = "landPulse",
     ["proc"]              = "proc",
+    ["onCardCopied"]      = "Game:onCardCopied",
 }
 
 local BASELINE_SILENT = {
-    heal_multiplier   = "multiplica a cura em silencio: sem proc, sem som, sem toast",
-    apply_buff        = "so toast (Foco do mago nao soa nem brilha)",
-    restore_mana      = "so toast (o ManaOrb nao reage ao ganho)",
-    increase_max_mana = "so toast",
-    self_damage       = "so toast (HP cai sem numero no painel do jogador)",
-    discard_cards     = "so toast (a carta some da mao sem animacao de descarte)",
     strength_scaling  = "invisivel: dobra o stat dentro do numero final da carta",
     dexterity_scaling = "invisivel: dobra o stat dentro do numero final da carta",
     combo_boost       = "invisivel: dobra o bonus de combo dentro do numero da carta",
     multi_hit         = "invisivel: vira 1 numero, a descricao promete 2 golpes",
-    add_armor         = "so toast (nao usa o caminho visual da carta de defesa)",
     exhaust           = "branch e no-op; o som real (cardExhaust) mora no Game, "
                         .. "fora de qualquer branch por tipo",
     innate            = "flag de montagem de mao, sem feedback proprio",

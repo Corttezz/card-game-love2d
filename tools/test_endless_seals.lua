@@ -109,8 +109,9 @@ function M.run()
     local ge = TK.newRunGame("warrior")
     TK.seedRng(1234)
     local run = ge.runManager.currentRun
-    run.actNumber, run.floorInAct = Config.TotalActs, 8
-    run.currentFloor = Config.TotalActs * 8
+    local F = require("src.systems.MapManager").FLOORS_PER_ACT
+    run.actNumber, run.floorInAct = Config.TotalActs, F
+    run.currentFloor = Config.TotalActs * F
     run.campaignWon = true
     t:eq("vira endless", ge.runManager:advanceFloorInAct(), "endless_start")
     local pend = RM.pending(run)
@@ -138,8 +139,8 @@ function M.run()
     end
     t:falsy("maldicao no teto nao volta ao sorteio (30 ciclos)", voltou)
 
-    for _ = 1, 8 do ge.runManager:advanceFloorInAct() end
-    t:eq("8 andares depois: ciclo 2", RM.cycle(run), 2)
+    for _ = 1, F do ge.runManager:advanceFloorInAct() end
+    t:eq("um ato de andares depois: ciclo 2", RM.cycle(run), 2)
     t:truthy("ciclo 2 com escolha aberta", RM.pending(run) ~= nil)
     ge:checkpointRun()
     local RunManager = require("src.systems.RunManager")

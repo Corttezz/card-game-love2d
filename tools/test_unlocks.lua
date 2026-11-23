@@ -82,8 +82,10 @@ function M.run()
         t:eq("chefe repetido não reprocessa", #(select(1, UnlockSystem.onBossDefeated(2, nil))), 0)
 
         t:eq("XP morte no andar 1 do ato 1 = piso", UnlockSystem.computeRunXP({ actNumber = 1, floorInAct = 1 }), Data.XP.MINIMUM)
+        local F = require("src.systems.MapManager").FLOORS_PER_ACT
         local xpA2 = UnlockSystem.computeRunXP({ actNumber = 2, floorInAct = 4 })
-        t:eq("XP morte ato 2 andar 4 = 12 andares + 1 ato", xpA2, 12 * Data.XP.PER_FLOOR + Data.XP.PER_ACT)
+        t:eq("XP morte ato 2 andar 4 = ato 1 + 4 andares + 1 ato", xpA2,
+            math.floor((F + 4) * Data.XP.PER_FLOOR * 8 / F + Data.XP.PER_ACT))
 
         local r1 = UnlockSystem.onRunEnded({ classId = "warrior", victory = false, actNumber = 3, floorInAct = 2 })
         t:truthy("fim de run devolve resultado", r1 and r1.newCards and r1.newClasses)

@@ -21,22 +21,24 @@ function M.run()
     Config.Game.ENEMY_POWER, Config.Game.ENEMY_POWER_BY_ACT = nil, nil
     local s1 = ActSystem.getEnemyStats(1, 1, "battle")
     check("ato 1, floor 1 battle: hp = 14", s1.health == 14)
-    local s8 = ActSystem.getEnemyStats(1, 8, "battle")
-    check("ato 1, floor 8 battle: hp = 56", s8.health == 56)
+    local F = require("src.systems.MapManager").FLOORS_PER_ACT
+    local s8 = ActSystem.getEnemyStats(1, F, "battle")
+    check("ato 1, ultimo andar battle: hp = 56", s8.health == 56)
 
     local b1 = ActSystem.getEnemyStats(1, 8, "boss")
     check("boss ato 1: hp = 110 (rebalance autoplay)", b1.health == 110)
     local b3 = ActSystem.getEnemyStats(3, 8, "boss")
     check("boss ato 3: hp = 420 (rebalance autoplay b4)", b3.health == 420)
 
-    local e = ActSystem.getEnemyStats(1, 4, "elite")
-    check("elite ato 1 f=4: hp = floor(32*1.4)", e.health == math.floor(32 * 1.4))
+    local e = ActSystem.getEnemyStats(1, F, "elite")
+    check("elite ato 1 ultimo andar: hp = batalha x eliteHPMul",
+        e.health == math.floor(56 * (Config.Acts[1].eliteHPMul or 1.5)))
     Config.Game.ENEMY_POWER, Config.Game.ENEMY_POWER_BY_ACT = savedPower, savedByAct
 
     local primeiroEndless = Config.TotalActs + 1
     local baseUltimo = ActSystem.getEnemyStats(Config.TotalActs, 1, "battle")
     local endlessF1 = ActSystem.getEnemyStats(primeiroEndless, 1, "battle")
-    local endlessF5 = ActSystem.getEnemyStats(primeiroEndless, 5, "battle")
+    local endlessF5 = ActSystem.getEnemyStats(primeiroEndless, 1 + math.ceil(4 * (F - 1) / 7), "battle")
     check("endless f1 parte da curva do ultimo ato",
         endlessF1.health == baseUltimo.health)
     check("endless scala exponencial", endlessF5.health > endlessF1.health * 1.5)

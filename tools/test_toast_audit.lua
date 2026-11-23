@@ -40,6 +40,7 @@ M.ALLOWED = {
     ["messages.endless_unlocked"]    = "modo novo liberado",
     ["messages.nothing_to_copy"]     = "Espelho de Forja sem carta anterior",
     ["messages.card_copied"]         = "Espelho de Forja copiou a carta",
+    ["messages.cant_copy_exhaust"]   = "Espelho de Forja recusa carta com Exaurir",
     ["enemy_kit.msg.counter_intro"]  = "chefe avisa o contra ao começar a luta (#509)",
     ["enemy_kit.msg.counter_*"]      = "contra do chefe disparou (#509)",
 }
