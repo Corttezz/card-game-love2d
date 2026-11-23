@@ -83,17 +83,34 @@ function M.run()
         frames(90)
     end
 
+    local CardDatabase = require("src.systems.CardDatabase")
+    local db = CardDatabase:new()
+    db:loadData()
+    local IDS = { "warrior_strike", "warrior_defend", "warrior_rage", "warrior_seeing_red",
+        "warrior_second_wind" }
+    local function fillHand(n)
+        game.hand = {}
+        for i = 1, n do
+            local cd = db:getCard(IDS[(i - 1) % #IDS + 1])
+            if cd then game.hand[#game.hand + 1] = db:createCardInstance(cd) end
+        end
+        game.turn = "player"
+        game.player.mana = 3
+        frames(45)
+    end
+
     frames(120)
+    fillHand(5)
     shoot("00_mao")
     sequence("01_descartar", function()
         game.effectSystem:processEffectCard(game, { type = "discard_cards", value = 2 })
     end, { 8, 20, 32 })
+    fillHand(5)
     sequence("02_reter", function()
-        if game.hand[1] then game.hand[1].retain = true end
+        game.hand[2].retain = true
         game:discardHandEndOfTurn()
     end, { 12, 30, 50 })
-    for _ = 1, 4 do game:drawCard(0) end
-    frames(60)
+    fillHand(4)
     sequence("03_inata", function()
         local c = game.hand[#game.hand]
         if c then
