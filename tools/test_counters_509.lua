@@ -188,11 +188,11 @@ local function body(t)
 
     g = TK.mockGame({ enemyHp = 500 })
     g.battleTurn = 1
-    local echo = { type = "echo_first_attack", value = 2, grow = 0.5 }
+    local echo = { type = "echo_first_attack", value = 2, stacks = 2 }
     t:eq("Eco: turno 1 multiplica por 2", EffectSystem.echoFactor(g, echo), 2)
     g.battleTurn = 5
     t:eq("Eco: turno 5 multiplica por 4", EffectSystem.echoFactor(g, echo), 4)
-    local bul = { type = "on_defend_damage", value = 8, growEvery = 2 }
+    local bul = { type = "on_defend_damage", value = 8, stacks = 2 }
     g._defensesPlayedBattle = 1
     t:eq("Baluarte: 1ª defesa arma 8", EffectSystem.defendThornValue(g, bul), 8)
     g._defensesPlayedBattle = 6

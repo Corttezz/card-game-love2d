@@ -105,12 +105,14 @@ end
 
 function EffectSystem.echoFactor(game, effect)
     local turn = math.max(1, (game and game.battleTurn) or 1)
-    return (effect.value or 2) + (effect.grow or 0) * (turn - 1)
+    local every = effect.stacks
+    if not every or every <= 0 then return effect.value or 2 end
+    return (effect.value or 2) + math.floor((turn - 1) / every)
 end
 
 function EffectSystem.defendThornValue(game, effect, pending)
     local v = effect.value or 0
-    local every = effect.growEvery
+    local every = effect.stacks
     if not every or every <= 0 then return v end
     return v + math.floor((((game and game._defensesPlayedBattle) or 0) + (pending or 0)) / every)
 end

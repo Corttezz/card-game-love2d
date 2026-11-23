@@ -412,7 +412,7 @@ return {
         tags = { "defend", "thorn", "passive" },
         effects = {
             { type = "defense_bonus", target = "defense", value = 2 },
-            { type = "on_defend_damage", value = 8, growEvery = 2, description = "Arma Espinhos 8 no primeiro Bloqueio do turno, crescendo com as defesas da luta" },
+            { type = "on_defend_damage", value = 8, stacks = 2, description = "Arma Espinhos 8 no primeiro Bloqueio do turno, crescendo com as defesas da luta" },
         },
     },
 }
