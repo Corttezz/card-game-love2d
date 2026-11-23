@@ -882,6 +882,7 @@ return {
         how_2 = "De cada parada salen 2 o 3 senderos: elige uno.",
         how_3 = "Oro: tus opciones ahora. Rojo: el camino recorrido.",
         legend_choice = "Tu elección ahora",
+        legend_boss = "Jefe",
         floor_word = "Piso",
         you_are_here = "Estás aquí",
         exits_one = "De aquí sale 1 sendero",

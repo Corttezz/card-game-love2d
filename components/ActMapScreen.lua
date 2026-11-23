@@ -519,6 +519,7 @@ function ActMapScreen:draw()
     for _, e in ipairs(legend) do
         setAlpha(e.ty == "choice" and GOLD_DARK or INK, 1)
         local label = e.ty == "choice" and I18n.t("act_map.legend_choice", nil, "Sua escolha agora")
+            or e.ty == "boss" and I18n.t("act_map.legend_boss", nil, "Chefe")
             or MapManager.labelFor(e.ty)
         text(label, e.x, e.y, "text", 21, { maxW = e.w, minSize = 14 })
     end
@@ -563,10 +564,13 @@ function ActMapScreen:draw()
             local st = nodeState(map, run, f, i, reach, floorNow, start, path)
             local p = L.pts[f][i]
             if n.type == "mini_boss" or n.type == "boss" then
-                setAlpha(RED, st.past and 0.4 or 1)
                 local lbl = MapManager.labelFor(n.type)
                 if n.type == "boss" and bossName then lbl = bossName end
                 local dy = n.type == "boss" and 30 or R + 10
+                local lw = math.min(140, font("text", 19):getWidth(lbl) + 12)
+                setAlpha(Ink.PAPER_LIGHT, st.past and 0.5 or 0.92)
+                love.graphics.rectangle("fill", math.floor(p.x - lw / 2), math.floor(p.y + dy - 1), lw, 24)
+                setAlpha(RED, st.past and 0.4 or 1)
                 text(lbl, p.x - 70, p.y + dy, "text", 19, { maxW = 140, align = "center", minSize = 12 })
             elseif st.pending then
                 local lbl = MapManager.labelFor(n.type)

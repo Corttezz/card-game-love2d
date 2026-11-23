@@ -446,7 +446,7 @@ function EffectSystem:processEffectCard(game, effect, srcCard)
         local stacks = effect.stacks or 1
         local duration = effect.duration or 3
         game.player:addBuff(name, duration, stacks)
-        EffectFeedback.buff()
+        EffectFeedback.buff(name, stacks)
         return true
 
     elseif t == "channel_orb" then

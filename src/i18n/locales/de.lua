@@ -882,6 +882,7 @@ return {
         how_2 = "Von jedem Halt gehen 2 oder 3 Pfade ab: wähle einen.",
         how_3 = "Gold: deine Optionen jetzt. Rot: dein bisheriger Weg.",
         legend_choice = "Deine Wahl jetzt",
+        legend_boss = "Boss",
         floor_word = "Etage",
         you_are_here = "Du bist hier",
         exits_one = "Von hier geht 1 Pfad ab",

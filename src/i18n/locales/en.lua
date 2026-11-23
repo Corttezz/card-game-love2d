@@ -882,6 +882,7 @@ return {
         how_2 = "Each stop opens 2 or 3 trails: pick one.",
         how_3 = "Gold: your options now. Red: the road you took.",
         legend_choice = "Your choice now",
+        legend_boss = "Boss",
         floor_word = "Floor",
         you_are_here = "You are here",
         exits_one = "1 trail leaves here",

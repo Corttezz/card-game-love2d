@@ -894,6 +894,7 @@ return {
         how_2 = "De cada parada saem 2 ou 3 trilhas: escolha uma.",
         how_3 = "Ouro: suas opções agora. Vermelho: o caminho feito.",
         legend_choice = "Sua escolha agora",
+        legend_boss = "Chefe",
         floor_word = "Andar",
         you_are_here = "Você está aqui",
         exits_one = "Daqui sai 1 trilha",

@@ -107,7 +107,7 @@ function EffectFeedback.reshuffle(game, n)
     local x, y
     if game and game.getDeckOrigin then x, y = game:getDeckOrigin() end
     fx.reshuffle(n, x, y)
-    if x then label("fx_reshuffled", nil, x - 40, y - 70, { color = COLORS.shuffle, fontSize = 15, hold = 0.6 }) end
+    if x then label("fx_reshuffled", nil, x - 190, y + 6, { color = COLORS.shuffle, fontSize = 16, hold = 0.7 }) end
 end
 
 function EffectFeedback.onCardArrives(card, n)
@@ -162,21 +162,30 @@ function EffectFeedback.selfDamage(v)
     EffectFeedback.play("selfDamage")
     if not hasGraphics() then return end
     local x, y = playerPos()
-    require("src.ui.FloatingText").spawn("-" .. tostring(v), x, y, { kind = "damage" })
+    require("src.ui.FloatingText").spawn("-" .. tostring(v), x, y, { kind = "damage", fontSize = 26, hold = 0.6 })
     feel("burstAtPlayer", "lifesteal", 0.9)
     if _G.triggerShake then _G.triggerShake(3, 0.12) end
 end
 
-function EffectFeedback.buff()
+local function statusName(name)
+    return I18n.t("status." .. name .. ".name", nil,
+        I18n.t("enemy_kit.status." .. name .. ".name", nil, name))
+end
+
+function EffectFeedback.buff(name, stacks)
     EffectFeedback.play("buff")
     feel("burstAtPlayer", "buff", 0.9)
+    if not (hasGraphics() and name) then return end
+    local x, y = playerPos()
+    require("src.ui.FloatingText").spawn("+" .. tostring(stacks or 1) .. " " .. statusName(name), x + 40, y - 40,
+        { kind = "buff", fontSize = 20, hold = 0.7 })
 end
 
 function EffectFeedback.armor(v)
     EffectFeedback.play("armor")
     if not hasGraphics() then return end
     local x, y = playerPos()
-    require("src.ui.FloatingText").spawn("+" .. tostring(v), x, y, { kind = "armor" })
+    require("src.ui.FloatingText").spawn("+" .. tostring(v), x + 64, y, { kind = "armor", fontSize = 24, hold = 0.6 })
     feel("burstAtPlayer", "armor", 0.8)
 end
 
