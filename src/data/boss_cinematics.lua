@@ -191,6 +191,23 @@ return {
             { kind = "title",      dur = 1.50 },
             { kind = "hud",        dur = 0 },
         },
+        -- Alternativas para prévia (BossCinematic.forceVariant); fora do jogo normal.
+        variants = {
+            nevasca = {
+                { kind = "dark",       dur = 0.30, to = 0.55 },
+                { kind = "frostrim",   dur = 0,    life = 6.0, grow = 3.0 },
+                { kind = "whiteout",   dur = 1.40, peak = 0.90 },
+                { kind = "silhouette", dur = 3.80, clip = "walk", far = 0.32,
+                  strike = 2.75, strikeClip = "roar", hitDelay = 0.35,
+                  reveal = true, blast = true, eyesAt = 0.5, eyes = { { 52, 30 }, { 58, 30 } },
+                  eyeWalk = { 0, -1, -2, -3, -4, -3, -1, 1, 3 },
+                  eyeStrike = { { 0, 0 }, { -1, 1 }, { -2, 3 }, { -2, 4 }, { -2, 6 }, { -2, 5 }, { -2, 2 }, { 0, 0 }, { 0, 0 } } },
+                { kind = "land",       dur = 0.40, shake = 3, dust = 6, crows = 0, clip = false, hit = false,
+                  particle = "shard", burst = 10, sound = "bossIceCrackle" },
+                { kind = "title",      dur = 2.30 },
+                { kind = "hud",        dur = 0 },
+            },
+        },
         death = {
             { kind = "burst",  dur = 0,    n = 34, particle = "shard", sound = "bossFrostShatter" },
             { kind = "desat",  dur = 0,    peak = 0.65, rise = 0.40, fall = 1.20 },
@@ -231,6 +248,19 @@ return {
               sound = "colossusCrack" },
             { kind = "title",     dur = 1.50, clip = false },
             { kind = "hud",       dur = 0 },
+        },
+        -- Alternativas para prévia (BossCinematic.forceVariant); fora do jogo normal.
+        variants = {
+            lodo = {
+                { kind = "dark",       dur = 0.50, to = 0.88 },
+                { kind = "heart_wake", dur = 2.40 },
+                { kind = "bog",        dur = 1.20 },
+                { kind = "bog_rise",   dur = 2.30, clip = "emerge" },
+                { kind = "land",       dur = 0.70, shake = 14, dust = 12, crows = 0, ring = "spores",
+                  particle = "spore", burst = 22, clip = "roar", sound = "colossusCrack" },
+                { kind = "title",      dur = 2.30, clip = false },
+                { kind = "hud",        dur = 0 },
+            },
         },
         death = {
             { kind = "desat",   dur = 0,    peak = 0.50, rise = 0.45, fall = 1.30 },

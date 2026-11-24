@@ -5,7 +5,8 @@ local InteriorFX = require("src.ui.InteriorFX")
 local Ent = {}
 
 Ent.KINDS = { snuff = true, moon = true, sigil = true, tomb = true, glass = true, wisps = true,
-              skull_wake = true, erupt = true, rumble = true, drop = true }
+              skull_wake = true, erupt = true, rumble = true, drop = true,
+              frostrim = true, heart_wake = true, bog = true, bog_rise = true }
 
 local A = nil
 local E = {}
@@ -23,6 +24,14 @@ local VIOLET = { 0.66, 0.48, 1.00 }
 local WARM   = { 1.00, 0.74, 0.40 }
 local LAVA   = { 1.00, 0.46, 0.12 }
 local LAVA_HI = { 1.00, 0.86, 0.42 }
+local GREEN   = { 0.50, 1.00, 0.32 }
+local SAP     = { 0.80, 1.00, 0.50 }
+local BARK    = { 0.15, 0.11, 0.07 }
+local BARK_HI = { 0.32, 0.26, 0.14 }
+local MUD     = { 0.22, 0.19, 0.10 }
+local MONARCH = "assets/sprites/characters/enemies/winter_monarch/"
+local lastW, lastH = 960, 540
+local dataCache = {}
 
 function Ent.bind(api) A = api end
 
@@ -106,7 +115,7 @@ local function ensureShader()
     return lightShader
 end
 
-local function reveal(cx, cy, rx, ry, a, tint)
+local function reveal(cx, cy, rx, ry, a, tint, z)
     if a <= 0.01 then return end
     local st = A.stage()
     local tr = st and st.tr
@@ -129,7 +138,9 @@ local function reveal(cx, cy, rx, ry, a, tint)
     sh:send("ell", { cx, cy, rx, ry })
     sh:send("steps", 4)
     love.graphics.setColor(tint[1], tint[2], tint[3], math.min(1, a))
-    love.graphics.draw(img, lightQuad, tr.ox + x0 * tr.scale, tr.oy + y0 * tr.scale, 0, tr.scale, tr.scale)
+    z = z or 1
+    love.graphics.draw(img, lightQuad, tr.ox + (cx + (x0 - cx) * z) * tr.scale, tr.oy + (cy + (y0 - cy) * z) * tr.scale,
+        0, tr.scale * z, tr.scale * z)
     love.graphics.setShader()
     love.graphics.setColor(1, 1, 1, 1)
 end
@@ -186,7 +197,7 @@ local function shatterImage(img, cx, bottomY, s, cell, speed, opts)
                          ox = w / 2, oy = h / 2, x = bx, y = by, s = s,
                          vx = dx / len * sp + rnd(-40, 40), vy = dy / len * sp * 0.7 - rnd(80, 220),
                          rv = rnd(-8, 8), life = rnd(0.8, 1.5), g = opts.g or 900,
-                         grow = opts.grow or 0 })
+                         grow = opts.grow or 0, over = opts.over })
             end
         end
     end
@@ -209,8 +220,8 @@ local function rocks(cx, cy, n, spread, s)
     end
 end
 
-local function splash(x, y, s, delay, sx)
-    splashes[#splashes + 1] = { x = x, y = y, s = s, sx = sx or 1, t = -(delay or 0), dur = 0.75 }
+local function splash(x, y, s, delay, sx, kind)
+    splashes[#splashes + 1] = { x = x, y = y, s = s, sx = sx or 1, t = -(delay or 0), dur = 0.75, kind = kind }
 end
 
 local function crackSet(n, w, h)
@@ -412,6 +423,304 @@ local function landDrop()
     A.queueSfx(0.02, "impactFire", nil, 0.6)
 end
 
+----------------------------------------------------------------------------
+-- Monarca do Inverno: geada nas bordas, espinhos de gelo no golpe
+----------------------------------------------------------------------------
+
+local FROST_PATH = MONARCH .. "mechanic/frost_corner.png"
+local SPIKE_PATH = MONARCH .. "entrance/ice_spike.png"
+local PATCH_PATH = MONARCH .. "entrance/frost_patch.png"
+
+local function imageData(path)
+    if dataCache[path] == nil then
+        local ok, d = pcall(love.image.newImageData, path)
+        dataCache[path] = ok and d or false
+    end
+    return dataCache[path] or nil
+end
+
+-- A arte do canto nasce no canto de baixo-esquerda; espelha para os outros três.
+local function frostCorners(w, h)
+    return { { 0, h, 1, 1 }, { w, h, -1, 1 }, { 0, 0, 1, -1 }, { w, 0, -1, -1 } }
+end
+
+local function frostScale(fr, ih, w, h)
+    local k = easeOut(clamp01(fr.t / fr.grow))
+    k = math.floor(k * 8 + 0.5) / 8
+    return math.min(w, h) * 0.36 / ih * (0.25 + 0.75 * k)
+end
+
+-- Do disco de geada fica só o gelo (estrela e rachaduras); a pedra vira transparente.
+local patchImg = nil
+local function iceOnlyPatch()
+    if patchImg == nil then
+        patchImg = false
+        local d = imageData(PATCH_PATH)
+        if d then
+            local c = d:clone()
+            c:mapPixel(function(_, _, r, g, b, al)
+                if b > r + 0.08 and (r + g + b) / 3 > 0.45 then return r, g, b, al end
+                return r, g, b, 0
+            end)
+            patchImg = love.graphics.newImage(c)
+            patchImg:setFilter("nearest", "nearest")
+        end
+    end
+    return patchImg or nil
+end
+
+local function enterFrostRim(st)
+    E.frost = { t = 0, life = st.life or 6, grow = math.max(0.3, st.grow or 3.0) }
+    A.play("bossIceCrackle", nil, 1.25, 0)
+    A.queueSfx(0.7, "bossIceCrackle", nil, 1.05)
+    A.queueSfx(1.4, "bossIceCrackle", nil, 0.9)
+end
+
+local function shatterFrost()
+    local fr = E.frost
+    if not fr then return end
+    E.frost = nil
+    local img = image(FROST_PATH)
+    if not img then return end
+    local data = imageData(FROST_PATH)
+    local iw, ih = img:getDimensions()
+    local w, h = lastW, lastH
+    local sc = frostScale(fr, ih, w, h)
+    local cell = A.reduced() and 16 or 8
+    for _, c in ipairs(frostCorners(w, h)) do
+        for gy = 0, ih - 1, cell do
+            for gx = 0, iw - 1, cell do
+                local cw, ch = math.min(cell, iw - gx), math.min(cell, ih - gy)
+                local keep = true
+                if data then
+                    local _, _, _, al = data:getPixel(math.min(iw - 1, gx + math.floor(cw / 2)),
+                        math.min(ih - 1, gy + math.floor(ch / 2)))
+                    keep = al > 0.3
+                end
+                if keep then
+                    local bx = c[1] + (gx + cw / 2) * sc * c[3]
+                    local by = c[2] + (gy + ch / 2 - ih) * sc * c[4]
+                    local dx, dy = bx - w / 2, by - h / 2
+                    local len = math.max(1, math.sqrt(dx * dx + dy * dy))
+                    local sp = rnd(260, 620)
+                    addBit({ img = img, quad = love.graphics.newQuad(gx, gy, cw, ch, iw, ih),
+                             ox = cw / 2, oy = ch / 2, x = bx, y = by, s = sc, fx = c[3], fy = c[4],
+                             vx = dx / len * sp, vy = dy / len * sp - rnd(0, 80), rv = rnd(-9, 9),
+                             life = rnd(0.5, 0.9), g = 500, over = true, ice = true })
+                end
+            end
+        end
+    end
+end
+
+-- O golpe do cajado: a geada estoura e um anel de espinhos de gelo brota em volta dele.
+function Ent.strike()
+    if not A then return end
+    shatterFrost()
+    local fx_, fy, s, bb = feet()
+    if not fx_ then return end
+    local wdt = bb.width or 120
+    local n = A.reduced() and 6 or 16
+    local list, tries = {}, 0
+    while #list < n and tries < n * 8 do
+        tries = tries + 1
+        local r = love.math.random()
+        local ang = rnd(0, math.pi * 2)
+        local rx = wdt * (0.62 + 0.75 * r)
+        local x, y = fx_ + math.cos(ang) * rx, fy + math.sin(ang) * rx * 0.2
+        local front = y > fy
+        if not (front and math.abs(x - fx_) < wdt * 0.55) then
+            list[#list + 1] = { x = x, y = y, front = front, delay = 0.02 + r * 0.32,
+                                sc = s * rnd(0.75, 1.25) * (1.1 - 0.35 * r),
+                                flip = (love.math.random() < 0.5) and -1 or 1 }
+        end
+    end
+    table.sort(list, function(a, b) return a.y < b.y end)
+    E.spikes = { t = 0, list = list }
+    E.patch = { t = 0 }
+    E.flare = { t = 0 }
+    E.boom = { t = 0 }
+    A.darkTo(0.15, 0.45)
+    A.play("iceSpikes", "impactIce", 1.0, 0.05)
+    A.queueSfx(0.10, "bossFrostShatter", nil, 1.0)
+    A.queueSfx(0.22, "bossIceCrackle", nil, 0.9)
+end
+
+local function breakSpikes()
+    local sp = E.spikes
+    if not sp or sp.broken then return end
+    sp.broken = true
+    local img = image(SPIKE_PATH)
+    local data = imageData(SPIKE_PATH)
+    local cell = A.reduced() and 16 or 8
+    for _, k in ipairs(sp.list) do
+        if img and k.up then shatterImage(img, k.x, k.y, k.sc, cell, 240, { data = data, g = 900, over = k.front }) end
+        A.spawnFeather(k.x, k.y - 10, rnd(-80, 80), rnd(-200, -80), "shard")
+    end
+    A.play("bossFrostShatter", "impactIce", 0.9, 0)
+    A.play("shopCrystalShatter", nil, 0.8, 0.05)
+    shake(6, 0.3)
+end
+
+----------------------------------------------------------------------------
+-- Colosso Podre: o coração acorda, veias de raiz, poço de lama
+----------------------------------------------------------------------------
+
+local HEART = { 200, 115 }
+-- pontos no salão (px da arte) e, por último, o deslocamento no pé (em larguras do chefe)
+local VEINS = {
+    { { 186, 168 }, { 168, 196 }, -0.25 },
+    { { 214, 168 }, { 234, 196 }, 0.25 },
+    { { 92, 126 }, { 96, 178 }, { 130, 214 }, -0.45 },
+    { { 308, 126 }, { 304, 178 }, { 270, 214 }, 0.45 },
+    { { 200, 172 }, 0 },
+}
+
+local function veinPath(pts, seed, wobMax)
+    local out = { { pts[1][1], pts[1][2], 0 } }
+    local total = 0
+    for i = 2, #pts do
+        local ax, ay = pts[i - 1][1], pts[i - 1][2]
+        local bx, by = pts[i][1], pts[i][2]
+        local dx, dy = bx - ax, by - ay
+        local len = math.max(1, math.sqrt(dx * dx + dy * dy))
+        local n = math.max(2, math.floor(len / 10))
+        local nx, ny = -dy / len, dx / len
+        for j = 1, n do
+            local q = j / n
+            local wob = (j < n) and math.sin(q * math.pi * 2 + seed + i) * math.min(wobMax, len * 0.06) or 0
+            local x, y = ax + dx * q + nx * wob, ay + dy * q + ny * wob
+            local lx, ly = out[#out][1], out[#out][2]
+            total = total + math.sqrt((x - lx) ^ 2 + (y - ly) ^ 2)
+            out[#out + 1] = { x, y, total }
+        end
+    end
+    return out, total
+end
+
+local function pathAt(v, d)
+    local p = v.pts
+    if d <= 0 then return p[1][1], p[1][2] end
+    for i = 2, #p do
+        if p[i][3] >= d then
+            local a, b = p[i - 1], p[i]
+            local q = (d - a[3]) / math.max(0.001, b[3] - a[3])
+            return lerp(a[1], b[1], q), lerp(a[2], b[2], q)
+        end
+    end
+    return p[#p][1], p[#p][2]
+end
+
+local function buildVeins()
+    local fx_, fy, _, bb = feet()
+    local wdt = (bb and bb.width) or 120
+    local list = {}
+    for vi, def in ipairs(VEINS) do
+        local pts = {}
+        for i = 1, #def - 1 do
+            local x, y = H(def[i][1], def[i][2])
+            pts[#pts + 1] = { x, y }
+        end
+        if fx_ then pts[#pts + 1] = { fx_ + def[#def] * wdt, fy } end
+        local path, len = veinPath(pts, vi * 1.7, 6 * hs())
+        list[#list + 1] = { pts = path, len = len }
+    end
+    return list
+end
+
+local function enterHeartWake(st)
+    local dur = math.max(0.5, st.dur or 2.4)
+    local beats = {}
+    for i, b in ipairs({ 0.10, 0.78, 1.30, 1.70, 2.02, 2.28 }) do beats[i] = b * dur / 2.4 end
+    E.heart = { t = 0, dur = dur, beats = beats, i = 1, last = -9, nextSlow = dur + 0.4,
+                veins = buildVeins(), pulses = {}, n = 0 }
+    A.playLoop("bossRootsCrawl")
+    InteriorFX.pulseBoost(2.2, dur)
+    A.mist(1, 1)
+end
+
+local function heartBeat(hw)
+    hw.n = hw.n + 1
+    hw.last = hw.t
+    local n = math.min(6, hw.n)
+    A.play("bossHeartbeat", nil, 0.85 + 0.04 * n, 0)
+    shake(1.5 + n * 0.6, 0.15)
+    if not A.reduced() then
+        local x, y = H(HEART[1], HEART[2])
+        for _ = 1, 5 do A.spawnFeather(x + rnd(-20, 20), y + rnd(-24, 24), rnd(-40, 40), rnd(-40, 10), "spore") end
+    end
+    for _, v in ipairs(hw.veins) do hw.pulses[#hw.pulses + 1] = { v = v, t = 0 } end
+end
+
+local BUBBLES = { { -0.30, -0.05 }, { 0.18, -0.12 }, { 0.34, 0.06 }, { -0.12, 0.10 }, { 0.02, -0.02 }, { -0.40, 0.08 } }
+
+local function enterBog(st)
+    local dur = math.max(0.3, st.dur or 1.2)
+    local bubbles = {}
+    for i, b in ipairs(BUBBLES) do bubbles[i] = { u = b[1], v = b[2], t = -rnd(0.2, 1.0), dur = rnd(0.35, 0.6) } end
+    E.bog = { t = 0, grow = math.min(dur * 0.7, 0.9), bubbles = bubbles, glug = 0 }
+    A.play("bossEmergeTear", "sceneStoneThud", 0.55, 0)
+    A.play("mudSplash", "shopPotionBubble", 0.8, 0.05)
+    shake(4, dur * 0.6)
+    local fx_, fy = feet()
+    if fx_ then A.spawnDust(fx_, fy, 6, 120) end
+end
+
+local function enterBogRise(st)
+    local dur = math.max(0.5, st.dur or 2.3)
+    E.rise = { t = 0, dur = dur, anim = A.ownAnim(st.clip, dur), drip = 0, splash = 0.25 }
+    A.play("bogRise", "bossEmergeTear", 0.9, 0)
+    A.darkTo(0.62, 0.8)
+    A.queueSfx(0.6, "leechRise", nil, 0.85)
+    shake(3, dur)
+    local fx_, fy, s, bb = feet()
+    if fx_ then
+        local wdt = bb.width or 120
+        splash(fx_, fy + 2 * s, s * 1.1, 0, 1, "mud")
+        splash(fx_ - wdt * 0.38, fy + 3 * s, s * 0.8, 0.08, -1, "mud")
+        splash(fx_ + wdt * 0.38, fy + 3 * s, s * 0.8, 0.14, 1, "mud")
+    end
+end
+
+local function riseGeom(r)
+    local dx, dy, s = A.footInfo()
+    if not (dx and r.anim) then return nil end
+    local st = A.stage()
+    local _, ih = r.anim:getSize()
+    local sh = ih * s
+    local k = clamp01(r.t / r.dur)
+    local y = dy + sh * 0.95 * (1 - smooth(k)) + math.sin(r.t * 7) * 3 * s * (1 - k)
+    local floorY = math.floor((st.cy or (dy + sh)) + 3 * s)
+    local bg = E.bog
+    if bg then
+        -- Corte na mesma linha da borda da poça (ver lipCut): sobe de dentro da lama.
+        local _, fy, s2 = feet()
+        if fy then
+            local g = easeOut(clamp01(bg.t / bg.grow))
+            local ps = s2 * 1.15 * (0.12 + 0.88 * g) * (0.6 + 0.4 * fadeK(bg))
+            floorY = math.floor(math.floor(fy + 2 * s2) - 3 * ps) + math.floor(2 * s)
+        end
+    end
+    return dx, y, s, floorY, k
+end
+
+local function popRise()
+    E.rise = nil
+    E.lip = { t = 0 }
+    local fx_, fy, s, bb = feet()
+    if not fx_ then return end
+    local wdt = bb.width or 120
+    splash(fx_ - wdt * 0.3, fy + 2 * s, s * 0.9, 0, -1, "mud")
+    splash(fx_ + wdt * 0.3, fy + 2 * s, s * 0.9, 0.05, 1, "mud")
+    for _ = 1, (A.reduced() and 6 or 18) do
+        local a = -math.pi * rnd(0.1, 0.9)
+        local sp = rnd(160, 380)
+        addBit({ x = fx_ + rnd(-0.4, 0.4) * wdt, y = fy - rnd(0, 10), vx = math.cos(a) * sp, vy = math.sin(a) * sp,
+                 life = 1.2, g = 1100, mud = true, nodust = true, floor = fy + 4 * s, s = s })
+    end
+    A.play("mudSplash", "shopPotionBubble", 0.7, 0)
+end
+
 function Ent.enter(st)
     local k = st.kind
     if k == "snuff" then enterSnuff(st)
@@ -430,6 +739,10 @@ function Ent.enter(st)
     elseif k == "erupt" then enterErupt(st)
     elseif k == "rumble" then enterRumble(st)
     elseif k == "drop" then enterDrop(st)
+    elseif k == "frostrim" then enterFrostRim(st)
+    elseif k == "heart_wake" then enterHeartWake(st)
+    elseif k == "bog" then enterBog(st)
+    elseif k == "bog_rise" then enterBogRise(st)
     end
 end
 
@@ -451,6 +764,12 @@ function Ent.exit(st)
         A.setLanded(true)
     elseif k == "skull_wake" then
         A.stopLoop("bossEyesRumble")
+    elseif k == "heart_wake" then
+        A.stopLoop("bossRootsCrawl")
+    elseif k == "bog_rise" then
+        popRise()
+        A.setHidden(false)
+        A.setLanded(true)
     end
 end
 
@@ -461,10 +780,15 @@ function Ent.onStep(st)
         if E.sigil then E.sigil.flash = 0; startFade(E.sigil, 0.9) end
         if E.moon then startFade(E.moon, 1.6) end
         if E.skull then startFade(E.skull, 1.4) end
+        if E.heart then E.heart.stop = true end
         A.stopLoop("bossEyesRumble")
     elseif st.kind == "title" then
         if E.crater then startFade(E.crater, 1.8) end
         if E.wisps then startFade(E.wisps, 0.6) end
+        if E.spikes then E.spikes.breakAt = E.spikes.t + 0.45 end
+        if E.patch then startFade(E.patch, 2.0) end
+        if E.bog then startFade(E.bog, 1.4) end
+        if E.heart then startFade(E.heart, 1.4) end
     end
 end
 
@@ -480,9 +804,99 @@ local function tickFade(name, dt)
     end
 end
 
+local function updateExtra(dt, reduced)
+    local fr = E.frost
+    if fr then
+        fr.t = fr.t + dt
+        if fr.t >= fr.life then startFade(fr, 0.8) end
+        tickFade("frost", dt)
+    end
+    local sp = E.spikes
+    if sp then
+        sp.t = sp.t + dt
+        for _, k in ipairs(sp.list) do
+            if not k.up and sp.t >= k.delay then
+                k.up = true
+                local h = 64 * k.sc
+                if not reduced then
+                    for _ = 1, 4 do
+                        A.spawnFeather(k.x + rnd(-8, 8), k.y - rnd(0.2, 0.8) * h, rnd(-60, 60), rnd(-160, -60), "shard")
+                    end
+                end
+                A.spawnDust(k.x, k.y, 3, 24)
+            end
+        end
+        if sp.breakAt and sp.t >= sp.breakAt then breakSpikes(); E.spikes = nil end
+    end
+    if E.patch then E.patch.t = E.patch.t + dt; tickFade("patch", dt) end
+    if E.flare then E.flare.t = E.flare.t + dt; if E.flare.t >= 1.8 then E.flare = nil end end
+    if E.boom then E.boom.t = E.boom.t + dt; if E.boom.t >= 0.45 then E.boom = nil end end
+    local hw = E.heart
+    if hw then
+        hw.t = hw.t + dt
+        if hw.i <= #hw.beats then
+            if hw.t >= hw.beats[hw.i] then hw.i = hw.i + 1; heartBeat(hw) end
+        elseif not hw.stop and not hw.fade and hw.t >= hw.nextSlow then
+            hw.nextSlow = hw.t + 0.75
+            heartBeat(hw)
+        end
+        for i = #hw.pulses, 1, -1 do
+            local p = hw.pulses[i]
+            p.t = p.t + dt
+            if p.t > 0.8 then table.remove(hw.pulses, i) end
+        end
+        tickFade("heart", dt)
+    end
+    local bg = E.bog
+    if bg then
+        bg.t = bg.t + dt
+        bg.glug = bg.glug - dt
+        local fx_, fy, s = feet()
+        for _, b in ipairs(bg.bubbles) do
+            b.t = b.t + dt
+            if b.t >= b.dur then
+                b.t = -rnd(0.15, 0.6)
+                b.dur = rnd(0.35, 0.6)
+                if fx_ and not bg.fade then
+                    local ps = s * 1.15
+                    A.spawnFeather(fx_ + b.u * 128 * ps, fy + 2 * s + b.v * 48 * ps - 4, rnd(-15, 15), rnd(-70, -30), "spore")
+                    if bg.glug <= 0 then bg.glug = 0.18; A.play("shopPotionBubble", nil, rnd(0.55, 0.85), 0) end
+                end
+            end
+        end
+        tickFade("bog", dt)
+    end
+    local r = E.rise
+    if r then
+        r.t = r.t + dt
+        if r.anim then r.anim:update(dt) end
+        local dx, y, s, floorY = riseGeom(r)
+        local fx_, fy, _, bb = feet()
+        if dx and fx_ then
+            local wdt = bb.width or 120
+            r.drip = r.drip - dt
+            if not reduced and r.drip <= 0 and y < floorY - 10 then
+                r.drip = rnd(0.04, 0.09)
+                local vis = floorY - y
+                addBit({ x = fx_ + rnd(-0.4, 0.4) * wdt, y = y + vis * rnd(0.1, 0.7), vx = rnd(-30, 30), vy = rnd(-40, 20),
+                         life = 1.0, g = 900, mud = true, nodust = true, floor = floorY, s = s })
+            end
+            r.splash = r.splash - dt
+            if r.splash <= 0 then
+                r.splash = rnd(0.28, 0.42)
+                splash(fx_ + rnd(-0.35, 0.35) * wdt, fy + 3 * s, s * rnd(0.5, 0.75), 0,
+                    (love.math.random() < 0.5) and -1 or 1, "mud")
+                A.play("shopPotionBubble", nil, rnd(0.6, 0.8), 0)
+            end
+        end
+    end
+    if E.lip then E.lip.t = E.lip.t + dt; if E.lip.t >= 0.6 then E.lip = nil end end
+end
+
 function Ent.update(dt)
     if not A then return end
     local reduced = A.reduced()
+    updateExtra(dt, reduced)
     local sn = E.snuff
     if sn then
         sn.t = sn.t + dt
@@ -632,7 +1046,7 @@ function Ent.update(dt)
         b.life = b.life - dt
         if b.grow > 0 then b.k = b.k + b.grow * dt end
         if b.floor and b.y >= b.floor then
-            A.spawnDust(b.x, b.floor, 3, 30)
+            if not b.nodust then A.spawnDust(b.x, b.floor, 3, 30) end
             b.life = 0
         end
         if b.life <= 0 then table.remove(bits, i) end
@@ -1041,60 +1455,308 @@ local function drawDropActor()
 end
 
 local function drawSplashes()
-    local img = image("lava_splash")
     for _, sp in ipairs(splashes) do
         if sp.t >= 0 then
+            local mud = sp.kind == "mud"
+            local img = image(mud and "mud_splash" or "lava_splash")
+            local col = mud and GREEN or LAVA
             local k = sp.t / sp.dur
             local sy = easeOut(clamp01(k * 3))
             local a = 1 - clamp01((k - 0.45) / 0.55)
             if img then
                 local iw, ih = img:getDimensions()
-                love.graphics.setColor(1, 1, 1, a)
+                if mud then love.graphics.setColor(0.62, 0.66, 0.40, a) else love.graphics.setColor(1, 1, 1, a) end
                 love.graphics.draw(img, math.floor(sp.x), math.floor(sp.y), 0, sp.s * sp.sx, sp.s * sy, iw / 2, ih)
                 love.graphics.setBlendMode("add")
-                love.graphics.setColor(LAVA[1], LAVA[2], LAVA[3], 0.4 * a)
+                love.graphics.setColor(col[1], col[2], col[3], (mud and 0.12 or 0.4) * a)
                 love.graphics.draw(img, math.floor(sp.x), math.floor(sp.y), 0, sp.s * sp.sx, sp.s * sy, iw / 2, ih)
                 love.graphics.setBlendMode("alpha")
             else
-                A.glowBlob(sp.x, sp.y - 30 * sp.s, 60 * sp.s, 70 * sp.s * sy, LAVA, 0.6 * a, 1)
+                A.glowBlob(sp.x, sp.y - 30 * sp.s, 60 * sp.s, 70 * sp.s * sy, col, 0.6 * a, 1)
             end
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local function drawBits()
+local function drawBits(over)
     local P = A.px()
+    over = over or false
     for _, b in ipairs(bits) do
-        local a = clamp01(b.life / b.max * 2)
-        local x, y = math.floor(b.x / P) * P, math.floor(b.y / P) * P
-        local rot = math.floor(b.rot / (math.pi / 8) + 0.5) * (math.pi / 8)
-        if b.img then
-            local sc = b.s * b.k
-            love.graphics.setColor(1, 1, 1, a)
-            if b.quad then
-                love.graphics.draw(b.img, b.quad, x, y, rot, sc, sc, b.ox, b.oy)
-                if b.glass then
-                    love.graphics.setBlendMode("add")
-                    love.graphics.setColor(VIOLET[1], VIOLET[2], VIOLET[3], 0.35 * a)
-                    love.graphics.draw(b.img, b.quad, x, y, rot, sc, sc, b.ox, b.oy)
-                    love.graphics.setBlendMode("alpha")
+        if (b.over or false) == over then
+            local a = clamp01(b.life / b.max * 2)
+            local x, y = math.floor(b.x / P) * P, math.floor(b.y / P) * P
+            local rot = math.floor(b.rot / (math.pi / 8) + 0.5) * (math.pi / 8)
+            if b.img then
+                local sc = b.s * b.k
+                local sx, sy = sc * (b.fx or 1), sc * (b.fy or 1)
+                love.graphics.setColor(1, 1, 1, a)
+                if b.quad then
+                    love.graphics.draw(b.img, b.quad, x, y, rot, sx, sy, b.ox, b.oy)
+                    local glow = (b.glass and VIOLET) or (b.ice and ICE) or nil
+                    if glow then
+                        love.graphics.setBlendMode("add")
+                        love.graphics.setColor(glow[1], glow[2], glow[3], 0.35 * a)
+                        love.graphics.draw(b.img, b.quad, x, y, rot, sx, sy, b.ox, b.oy)
+                        love.graphics.setBlendMode("alpha")
+                    end
+                else
+                    love.graphics.draw(b.img, x, y, rot, sx, sy, b.ox, b.oy)
                 end
-            else
-                love.graphics.draw(b.img, x, y, rot, sc, sc, b.ox, b.oy)
+            elseif b.rock then
+                love.graphics.push()
+                love.graphics.translate(x, y)
+                love.graphics.rotate(rot)
+                love.graphics.setColor(0.16, 0.10, 0.09, a)
+                love.graphics.rectangle("fill", -2 * P, -P, 4 * P, 3 * P)
+                love.graphics.setColor(LAVA[1], LAVA[2], LAVA[3], a)
+                love.graphics.rectangle("fill", P, -P, P, P)
+                love.graphics.pop()
+            elseif b.mud then
+                love.graphics.setColor(MUD[1], MUD[2], MUD[3], a)
+                love.graphics.rectangle("fill", x - P, y - P, 2 * P, 2 * P)
+                love.graphics.setColor(GREEN[1] * 0.6, GREEN[2] * 0.6, GREEN[3] * 0.4, a)
+                love.graphics.rectangle("fill", x - P, y - P, P, P)
             end
-        elseif b.rock then
-            love.graphics.push()
-            love.graphics.translate(x, y)
-            love.graphics.rotate(rot)
-            love.graphics.setColor(0.16, 0.10, 0.09, a)
-            love.graphics.rectangle("fill", -2 * P, -P, 4 * P, 3 * P)
-            love.graphics.setColor(LAVA[1], LAVA[2], LAVA[3], a)
-            love.graphics.rectangle("fill", P, -P, P, P)
-            love.graphics.pop()
         end
     end
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawFrostRim(w, h)
+    local fr = E.frost
+    if not fr then return end
+    local img = image(FROST_PATH)
+    if not img then return end
+    local _, ih = img:getDimensions()
+    local sc = frostScale(fr, ih, w, h)
+    local a = fadeK(fr) * clamp01(fr.t / 0.25)
+    local pulse = 0.18 + 0.12 * math.sin(fr.t * 5)
+    for _, c in ipairs(frostCorners(w, h)) do
+        love.graphics.setColor(1, 1, 1, a * 0.92)
+        love.graphics.draw(img, c[1], c[2], 0, sc * c[3], sc * c[4], 0, ih)
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(ICE[1], ICE[2], ICE[3], a * pulse)
+        love.graphics.draw(img, c[1], c[2], 0, sc * c[3], sc * c[4], 0, ih)
+        love.graphics.setBlendMode("alpha")
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawSpikes(front)
+    local sp = E.spikes
+    if not sp then return end
+    local img = image(SPIKE_PATH)
+    local P = A.px()
+    local tremble = sp.breakAt and sp.t > sp.breakAt - 0.3
+    for _, k in ipairs(sp.list) do
+        if k.front == front and k.up then
+            local age = sp.t - k.delay
+            local q = clamp01(age / 0.14)
+            local sy = easeOut(q) * (1 + 0.22 * math.sin(q * math.pi))
+            local hot = 1 - clamp01(age / 0.5)
+            local x, y = math.floor(k.x), math.floor(k.y)
+            if tremble then x = x + love.math.random(-1, 1) * P end
+            if img then
+                local iw, ih = img:getDimensions()
+                A.glowBlob(x, y - ih * k.sc * 0.4 * sy, iw * k.sc * 2.2, ih * k.sc * 1.2 * sy, ICE, 0.16 + 0.4 * hot, 1)
+                love.graphics.setColor(1, 1, 1, 1)
+                love.graphics.draw(img, x, y, 0, k.sc * k.flip, k.sc * sy, iw / 2, ih)
+                if hot > 0 then
+                    love.graphics.setBlendMode("add")
+                    love.graphics.setColor(ICE_HI[1], ICE_HI[2], ICE_HI[3], 0.8 * hot)
+                    love.graphics.draw(img, x, y, 0, k.sc * k.flip, k.sc * sy, iw / 2, ih)
+                    love.graphics.setBlendMode("alpha")
+                end
+            else
+                A.glowBlob(x, y - 30 * k.sc, 20 * k.sc, 60 * k.sc * sy, ICE_HI, 0.8, 1)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawPatch()
+    local pt = E.patch
+    if not pt then return end
+    local fx_, fy, s = feet()
+    if not fx_ then return end
+    local g = easeOut(clamp01(pt.t / 0.35))
+    local a = fadeK(pt)
+    local img = iceOnlyPatch()
+    A.glowBlob(fx_, fy, 170 * s * g, 44 * s * g, ICE, 0.35 * a, 2)
+    if img then
+        local iw, ih = img:getDimensions()
+        local sc = s * 1.1 * g
+        love.graphics.setColor(1, 1, 1, 0.95 * a)
+        love.graphics.draw(img, math.floor(fx_), math.floor(fy + 2 * s), 0, sc, sc, iw / 2, ih / 2)
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(ICE[1], ICE[2], ICE[3], 0.3 * a)
+        love.graphics.draw(img, math.floor(fx_), math.floor(fy + 2 * s), 0, sc, sc, iw / 2, ih / 2)
+        love.graphics.setBlendMode("alpha")
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- As chamas do salão viram fogo-frio azul por um instante.
+local function drawFlare()
+    local fl = E.flare
+    if not fl then return end
+    local k = 1 - clamp01(fl.t / 1.8)
+    if k <= 0 then return end
+    local stg = A.stage()
+    local cfg = InteriorFX.HALLS[(stg and stg.hall) or 2]
+    local s = hs()
+    for _, f in ipairs((cfg and cfg.flames) or {}) do
+        local cx, cy = f[1] + f[3] / 2, f[2] + f[4] * 0.5
+        reveal(cx, cy, 34, 30, 0.9 * k, ICE)
+        local x, y = H(cx, cy)
+        A.glowBlob(x, y, 60 * s, 50 * s, ICE, 0.5 * k, 1)
+    end
+end
+
+local function drawBoom(w, h)
+    local b = E.boom
+    if not b then return end
+    local k = clamp01(b.t / 0.45)
+    local fx_, fy, s = feet()
+    if not fx_ then return end
+    A.glowBlob(fx_, fy - 30 * s, w * (0.6 + 0.8 * k), h * (0.35 + 0.5 * k), ICE_HI, 0.7 * (1 - k), 1)
+end
+
+local function drawHeartWake()
+    local hw = E.heart
+    if not hw then return end
+    local a = fadeK(hw)
+    local env = math.max(0, 1 - (hw.t - hw.last) / 0.35)
+    local base = clamp01(hw.t / 0.6)
+    reveal(HEART[1], HEART[2], 46, 62, (0.30 + 0.35 * base + 0.35 * env) * a, { 0.75, 1.0, 0.65 }, 1 + 0.07 * env)
+    local hx, hy = H(HEART[1], HEART[2])
+    local s = hs()
+    A.glowBlob(hx, hy, 110 * s * (1 + 0.15 * env), 130 * s * (1 + 0.15 * env), GREEN, (0.12 + 0.3 * env) * a, 1)
+    local P = A.px()
+    local grow = easeOut(clamp01(hw.t / (hw.dur * 0.85)))
+    for _, v in ipairs(hw.veins) do
+        local upto = v.len * grow
+        local pts = {}
+        for d = 0, upto, P do
+            local x, y = pathAt(v, d)
+            local th = math.max(1, math.floor(lerp(3, 1, d / math.max(1, v.len)) + 0.5))
+            pts[#pts + 1] = { math.floor(x / P) * P, math.floor(y / P) * P, th }
+        end
+        love.graphics.setColor(0.04, 0.03, 0.02, a)
+        for _, p in ipairs(pts) do love.graphics.rectangle("fill", p[1] - P, p[2] - P, (p[3] + 2) * P, (p[3] + 2) * P) end
+        love.graphics.setColor(BARK[1], BARK[2], BARK[3], a)
+        for _, p in ipairs(pts) do love.graphics.rectangle("fill", p[1], p[2], p[3] * P, p[3] * P) end
+        local core = 0.35 + 0.5 * env
+        for i, p in ipairs(pts) do
+            if p[3] > 1 then
+                love.graphics.setColor(BARK_HI[1], BARK_HI[2], BARK_HI[3], a)
+                love.graphics.rectangle("fill", p[1], p[2], P, P)
+                love.graphics.setColor(GREEN[1] * core, GREEN[2] * core, GREEN[3] * core, a)
+                love.graphics.rectangle("fill", p[1] + P, p[2] + P, P, P)
+            end
+            if i % 8 == 0 then A.glowBlob(p[1], p[2], 22 * s, 16 * s, GREEN, (0.06 + 0.12 * env) * a, 1) end
+        end
+    end
+    for _, p in ipairs(hw.pulses) do
+        local q = p.t / 0.55
+        local reach = p.v.len * grow
+        if q <= 1 then
+            local d = reach * q
+            local x, y = pathAt(p.v, d)
+            A.glowBlob(x, y, 26 * s, 26 * s, GREEN, 0.55 * a, 1)
+            for j = 0, 3 do
+                local tx, ty = pathAt(p.v, d - j * P * 2)
+                love.graphics.setColor(SAP[1], SAP[2], SAP[3], a * (1 - j * 0.25))
+                love.graphics.rectangle("fill", math.floor(tx / P) * P, math.floor(ty / P) * P, 2 * P, 2 * P)
+            end
+        else
+            local x, y = pathAt(p.v, reach)
+            A.glowBlob(x, y, 40 * s, 20 * s, GREEN, 0.5 * (1 - (q - 1) / 0.45) * a, 1)
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function bogGeom(bg)
+    local fx_, fy, s = feet()
+    if not fx_ then return nil end
+    local g = easeOut(clamp01(bg.t / bg.grow))
+    local a = fadeK(bg)
+    local ps = s * 1.15 * (0.12 + 0.88 * g) * (0.6 + 0.4 * a)
+    return math.floor(fx_), math.floor(fy + 2 * s), ps, g, a
+end
+
+local function drawBubbles(bg, cx, cy, ps, g, a, cut)
+    local P = A.px()
+    for _, b in ipairs(bg.bubbles) do
+        if b.t > 0 and g > 0.6 then
+            local q = b.t / b.dur
+            local r = math.max(P, math.floor((1 + 2 * q) * ps / 1.2))
+            local bx = math.floor((cx + b.u * 128 * ps) / P) * P
+            local by = math.floor((cy + b.v * 48 * ps) / P) * P
+            if not cut or by >= cut then
+                love.graphics.setColor(MUD[1] * 1.6, MUD[2] * 1.8, MUD[3] * 1.2, a)
+                love.graphics.rectangle("fill", bx - r, by - 2 * r, 2 * r, 2 * r)
+                love.graphics.setColor(SAP[1], SAP[2], SAP[3], 0.8 * a)
+                love.graphics.rectangle("fill", bx - r + P, by - 2 * r + P, P, P)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawBog()
+    local bg = E.bog
+    if not bg then return end
+    local cx, cy, ps, g, a = bogGeom(bg)
+    if not cx then return end
+    local img = image("bog_pool")
+    A.glowBlob(cx, cy, 128 * ps * 1.5, 48 * ps * 1.4, GREEN, (0.22 + 0.1 * math.sin(bg.t * 6)) * a, 2)
+    if img then
+        local iw, ih = img:getDimensions()
+        love.graphics.setColor(1, 1, 1, a)
+        love.graphics.draw(img, cx, cy, 0, ps, ps, iw / 2, ih / 2)
+    end
+    drawBubbles(bg, cx, cy, ps, g, a)
+end
+
+local function drawRise(w)
+    local r = E.rise
+    if not (r and r.anim) then return end
+    local dx, y, s, floorY, k = riseGeom(r)
+    if not dx then return end
+    local mud = 1 - smooth(k)
+    local tint = { lerp(1, 0.42, mud), lerp(1, 0.50, mud), lerp(1, 0.26, mud), 1 }
+    local sx, sy, sw, sh = love.graphics.getScissor()
+    love.graphics.intersectScissor(0, 0, w, floorY)
+    A.drawOwn(r.anim, dx, math.floor(y), s, tint, 0.10 + 0.3 * mud)
+    if sx then love.graphics.setScissor(sx, sy, sw, sh) else love.graphics.setScissor() end
+end
+
+-- Borda da frente: a metade de baixo da poça redesenhada na frente dele,
+-- então ele sobe "de dentro" da lama (e o corte reto some).
+local function lipCut(cy, ps)
+    return math.floor(cy - 3 * ps)
+end
+
+local function drawLip()
+    local a
+    if E.rise then a = 1 elseif E.lip then a = 1 - clamp01(E.lip.t / 0.6) else return end
+    local bg = E.bog
+    if a <= 0 or not bg then return end
+    local cx, cy, ps, g, ba = bogGeom(bg)
+    local img = image("bog_pool")
+    if not (cx and img) then return end
+    local iw, ih = img:getDimensions()
+    local cut = lipCut(cy, ps)
+    local sx, sy, sw, sh = love.graphics.getScissor()
+    love.graphics.intersectScissor(0, cut, lastW * 2, lastH * 2)
+    love.graphics.setColor(1, 1, 1, a * ba)
+    love.graphics.draw(img, cx, cy, 0, ps, ps, iw / 2, ih / 2)
+    if sx then love.graphics.setScissor(sx, sy, sw, sh) else love.graphics.setScissor() end
+    drawBubbles(bg, cx, cy, ps, g, a * ba, cut)
 end
 
 -- Fundo: depois da escuridão, antes do chefe.
@@ -1108,6 +1770,11 @@ function Ent.drawBack(w, h)
     drawCrater()
     drawEruptPre()
     drawSigil(false)
+    drawFlare()
+    drawHeartWake()
+    drawBog()
+    drawPatch()
+    drawSpikes(false)
 end
 
 -- Atores: o chefe ainda escondido desenhado por nós (túmulo, erupção, queda).
@@ -1117,6 +1784,7 @@ function Ent.drawActors(w, h)
     drawTomb(w)
     drawEruptActor(w)
     drawDropActor()
+    drawRise(w)
 end
 
 -- Frente: tudo que passa na frente do chefe.
@@ -1124,8 +1792,19 @@ function Ent.drawFront()
     if not A then return end
     drawSigil(true)
     drawWisps(true)
+    drawLip()
     drawSplashes()
-    drawBits()
+    drawBits(false)
+end
+
+-- Por cima de tudo (depois da silhueta): geada nas bordas, espinhos da frente, cacos.
+function Ent.drawOver(w, h)
+    if not A then return end
+    lastW, lastH = w, h
+    drawFrostRim(w, h)
+    drawSpikes(true)
+    drawBits(true)
+    drawBoom(w, h)
 end
 
 return Ent

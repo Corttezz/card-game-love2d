@@ -78,6 +78,10 @@ local SOUNDS = {
     colossusCrack      = { "audio/sfx/boss/colossus_crack.mp3",        0.85 },
     colossusCrumble    = { "audio/sfx/boss/colossus_crumble.mp3",      0.85 },
     monarchStrike      = { "audio/sfx/boss/monarch_strike.mp3",        0.85 },
+    iceSpikes          = { "audio/sfx/entrances/ice_wyrm_rise.mp3",      0.80 },
+    bogRise            = { "audio/sfx/entrances/bog_ghoul_rise.mp3",     0.85 },
+    leechRise          = { "audio/sfx/entrances/leech_horror_rise.mp3",  0.70 },
+    mudSplash          = { "audio/sfx/entrances/croc_warrior_start.mp3", 0.70 },
     tyrantChainDrag    = { "audio/sfx/boss/tyrant_chain_drag.mp3",     0.70 },
     tyrantChainTaut    = { "audio/sfx/boss/tyrant_chain_taut.mp3",     0.80 },
     tyrantChainSnap    = { "audio/sfx/boss/tyrant_chain_snap.mp3",     0.85 },
@@ -946,6 +950,9 @@ local function enterSilhouette(st)
             require("src.core.Debug").warn("[BossCinematic] silhouette: strikeClip '" .. tostring(st.strikeClip) .. "' ausente — bate no idle")
         end
     end
+    sil.eyes, sil.eyesAt = st.eyes, st.eyesAt or 0.5
+    sil.eyeWalk, sil.eyeStrike = st.eyeWalk, st.eyeStrike
+    sil.reveal, sil.blast = st.reveal, st.blast
     fx.sil = sil
 end
 
@@ -953,6 +960,11 @@ local function updateSilhouette(dt)
     local si = fx.sil
     if not si then return end
     si.t = si.t + dt
+    if si.revealT then si.revealT = si.revealT + dt end
+    if si.eyes and not si.eyesLit and si.t >= si.eyesAt then
+        si.eyesLit = si.t
+        play("bossEyesIgnite", nil, 1.3, 0)
+    end
     local striking = si.strikeAt and si.t >= si.strikeAt
     if striking and si.strikeAnim then si.strikeAnim:update(dt)
     elseif si.anim then si.anim:update(dt) end
@@ -969,6 +981,22 @@ local function updateSilhouette(dt)
         if _G.triggerShake then _G.triggerShake(seq.reduced and 4 or 11, 0.35) end
         play("monarchStrike", "bossIceCrackle")
         InteriorFX.gust(1.0, 0.6)
+        if si.reveal then si.revealT = 0 end
+        if si.blast then
+            Ent.strike()
+            if fx.white and not fx.white.fade then fx.white.fade = { t = 0, dur = 0.45 } end
+            stopLoop("bossBlizzard")
+            if stage and stage.bbox and not reducedMotion() then
+                local gx, gy = stage.bbox.cx, (stage.cy or stage.bbox.bottomY) - 30
+                for i = 1, 70 do
+                    local ang = i / 70 * math.pi * 2 + love.math.random() * 0.2
+                    local sp = 300 + love.math.random() * 500
+                    flakes[#flakes + 1] = { x = gx, y = gy, vx = math.cos(ang) * sp, vy = math.sin(ang) * sp * 0.6,
+                                            life = 1.2 }
+                end
+            end
+            mistTarget(0.3, 0.6)
+        end
     end
 end
 
@@ -993,11 +1021,37 @@ local function drawSilhouette(w, h)
     local y = groundY + padBelow * (sk / s) - ih * sk
     if not striking then x = x + math.sin(si.t * 3) * 2 * (0.4 + 0.6 * e) end
     x, y = math.floor(x), math.floor(y)
-    local cold = { 0.70, 0.86, 1.00, a }
-    for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
-        anim:draw(x + off[1], y + off[2], sk, cold)
+    local rv = si.revealT and smooth(clamp01(si.revealT / 0.45)) or 0
+    if rv < 1 then
+        local cold = { 0.70, 0.86, 1.00, a * (1 - rv) }
+        for _, off in ipairs({ { -P, 0 }, { P, 0 }, { 0, -P }, { 0, P } }) do
+            anim:draw(x + off[1], y + off[2], sk, cold)
+        end
     end
-    anim:draw(x, y, sk, { 0.02, 0.03, 0.06, a })
+    anim:draw(x, y, sk, { lerp(0.02, 1, rv), lerp(0.03, 1, rv), lerp(0.06, 1, rv), a })
+    if si.revealT and si.revealT < 0.35 then
+        love.graphics.setBlendMode("add")
+        anim:draw(x, y, sk, { 0.90, 0.97, 1.00, 0.9 * (1 - si.revealT / 0.35) })
+        love.graphics.setBlendMode("alpha")
+    end
+    -- olhos acesos dentro da nevasca (offset por quadro da animação)
+    if si.eyes and si.eyesLit then
+        local ea = smooth(clamp01((si.t - si.eyesLit) / 0.25)) * (1 - 0.7 * rv)
+        local f = anim.currentFrame or 1
+        local ox, oy = 0, 0
+        if striking and si.eyeStrike and si.eyeStrike[f] then
+            ox, oy = si.eyeStrike[f][1], si.eyeStrike[f][2]
+        elseif not striking and si.eyeWalk and si.eyeWalk[f] then
+            ox = si.eyeWalk[f]
+        end
+        for _, ey in ipairs(si.eyes) do
+            local ex, eyy = x + (ey[1] + ox) * sk, y + (ey[2] + oy) * sk
+            glowBlob(ex + sk, eyy + sk * 0.5, 16 * sk, 10 * sk, { 0.62, 0.86, 1.00 }, 0.55 * ea, 1)
+            love.graphics.setColor(0.92, 0.98, 1.00, ea)
+            love.graphics.rectangle("fill", math.floor(ex), math.floor(eyy), math.max(2, math.floor(2 * sk)),
+                math.max(1, math.floor(sk)))
+        end
+    end
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -1545,6 +1599,12 @@ local function drawWhiteout()
         end
     end
     love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Flocos à parte: continuam caindo depois que a nevasca some.
+local function drawFlakes()
+    if #flakes == 0 then return end
     local P = px()
     for _, fl in ipairs(flakes) do
         local bx, by = math.floor(fl.x / P) * P, math.floor(fl.y / P) * P
@@ -2468,6 +2528,11 @@ local function exitStep(st)
     end
     if st.kind == "walk_in" then fx.walker = nil; bossHidden = false; landed = true end
     if st.kind == "assemble" then fx.asm = nil; bossHidden = false; landed = true end
+    if st.kind == "silhouette" and st.reveal then
+        fx.sil = nil; bossHidden = false; landed = true
+        stopLoop("bossBlizzard")
+        if fx.white and not fx.white.fade then fx.white.fade = { t = 0, dur = 0.4 } end
+    end
     if st.kind == "crumble" then
         bossHidden = false
         if fx.crumble then fx.crumble.fadeT = 0 end
@@ -3090,7 +3155,9 @@ function BossCinematic.drawFront()
     drawCrows()
     queenDrawFront()
     drawWhiteout()
+    drawFlakes()
     drawSilhouette(stage.w, stage.h)
+    Ent.drawOver(stage.w, stage.h)
     love.graphics.setColor(1, 1, 1, 1)
 end
 

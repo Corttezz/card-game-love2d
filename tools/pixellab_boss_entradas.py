@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 tools/pixellab_boss_entradas.py: pecas das entradas novas dos chefes dos
-atos 2 (tower_lich) e 3 (abyss_tyrant), #538. Mesmo molde de
+atos 2 (tower_lich), 3 (abyss_tyrant), 4 (winter_monarch) e 5
+(rot_colossus), #538. Mesmo molde de
 pixellab_boss_mechanics.py (create_image_pro com o idle0 do chefe como
 estilo); as poses novas ficam em pixellab_boss_cine.py (CLIPS).
 
@@ -17,6 +18,9 @@ import pixellab_boss_mechanics as M
 
 E = M.ENEMIES
 LICH, TYR = M.idle0("tower_lich"), M.idle0("abyss_tyrant")
+WINTER, ROT = M.idle0("winter_monarch"), M.idle0("rot_colossus")
+OWNER = {LICH: "tower_lich", TYR: "abyss_tyrant", WINTER: "winter_monarch",
+         ROT: "rot_colossus"}
 S = M.OBJ_STYLE
 
 SPECS = {
@@ -58,10 +62,28 @@ SPECS = {
         "strong perspective as a flat wide ellipse, glowing molten orange "
         "lava cracks radiating outward from the center, transparent outside. "
         + S),
+    "ice_spike": (32, 64, WINTER,
+        "a single tall sharp jagged ice spike crystal erupting straight up "
+        "out of the ground, pale cyan ice with white frost highlights and "
+        "deep blue shading, very pointed tip, small broken ice rubble at "
+        "the base, front view. " + S),
+    "frost_patch": (128, 48, WINTER,
+        "a patch of frozen stone floor seen in strong perspective as a flat "
+        "wide ellipse: white frost and sharp pale cyan ice crystals "
+        "spreading outward from the center in jagged rays, transparent "
+        "outside. " + S),
+    "bog_pool": (128, 48, ROT,
+        "a pool of bubbling dark swamp mud seen in strong perspective as a "
+        "flat wide ellipse, thick black-green sludge with glowing toxic "
+        "green bubbles and ripples, rotten roots and moss around the rim, "
+        "transparent outside. " + S),
+    "mud_splash": (64, 64, ROT,
+        "an eruption splash of thick dark swamp mud bursting straight up "
+        "from the bottom, glowing toxic green core, dark brown and black "
+        "green mud droplets flying outward. " + S),
 }
 
-DEST = {k: os.path.join(E, ("tower_lich" if v[2] == LICH else
-                            "abyss_tyrant"), "entrance", k + ".png")
+DEST = {k: os.path.join(E, OWNER[v[2]], "entrance", k + ".png")
         for k, v in SPECS.items()}
 
 M.SPECS.update(SPECS)
