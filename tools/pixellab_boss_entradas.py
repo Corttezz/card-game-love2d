@@ -77,6 +77,12 @@ SPECS = {
         "flat wide ellipse, thick black-green sludge with glowing toxic "
         "green bubbles and ripples, rotten roots and moss around the rim, "
         "transparent outside. " + S),
+    "root_cocoon": (128, 128, ROT,
+        "a huge closed cocoon pod woven from thick twisted dark rotten tree "
+        "roots and vines, standing upright on the ground, egg shaped and taller "
+        "than wide, wet black-green bark with moss, thin cracks between the "
+        "roots leaking glowing toxic green light from inside, a few root "
+        "tendrils spreading on the ground at the base, front view. " + S),
     "mud_splash": (64, 64, ROT,
         "an eruption splash of thick dark swamp mud bursting straight up "
         "from the bottom, glowing toxic green core, dark brown and black "

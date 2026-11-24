@@ -261,6 +261,27 @@ return {
                 { kind = "title",      dur = 2.30, clip = false },
                 { kind = "hud",        dur = 0 },
             },
+            -- Casulo de raízes que cresce no lugar do chefe e estoura.
+            casulo = {
+                { kind = "dark",       dur = 0.50, to = 0.90 },
+                { kind = "heart_glow", dur = 1.50 },
+                { kind = "cocoon",     dur = 3.00 },
+                { kind = "land",       dur = 0.70, shake = 14, dust = 14, crows = 0, ring = "spores",
+                  particle = "spore", burst = 26, clip = "roar", sound = "colossusCrack" },
+                { kind = "title",      dur = 2.30, clip = false },
+                { kind = "hud",        dur = 0 },
+            },
+            -- Gota de seiva cai do coração, vira poça e o chefe cresce dela.
+            fruto = {
+                { kind = "dark",       dur = 0.50, to = 0.92 },
+                { kind = "heart_glow", dur = 1.80, fast = true },
+                { kind = "sap_drop",   dur = 1.50 },
+                { kind = "sap_grow",   dur = 2.60, clip = "idle" },
+                { kind = "land",       dur = 0.70, shake = 14, dust = 14, crows = 0, ring = "spores",
+                  particle = "spore", burst = 26, clip = "roar", sound = "colossusCrack" },
+                { kind = "title",      dur = 2.30, clip = false },
+                { kind = "hud",        dur = 0 },
+            },
         },
         death = {
             { kind = "desat",   dur = 0,    peak = 0.50, rise = 0.45, fall = 1.30 },

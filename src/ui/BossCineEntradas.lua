@@ -6,7 +6,8 @@ local Ent = {}
 
 Ent.KINDS = { snuff = true, moon = true, sigil = true, tomb = true, glass = true, wisps = true,
               skull_wake = true, erupt = true, rumble = true, drop = true,
-              frostrim = true, heart_wake = true, bog = true, bog_rise = true }
+              frostrim = true, heart_wake = true, bog = true, bog_rise = true,
+              heart_glow = true, cocoon = true, sap_drop = true, sap_grow = true }
 
 local A = nil
 local E = {}
@@ -721,6 +722,449 @@ local function popRise()
     A.play("mudSplash", "shopPotionBubble", 0.7, 0)
 end
 
+----------------------------------------------------------------------------
+-- Colosso Podre, entradas novas: coração nítido, casulo de raízes, gota de seiva
+----------------------------------------------------------------------------
+
+local HEART_C = { 202, 112 }
+local HEART_R = { 48, 62 }
+local HEART_TIP = { 192, 166 }
+local COCOON = "root_cocoon"
+-- raízes que correm pelo chão até o pé (px da arte; por último o deslocamento em larguras)
+local CROOTS = {
+    { { 24, 254 }, { 86, 240 }, -0.32 },
+    { { 376, 254 }, { 314, 240 }, 0.32 },
+    { { 104, 208 }, { 146, 222 }, -0.16 },
+    { { 296, 208 }, { 254, 222 }, 0.16 },
+    { { 150, 256 }, -0.05 },
+    { { 250, 256 }, 0.05 },
+}
+
+-- Mesmo recorte do salão que reveal(), mas sem dither: o coração fica nítido.
+local CLEAR_GLSL = [[
+extern vec2 tex;
+extern vec4 ell;
+vec4 effect(vec4 col, Image t, vec2 uv, vec2 sc) {
+    vec2 hp = floor(uv * tex);
+    vec2 d = (hp + 0.5 - ell.xy) / ell.zw;
+    float q = 1.0 - dot(d, d);
+    if (q <= 0.0) discard;
+    float k = clamp(q * 2.5, 0.0, 1.0);
+    vec4 c = Texel(t, uv);
+    return vec4(c.rgb * col.rgb, c.a * col.a * k);
+}
+]]
+local clearShader, clearTried = nil, false
+local function hallLit(cx, cy, rx, ry, a, tint, add)
+    if a <= 0.01 then return end
+    local st = A.stage()
+    local tr = st and st.tr
+    local img = st and hallImage(st.hall)
+    if not clearTried then
+        clearTried = true
+        local ok, sh = pcall(love.graphics.newShader, CLEAR_GLSL)
+        if ok then clearShader = sh else
+            require("src.core.Debug").warn("[BossCineEntradas] shader do coração falhou: " .. tostring(sh))
+        end
+    end
+    if not (img and tr and clearShader) then return end
+    local iw, ih = img:getDimensions()
+    local x0, y0 = math.max(0, math.floor(cx - rx)), math.max(0, math.floor(cy - ry))
+    local x1, y1 = math.min(iw, math.ceil(cx + rx)), math.min(ih, math.ceil(cy + ry))
+    if x1 <= x0 or y1 <= y0 then return end
+    lightQuad = lightQuad or love.graphics.newQuad(0, 0, 1, 1, iw, ih)
+    lightQuad:setViewport(x0, y0, x1 - x0, y1 - y0, iw, ih)
+    love.graphics.setShader(clearShader)
+    clearShader:send("tex", { iw, ih })
+    clearShader:send("ell", { cx, cy, rx, ry })
+    tint = tint or { 1, 1, 1 }
+    if add then love.graphics.setBlendMode("add") end
+    love.graphics.setColor(tint[1], tint[2], tint[3], math.min(1, a))
+    love.graphics.draw(img, lightQuad, tr.ox + x0 * tr.scale, tr.oy + y0 * tr.scale, 0, tr.scale, tr.scale)
+    love.graphics.setShader()
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function backOut(k)
+    local c1 = 1.4
+    local q = k - 1
+    return 1 + (c1 + 1) * q * q * q + c1 * q * q
+end
+
+-- coração do salão: acende nítido e bate (as outras peças pulsam junto)
+local function enterHeartGlow(st)
+    local dur = math.max(0.5, st.dur or 1.6)
+    local list = st.fast and { 0.10, 0.55, 0.90, 1.15, 1.36, 1.55 } or { 0.15, 0.85, 1.35 }
+    local base = st.fast and 1.8 or 1.6
+    local beats = {}
+    for i, b in ipairs(list) do beats[i] = b * dur / base end
+    E.hg = { t = 0, beats = beats, i = 1, last = -9, n = 0, nextAt = dur + 0.2, every = 0.75 }
+    InteriorFX.pulseBoost(2.0, dur)
+    A.mist(0.25, 1)
+end
+
+local function hgBeat(hg)
+    hg.n = hg.n + 1
+    hg.last = hg.t
+    local n = math.min(6, hg.n)
+    A.play("bossHeartbeat", nil, 0.85 + 0.04 * n, 0)
+    shake(1 + n * 0.5, 0.14)
+    if not A.reduced() then
+        local x, y = H(HEART_C[1], HEART_C[2])
+        local s = hs()
+        for _ = 1, 4 do
+            A.spawnFeather(x + rnd(-15, 15) * s, y + rnd(-15, 15) * s, rnd(-30, 30), rnd(-30, 10), "spore")
+        end
+    end
+end
+
+local function hgEnv()
+    local hg = E.hg
+    if not hg then return 0 end
+    return math.max(0, 1 - (hg.t - hg.last) / 0.35)
+end
+
+local function buildFloorRoots(defs)
+    local fx_, fy, _, bb = feet()
+    local wdt = (bb and bb.width) or 120
+    local list = {}
+    for vi, def in ipairs(defs) do
+        local pts = {}
+        for i = 1, #def - 1 do
+            local x, y = H(def[i][1], def[i][2])
+            pts[#pts + 1] = { x, y }
+        end
+        if fx_ then pts[#pts + 1] = { fx_ + def[#def] * wdt, fy } end
+        local path, len = veinPath(pts, vi * 2.3, 5 * hs())
+        list[#list + 1] = { pts = path, len = len }
+    end
+    return list
+end
+
+local function drawRootList(list, grow, a, env)
+    if a <= 0.01 then return end
+    local P = A.px()
+    for _, v in ipairs(list) do
+        local upto = v.len * grow
+        local pts = {}
+        for d = 0, upto, P do
+            local x, y = pathAt(v, d)
+            local th = math.max(2, math.floor(lerp(6, 3, d / math.max(1, v.len)) + 0.5))
+            pts[#pts + 1] = { math.floor(x / P) * P, math.floor(y / P) * P, th }
+        end
+        love.graphics.setColor(0.03, 0.03, 0.02, a)
+        for _, p in ipairs(pts) do love.graphics.rectangle("fill", p[1] - P, p[2] - P, (p[3] + 2) * P, (p[3] + 1) * P) end
+        love.graphics.setColor(BARK[1], BARK[2], BARK[3], a)
+        for _, p in ipairs(pts) do love.graphics.rectangle("fill", p[1], p[2] - P, p[3] * P, p[3] * P) end
+        love.graphics.setColor(BARK_HI[1], BARK_HI[2], BARK_HI[3], a)
+        for i, p in ipairs(pts) do
+            if p[3] > 2 and i % 2 == 0 then love.graphics.rectangle("fill", p[1], p[2] - P, P, P) end
+        end
+        local core = 0.25 + 0.6 * env
+        love.graphics.setColor(GREEN[1] * core, GREEN[2] * core, GREEN[3] * core, a)
+        for i, p in ipairs(pts) do
+            if p[3] > 1 and i % 3 == 0 then love.graphics.rectangle("fill", p[1] + P, p[2], P, P) end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local cocBottom = nil
+local function cocoonPath()
+    return "assets/sprites/characters/enemies/" .. tostring(A.bossId()) .. "/entrance/" .. COCOON .. ".png"
+end
+local function cocoonBase(img)
+    if cocBottom then return cocBottom end
+    local iw, ih = img:getDimensions()
+    cocBottom = ih - 1
+    local data = imageData(cocoonPath())
+    if data then
+        for y = ih - 1, 0, -1 do
+            local hit = false
+            for x = 0, iw - 1 do
+                local _, _, _, al = data:getPixel(x, y)
+                if al > 0.3 then hit = true; break end
+            end
+            if hit then cocBottom = y; break end
+        end
+    end
+    return cocBottom
+end
+
+local function enterCocoon(st)
+    local dur = math.max(0.8, st.dur or 3.0)
+    E.coc = { t = 0, dur = dur, rise = math.min(0.6, dur * 0.2), grow = math.min(0.8, dur * 0.27),
+              roots = buildFloorRoots(CROOTS), creak = 0, dustT = 0 }
+    A.playLoop("bossRootsCrawl")
+    A.darkTo(0.72, 0.8)
+end
+
+local function cocGeom(c)
+    local img = image(COCOON)
+    local fx_, fy, s = feet()
+    if not (img and fx_) then return nil end
+    local ob = cocoonBase(img)
+    local k = clamp01((c.t - c.rise) / c.grow)
+    if k <= 0 then return img, fx_, fy, 0, 0, ob, 0 end
+    local env = hgEnv()
+    local sc = s * 1.2
+    local sx = sc * (0.70 + 0.30 * easeOut(k)) * (1 + 0.035 * env)
+    local sy = sc * backOut(k) * (1 - 0.02 * env)
+    local x = fx_
+    local q = clamp01((c.t - (c.dur - 0.7)) / 0.7)
+    if q > 0 and not A.reduced() then
+        local P = A.px()
+        x = x + ((love.math.random() < 0.5) and -1 or 1) * P * math.floor(q * 2 + 0.5)
+    end
+    return img, x, fy + 2 * s, sx, sy, ob, k
+end
+
+local function drawCocoon()
+    local c = E.coc
+    if not c then return end
+    local P = A.px()
+    local env = hgEnv()
+    drawRootList(c.roots, easeOut(clamp01(c.t / c.rise)), 1, env)
+    local img, x, y, sx, sy, ob, k = cocGeom(c)
+    if not img or k <= 0 then return end
+    local iw = img:getWidth()
+    x, y = math.floor(x / P) * P, math.floor(y)
+    local crack = clamp01((c.t - (c.dur - 0.7)) / 0.7)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(img, x, y, 0, sx, sy, iw / 2, ob + 1)
+    love.graphics.setBlendMode("add")
+    love.graphics.setColor(GREEN[1], GREEN[2], GREEN[3], (0.10 + 0.45 * env + 0.40 * crack) * k)
+    love.graphics.draw(img, x, y, 0, sx, sy, iw / 2, ob + 1)
+    love.graphics.setBlendMode("alpha")
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function burstCocoon()
+    local c = E.coc
+    E.coc = nil
+    A.stopLoop("bossRootsCrawl")
+    if not c then return end
+    E.croots = { roots = c.roots }
+    c.t = c.dur
+    local img, x, y, sx, sy, ob = cocGeom(c)
+    if img and sx > 0 then
+        local ih = img:getHeight()
+        shatterImage(img, x, y + (ih - 1 - ob) * sy, sx, A.reduced() and 16 or 8, 420,
+            { data = imageData(cocoonPath()), g = 1000 })
+    end
+    E.gflash = { t = 0 }
+    local fx_, fy, s, bb = feet()
+    if fx_ then
+        local wdt = bb.width or 120
+        for _ = 1, (A.reduced() and 8 or 26) do
+            A.spawnFeather(fx_ + rnd(-0.4, 0.4) * wdt, fy - rnd(20, 120) * s, rnd(-160, 160), rnd(-200, -40), "spore")
+        end
+        A.spawnDust(fx_, fy, 14, wdt)
+    end
+    A.play("bossEmergeTear", "sceneStoneThud", 0.8, 0)
+    A.play("mudSplash", nil, 0.85, 0.03)
+    shake(9, 0.4)
+    A.setHidden(false)
+    A.setLanded(true)
+end
+
+-- gota de seiva: nasce na ponta do coração, cai e vira poça
+local function enterSapDrop(st)
+    local dur = math.max(0.6, st.dur or 1.5)
+    local x0, y0 = H(HEART_TIP[1], HEART_TIP[2])
+    E.sap = { t = 0, dur = dur, form = dur * 0.5, x0 = x0, y0 = y0, x = x0, y = y0, hang = 0, trail = {} }
+    A.play("shopPotionBubble", nil, 0.5, 0)
+    A.queueSfx(dur * 0.35, "shopPotionBubble", nil, 0.42)
+end
+
+local function drawDropAt(x, y, R, tail, P, a)
+    local cx, cy = math.floor(x / P) * P, math.floor(y / P) * P
+    for j = -R, R do
+        local hw = math.floor(math.sqrt(R * R - j * j) + 0.5)
+        love.graphics.setColor(0.08, 0.24, 0.05, a)
+        love.graphics.rectangle("fill", cx - (hw + 1) * P, cy + j * P, (2 * hw + 2) * P, P)
+        love.graphics.setColor(GREEN[1], GREEN[2], GREEN[3], a)
+        love.graphics.rectangle("fill", cx - hw * P, cy + j * P, 2 * hw * P, P)
+    end
+    for j = 1, tail do
+        local hw = math.floor(R * (1 - j / (tail + 1)) + 0.5)
+        love.graphics.setColor(0.08, 0.24, 0.05, a)
+        love.graphics.rectangle("fill", cx - (hw + 1) * P, cy - (R + j) * P, (2 * hw + 2) * P, P)
+        if hw > 0 then
+            love.graphics.setColor(GREEN[1], GREEN[2], GREEN[3], a)
+            love.graphics.rectangle("fill", cx - hw * P, cy - (R + j) * P, 2 * hw * P, P)
+        end
+    end
+    love.graphics.setColor(SAP[1], SAP[2], SAP[3], a)
+    love.graphics.rectangle("fill", cx - math.max(1, math.floor(R / 2)) * P, cy - math.max(1, math.floor(R / 2)) * P, P, P)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawSap()
+    local sp = E.sap
+    if not sp then return end
+    local P = A.px()
+    local s = hs()
+    local R, tail
+    if sp.t <= sp.form then
+        local k = sp.t / sp.form
+        R = 2 + math.floor(4 * easeOut(k) + 0.5)
+        tail = math.floor(R * (0.5 + 1.2 * k) + 0.5)
+        local top = math.floor(sp.y0 / P) * P
+        local bot = math.floor((sp.y - (R + tail) * P) / P) * P
+        if bot > top then
+            love.graphics.setColor(GREEN[1], GREEN[2], GREEN[3], 1)
+            love.graphics.rectangle("fill", math.floor(sp.x / P) * P, top, P, bot - top)
+        end
+    else
+        R, tail = 6, 7
+    end
+    for i, p in ipairs(sp.trail) do
+        love.graphics.setColor(SAP[1], SAP[2], SAP[3], 0.8 * (1 - i / (#sp.trail + 1)))
+        love.graphics.rectangle("fill", math.floor(p[1] / P) * P, math.floor(p[2] / P) * P, P, P)
+    end
+    A.glowBlob(sp.x, sp.y, 26 * s, 26 * s, GREEN, 0.3, 1)
+    drawDropAt(sp.x, sp.y, R, tail, P, 1)
+end
+
+local function splatSap()
+    E.sap = nil
+    local fx_, fy, s = feet()
+    if not fx_ then return end
+    splash(fx_, fy + 2 * s, s * 0.9, 0, 1, "sap")
+    E.pud = { t = 0, bub = 0 }
+    E.gflash = { t = 0, small = true }
+    A.play("mudSplash", "shopPotionBubble", 0.95, 0)
+    A.play("bossEmergeTear", nil, 0.55, 0.05)
+    shake(6, 0.25)
+    for _ = 1, (A.reduced() and 5 or 14) do
+        local ang = -math.pi * rnd(0.1, 0.9)
+        local spd = rnd(140, 320)
+        addBit({ x = fx_ + rnd(-8, 8), y = fy - 4, vx = math.cos(ang) * spd, vy = math.sin(ang) * spd,
+                 life = 1.0, g = 1100, mud = true, sap = true, nodust = true, floor = fy + 6 * s, s = s })
+    end
+end
+
+local function drawPuddle()
+    local pd = E.pud
+    if not pd then return end
+    local fx_, fy, s, bb = feet()
+    if not fx_ then return end
+    local P = A.px()
+    local a = fadeK(pd)
+    local g = easeOut(clamp01(pd.t / 0.5))
+    local rx = (bb.width or 120) * (0.12 + 0.30 * g)
+    local ry = math.max(P, rx * 0.18)
+    local cx, cy = math.floor(fx_ / P) * P, math.floor((fy + 2 * s) / P) * P
+    A.glowBlob(cx, cy, rx * 2.2, ry * 4, GREEN, (0.06 + 0.08 * hgEnv()) * a, 2)
+    local R = math.max(1, math.floor(ry / P))
+    for j = -R, R do
+        local f = math.sqrt(math.max(0, 1 - (j / (R + 0.5)) ^ 2))
+        local hw = math.floor(rx / P * f + 0.5) + (((j * 7) % 3 == 0) and 1 or 0)
+        love.graphics.setColor(0.03, 0.08, 0.02, a)
+        love.graphics.rectangle("fill", cx - hw * P, cy + j * P, 2 * hw * P, P)
+        local hw2 = math.max(0, hw - 2)
+        love.graphics.setColor(0.09, 0.22, 0.05, a)
+        love.graphics.rectangle("fill", cx - hw2 * P, cy + j * P, 2 * hw2 * P, P)
+        if j == -R + 1 and hw2 > 2 then
+            love.graphics.setColor(SAP[1], SAP[2], SAP[3], 0.8 * a)
+            for i = -hw2 + 1, hw2 - 2, 3 do love.graphics.rectangle("fill", cx + i * P, cy + j * P, P, P) end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- o colosso cresce de dentro da seiva: silhueta verde que estica e ganha cor
+local function enterSapGrow(st)
+    local dur = math.max(0.8, st.dur or 2.6)
+    E.grow = { t = 0, dur = dur, anim = A.ownAnim(st.clip or "idle", dur), drip = 0, glug = 0 }
+    A.play("bogRise", "bossEmergeTear", 0.85, 0)
+    A.queueSfx(dur * 0.45, "leechRise", nil, 0.8)
+    A.darkTo(0.6, 1.0)
+    shake(2, dur)
+end
+
+local function growGeom(g)
+    local dx, dy, s = A.footInfo()
+    if not (dx and g.anim) then return nil end
+    local iw, ih = g.anim:getSize()
+    local k = clamp01(g.t / g.dur)
+    local ky = backOut(clamp01(k / 0.8))
+    local kx = 0.45 + 0.55 * smooth(clamp01(k / 0.7))
+    local wob = math.sin(g.t * 10) * 0.06 * (1 - k)
+    return dx, dy, s, iw, ih, math.max(0.02, kx + wob), math.max(0.02, ky - wob * 0.5), k
+end
+
+local function drawGrow()
+    local g = E.grow
+    if not (g and g.anim) then return end
+    local dx, dy, s, iw, ih, kx, ky, k = growGeom(g)
+    if not dx then return end
+    local px_, py_ = dx + iw * s / 2, dy + ih * s
+    local r = smooth(clamp01((k - 0.62) / 0.38))
+    local env = hgEnv()
+    local tint = { lerp(0.10, 1, r), lerp(0.30, 1, r), lerp(0.08, 1, r), 1 }
+    A.glowBlob(px_, py_ - ih * s * ky * 0.45, iw * s * kx * 1.5, ih * s * ky * 1.2, GREEN,
+        (0.16 + 0.2 * env) * (1 - r * 0.6), 1)
+    love.graphics.push()
+    love.graphics.translate(px_, py_)
+    love.graphics.scale(kx, ky)
+    love.graphics.translate(-px_, -py_)
+    A.drawOwn(g.anim, dx, dy, s, tint, (0.45 + 0.3 * env) * (1 - r))
+    love.graphics.pop()
+end
+
+local function popGrow()
+    E.grow = nil
+    E.gflash = { t = 0 }
+    local fx_, fy, s, bb = feet()
+    if fx_ then
+        local wdt = bb.width or 120
+        splash(fx_ - wdt * 0.35, fy + 2 * s, s * 0.9, 0, -1, "sap")
+        splash(fx_ + wdt * 0.35, fy + 2 * s, s * 0.9, 0.05, 1, "sap")
+        for _ = 1, (A.reduced() and 6 or 20) do
+            local ang = -math.pi * rnd(0.1, 0.9)
+            local spd = rnd(160, 380)
+            addBit({ x = fx_ + rnd(-0.4, 0.4) * wdt, y = fy - rnd(20, 160) * s * 0.5, vx = math.cos(ang) * spd,
+                     vy = math.sin(ang) * spd, life = 1.2, g = 1100, mud = true, sap = true, nodust = true,
+                     floor = fy + 4 * s, s = s })
+        end
+    end
+    A.play("mudSplash", "shopPotionBubble", 0.75, 0)
+    A.setHidden(false)
+    A.setLanded(true)
+end
+
+local function drawHeartGlow()
+    local hg = E.hg
+    if not hg then return end
+    local a = fadeK(hg)
+    local env = hgEnv()
+    local base = smooth(clamp01(hg.t / 0.6))
+    local hx, hy = H(HEART_C[1], HEART_C[2])
+    local s = hs()
+    A.glowBlob(hx, hy, 110 * s, 130 * s, GREEN, (0.05 + 0.14 * env) * a * base, 1)
+    hallLit(HEART_C[1], HEART_C[2], HEART_R[1], HEART_R[2], (0.8 + 0.2 * env) * a * base)
+    hallLit(HEART_C[1], HEART_C[2], HEART_R[1], HEART_R[2], (0.12 + 0.55 * env) * a * base, { 0.55, 1.0, 0.45 }, true)
+end
+
+local function drawCRoots()
+    local cr = E.croots
+    if not cr then return end
+    drawRootList(cr.roots, 1, fadeK(cr), hgEnv())
+end
+
+local function drawGFlash(w, h)
+    local f = E.gflash
+    if not f then return end
+    local k = clamp01(f.t / 0.5)
+    local fx_, fy, s = feet()
+    if not fx_ then return end
+    local m = f.small and 0.5 or 1
+    A.glowBlob(fx_, fy - 50 * s * m, w * (0.22 + 0.3 * k) * m, h * (0.25 + 0.25 * k) * m, SAP, 0.45 * (1 - k), 1)
+end
+
 function Ent.enter(st)
     local k = st.kind
     if k == "snuff" then enterSnuff(st)
@@ -743,6 +1187,10 @@ function Ent.enter(st)
     elseif k == "heart_wake" then enterHeartWake(st)
     elseif k == "bog" then enterBog(st)
     elseif k == "bog_rise" then enterBogRise(st)
+    elseif k == "heart_glow" then enterHeartGlow(st)
+    elseif k == "cocoon" then enterCocoon(st)
+    elseif k == "sap_drop" then enterSapDrop(st)
+    elseif k == "sap_grow" then enterSapGrow(st)
     end
 end
 
@@ -770,6 +1218,9 @@ function Ent.exit(st)
         popRise()
         A.setHidden(false)
         A.setLanded(true)
+    elseif k == "cocoon" then burstCocoon()
+    elseif k == "sap_drop" then splatSap()
+    elseif k == "sap_grow" then popGrow()
     end
 end
 
@@ -781,6 +1232,7 @@ function Ent.onStep(st)
         if E.moon then startFade(E.moon, 1.6) end
         if E.skull then startFade(E.skull, 1.4) end
         if E.heart then E.heart.stop = true end
+        if E.hg then E.hg.stop = true end
         A.stopLoop("bossEyesRumble")
     elseif st.kind == "title" then
         if E.crater then startFade(E.crater, 1.8) end
@@ -789,6 +1241,9 @@ function Ent.onStep(st)
         if E.patch then startFade(E.patch, 2.0) end
         if E.bog then startFade(E.bog, 1.4) end
         if E.heart then startFade(E.heart, 1.4) end
+        if E.hg then startFade(E.hg, 1.4) end
+        if E.pud then startFade(E.pud, 1.4) end
+        if E.croots then startFade(E.croots, 1.2) end
     end
 end
 
@@ -804,7 +1259,117 @@ local function tickFade(name, dt)
     end
 end
 
+local function updateColossus(dt, reduced)
+    local hg = E.hg
+    if hg then
+        hg.t = hg.t + dt
+        if not hg.stop then
+            if hg.i <= #hg.beats and hg.t >= hg.beats[hg.i] then
+                hg.i = hg.i + 1
+                hgBeat(hg)
+            elseif hg.i > #hg.beats and hg.t >= hg.nextAt then
+                local c = E.coc
+                local every = c and lerp(0.65, 0.3, clamp01(c.t / c.dur)) or hg.every
+                hg.nextAt = hg.t + every
+                hgBeat(hg)
+            end
+        end
+        tickFade("hg", dt)
+    end
+    local c = E.coc
+    if c then
+        c.t = c.t + dt
+        local fx_, fy, s, bb = feet()
+        if fx_ and c.t < c.rise and not reduced then
+            c.dustT = c.dustT - dt
+            if c.dustT <= 0 then
+                c.dustT = 0.08
+                for _, v in ipairs(c.roots) do
+                    local x, y = pathAt(v, v.len * easeOut(clamp01(c.t / c.rise)))
+                    A.spawnDust(x, y, 1, 10)
+                end
+            end
+        end
+        if c.t >= c.rise and not c.grew then
+            c.grew = true
+            A.play("bossEmergeTear", "sceneStoneThud", 0.6, 0)
+            shake(5, 0.3)
+            if fx_ then A.spawnDust(fx_, fy, 10, (bb and bb.width) or 120) end
+        end
+        if c.t >= c.rise + c.grow then
+            c.creak = c.creak - dt
+            if c.creak <= 0 then
+                local q = clamp01((c.t - (c.dur - 0.7)) / 0.7)
+                c.creak = lerp(0.45, 0.16, q)
+                A.play("colossusCrack", "sceneStoneThud", rnd(0.85, 1.05) + 0.25 * q, 0)
+                if fx_ and not reduced then
+                    for _ = 1, 2 + math.floor(4 * q) do
+                        A.spawnFeather(fx_ + rnd(-30, 30) * s, fy - rnd(30, 130) * s, rnd(-60, 60), rnd(-90, -20), "spore")
+                    end
+                end
+            end
+        end
+    end
+    if E.croots then tickFade("croots", dt) end
+    local sp = E.sap
+    if sp then
+        sp.t = sp.t + dt
+        if sp.t > sp.form then
+            local fx_, fy = feet()
+            if fx_ then
+                local q = clamp01((sp.t - sp.form) / math.max(0.05, sp.dur - sp.form))
+                table.insert(sp.trail, 1, { sp.x, sp.y })
+                if #sp.trail > 8 then table.remove(sp.trail) end
+                sp.x = lerp(sp.x0, fx_, smooth(q))
+                sp.y = lerp(sp.y0, fy, q * q)
+            end
+        else
+            local k = sp.t / sp.form
+            sp.y = sp.y0 + hs() * (2 + 10 * easeOut(k))
+        end
+    end
+    local pd = E.pud
+    if pd then
+        pd.t = pd.t + dt
+        pd.bub = pd.bub - dt
+        if pd.bub <= 0 and not pd.fade then
+            pd.bub = rnd(0.25, 0.5)
+            local fx_, fy, s, bb = feet()
+            if fx_ and not reduced then
+                A.spawnFeather(fx_ + rnd(-0.4, 0.4) * (bb.width or 120), fy, rnd(-8, 8), rnd(-50, -25), "spore")
+            end
+        end
+        tickFade("pud", dt)
+    end
+    local g = E.grow
+    if g then
+        g.t = g.t + dt
+        if g.anim then g.anim:update(dt) end
+        g.drip = g.drip - dt
+        if g.drip <= 0 then
+            g.drip = rnd(0.08, 0.18)
+            local dx, dy, s, iw, ih, kx, ky = growGeom(g)
+            if dx and not reduced then
+                local px_, py_ = dx + iw * s / 2, dy + ih * s
+                addBit({ x = px_ + rnd(-0.3, 0.3) * iw * s * kx, y = py_ - rnd(0.2, 0.9) * ih * s * ky,
+                         vx = rnd(-20, 20), vy = rnd(0, 40), life = 1.0, g = 900, mud = true, sap = true,
+                         nodust = true, floor = py_ + 2 * s, s = s })
+            end
+        end
+        g.glug = g.glug - dt
+        if g.glug <= 0 then
+            g.glug = rnd(0.35, 0.6)
+            A.play("shopPotionBubble", nil, rnd(0.45, 0.6), 0)
+        end
+    end
+    if E.gflash then
+        E.gflash.t = E.gflash.t + dt
+        if E.gflash.t >= 0.5 then E.gflash = nil end
+    end
+end
+
 local function updateExtra(dt, reduced)
+    updateColossus(dt, reduced)
     local fr = E.frost
     if fr then
         fr.t = fr.t + dt
@@ -1457,7 +2022,8 @@ end
 local function drawSplashes()
     for _, sp in ipairs(splashes) do
         if sp.t >= 0 then
-            local mud = sp.kind == "mud"
+            local sapK = sp.kind == "sap"
+            local mud = sp.kind == "mud" or sapK
             local img = image(mud and "mud_splash" or "lava_splash")
             local col = mud and GREEN or LAVA
             local k = sp.t / sp.dur
@@ -1465,10 +2031,11 @@ local function drawSplashes()
             local a = 1 - clamp01((k - 0.45) / 0.55)
             if img then
                 local iw, ih = img:getDimensions()
-                if mud then love.graphics.setColor(0.62, 0.66, 0.40, a) else love.graphics.setColor(1, 1, 1, a) end
+                if sapK then love.graphics.setColor(0.40, 0.78, 0.30, a)
+                elseif mud then love.graphics.setColor(0.62, 0.66, 0.40, a) else love.graphics.setColor(1, 1, 1, a) end
                 love.graphics.draw(img, math.floor(sp.x), math.floor(sp.y), 0, sp.s * sp.sx, sp.s * sy, iw / 2, ih)
                 love.graphics.setBlendMode("add")
-                love.graphics.setColor(col[1], col[2], col[3], (mud and 0.12 or 0.4) * a)
+                love.graphics.setColor(col[1], col[2], col[3], (sapK and 0.35 or mud and 0.12 or 0.4) * a)
                 love.graphics.draw(img, math.floor(sp.x), math.floor(sp.y), 0, sp.s * sp.sx, sp.s * sy, iw / 2, ih)
                 love.graphics.setBlendMode("alpha")
             else
@@ -1512,6 +2079,11 @@ local function drawBits(over)
                 love.graphics.setColor(LAVA[1], LAVA[2], LAVA[3], a)
                 love.graphics.rectangle("fill", P, -P, P, P)
                 love.graphics.pop()
+            elseif b.mud and b.sap then
+                love.graphics.setColor(0.16, 0.42, 0.10, a)
+                love.graphics.rectangle("fill", x - P, y - P, 2 * P, 2 * P)
+                love.graphics.setColor(SAP[1], SAP[2], SAP[3], a)
+                love.graphics.rectangle("fill", x - P, y - P, P, P)
             elseif b.mud then
                 love.graphics.setColor(MUD[1], MUD[2], MUD[3], a)
                 love.graphics.rectangle("fill", x - P, y - P, 2 * P, 2 * P)
@@ -1773,6 +2345,9 @@ function Ent.drawBack(w, h)
     drawFlare()
     drawHeartWake()
     drawBog()
+    drawHeartGlow()
+    drawCRoots()
+    drawPuddle()
     drawPatch()
     drawSpikes(false)
 end
@@ -1785,6 +2360,9 @@ function Ent.drawActors(w, h)
     drawEruptActor(w)
     drawDropActor()
     drawRise(w)
+    drawCocoon()
+    drawGrow()
+    drawSap()
 end
 
 -- Frente: tudo que passa na frente do chefe.
@@ -1805,6 +2383,7 @@ function Ent.drawOver(w, h)
     drawSpikes(true)
     drawBits(true)
     drawBoom(w, h)
+    drawGFlash(w, h)
 end
 
 return Ent
