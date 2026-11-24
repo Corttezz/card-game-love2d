@@ -1,7 +1,7 @@
 // runemoire.com v3: o site É a tela de título do jogo (Daniel, 11/11/2026, no modelo do inscryption.com).
 // Uma cena só, sem rolagem: a capela do menu do jogo (camadas do próprio jogo, velas vivas), as duas cartas
 // flutuando que viram, o selo e o logotipo, e o menu com os rótulos do jogo. Cada item abre um painel no estilo do jogo.
-// Sem JS os itens do menu são âncoras (#play, #collection, ...) e os painéis abrem por :target.
+// Sem JS os itens do menu são âncoras (#play, #achievements, ...) e os painéis abrem por :target.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,20 +26,11 @@ const ui = (l, k) => UI[l.code]?.[k] ?? UI.en[k];
 
 // cartas renderizadas pelo próprio jogo (CardFrame, exportadas por tools/preview_cards em cada idioma)
 export const CARD_POOL = fs.readdirSync(path.join(R, 'public/img/gamecards/en')).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4)).sort();
-const COLLECTION_CARDS = ['warrior_strike', 'mage_zap', 'rogue_executioner', 'joker_001'];
-const SHOTS = ['03_road_battle', '06_road_fork', '05_shop'];
-const SHOT_ALT = {
-  '03_road_battle': { en: 'Combat on the road', pt_BR: 'Combate na estrada', es: 'Combate en el camino', fr: 'Combat sur la route', de: 'Kampf auf der Straße' },
-  '06_road_fork': { en: 'The map: a fork in the road', pt_BR: 'O mapa: uma bifurcação', es: 'El mapa: una bifurcación', fr: 'La carte : une bifurcation', de: 'Die Karte: eine Weggabelung' },
-  '05_shop': { en: 'The shop', pt_BR: 'A loja', es: 'La tienda', fr: 'La boutique', de: 'Der Laden' },
-};
-const cardSrc = (l, id) => `/img/gamecards/${l.code}/${id}.png`;
 
 // o trailer (o mesmo do painel Jogar; corte 14 v7 desde 21/11, antes o de gameplay da v1): duração do arquivo e data de publicação
 const TRAILER = { src: '/media/runemoire-trailer-c14v7.mp4', poster: '/media/runemoire-trailer-c14v7.jpg', uploadDate: '2026-11-21', duration: 'PT1M26S' };
 export const OG = '/img/og/og.png'; // uma arte só nos 5 idiomas (eram 5 cópias idênticas)
 const LANG_TAGS = LANGS.map((x) => x.html);
-const cardName = (G, l, id) => { const c = (G.cards || []).find((x) => x.id === id); return c ? loc(c.name, l) : 'Runemoire'; };
 // o CSS vai embutido no <head> (sem pedido bloqueante); o hash dele entra no style-src da CSP (worker/csp.gen.js)
 const styleTag = (ctx) => (ctx.CSSTEXT != null ? `<style>${ctx.CSSTEXT}</style>` : `<link rel="stylesheet" href="${ctx.CSS}">`);
 
@@ -67,8 +58,7 @@ const panel = (id, title, body, t, l, extra = '') => `<section class="panel" id=
 
 export function renderHome(t, l, ctx) {
   const G = ctx.GAME;
-  const shots = (l.code === 'pt_BR' ? G.shots.pt_BR : G.shots.en).filter((s) => SHOTS.includes(s.id)).sort((a, b) => SHOTS.indexOf(a.id) - SHOTS.indexOf(b.id));
-  const items = [['play', 'menu.play'], ['collection', 'menu.collection'], ['achievements', 'menu.achievements'], ['settings', 'menu.settings'], ['quit', 'menu.quit']];
+  const items = [['play', 'menu.play'], ['achievements', 'menu.achievements'], ['settings', 'menu.settings'], ['quit', 'menu.quit']];
   const langs = LANGS.map((x) => `<a href="${home(x)}#settings" lang="${x.html}" hreflang="${x.html}"${x.code === l.code ? ' aria-current="true"' : ''}>${x.self}</a>`).join('');
   const toggle = (id, label, on = false) => `<div class="opt"><span id="${id}-l">${esc(label)}</span><button class="sw" type="button" id="${id}" role="switch" aria-checked="${on}" aria-labelledby="${id}-l"><span class="on">${esc(t.onLabel)}</span><span class="off">${esc(t.offLabel)}</span></button></div>`;
   const B = BOOT.t[l.code] || BOOT.t.en;
@@ -82,8 +72,6 @@ export function renderHome(t, l, ctx) {
 <a class="corner" id="priv" href="${home(l)}privacy/">${esc(t.privacy)}</a>
 </div>
 ${panel('play', t.trailerPlay, `<div class="vid"><img src="${TRAILER.poster}" width="1280" height="720" alt="${esc(t.trailerPlay)}" loading="lazy" decoding="async"><button class="vplay" type="button" data-src="${TRAILER.src}" aria-label="${esc(t.play)}: ${esc(t.trailerPlay)}"><span></span></button></div>`, t, l)}
-${panel('collection', ui(l, 'collection.title'), `<p class="sub">${esc(t.cardsTitle)}</p><div class="cards">${COLLECTION_CARDS.map((id) => `<img class="px" src="${cardSrc(l, id)}" width="192" height="288" alt="${esc(cardName(G, l, id))}" loading="lazy" decoding="async">`).join('')}</div>
-<p class="sub">${esc(t.screensTitle)}</p><div class="screens">${shots.map((s) => `<img src="${s.thumb}" width="960" height="540" alt="${esc(SHOT_ALT[s.id][l.code] || SHOT_ALT[s.id].en)}" loading="lazy" decoding="async">`).join('')}</div>`, t, l)}
 ${panel('achievements', ui(l, 'menu.achievements'), `<div class="ach"><img class="px icon" id="ach-icon" src="/img/v3/ach_locked.png" data-on="/img/v3/ach.png" width="128" height="128" alt=""><div><h3>${esc(t.achName)}</h3><p>${esc(t.achDesc)}</p></div></div>
 <p class="prompt">${esc(t.achPrompt)}</p>
 <form class="notify" method="post" action="/api/notify" novalidate data-clarity-mask="true"><label class="sr" for="email">${esc(t.notifyLabel)}</label>

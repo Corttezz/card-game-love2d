@@ -19,7 +19,7 @@ for (const lang of langs.split(',')) for (const size of sizesArg.split(',')) {
   await shot('desk', 1800);
   await p.click('#screenhit'); await shot('dive', 380); await shot('scene', 1200);
   const over = await p.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight]);
-  for (const id of ['play', 'collection', 'achievements', 'settings']) {
+  for (const id of ['play', 'achievements', 'settings']) {
     await p.click(`.menu a[data-open="${id}"]`); await shot(id);
     if (id === 'achievements' && doNotify === '1') {
       await p.fill('#email', `estado-${lang}-${n}@example.com`); await p.click('#achievements form button[type=submit]');

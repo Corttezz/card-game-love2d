@@ -48,14 +48,14 @@ for (const [p, word] of Object.entries(LBL)) for (const w of [1440, 390]) {
 }
 {
   const { ctx, pg } = await open('/');
-  for (const id of ['play', 'collection', 'achievements', 'settings']) {
+  for (const id of ['play', 'achievements', 'settings']) {
     await pg.click(`.menu a[data-open="${id}"]`, { force: true });
     ok(`painel ${id} abre`, await pg.isVisible(`#${id}.open`));
     await pg.keyboard.press('Escape');
     ok(`painel ${id} fecha com Esc`, !(await pg.isVisible(`#${id}.open`)));
   }
-  await pg.click('.menu a[data-open="collection"]', { force: true });
-  ok('coleção mostra 4 cartas do jogo e 3 telas', (await pg.$$('#collection .cards img')).length === 4 && (await pg.$$('#collection .screens img')).length === 3);
+  await pg.click('.menu a[data-open="settings"]', { force: true });
+  ok('sem a aba Coleção', !(await pg.$('#collection')) && !(await pg.$('.menu a[data-open="collection"]')));
   ok('fundo inerte com painel aberto', await pg.evaluate(() => document.getElementById('title').hasAttribute('inert')));
   await pg.keyboard.press('Escape');
   // texto visível depois da cena: H1, trailer em <video>, link externo; o "Me avise" de lá abre o painel
@@ -67,13 +67,13 @@ for (const [p, word] of Object.entries(LBL)) for (const w of [1440, 390]) {
   await pg.click('.menu a[data-open="play"]', { force: true }); await pg.click('.vplay'); await pg.waitForTimeout(800);
   ok('trailer só carrega ao clicar', !!(await pg.$('#play video')));
   await pg.keyboard.press('Escape');
-  await pg.hover('.menu a[data-open="collection"]', { force: true }); await pg.waitForTimeout(100);
-  ok('passar o mouse acende o botão do jogo', await pg.evaluate(() => window.__rm.menu.hover === 'collection'));
+  await pg.hover('.menu a[data-open="achievements"]', { force: true }); await pg.waitForTimeout(100);
+  ok('passar o mouse acende o botão do jogo', await pg.evaluate(() => window.__rm.menu.hover === 'achievements'));
   await pg.click('.hang[data-i="0"]', { force: true }); await pg.waitForTimeout(900);
   const src = await pg.evaluate(() => window.__rm.menu.cards[0].face?.src || '');
   ok('carta flutuante vira e mostra carta do jogo', (await pg.getAttribute('.hang[data-i="0"]', 'aria-pressed')) === 'true' && /\/img\/gamecards\/en\//.test(src), src);
   await pg.focus('.menu a[data-open="play"]'); await pg.keyboard.press('ArrowDown');
-  ok('setas movem a seleção do menu', await pg.evaluate(() => document.activeElement?.getAttribute('data-open') === 'collection'));
+  ok('setas movem a seleção do menu', await pg.evaluate(() => document.activeElement?.getAttribute('data-open') === 'achievements'));
   await pg.click('.menu a[data-open="quit"]', { force: true });
   await pg.waitForTimeout(300);
   ok('sair: a TV desliga pelo shader (powerOff)', await pg.evaluate(() => window.__rm.crt.dir === -1 && window.__rm.crt.power < 1));

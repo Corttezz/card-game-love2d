@@ -23,7 +23,7 @@ const TAU = Math.PI * 2;
 
 export type Strings = { title: string; subtitle: string; loading: string; skip: string; hint: string; version: string;
   buttons: Record<string, string>; privacy: string; wish: string; osd: string };
-export type Hooks = { sfx: (name: string, vol?: number, rate?: number) => void; music: (on: boolean) => void;
+export type Hooks = { sfx: (name: string, vol?: number, rate?: number) => HTMLAudioElement | void; music: (on: boolean) => void;
   onMenu: () => void; onDesk: () => void; onPhase?: (p: string) => void };
 
 // ===================================================================== CRTShader.lua
@@ -87,8 +87,8 @@ class Crt {
 }
 
 // ===================================================================== dados do jogo
-const PC = { w: 640, h: 773, screen: { x: 106, y: 140, w: 427, h: 343 }, slot: { x: 330, y: 652, w: 232, h: 13 } }; // src/data/intro_computer.lua
-const IT = { fadeIn: 0.35, tvPop: 0.45, typeAt: 0.8, gapSub: 0.35, hold: 0.9, insert: 1.1, insertHold: 0.35, dive: 1.0, cps: 22, ART_FRAC: 0.7, BEZEL_PX: 20, POWER: 1.2 };
+const PC = { w: 640, h: 773, screen: { x: 106, y: 140, w: 427, h: 343 }, slot: { x: 330, y: 652, w: 232, h: 13 }, led: { x: 572, y: 668, w: 5, h: 6 } }; // src/data/intro_computer.lua
+const IT = { fadeIn: 0.35, tvPop: 0.45, typeAt: 0.8, gapSub: 0.35, hold: 0.9, insert: 1.6, insertHold: 0.35, dive: 1.0, cps: 22, ART_FRAC: 0.7, BEZEL_PX: 20, POWER: 1.2 };
 const BD = {
   seal: { w: 113, h: 113, cx: 56, cy: 56, trevScale: 1.25 },
   tips: [[56, 0], [86.5, 25.5], [112, 56], [88, 88], [56, 112], [25.5, 86.5], [0, 56], [26, 26]],
@@ -98,7 +98,18 @@ const BD = {
   palWarm: [[0, 0, 0], [70, 30, 22], [120, 50, 28], [196, 128, 52], [226, 168, 74], [246, 206, 118], [255, 230, 160]],
   palHot: [[0, 0, 0], [160, 96, 60], [200, 120, 70], [250, 214, 150], [255, 230, 176], [255, 242, 206], [255, 250, 232]],
 };
-const MT = { RAY0: 1.24, RAYSTEP: 0.125, CHARGE: 2.26, FLASH: 2.62, MOVE: 2.86, MOVE_END: 3.46, WORD0: 3.02, WORDSTEP: 0.075, SWEEP0: 4.15, BUTTONS: 3.95, BUTTON_STEP: 0.08, BUTTON_DUR: 0.3, BG_FADE: 0.8, ELECTRIC: 2.55, END: 6.5 };
+// IntroTube.INS / INS_SFX: a carta sobe, inclina, entra na fenda; tranco, faíscas e o LED do drive lendo
+const INS = { rise: 0.5, hover: 0.62, tilt: 0.9, push: 1.12, tiltMax: 1.22, focal: 4.0, hoverLift: 0.18, startDX: 0.9, startRot: -0.32,
+  glint0: 0.28, glint1: 0.8, strips: 48, joltPx: 3.2, joltDur: 0.24, sparkLife: 0.55, nSparks: 28, ledBlink: 0.09, read: 0.45 };
+const INS_SFX: [number, string, number, number][] = [
+  [0.0, 'card-draw', 1, 1], [0.62, 'card-draw', 0.8, 0.78], [0.9, 'card-shelf-place', 0.37, 0.9],
+  [1.12, 'shop-press-clunk', 0.58, 1], [1.12, 'button-click', 1, 0.82], [1.17, 'effect-chime', 0.58, 0.84],
+  [1.27, 'coin-tick', 0.41, 0.55], [1.37, 'coin-tick', 0.37, 0.62], [1.47, 'coin-tick', 0.32, 0.55]];
+const LED_ON = [255, 189, 77];
+const INS_SPARK = [[255, 250, 232], [255, 222, 140], [232, 160, 64]];
+const easeOutBackI = (t: number) => { const c1 = 1.70158, c3 = c1 + 1; t = clamp01(t); return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const hash01 = (i: number, salt: number) => { const v = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453; return v - Math.floor(v); };
+const MT = { RAY0: 1.24, RAYSTEP: 0.125, CHARGE: 2.26, FLASH: 2.62, MOVE: 2.86, MOVE_END: 3.46, WORD0: 3.02, WORDSTEP: 0.075, SWEEP0: 4.15, BUTTONS: 3.95, BUTTON_STEP: 0.08, BUTTON_DUR: 0.3, BG_FADE: 0.8, END: 6.5 };
 const SWEEP_SPEED = 600 / 0.9, IDLE_SWEEP = [8, 12], IDLE_TWINKLE = [1.4, 3.2];
 const BOUNCE = [-14, -10, -6, -2, 1, 3, 2, 1, 0, -1, 0];
 const HOLD_TWINKLES = [[4.7, 1], [5.25, 4], [5.7, 7], [6.1, 3]];
@@ -113,7 +124,7 @@ const FXc = { moteFrom: 0.15, moteRim: 58, moteWarpAt: 0.3, moteWarp: 1.6, runeF
 const PULSE = { dur: 0.16, alpha: 0.18 };
 const PHYS = { pullG: 2.6e6, pullPow: 1.25, drag: 0.35, captureR: 0.55, maxLife: 3.2, chiralCCW: 0.82, lifeMin: 1.05, lifeMax: 1.75 };
 const MINI = { w: 56, h: 84 }, NUM_MINI = 34, SIGIL = [179, 40], SEAL_R = 30;
-export const BUTTON_ORDER = ['play', 'collection', 'achievements', 'settings', 'quit'];
+export const BUTTON_ORDER = ['play', 'achievements', 'settings', 'quit'];
 
 export class Game {
   W = 0; H = 0; time = 0;
@@ -181,7 +192,7 @@ export class Game {
     this.intro.pageKey = '';
   }
   // ------------------------------------------------------------- som
-  sfx(n: string, vol = 1, rate = 1) { this.hooks.sfx(n, vol, rate); }
+  sfx(n: string, vol = 1, rate = 1) { return this.hooks.sfx(n, vol, rate); }
   // ------------------------------------------------------------- o ciclo (passo fixo de 1/60 s, como as capturas do jogo)
   acc = 0; last = 0; stillKey = '';
   frame(now: number) {
@@ -287,7 +298,8 @@ export class Game {
       const tw = Math.max(8, Math.floor(sw)), th = Math.max(8, Math.floor(sh)), B = IT.BEZEL_PX;
       const sEndX = (W - 2 * B) / sw, sEndY = (H - 2 * B) / sh;
       return { art: k, ax, ay, aw, ah, sx, sy, sw, sh, tw, th, cx: sx + sw / 2, cy: sy + sh / 2, sEndX, sEndY,
-        slot: { x: ax + d.slot.x * k, y: ay + d.slot.y * k, w: d.slot.w * k, h: d.slot.h * k } };
+        slot: { x: ax + d.slot.x * k, y: ay + d.slot.y * k, w: d.slot.w * k, h: d.slot.h * k },
+        led: { x: ax + d.led.x * k, y: ay + d.led.y * k, w: d.led.w * k, h: d.led.h * k } };
     }
     press() {
       if (this.phase === 'done') return;
@@ -319,21 +331,20 @@ export class Game {
       const g = this.g;
       if (this.phase === 'insert') {
         this.insT += dt;
-        if (this.insSfx === 0) { this.insSfx = 1; g.sfx('card-draw'); }
-        if (this.insSfx === 1 && this.insT >= IT.insert * 0.78) { this.insSfx = 2; g.sfx('button-click'); }
+        while (this.insSfx < INS_SFX.length && this.insT >= INS_SFX[this.insSfx][0]) { const c = INS_SFX[this.insSfx++]; g.sfx(c[1], c[2], c[3]); }
         if (this.insT >= IT.insert) { this.phase = 'power'; this.powT = 0; g.sfx('boot-tv-power-on'); g.hooks.onPhase?.('power'); }
       } else if (this.phase === 'power') {
-        this.powT += dt;
+        this.powT += dt; this.insT += dt;
         if (this.powT >= IT.POWER) { this.phase = 'type'; g.hooks.onPhase?.('type'); }
       } else if (this.phase === 'type') {
-        this.typeStep(dt);
+        this.insT += dt; this.typeStep(dt);
         if (this.doneTyping) { this.phase = 'hold'; this.holdT = 0; }
       } else if (this.phase === 'hold') {
-        this.holdT += dt; if (this.holdT >= IT.hold) { this.phase = 'flash'; this.flashT = 0; g.hooks.onPhase?.('flash'); }
+        this.holdT += dt; this.insT += dt; if (this.holdT >= IT.hold) { this.phase = 'flash'; this.flashT = 0; g.hooks.onPhase?.('flash'); }
       } else if (this.phase === 'flash') {
-        this.flashT += dt; if (this.flashT >= IT.insertHold) { this.phase = 'dive'; this.diveT = 0; g.hooks.onPhase?.('dive'); }
+        this.flashT += dt; this.insT += dt; if (this.flashT >= IT.insertHold) { this.phase = 'dive'; this.diveT = 0; g.hooks.onPhase?.('dive'); }
       } else if (this.phase === 'dive') {
-        this.diveT += dt; if (this.diveT >= IT.dive) this.finish();
+        this.diveT += dt; this.insT += dt; if (this.diveT >= IT.dive) this.finish();
       }
     }
     tubePower() { return this.phase === 'off' || this.phase === 'insert' ? 0 : this.phase === 'power' ? Math.min(1, this.powT / IT.POWER) : 1; }
@@ -398,21 +409,112 @@ export class Game {
         c.fillStyle = rgba(PAL.PARCHMENT_LIGHT, 0.85 * k); c.fillRect(0, 0, tw, th);
       }
     }
-    drawInsertCard(g: Ctx, G: ReturnType<IntroTube['geometry']>, W: number, H: number, m: DOMMatrix) {
-      if (!(this.phase === 'insert' || this.phase === 'power' || this.phase === 'type' || this.phase === 'hold' || this.phase === 'flash')) return;
-      // no jogo a carta some no fim do clarão; aqui ela fica no drive enquanto o tubo liga e o nome aparece
-      const u = easeInOutCubic(Math.min(1, this.phase === 'insert' ? this.insT / IT.insert : 1));
-      const sl = G.slot, cw = Math.max(24, sl.w * 0.82), ch = cw * 1.5;
-      const x0 = W + cw * 0.8, y0 = H + ch * 0.6, x1 = sl.x + sl.w / 2, y1 = sl.y - ch / 2 + ch * 0.05;
-      const x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u, rot = -0.38 * (1 - u);
-      g.save();
-      g.setTransform(1, 0, 0, 1, 0, 0);
-      g.beginPath(); g.rect(0, Math.floor(sl.y), W, Math.max(1, H - Math.floor(sl.y))); g.clip();
-      g.setTransform(m);
-      g.save(); g.translate(x + 8, y + 10); g.rotate(rot);
-      g.fillStyle = rgba(PAL.INK, 0.35); g.beginPath(); g.roundRect(-cw / 2, -ch / 2, cw, ch, 4); g.fill(); g.restore();
-      this.g.cardBack(g, x, y, cw, ch, { rot, alpha: 1 });
+    // IntroTube.insertPose: pose da carta e do drive no instante t da inserção
+    insertPose(t: number, G: ReturnType<IntroTube['geometry']>, H: number) {
+      const sl = G.slot, cw = Math.max(24, sl.w * 0.78), ch = cw * 1.5, cx1 = sl.x + sl.w / 2;
+      const clipY = sl.y + sl.h * 0.5, hoverTop = clipY - ch * INS.hoverLift;
+      const P = { cw, ch, cx: cx1, top: hoverTop, theta: 0, d: 0, rot: 0, glint: -1, clipY, shadow: 1, glow: 0, jolt: 0, led: 0 };
+      if (t < INS.rise) {
+        const u = t / INS.rise, e = easeOutBackI(u), startTop = H + ch * 0.15;
+        P.top = startTop + (hoverTop - startTop) * e;
+        P.cx = cx1 + cw * INS.startDX * (1 - easeInOutCubic(u));
+        P.rot = INS.startRot * (1 - e) + 0.06 * Math.sin(u * Math.PI * 2) * (1 - u);
+      } else if (t < INS.hover) {
+        P.top = hoverTop - Math.sin((t - INS.rise) / (INS.hover - INS.rise) * Math.PI) * ch * 0.015;
+      } else if (t < INS.tilt) {
+        const u = easeInOutCubic((t - INS.hover) / (INS.tilt - INS.hover));
+        P.theta = INS.tiltMax * u; P.top = hoverTop + (clipY - hoverTop) * u; P.shadow = 1 - u;
+      } else if (t < INS.push) {
+        const u = clamp01((t - INS.tilt) / (INS.push - INS.tilt));
+        P.theta = INS.tiltMax; P.top = clipY; P.d = ch * u * u; P.shadow = 0;
+      } else { P.theta = INS.tiltMax; P.top = clipY; P.d = ch; P.shadow = 0; }
+      if (t >= INS.glint0 && t <= INS.glint1) P.glint = (t - INS.glint0) / (INS.glint1 - INS.glint0);
+      if (t >= INS.hover && t < INS.push) P.glow = 0.15 + 0.45 * (t - INS.hover) / (INS.push - INS.hover);
+      else if (t >= INS.push) { const jt = t - INS.push; P.glow = 0.16 + 0.84 * Math.exp(-jt * 5) + 0.14 * Math.max(0, Math.sin(jt * 15)) * Math.exp(-jt * 2.5); }
+      if (t >= INS.push && t < INS.push + INS.joltDur) { const jt = (t - INS.push) / INS.joltDur; P.jolt = INS.joltPx * G.art * Math.cos(jt * Math.PI * 3.5) * (1 - jt) ** 2; }
+      if (t >= INS.push) { const jt = t - INS.push; P.led = jt < INS.read ? (Math.floor(jt / INS.ledBlink) % 2 === 0 ? 1 : 0.25) : 1; }
+      return P;
+    }
+    cardCv = document.createElement('canvas'); cardCtx = this.cardCv.getContext('2d')!;
+    shadowCv = document.createElement('canvas'); shadowCtx = this.shadowCv.getContext('2d')!;
+    cardShadow(cv: HTMLCanvasElement) {
+      const s = this.shadowCv, c = this.shadowCtx;
+      if (s.width !== cv.width || s.height !== cv.height) { s.width = cv.width; s.height = cv.height; }
+      c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, s.width, s.height); c.drawImage(cv, 0, 0);
+      c.globalCompositeOperation = 'source-in'; c.fillStyle = rgba(PAL.INK.map((v) => v * 0.2)); c.fillRect(0, 0, s.width, s.height);
+      c.globalCompositeOperation = 'source-over';
+      return s;
+    }
+    renderCard(cw: number, ch: number, glint: number) {
+      const img = this.g.img.back as HTMLImageElement; if (!img) return null;
+      const iw = Math.max(8, Math.ceil(cw)), ih = Math.max(8, Math.ceil(ch)), cv = this.cardCv, c = this.cardCtx;
+      if (cv.width !== iw || cv.height !== ih) { cv.width = iw; cv.height = ih; }
+      c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.clearRect(0, 0, iw, ih);
+      c.imageSmoothingEnabled = true; c.drawImage(img, 0, 0, iw, ih);
+      if (glint >= 0) {
+        const band = iw * 0.22, x = -iw * 0.6 + iw * 2.2 * glint;
+        const quad = (x0: number, x1: number, col: string) => { c.fillStyle = col; c.beginPath(); c.moveTo(x0, 0); c.lineTo(x1, 0); c.lineTo(x1 - ih * 0.5, ih); c.lineTo(x0 - ih * 0.5, ih); c.fill(); };
+        c.globalCompositeOperation = 'lighter';
+        quad(x, x + band, 'rgba(255,230,158,0.38)');
+        quad(x + band * 0.35, x + band * 0.6, 'rgba(255,247,217,0.45)');
+        c.globalCompositeOperation = 'destination-in'; c.drawImage(img, 0, 0, iw, ih);
+        c.globalCompositeOperation = 'source-over';
+      }
+      return cv;
+    }
+    drawCardStrips(g: Ctx, cv: HTMLCanvasElement, P: ReturnType<IntroTube['insertPose']>, ox: number, oy: number) {
+      const iw = cv.width, ih = cv.height, N = INS.strips, F = P.ch * INS.focal, st = Math.sin(P.theta), ct = Math.cos(P.theta);
+      g.save(); g.translate(P.cx + ox, P.top + oy + P.ch / 2); g.rotate(P.rot); g.translate(0, -P.ch / 2);
+      g.imageSmoothingEnabled = true;
+      for (let i = 0; i < N; i++) {
+        let s0 = i / N * P.ch; const s1 = (i + 1) / N * P.ch;
+        if (s1 <= P.d) continue;
+        s0 = Math.max(s0, P.d);
+        const a = s0 - P.d, b = s1 - P.d, k0 = F / (F - a * st), k1 = F / (F - b * st);
+        const y0 = a * ct * k0, y1 = b * ct * k1, w = P.cw * (k0 + k1) / 2, r0 = s0 / P.ch * ih, r1 = s1 / P.ch * ih;
+        if (r1 - r0 > 0.01 && y1 - y0 > 0.01) g.drawImage(cv, 0, r0, iw, r1 - r0, -w / 2, y0, w, y1 - y0 + 0.6);
+      }
       g.restore();
+    }
+    drawSlotFx(g: Ctx, G: ReturnType<IntroTube['geometry']>, P: ReturnType<IntroTube['insertPose']>, t: number) {
+      const sl = G.slot, px = Math.max(1, G.art * 4);
+      g.save();
+      if (P.glow > 0.01) {
+        g.globalCompositeOperation = 'lighter';
+        for (let i = 4; i >= 1; i--) { const gx = px * i * 2.2, gy = px * i * 0.9; g.fillStyle = 'rgba(255,184,77,' + (P.glow * 0.2 / i) + ')'; g.fillRect(sl.x - gx, P.clipY - sl.h * 0.5 - gy, sl.w + 2 * gx, sl.h + 2 * gy); }
+        g.fillStyle = 'rgba(255,230,153,' + Math.min(1, P.glow * 0.9) + ')'; g.fillRect(sl.x + px, P.clipY - px * 0.5, sl.w - 2 * px, Math.max(1, px));
+      }
+      if (P.led > 0) {
+        const L = G.led;
+        g.globalCompositeOperation = 'source-over'; g.fillStyle = rgb255(LED_ON, P.led); g.fillRect(L.x, L.y, L.w, L.h);
+        g.globalCompositeOperation = 'lighter'; g.fillStyle = rgb255(LED_ON, 0.35 * P.led); g.fillRect(L.x - L.w, L.y - L.h, L.w * 3, L.h * 3);
+      }
+      const jt = t - INS.push;
+      if (jt >= 0 && jt < INS.sparkLife) {
+        g.globalCompositeOperation = 'lighter';
+        const k = G.art;
+        for (let i = 1; i <= INS.nSparks; i++) {
+          const life = INS.sparkLife * (0.6 + 0.4 * hash01(i, 1)); if (jt >= life) continue;
+          const u = jt / life, side = i % 2 === 0 ? 1 : -1;
+          const x0 = sl.x + sl.w * (0.5 + side * (0.3 + 0.22 * hash01(i, 2)));
+          const x = x0 + side * (40 + 140 * hash01(i, 3)) * k * jt, y = P.clipY - (90 + 170 * hash01(i, 4)) * k * jt + 0.5 * 900 * k * jt * jt;
+          const sz = Math.max(2, Math.floor((3.5 - 2 * u) * k * 2.4 + 0.5));
+          g.fillStyle = rgb255(INS_SPARK[Math.floor(u * 2.99)], 1 - u * u); g.fillRect(Math.floor(x), Math.floor(y), sz, sz);
+        }
+      }
+      g.restore();
+    }
+    drawInsertCard(g: Ctx, G: ReturnType<IntroTube['geometry']>, W: number, H: number) {
+      if (this.phase === 'off' || this.phase === 'done') return;
+      const t = this.insT, P = this.insertPose(t, G, H);
+      if (P.d < P.ch) {
+        const cv = this.renderCard(P.cw, P.ch, P.glint);
+        if (cv) {
+          if (P.shadow > 0.01) { g.save(); g.globalAlpha = 0.38 * P.shadow; this.drawCardStrips(g, this.cardShadow(cv), P, 9 * G.art, 12 * G.art); g.restore(); }
+          this.drawCardStrips(g, cv, P, 0, 0);
+        }
+      }
+      this.drawSlotFx(g, G, P, t);
     }
     draw(g: Ctx) {
       const { W, H } = this.g;
@@ -427,7 +529,7 @@ export class Game {
       const px = G.cx + (W / 2 - G.cx) * dive, py = G.cy + (H / 2 - G.cy) * dive;
       g.save();
       g.translate(px, py); g.scale(sxK, syK); g.translate(-G.cx, -G.cy);
-      const m = g.getTransform();
+      if (this.phase === 'insert') g.translate(0, this.insertPose(this.insT, G, H).jolt);
       if (dive < 1) { g.fillStyle = rgba(PAL.INK, 0.4 * tvAlpha * (1 - dive)); g.beginPath(); g.roundRect(G.ax + 10, G.ay + 12, G.aw, G.ah, 6); g.fill(); }
       // o tubo: conteúdo num canvas próprio, passa pelo crt.glsl e entra no buraco da tela do computador
       const cw0 = dive > 0 ? W : G.tw + 2 * B, ch0 = dive > 0 ? H : G.th + 2 * B;
@@ -440,7 +542,7 @@ export class Game {
       g.imageSmoothingEnabled = false;
       if (this.g.img.computer) g.drawImage(this.g.img.computer as HTMLImageElement, G.ax, G.ay, PC.w * G.art, PC.h * G.art);
       g.globalAlpha = 1;
-      this.drawInsertCard(g, G, W, H, m);
+      this.drawInsertCard(g, G, W, H);
       g.restore();
     }
   })(this);
@@ -690,7 +792,7 @@ class Brand {
     for (let i = 0; i < 16; i++) this.embers.push({ x0: -50 + r() * (BD.word.w + 100), yn: r(), vy: -22 + r() * 13, ph: r() * 6.28, amp: 2 + r() * 5, t0: r() * 2.6, life: 1.8 + r() * 1.6, fl: 4 + r() * 5 });
   }
   rand(lo: number, hi: number) { return lo + this.rng.random() * (hi - lo); }
-  static buttonColumn(vh: number) { const sp = Math.min(80, vh * 0.092), h = Math.min(60, vh * 0.08); return [vh * 0.975 - 4 * sp - h, sp, h]; }
+  static buttonColumn(vh: number) { const sp = Math.min(80, vh * 0.092), h = Math.min(60, vh * 0.08); return [vh * 0.975 - (BUTTON_ORDER.length - 1) * sp - h, sp, h]; }
   static layout(vw: number, vh: number) {
     const W = vw, H = vh, [y0, spacing] = Brand.buttonColumn(vh), topV = vh * 0.025;
     const region = y0 - spacing - vh * 0.02 - topV;
@@ -939,9 +1041,24 @@ class Brand {
   }
 }
 
+// MenuBrand.stingSfx: os sons da vinheta do logo, iguais ao jogo (Sfx.playAt dá 0.6·10^((db+3)/20); o site já multiplica por 0.6)
+const STING_SFX = (() => {
+  const cues: [number, string, number, number][] = [];
+  const add = (t: number, n: string, db: number, rate = 1) => cues.push([t, n, Math.pow(10, (db + 3) / 20), rate]);
+  add(0.6, 'boot-vortex', -15);
+  for (let k = 0; k <= 7; k++) add(MT.RAY0 + 0.1 + k * MT.RAYSTEP, 'joker-tick', -17, 1 + 0.06 * k);
+  add(MT.CHARGE + 0.04, 'boot-electric', -8);
+  add(MT.FLASH, 'boot-impact', -3);
+  for (let i = 0; i <= BD.cuts.length - 2; i++) add(MT.WORD0 + i * MT.WORDSTEP, 'menu-hover', -19, 1.1);
+  add(MT.SWEEP0, 'forge-reveal', -13);
+  add(MT.SWEEP0 + 0.15, 'event-choice-seal', -11);
+  HOLD_TWINKLES.forEach((h, i) => add(h[0], 'effect-chime', -17, 1.1 + 0.1 * (i + 1)));
+  return cues.sort((a, b) => a[0] - b[0]);
+})();
+
 // ===================================================================== components/Menu.lua
 class MenuScene {
-  g: Game; visible = false; osdTimer = 99; candleFlare = 0; sting = false; stingFx = { electric: false, impact: false };
+  g: Game; visible = false; osdTimer = 99; candleFlare = 0; sting = false; stingCue = 0; stingVoices: HTMLAudioElement[] = [];
   alphaBg = 1; alphaTitle = 1; alphaButtons: Record<string, number> = {}; offY: Record<string, number> = {};
   hover = ''; hoverScale: Record<string, number> = {}; motes: any[] = []; embers: any[] = []; emberTimer = 0;
   parX = 0; parY = 0; tf: any = null; glowA: HTMLCanvasElement | null = null; glowB: HTMLCanvasElement | null = null;
@@ -966,7 +1083,7 @@ class MenuScene {
   enterWithIntro(full: boolean) {
     this.visible = true; this.osdTimer = 0; this.candleFlare = 1;
     if (full) {
-      this.sting = true; this.stingFx = { electric: false, impact: false };
+      this.sting = true; this.stingCue = 0; this.stingVoices = [];
       this.g.brand.startSting(); this.applyStingTimeline();
       this.g.hooks.music(true);
       return;
@@ -975,15 +1092,27 @@ class MenuScene {
   }
   settle() { this.alphaBg = 1; this.alphaTitle = 1; for (const b of BUTTON_ORDER) { this.alphaButtons[b] = 1; this.offY[b] = 0; } }
   isIntroPlaying() { return this.sting && this.g.brand.isPlaying(); }
-  skipIntro() { if (!this.isIntroPlaying()) return false; this.g.brand.finish(); this.sting = false; this.settle(); return true; }
+  skipIntro() { if (!this.isIntroPlaying()) return false; this.g.brand.finish(); this.sting = false; this.cutStingSfx(); this.settle(); return true; }
+  // Menu:_cutStingSfx: pular a vinheta abafa o que ainda soa e não toca o resto
+  cutStingSfx() {
+    this.stingCue = STING_SFX.length;
+    for (const a of this.stingVoices) {
+      const v0 = a.volume, t0 = performance.now();
+      const step = () => { const u = (performance.now() - t0) / 150; if (u >= 1) { a.pause(); return; } a.volume = v0 * (1 - u); requestAnimationFrame(step); };
+      step();
+    }
+    this.stingVoices = [];
+  }
   applyStingTimeline() {
     if (!this.sting) return;
     const t = this.g.brand.stingTime();
     if (t === Infinity) { this.sting = false; this.settle(); return; }
     this.alphaBg = smooth((t - MT.FLASH) / MT.BG_FADE); this.alphaTitle = 1;
     BUTTON_ORDER.forEach((name, i) => { const u = (t - MT.BUTTONS - i * MT.BUTTON_STEP) / MT.BUTTON_DUR; this.alphaButtons[name] = smooth(u); this.offY[name] = 12 * (1 - backOut(u)); });
-    if (!this.stingFx.electric && t >= MT.ELECTRIC) { this.stingFx.electric = true; this.g.sfx('boot-electric', 0.45); }
-    if (!this.stingFx.impact && t >= MT.FLASH) { this.stingFx.impact = true; this.g.sfx('boot-impact', 0.6); }
+    while (this.stingCue < STING_SFX.length && t >= STING_SFX[this.stingCue][0]) {
+      const c = STING_SFX[this.stingCue++], a = this.g.sfx(c[1], c[2], c[3]);
+      if (a) this.stingVoices.push(a);
+    }
   }
   buttonsReady() { return BUTTON_ORDER.every((b) => this.alphaButtons[b] > 0.1); }
   buttonRects() {

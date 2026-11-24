@@ -17,6 +17,7 @@ function sfx(n: string, vol = 1, rate = 1) {
   if (!SND.sfx) return;
   const a = new Audio(`/media/v3b/${n}.mp3`); a.volume = Math.min(1, 0.6 * vol); a.playbackRate = rate; (a as any).preservesPitch = false;
   a.play().catch(() => {});
+  return a;
 }
 function music(on: boolean) {
   SND.menuOn = on;
