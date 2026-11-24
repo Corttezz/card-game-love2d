@@ -1,6 +1,7 @@
 local FontManager = require("src.ui.FontManager")
 local Palette     = require("src.ui.Palette")
 local Ink         = require("src.ui.RunJournalInk")
+local Parchment   = require("src.ui.MapParchment")
 local MapManager  = require("src.systems.MapManager")
 local ActSystem   = require("src.systems.ActSystem")
 local Sfx         = require("src.systems.Sfx")
@@ -134,6 +135,7 @@ function ActMapScreen:resize()
     self._hover = nil
     self._snap = true
     Ink.clearPaperCache()
+    Parchment.clear()
 end
 
 function ActMapScreen:update(dt) end
@@ -420,8 +422,13 @@ function ActMapScreen:draw()
     local L = ActMapScreen.layout(map, sw, sh, seed, self._scroll)
     self._L = L
 
-    local paper = Ink.paper(L.w, L.h, seed)
-    Ink.drawSheet(paper, L.x, L.y)
+    local sheet = Parchment.sheet(L.w, L.h, seed)
+    if sheet then
+        Parchment.drawSheet(sheet, L.x, L.y)
+    else
+        Ink.drawSheet(Ink.paper(L.w, L.h, seed), L.x, L.y)
+    end
+    local layered = sheet ~= nil and Parchment.beginInk()
 
     local mx, my = love.mouse.getPosition()
     local hov = self._forceHover or self:_hitNode(L, map, mx, my)
@@ -595,13 +602,18 @@ function ActMapScreen:draw()
     love.graphics.setScissor()
 
     local bandTop, bandBot = 22, 22
-    for k = 0, bandTop - 1 do
-        setAlpha(Ink.PAPER, 0.9 * (1 - k / bandTop))
-        love.graphics.rectangle("fill", V.x, V.y + k, V.w, 1)
-    end
-    for k = 0, bandBot - 1 do
-        setAlpha(Ink.PAPER, 0.9 * (1 - k / bandBot))
-        love.graphics.rectangle("fill", V.x, V.y + V.h - 1 - k, V.w, 1)
+    if layered then
+        Parchment.fade(V.x, V.y, V.w, bandTop, true)
+        Parchment.fade(V.x, V.y + V.h - bandBot, V.w, bandBot, false)
+    else
+        for k = 0, bandTop - 1 do
+            setAlpha(Ink.PAPER, 0.9 * (1 - k / bandTop))
+            love.graphics.rectangle("fill", V.x, V.y + k, V.w, 1)
+        end
+        for k = 0, bandBot - 1 do
+            setAlpha(Ink.PAPER, 0.9 * (1 - k / bandBot))
+            love.graphics.rectangle("fill", V.x, V.y + V.h - 1 - k, V.w, 1)
+        end
     end
     if L.maxScroll > 0 then
         local tx, th = V.x + V.w - 6, V.h - 24
@@ -638,7 +650,7 @@ function ActMapScreen:draw()
             thick(mini.x, y1, bp.x, y2, INK, live and 0.72 or 0.35, seed + 51, 2, live and nil or { dash = 3, gap = 4 })
         end
     end
-    Ink.castle(bp.x - math.floor(cw * 3 / 2), bp.y - math.floor(ch * 3 / 2), 3, RED, 1, seed + 61)
+    Ink.castleHand(bp.x - math.floor(cw * 3 / 2), bp.y - math.floor(ch * 3 / 2), 3, RED, 1, seed + 61)
     if bossNext then
         Ink.ring(bp.x, bp.y, 40 + pulse * 2, GOLD, 1, seed + 62, 2)
         anchors.choices[#anchors.choices + 1] = { x = bp.x - 46, y = bp.y - 46, w = 92, h = 92 }
@@ -669,10 +681,6 @@ function ActMapScreen:draw()
 
     local how, lg = self:_legend(L, seed, pulse)
 
-    setAlpha(INK, 0.6)
-    text(I18n.t("act_map.hint", nil, "Role com a roda do mouse  ·  clique num marco dourado para seguir  ·  M ou ESC fecha"),
-        V.x, L.y + L.h - ActMapScreen.FOOT_H + 4, "text", 16, { maxW = V.w, align = "center", minSize = 12 })
-
     local cx, cy, cw2, chh = self:_closeRect(L)
     local hotX = mx >= cx and mx <= cx + cw2 and my >= cy and my <= cy + chh
     require("src.ui.NavCursor").target("close", cx, cy, cw2, chh)
@@ -691,6 +699,7 @@ function ActMapScreen:draw()
     love.graphics.setLineWidth(1)
     text(jl, jx + 12, jy + 2, "text", 20, { maxW = jw - 16 })
 
+    if layered then Parchment.endInk(sheet, L.x, L.y) end
     self:_anchors(L, anchors, how, lg)
     if hov then self:_tooltip(L, map, run, hov, reach, floorNow, start, path) end
     love.graphics.setColor(1, 1, 1, 1)
@@ -758,7 +767,7 @@ function ActMapScreen:_legend(L, seed, pulse)
         local cy = y + math.floor(rowH / 2) + (k - 1) * rowH
         if ty == "boss" then
             local cw, ch = Ink.castleSize()
-            Ink.castle(iconX - cw, cy - ch, 2, RED, 1, seed + 230)
+            Ink.castleHand(iconX - cw, cy - ch, 2, RED, 1, seed + 230)
         else
             Ink.mapGlyph(ty, iconX, cy, 2, colorOf(ty), 1)
         end

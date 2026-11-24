@@ -872,7 +872,6 @@ return {
         none = "Pas de carte pour cette partie du voyage",
         floor_of = "Étage {x} sur {total}",
         boss_line = "Boss : {name}",
-        hint = "Faites défiler avec la molette  ·  cliquez sur une marque dorée pour avancer  ·  M ou ÉCHAP ferme",
         state_done = "Déjà parcouru",
         state_choice = "Choix disponible maintenant",
         state_reach = "Accessible par ce chemin",

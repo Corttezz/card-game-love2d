@@ -266,6 +266,91 @@ end
 
 function Ink.castleSize() return CASTLE.w, CASTLE.h end
 
+local function merlons(x1, x2, top, low, step)
+    local pts, x, up = { { x1, low } }, x1, true
+    while x < x2 - 0.01 do
+        local nx = math.min(x2, x + step)
+        local y = up and top or low
+        pts[#pts + 1] = { x, y }
+        pts[#pts + 1] = { nx, y }
+        x, up = nx, not up
+    end
+    pts[#pts + 1] = { x2, low }
+    return pts
+end
+
+local function arc(cx, cy, r, n)
+    local pts = { { cx - r, 13 } }
+    for k = 0, n do
+        local a = math.pi + math.pi * k / n
+        pts[#pts + 1] = { cx + math.cos(a) * r, cy + math.sin(a) * r }
+    end
+    pts[#pts + 1] = { cx + r, 13 }
+    return pts
+end
+
+Ink.CASTLE_HAND = {
+    strokes = {
+        { { 0.3, 13 }, { 0, 0.9 } },
+        merlons(0, 5.1, -0.4, 0.9, 1.02),
+        { { 5.1, 0.9 }, { 5.1, 13 } },
+        { { 15.9, 13 }, { 15.9, 1.5 } },
+        merlons(15.9, 21, 0.3, 1.5, 1.02),
+        { { 21, 1.5 }, { 20.6, 13 } },
+        merlons(5.1, 15.9, 3.1, 4.1, 1.08),
+        arc(10.5, 9.6, 2.1, 8),
+        { { 9.5, 8.2 }, { 9.5, 13 } },
+        { { 11.5, 8.2 }, { 11.5, 13 } },
+        { { 8.4, 11 }, { 12.6, 11 } },
+        { { 2.5, 3.6 }, { 2.6, 6 } },
+        { { 18.4, 4.2 }, { 18.5, 6.4 } },
+        { { 2.4, -0.4 }, { 2.3, -3.6 } },
+        { { 2.3, -3.6 }, { 4.8, -2.9 }, { 2.4, -2.1 } },
+        { { -1.2, 13.1 }, { 22.2, 12.8 } },
+    },
+    hatch = {
+        { { 19.0, 3.2 }, { 20.4, 2.2 } }, { { 19.0, 5.4 }, { 20.4, 4.4 } }, { { 19.0, 7.6 }, { 20.4, 6.6 } },
+        { { 19.0, 9.8 }, { 20.4, 8.8 } }, { { 19.0, 12.0 }, { 20.4, 11.0 } },
+        { { 13.4, 6.4 }, { 15.2, 5.2 } }, { { 13.4, 8.6 }, { 15.2, 7.4 } }, { { 13.4, 10.8 }, { 15.2, 9.6 } },
+    },
+}
+
+local function handLine(x1, y1, x2, y2, color, alpha, seed, width)
+    local dx, dy = x2 - x1, y2 - y1
+    local len = math.sqrt(dx * dx + dy * dy)
+    if len < 0.5 then return end
+    local nx, ny = -dy / len, dx / len
+    for k = 0, width - 1 do
+        local o = (k - (width - 1) / 2) * 0.9
+        Ink.line(x1 + nx * o, y1 + ny * o, x2 + nx * o, y2 + ny * o, color, alpha, seed + k, { wobble = 0.7 })
+    end
+end
+
+function Ink.castleHand(x, y, scale, color, alpha, seed)
+    seed = seed or 0
+    local lean = 0.07 + hash(seed, 141) * 0.03
+    local tilt = 0.022 + hash(seed, 142) * 0.015
+    local p1, p2 = hash(seed, 143) * 6.28, hash(seed, 144) * 6.28
+    local function T(u, v)
+        local du = u + (13 - v) * lean + math.sin(v * 0.9 + p1) * 0.14
+        local dv = v + math.sin(u * 0.7 + p2) * 0.16 + (u - 10.5) * tilt
+        return x + du * scale, y + dv * scale
+    end
+    local width = scale >= 3 and 3 or 2
+    for si, poly in ipairs(Ink.CASTLE_HAND.strokes) do
+        for k = 1, #poly - 1 do
+            local ax, ay = T(poly[k][1], poly[k][2])
+            local bx, by = T(poly[k + 1][1], poly[k + 1][2])
+            handLine(ax, ay, bx, by, color, alpha, seed + si * 17 + k, width)
+        end
+    end
+    for hi, seg in ipairs(Ink.CASTLE_HAND.hatch) do
+        local ax, ay = T(seg[1][1], seg[1][2])
+        local bx, by = T(seg[2][1], seg[2][2])
+        handLine(ax, ay, bx, by, color, (alpha or 1) * 0.55, seed + 400 + hi, 1)
+    end
+end
+
 Ink.MAP_RAW = {
     battle = {
         "##...........##",

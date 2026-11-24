@@ -872,7 +872,6 @@ return {
         none = "Sin mapa en esta parte del viaje",
         floor_of = "Piso {x} de {total}",
         boss_line = "Jefe: {name}",
-        hint = "Desplaza con la rueda del ratón  ·  haz clic en una marca dorada para avanzar  ·  M o ESC cierra",
         state_done = "Ya recorrido",
         state_choice = "Elección disponible ahora",
         state_reach = "Alcanzable por este camino",

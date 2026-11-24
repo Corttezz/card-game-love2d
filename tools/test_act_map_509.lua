@@ -197,7 +197,51 @@ local function body(t)
     end
     t:eq("todo Selo tem nome e descrição nos 5 idiomas", table.concat(missing, ","), "")
 
-    local starters = require("src.systems.CardRegistry").STARTER_DECKS
+    local hints = {}
+    for _, loc in ipairs({ "pt_BR", "en", "es", "fr", "de" }) do
+        local am = require("src.i18n.locales." .. loc).act_map
+        if am and am.hint then hints[#hints + 1] = loc end
+    end
+    t:eq("mapa sem texto de ajuda no rodapé (5 idiomas)", table.concat(hints, ","), "")
+    local srcMap = love.filesystem.read("components/ActMapScreen.lua") or ""
+    t:falsy("tela do mapa não desenha act_map.hint", srcMap:find("act_map.hint", 1, true))
+
+    local Parchment = require("src.ui.MapParchment")
+    t:truthy("shader do pergaminho compila", Parchment.ensure())
+    if Parchment.isReady() then
+        local s = Parchment.sheet(640, 360, 4242)
+        local cd, rd = s.color:newImageData(), s.relief:newImageData()
+        local _, _, _, aIn = cd:getPixel(320, 180)
+        local _, _, _, aCorner = cd:getPixel(3, 356)
+        t:truthy("pergaminho: miolo opaco", aIn > 0.99)
+        t:truthy("pergaminho: canto rasgado", aCorner < 0.01)
+        local torn, prev, varied = 0, nil, 0
+        for x = 0, 639, 4 do
+            local first
+            for y = 0, 40 do
+                local _, _, _, a = cd:getPixel(x, y)
+                if a > 0.5 then first = y break end
+            end
+            if prev and first and first ~= prev then torn = torn + 1 end
+            prev = first or prev
+        end
+        t:truthy("pergaminho: borda de cima irregular (" .. torn .. ")", torn > 40)
+        local lo, hi = 1, 0
+        for k = 0, 60 do
+            local r = cd:getPixel(40 + k * 9, 120 + (k % 7) * 15)
+            lo, hi = math.min(lo, r), math.max(hi, r)
+        end
+        t:truthy("pergaminho: textura desigual", hi - lo > 0.05)
+        local fx = math.floor(Parchment.folds(640, 360, 4242)[1] + 0.5)
+        local gLo, gHi = 1, 0
+        for x = fx - 20, fx + 20 do
+            local _, g = rd:getPixel(x, 60)
+            gLo, gHi = math.min(gLo, g), math.max(gHi, g)
+        end
+        t:truthy("pergaminho: dobra com relevo dos dois lados", gHi > 0.53 and gLo < 0.47)
+        cd:release()
+        rd:release()
+    end
     for cls, deck in pairs(starters or {}) do
         t:eq("grimório inicial com 2 cartas: " .. cls, #deck, 2)
     end

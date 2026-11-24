@@ -872,7 +872,6 @@ return {
         none = "Keine Karte für diesen Teil der Reise",
         floor_of = "Etage {x} von {total}",
         boss_line = "Boss: {name}",
-        hint = "Mit dem Mausrad scrollen  ·  klicke auf eine goldene Markierung, um weiterzuziehen  ·  M oder ESC schließt",
         state_done = "Bereits zurückgelegt",
         state_choice = "Jetzt wählbar",
         state_reach = "Über diesen Weg erreichbar",

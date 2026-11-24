@@ -872,7 +872,6 @@ return {
         none = "No map for this part of the journey",
         floor_of = "Floor {x} of {total}",
         boss_line = "Boss: {name}",
-        hint = "Scroll with the mouse wheel  ·  click a gold mark to move on  ·  M or ESC closes",
         state_done = "Already travelled",
         state_choice = "Choice available now",
         state_reach = "Reachable along this path",

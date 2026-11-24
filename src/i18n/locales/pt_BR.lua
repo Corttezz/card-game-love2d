@@ -884,7 +884,6 @@ return {
         none = "Sem mapa nesta parte da jornada",
         floor_of = "Andar {x} de {total}",
         boss_line = "Chefe: {name}",
-        hint = "Role com a roda do mouse  ·  clique num marco dourado para seguir  ·  M ou ESC fecha",
         state_done = "Já percorrido",
         state_choice = "Escolha disponível agora",
         state_reach = "Alcançável por este caminho",
