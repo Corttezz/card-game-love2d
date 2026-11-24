@@ -98,6 +98,7 @@ function M.run()
     t:eq("só a carta com reter fica na mão", g.hand[1] == keep and #g.hand, 1)
     t:check("reter toca cardRetain", has(played, "cardRetain"))
     t:eq("reter anima a carta que ficou", HandFx.count("retain"), 1)
+    t:eq("reter acontece na própria carta (selo de runas)", keep.cardFx and keep.cardFx.mode, "seal")
     t:falsy("flag de reter é limpa depois do efeito", keep._fxRetained)
 
     clear(played)
@@ -123,6 +124,7 @@ function M.run()
     t:truthy("chegada da inata é tratada", EffectFeedback.onCardArrives(inn, 1))
     t:check("inata toca innateRise", has(played, "innateRise"))
     t:eq("inata anima a carta", HandFx.count("innate"), 1)
+    t:eq("inata acontece na própria carta (alvorada)", inn.cardFx and inn.cardFx.mode, "dawn")
     g.deck = { inn }
     g:promoteInnateCardsToTop()
     t:falsy("reembaralhar no meio da luta não marca a inata de novo", inn._fxInnate)
@@ -130,6 +132,32 @@ function M.run()
 
     for _ = 1, 120 do HandFx.update(1 / 60) end
     t:falsy("efeitos da mão terminam sozinhos", HandFx.isActive())
+    t:falsy("alvorada da inata sai da carta no fim", inn.cardFx)
+
+    local CardFxShader = require("src.ui.CardFxShader")
+    local modes, distinct, nd = 0, {}, 0
+    for name, id in pairs(CardFxShader.MODES) do
+        modes = modes + 1
+        if not distinct[id] then nd = nd + 1 end
+        distinct[id] = true
+        t:truthy("efeito '" .. name .. "' tem paleta própria", CardFxShader.PALETTES[name])
+    end
+    t:eq("cada efeito na carta tem um modo de shader próprio", nd, modes)
+    t:truthy("shader dos efeitos na carta existe", love.filesystem.getInfo("shaders/card_fx.glsl") ~= nil)
+    if love.graphics and love.graphics.newShader then
+        t:truthy("shader dos efeitos na carta compila", CardFxShader.load())
+    end
+
+    local ExhaustFx = require("src.ui.ExhaustFx")
+    local burnt = { id = "e", type = "attack", attack = 1, cost = 0, dissolve = 0 }
+    ExhaustFx.start(burnt, 0, 0, 100, 140)
+    t:eq("exaurir vira cinza na própria carta", burnt.cardFx and burnt.cardFx.mode, "ash")
+    burnt.dissolve = 0.5
+    ExhaustFx.update(1 / 60)
+    t:eq("a cinza segue o dissolve da carta", burnt.cardFx and burnt.cardFx.progress, 0.5)
+    for _ = 1, 120 do ExhaustFx.update(1 / 60) end
+    t:falsy("a cinza sai da carta no fim", burnt.cardFx)
+    ExhaustFx.clear()
 
     HandFx.clear()
     _G.audioSystem = prevAudio

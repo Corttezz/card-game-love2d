@@ -42,14 +42,6 @@ local function label(key, vars, x, y, opts)
     FloatingText.spawn(I18n.t("messages." .. key, vars), x, y, opts)
 end
 
-local function cardTop(card)
-    local s = card.currentScale or 1
-    local w = (card.image and card.image:getWidth() or 100) * s
-    local x = (card.renderX and card.renderX ~= 0) and card.renderX or card.x or 0
-    local y = (card.renderY and card.renderY ~= 0) and card.renderY or card.y or 0
-    return x + w / 2, y - 10
-end
-
 local function playerPos()
     return 120, love.graphics.getHeight() - 150
 end
@@ -71,14 +63,9 @@ local function handFx()
 end
 
 local COLORS = {
-    retain  = { 0.98, 0.80, 0.34, 1 },
-    discard = { 0.92, 0.62, 0.52, 1 },
     shuffle = { 0.93, 0.85, 0.66, 1 },
-    innate  = { 1.00, 0.93, 0.62, 1 },
     mana    = { 0.45, 0.78, 1.00, 1 },
 }
-
-local LABEL_KEY = { retain = "fx_retained", innate = "fx_innate" }
 
 function EffectFeedback.exhaust()
     return EffectFeedback.play("exhaust")
@@ -96,8 +83,6 @@ function EffectFeedback.discard(game, card, idx)
     local tx, ty
     if game and game.getDeckOrigin then tx, ty = game:getDeckOrigin() end
     fx.discard(card, tx, ty)
-    local x, y = cardTop(card)
-    label("fx_discarded", nil, x, y, { color = COLORS.discard, fontSize = 15 })
 end
 
 function EffectFeedback.reshuffle(game, n)
@@ -117,11 +102,7 @@ function EffectFeedback.onCardArrives(card, n)
     if not kind then return false end
     EffectFeedback.play(kind, { pitch = 1.0 + ((n or 1) - 1) * 0.03 })
     local fx = handFx()
-    if fx then
-        fx[kind](card)
-        local x, y = cardTop(card)
-        label(LABEL_KEY[kind], nil, x, y, { color = COLORS[kind], fontSize = 15, hold = 0.6 })
-    end
+    if fx then fx[kind](card) end
     return true
 end
 

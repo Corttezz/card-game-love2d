@@ -1443,6 +1443,7 @@ function love.load(loveArgs)
     _G.getCurrentState = function() return currentState end
 
     DissolveShader.load()
+    require("src.ui.CardFxShader").load()
     FlashShader.load()
     BoosterShader.load()
     FoilShader.load()

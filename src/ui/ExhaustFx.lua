@@ -32,15 +32,22 @@ local function reduced()
     return _G.gameSettings and _G.gameSettings.reducedMotion and true or false
 end
 
+local function frontTime(v)
+    local p = clamp01((0.80 - 0.55 * v) / 1.3)
+    local x = 0.5 - math.sin(math.asin(1 - 2 * p) / 3)
+    return 0.7 * ExhaustFx.DISSOLVE_FAC * x
+end
+
 function ExhaustFx.start(card, x, y, w, h)
     local fx = { card = card, t = 0, x = x, y = y, w = w, h = h, flakes = {} }
+    if card then card.cardFx = { mode = "ash", progress = 0, seed = love.math.random() * 50 } end
     local n = reduced() and math.floor(ExhaustFx.FLAKES / 3) or ExhaustFx.FLAKES
     for i = 1, n do
         local fy = love.math.random()
         local shade = ASH[(i % 9 == 0) and 4 or love.math.random(1, 3)]
         fx.flakes[i] = {
             u = love.math.random(), v = fy,
-            born = 0.30 + (1 - fy) * 0.45 + love.math.random() * 0.30,
+            born = frontTime(fy) + love.math.random() * 0.12,
             life = 0.55 + love.math.random() * 0.55,
             vx = (love.math.random() - 0.35) * 46,
             vy = -(28 + love.math.random() * 58),
@@ -56,7 +63,14 @@ function ExhaustFx.update(dt)
     for i = #active, 1, -1 do
         local fx = active[i]
         fx.t = fx.t + dt
-        if fx.t >= ExhaustFx.DURATION then table.remove(active, i) end
+        local card = fx.card
+        if card and card.cardFx and card.cardFx.mode == "ash" then
+            card.cardFx.progress = card.dissolve or 0
+        end
+        if fx.t >= ExhaustFx.DURATION then
+            if card and card.cardFx and card.cardFx.mode == "ash" then card.cardFx = nil end
+            table.remove(active, i)
+        end
     end
 end
 
@@ -104,15 +118,6 @@ end
 function ExhaustFx.drawOver()
     if #active == 0 then return end
     for _, fx in ipairs(active) do
-        local card = fx.card
-        local dis = (card and card.dissolve) or 0
-        local grey = smooth((fx.t - 0.05) / 0.35) * (1 - dis) * 0.42
-        if grey > 0.01 and card and not card._removed then
-            local cx = card.x or fx.x
-            local cy = card.y or fx.y
-            love.graphics.setColor(0.30, 0.28, 0.27, grey)
-            love.graphics.rectangle("fill", cx + 3, cy + 3, fx.w - 6, fx.h - 6, 6, 6)
-        end
         local lift = ExhaustFx.LIFT * smooth(fx.t / 0.9)
         for _, f in ipairs(fx.flakes) do
             local age = fx.t - f.born
@@ -149,6 +154,11 @@ function ExhaustFx.drawOver()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function ExhaustFx.clear() active = {} end
+function ExhaustFx.clear()
+    for _, fx in ipairs(active) do
+        if fx.card and fx.card.cardFx and fx.card.cardFx.mode == "ash" then fx.card.cardFx = nil end
+    end
+    active = {}
+end
 
 return ExhaustFx

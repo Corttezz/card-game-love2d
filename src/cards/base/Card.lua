@@ -11,6 +11,7 @@ local Sfx = require("src.systems.Sfx")
 local CardMesh = require("src.ui.CardMesh")
 local Moveable = require("engine.Moveable")
 local DissolveShader = require("src.ui.DissolveShader")
+local CardFxShader = require("src.ui.CardFxShader")
 local CardParticles = require("src.systems.CardParticles")
 
 local Card = {}
@@ -596,6 +597,9 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     if self.dissolve and self.dissolve > 0.001 then
         shadowAlpha = shadowAlpha * (1 - self.dissolve)
     end
+    if self.cardFx and self.cardFx.alpha then
+        shadowAlpha = shadowAlpha * self.cardFx.alpha
+    end
 
     love.graphics.setColor(1, 1, 1, 1)
 
@@ -645,7 +649,24 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    if self.dissolve and self.dissolve > 0.001 then
+    local cfx = self.cardFx
+    if cfx and CardFxShader.ensure() then
+        local offCanvas, pad = self:_getOffscreenCanvas()
+        local prevCanvas = love.graphics.getCanvas()
+        love.graphics.setCanvas(offCanvas)
+        love.graphics.push("all")
+        love.graphics.origin()
+        love.graphics.clear(0, 0, 0, 0)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.draw(self.image, pad, pad)
+        love.graphics.pop()
+        love.graphics.setCanvas(prevCanvas)
+        CardFxShader.apply(offCanvas, cfx, pad, self.image:getWidth(), self.image:getHeight())
+        love.graphics.setColor(1, 1, 1, cfx.alpha or 1)
+        love.graphics.draw(offCanvas, drawX - pad, drawY - pad)
+        love.graphics.setShader()
+        love.graphics.setColor(1, 1, 1, 1)
+    elseif self.dissolve and self.dissolve > 0.001 then
         if DissolveShader.isAvailable() then
             DissolveShader.apply(self.image, self.dissolve, self.dissolve_colours)
             love.graphics.draw(self.image, drawX, drawY)
@@ -723,7 +744,7 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
         love.graphics.setColor(1, 1, 1, 1)
     end
 
-    if CardAnimationLayer.isEnabled() then
+    if CardAnimationLayer.isEnabled() and not cfx then
         if not self._cachedArt then
             local okA, a = pcall(CardArt.resolve, self)
             self._cachedArt = okA and a or { bgPattern = nil }

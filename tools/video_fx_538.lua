@@ -3,7 +3,7 @@ local M = {}
 local W, H = 1280, 720
 local DT = 1 / 60
 local STEP = 2
-local DIR = "fx538v"
+local DIR = "fx564v"
 
 local clock = { t = 1000 }
 local sounds = {}
@@ -91,6 +91,8 @@ end
 local function buildScene()
     local TK = require("tools.testkit")
     TK.bootstrap()
+    require("src.ui.DissolveShader").load()
+    require("src.ui.CardFxShader").load()
     require("src.ui.PixelCanvas").enableNearest()
     require("src.systems.ScreenShake").install()
     local Config = require("src.core.Config")

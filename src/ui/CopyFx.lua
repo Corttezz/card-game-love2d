@@ -92,22 +92,21 @@ function CopyFx.draw()
         else
             left = fx.side > 0 and px or (px - w)
         end
-        if fx.t < CopyFx.UNFOLD + CopyFx.HOLD then
-            local glow = 1 - smooth((fx.t - 0.1) / (CopyFx.UNFOLD + CopyFx.HOLD))
-            local hx = fx.side > 0 and (fx.x + fx.w) or fx.x
-            love.graphics.setColor(0.80, 0.90, 1.0, 0.55 * glow)
-            love.graphics.rectangle("fill", hx - 2, fx.y + 4, 4, fx.h - 8)
-            love.graphics.setColor(0.70, 0.85, 1.0, 0.18 * glow)
-            love.graphics.rectangle("fill", hx - 8, fx.y - 4, 16, fx.h + 8)
-        end
         love.graphics.setColor(1, 1, 1, a)
-        fx.card.dissolve = 1 - a
-        drawCard(fx.card, left, py, sx, sy)
-        local sheen = 1 - smooth(fx.t / (CopyFx.UNFOLD * 1.2))
-        if sheen > 0.01 then
-            love.graphics.setColor(0.85, 0.93, 1.0, 0.65 * sheen)
-            love.graphics.rectangle("fill", left + 2, py + 2, w - 4, h - 4, 6, 6)
+        local prev = fx.card.cardFx
+        if flying then
+            fx.card.dissolve = 1 - a
+            fx.card.cardFx = nil
+        else
+            fx.mirror = fx.mirror or { mode = "mirror", seed = love.math.random() * 50 }
+            fx.mirror.progress = clamp01(fx.t / (CopyFx.UNFOLD + CopyFx.HOLD))
+            fx.mirror.side = fx.side
+            fx.mirror.alpha = a
+            fx.card.dissolve = 0
+            fx.card.cardFx = fx.mirror
         end
+        drawCard(fx.card, left, py, sx, sy)
+        fx.card.cardFx = prev
         for _, s in ipairs(fx.sparks) do
             local age = fx.t - s.born
             if age > 0 and age < s.life and not flying then
