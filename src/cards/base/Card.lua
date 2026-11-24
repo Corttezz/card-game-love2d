@@ -600,6 +600,14 @@ function Card:draw(x, y, showPlayableBorder, isRewardCard)
     if self.cardFx and self.cardFx.alpha then
         shadowAlpha = shadowAlpha * self.cardFx.alpha
     end
+    if self.cardFx then
+        local fp = self.cardFx.progress or 0
+        if self.cardFx.mode == "ash" then
+            shadowAlpha = shadowAlpha * math.max(0, 1 - fp * 1.4)
+        elseif self.cardFx.mode == "mirror" then
+            shadowAlpha = shadowAlpha * math.max(0, math.min(1, fp * 1.7 - 0.25))
+        end
+    end
 
     love.graphics.setColor(1, 1, 1, 1)
 
