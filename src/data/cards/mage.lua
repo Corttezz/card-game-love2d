@@ -331,7 +331,7 @@ return {
         id = "mage_arcane_sight", name = "Visao Arcana",
         type = "effect", subtype = "skill",
         cost = 0, attack = 0, defense = 0,
-        description = "Compra 2 cartas. Revela a intenção por 2 turnos. Exaurir.",
+        description = "Compra 2 cartas. Se a intenção estiver oculta (Névoa ou véu), revela-a por 2 turnos. Exaurir.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "uncommon", class = "mage",
         tags = { "draw", "cycle", "utility", "zero_cost", "exhaust" },

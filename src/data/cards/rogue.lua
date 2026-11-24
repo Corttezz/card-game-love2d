@@ -246,7 +246,7 @@ return {
         id = "rogue_expose_weakness", name = "Expor Fraqueza",
         type = "effect", subtype = "skill",
         cost = 1, attack = 0, defense = 0,
-        description = "Aplica Vulnerável por 2 turnos. Compra 1 carta. Revela a intenção por 2 turnos.",
+        description = "Aplica Vulnerável por 2 turnos. Compra 1 carta. Se a intenção estiver oculta (Névoa ou véu), revela-a por 2 turnos.",
         image = "assets/cards/effect/manaCrystal.png",
         rarity = "uncommon", class = "rogue",
         tags = { "vulnerable", "debuff", "draw" },
