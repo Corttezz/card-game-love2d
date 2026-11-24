@@ -221,11 +221,6 @@ function settings() {
     b?.addEventListener('click', () => { const on = b.getAttribute('aria-checked') !== 'true'; b.setAttribute('aria-checked', String(on)); fn(on); sfx('button-click'); });
   };
   sw('opt-music', (on) => { SND.music = on; music(SND.menuOn); });
-  sw('opt-sfx', (on) => { SND.sfx = on; });
-  sw('opt-crt', (on) => { game.crtOn = on; game.crt.enabled = on; lastKey = ''; });
-  const m = document.getElementById('opt-motion');
-  if (m && osReduced.matches) m.setAttribute('aria-checked', 'true');
-  sw('opt-motion', (on) => { game.reduced = on; document.body.classList.toggle('reduced', on); });
 }
 
 // ---------------- conquista: o "Me avise" ----------------

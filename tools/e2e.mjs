@@ -83,10 +83,8 @@ for (const [p, word] of Object.entries(LBL)) for (const w of [1440, 390]) {
   ok('clicar de novo insere a carta outra vez', await pg.evaluate(() => window.__rm.intro.phase === 'insert'));
   for (let i = 0; i < 8 && !(await isMenu(pg)); i++) { await pg.keyboard.press('Enter'); await pg.waitForTimeout(400); }
   ok('teclas pulam até o menu', await inMenu(pg));
-  await pg.click('.menu a[data-open="settings"]', { force: true }); await pg.click('#opt-crt');
-  ok('opção CRT desliga o shader', await pg.evaluate(() => !window.__rm.crtOn));
-  await pg.click('#opt-motion');
-  ok('opção movimento reduzido liga', await pg.evaluate(() => window.__rm.reduced && document.body.classList.contains('reduced')));
+  await pg.click('.menu a[data-open="settings"]', { force: true });
+  ok('opções só idioma e música (sem SFX, CRT e movimento reduzido)', !!(await pg.$('#settings .langs')) && !!(await pg.$('#opt-music')) && !(await pg.$('#opt-sfx')) && !(await pg.$('#opt-crt')) && !(await pg.$('#opt-motion')));
   await ctx.close();
 }
 {
