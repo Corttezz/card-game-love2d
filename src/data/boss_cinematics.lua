@@ -43,8 +43,10 @@ return {
             flash = { 0.70, 0.88, 1.00 }, ghost = { 0.50, 0.70, 1.00 }, rim = { 0.60, 0.85, 1.00 },
             particle = { 0.55, 0.70, 0.86 }, particle2 = { 0.86, 0.96, 1.00 },
         },
+        -- Ritual da Lua (#538, aprovada pelo Daniel em 24/11/2026).
         intro = {
-            { kind = "dark",  dur = 0.80, to = 0.86 },
+            { kind = "snuff", dur = 1.50, to = 0.95 },
+            { kind = "moon",  dur = 0.90, beam = true },
             { kind = "runes", dur = 1.60, n = 5 },
             { kind = "rise",  dur = 1.40, from = "floor", storm = "bossFrostStorm", clip = "rise" },
             { kind = "land",  dur = 0.55, shake = 8, dust = 6, crows = 0, ring = "ice",
@@ -53,7 +55,8 @@ return {
             { kind = "hud",   dur = 0 },
         },
         introReduced = {
-            { kind = "dark",  dur = 0.30, to = 0.80 },
+            { kind = "snuff", dur = 0.70, to = 0.90 },
+            { kind = "moon",  dur = 0.50 },
             { kind = "runes", dur = 0.80, n = 5 },
             { kind = "rise",  dur = 0.70, from = "floor", clip = "rise" },
             { kind = "land",  dur = 0.40, shake = 3, dust = 3, crows = 0, ring = "ice",
@@ -72,11 +75,10 @@ return {
             { kind = "desat",  dur = 0,    peak = 0.45, rise = 0.30, fall = 0.80 },
             { kind = "hold",   dur = 0.90 },
         },
-        -- Propostas de entrada nova (#538), escolhidas por BossCinematic.forceVariant até o Daniel aprovar.
+        -- Alternativas para prévia (BossCinematic.forceVariant); fora do jogo normal.
         variants = {
-            ritual = {
-                { kind = "snuff", dur = 1.50, to = 0.95 },
-                { kind = "moon",  dur = 0.90, beam = true },
+            antiga = {
+                { kind = "dark",  dur = 0.80, to = 0.86 },
                 { kind = "runes", dur = 1.60, n = 5 },
                 { kind = "rise",  dur = 1.40, from = "floor", storm = "bossFrostStorm", clip = "rise" },
                 { kind = "land",  dur = 0.55, shake = 8, dust = 6, crows = 0, ring = "ice",
@@ -104,25 +106,22 @@ return {
             flash = { 1.00, 0.55, 0.20 }, ghost = { 0.90, 0.40, 0.20 }, rim = { 1.00, 0.50, 0.20 },
             particle = { 0.35, 0.12, 0.06 }, particle2 = { 1.00, 0.60, 0.20 },
         },
+        -- Forja do Abismo (#538, aprovada pelo Daniel em 24/11/2026).
         intro = {
-            { kind = "dark",       dur = 0.70, to = 0.86 },
-            { kind = "door_burst", dur = 0.50, u = 0.50, v = 0.46, debris = 18, shake = 18, lights = 0.40 },
-            { kind = "firewall",   dur = 1.20, v = 0.58, h = 0.34, hold = 2.30 },
-            { kind = "chains",     dur = 0.20 },
-            { kind = "walk_in",    dur = 1.80, from = "back", clip = "stride", stomp = 0.55 },
-            { kind = "land",       dur = 0.60, shake = 18, dust = 18, crows = 0, ring = "lava",
-              particle = "ember", burst = 20 },
-            { kind = "title",      dur = 2.30, clip = "roar" },
+            { kind = "dark",       dur = 0.40, to = 0.92 },
+            { kind = "skull_wake", dur = 1.70 },
+            { kind = "erupt",      dur = 2.00, clip = "break_free", pop = 0.38 },
+            { kind = "land",       dur = 0.60, clip = "slam", shake = 12, dust = 14, crows = 0, ring = "lava",
+              particle = "ember", burst = 24, cracks = true },
+            { kind = "title",      dur = 2.30 },
             { kind = "hud",        dur = 0 },
         },
         introReduced = {
-            { kind = "dark",       dur = 0.30, to = 0.80 },
-            { kind = "door_burst", dur = 0.40, u = 0.50, v = 0.46, debris = 6, shake = 5, lights = 0.40 },
-            { kind = "firewall",   dur = 0.60, v = 0.58, h = 0.30, hold = 1.00 },
-            { kind = "chains",     dur = 0.10 },
-            { kind = "walk_in",    dur = 0.90, from = "back", clip = "stride" },
-            { kind = "land",       dur = 0.40, shake = 4, dust = 6, crows = 0, ring = "lava",
-              particle = "ember", burst = 8 },
+            { kind = "dark",       dur = 0.30, to = 0.88 },
+            { kind = "skull_wake", dur = 0.80 },
+            { kind = "erupt",      dur = 1.10, clip = "break_free", pop = 0.38 },
+            { kind = "land",       dur = 0.40, clip = "slam", shake = 4, dust = 6, crows = 0, ring = "lava",
+              particle = "ember", burst = 8, cracks = true },
             { kind = "title",      dur = 1.50 },
             { kind = "hud",        dur = 0 },
         },
@@ -139,15 +138,17 @@ return {
             { kind = "desat",  dur = 0,    peak = 0.35, rise = 0.30, fall = 0.80 },
             { kind = "hold",   dur = 0.90 },
         },
-        -- Propostas de entrada nova (#538), escolhidas por BossCinematic.forceVariant até o Daniel aprovar.
+        -- Alternativas para prévia (BossCinematic.forceVariant); fora do jogo normal.
         variants = {
-            forja = {
-                { kind = "dark",       dur = 0.40, to = 0.92 },
-                { kind = "skull_wake", dur = 1.70 },
-                { kind = "erupt",      dur = 2.00, clip = "break_free", pop = 0.38 },
-                { kind = "land",       dur = 0.60, clip = "slam", shake = 12, dust = 14, crows = 0, ring = "lava",
-                  particle = "ember", burst = 24, cracks = true },
-                { kind = "title",      dur = 2.30 },
+            antiga = {
+                { kind = "dark",       dur = 0.70, to = 0.86 },
+                { kind = "door_burst", dur = 0.50, u = 0.50, v = 0.46, debris = 18, shake = 18, lights = 0.40 },
+                { kind = "firewall",   dur = 1.20, v = 0.58, h = 0.34, hold = 2.30 },
+                { kind = "chains",     dur = 0.20 },
+                { kind = "walk_in",    dur = 1.80, from = "back", clip = "stride", stomp = 0.55 },
+                { kind = "land",       dur = 0.60, shake = 18, dust = 18, crows = 0, ring = "lava",
+                  particle = "ember", burst = 20 },
+                { kind = "title",      dur = 2.30, clip = "roar" },
                 { kind = "hud",        dur = 0 },
             },
             queda = {
