@@ -230,7 +230,7 @@ local function runHand()
     return true
 end
 
-local function runMap()
+local function bootMap()
     local Flow = require("tools.estrada_fluxo")
     local ok, err = Flow.boot(W, H)
     if not ok then print("[FAIL] boot: " .. tostring(err)) return false end
@@ -253,6 +253,12 @@ local function runMap()
         if st() == "mapSelection" and f and (f.animIn or 0) >= 1 then break end
     end
     R.tick(30)
+    return Flow, R, cv
+end
+
+local function runMap()
+    local Flow, R, cv = bootMap()
+    if not Flow then return false end
     local scr = _G.actMapScreen
     R.record("12_abrir_mapa", 2.2, function() if not scr:isVisible() then _G.toggleActMap() end end)
     R.record("13_passar_mouse_no_mapa", 2.0, function() scr:hoverDemo() end, function(i)
@@ -273,11 +279,46 @@ local function runMap()
     return true
 end
 
+local function hoverLane(scr, pick)
+    local map, run = scr:map()
+    local _, floorNow, start = scr.reach(map, run)
+    local best
+    for k in pairs(start) do if not best or pick(k, best) then best = k end end
+    if best then scr._forceHover = { f = floorNow, i = best } end
+end
+
+local function runMapScroll()
+    local Flow, R, cv = bootMap()
+    if not Flow then return false end
+    local scr = _G.actMapScreen
+    local plan = {
+        [80] = function() scr:wheelmoved(0, 3) end,
+        [110] = function() scr:wheelmoved(0, 4) end,
+        [150] = function() scr:wheelmoved(0, 6) end,
+        [250] = function() scr:wheelmoved(0, -6) end,
+        [290] = function() scr:wheelmoved(0, -8) end,
+        [380] = function() hoverLane(scr, function(a, b) return a < b end) end,
+        [450] = function() scr._forceHover = nil end,
+        [470] = function() hoverLane(scr, function(a, b) return a > b end) end,
+        [540] = function() scr._forceHover = nil end,
+        [570] = function() if scr:isVisible() then _G.toggleActMap() end end,
+    }
+    R.record("mapa_rolar_hover_fechar", 11.0, function() if not scr:isVisible() then _G.toggleActMap() end end,
+        function(i) if plan[i] then plan[i]() end end)
+    scr._forceHover = nil
+    cv:release()
+    Flow.shutdown()
+    return true
+end
+
+local PARTS = { map = runMap, mapscroll = runMapScroll }
+
 function M.run(part)
     patchClock()
+    if part == "mapscroll" then DIR = "map538v5" end
     love.filesystem.createDirectory(DIR)
     log = love.filesystem.newFile(DIR .. "/" .. (part or "hand") .. ".txt", "w")
-    local okRun, res = pcall(part == "map" and runMap or runHand)
+    local okRun, res = pcall(PARTS[part] or runHand)
     for _, s in ipairs(sounds) do log:write(s .. "\n") end
     log:close()
     if not okRun then print("[FAIL] " .. tostring(res)) end
