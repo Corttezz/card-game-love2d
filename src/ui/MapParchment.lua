@@ -135,7 +135,9 @@ end
 
 function MapParchment.beginInk()
     if not ready then return false end
-    local w, h = love.graphics.getDimensions()
+    local w, h = require("src.ui.UiScale").realDimensions()
+    local target = love.graphics.getCanvas()
+    if target then w, h = target:getDimensions() end
     if not inkCanvas or inkCanvas:getWidth() ~= w or inkCanvas:getHeight() ~= h then
         if inkCanvas then inkCanvas:release() end
         inkCanvas = love.graphics.newCanvas(w, h)
@@ -160,13 +162,15 @@ end
 
 function MapParchment.endInk(s, x, y)
     love.graphics.pop()
+    local x1, y1 = love.graphics.transformPoint(x, y)
+    local x2, y2 = love.graphics.transformPoint(x + s.w, y + s.h)
     love.graphics.push("all")
     love.graphics.origin()
     love.graphics.setScissor()
     love.graphics.setBlendMode("alpha", "premultiplied")
     love.graphics.setShader(inkShader)
     send(inkShader, "relief", s.relief)
-    send(inkShader, "sheet", { x, y, s.w, s.h })
+    send(inkShader, "sheet", { x1, y1, x2 - x1, y2 - y1 })
     send(inkShader, "ink_px", { inkCanvas:getWidth(), inkCanvas:getHeight() })
     send(inkShader, "amp", MapParchment.RELIEF_AMP)
     send(inkShader, "wear", MapParchment.INK_WEAR)

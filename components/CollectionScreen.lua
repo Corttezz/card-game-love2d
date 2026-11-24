@@ -402,7 +402,7 @@ function CollectionScreen:mousepressed(x, y, button)
                 self:_inspectNeighbor(1)
                 return
             end
-            if x < cardX or x > cardX + cardW + 320 or y < cardY - 20 or y > cardY + cardH + 20 then
+            if x < cardX or x > cardX + cardW + 30 + math.max(340, math.min(460, w - (cardX + cardW + 30) - 110)) or y < cardY - 20 or y > cardY + cardH + 20 then
                 Sfx.play("menuClose")
                 self.inspectedCard = nil
             end
@@ -840,8 +840,9 @@ local function drawHoverTooltip(self)
     local typeColor = Palette.forCardType(inst.type) or Palette.PARCHMENT
     local rarityColor = Palette.forRarity(inst.rarity) or Palette.PARCHMENT
     local typeLabel = I18n.t("card_type." .. (inst.type or "unknown"), nil, I18n.t("card_type.unknown"))
-    local classLabel = inst.class and I18n.t("classes." .. inst.class .. ".name", nil, inst.class)
-                                   or I18n.t("collection.class_basic")
+    local classLabel = (inst.class and inst.class ~= "basic")
+        and I18n.t("classes." .. inst.class .. ".name", nil, inst.class)
+        or I18n.t("collection.class_basic")
     local rarityLabel = I18n.t("rarity." .. (inst.rarity or "common"), nil, inst.rarity or "")
 
     local mY = cy + PAD + 36
@@ -966,7 +967,7 @@ local function drawInspectModal(self)
 
     local panelX = cardX + cardW + 30
     local panelY = cardY
-    local panelW = 340
+    local panelW = math.max(340, math.min(460, width - panelX - 110))
     local panelH = cardH
     local PAD = 16
     local TEXT_W = panelW - PAD * 2
@@ -981,22 +982,26 @@ local function drawInspectModal(self)
     local nameFont = FontManager.getFont(16)
     love.graphics.setFont(nameFont)
     love.graphics.setColor(Palette.AGED_GOLD_LIGHT[1], Palette.AGED_GOLD_LIGHT[2], Palette.AGED_GOLD_LIGHT[3], anim)
-    love.graphics.printf(I18n.cardName(inst), panelX + PAD, panelY + 18, TEXT_W)
+    local cardName = I18n.cardName(inst)
+    love.graphics.printf(cardName, panelX + PAD, panelY + 18, TEXT_W)
+    local _, nameLines = nameFont:getWrap(cardName, TEXT_W)
+    local sepY = panelY + 18 + math.max(1, #nameLines) * nameFont:getHeight() + 10
 
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], 0.6 * anim)
-    love.graphics.rectangle("fill", panelX + PAD, panelY + 72, TEXT_W, 1)
+    love.graphics.rectangle("fill", panelX + PAD, sepY, TEXT_W, 1)
 
     local metaFont = FontManager.getFont(10)
     love.graphics.setFont(metaFont)
     local typeColor = Palette.forCardType(inst.type) or Palette.PARCHMENT
     local rarityColor = Palette.forRarity(inst.rarity) or Palette.PARCHMENT
     local typeLabel = I18n.t("card_type." .. (inst.type or "unknown"), nil, I18n.t("card_type.unknown"))
-    local classLabel = inst.class and I18n.t("classes." .. inst.class .. ".name", nil, inst.class)
-                                   or I18n.t("collection.class_basic")
+    local classLabel = (inst.class and inst.class ~= "basic")
+        and I18n.t("classes." .. inst.class .. ".name", nil, inst.class)
+        or I18n.t("collection.class_basic")
     local rarityLabel = I18n.t("rarity." .. (inst.rarity or "common"), nil, inst.rarity or "")
 
-    local metaY = panelY + 84
-    local lineH = metaFont:getHeight() + 4
+    local metaY = sepY + 12
+    local lineH = metaFont:getHeight() + 6
     love.graphics.setColor(typeColor[1], typeColor[2], typeColor[3], anim)
     love.graphics.print(typeLabel, panelX + PAD, metaY)
     love.graphics.setColor(Palette.PARCHMENT[1], Palette.PARCHMENT[2], Palette.PARCHMENT[3], anim)
@@ -1038,22 +1043,37 @@ local function drawInspectModal(self)
     love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], 0.6 * anim)
     love.graphics.rectangle("fill", panelX + PAD, statY + 4, TEXT_W, 1)
     statY = statY + 14
-    local descFont = FontManager.getFont(10)
+    local descFont = FontManager.getFont(12)
     love.graphics.setFont(descFont)
     love.graphics.setColor(Palette.PARCHMENT_LIGHT[1], Palette.PARCHMENT_LIGHT[2], Palette.PARCHMENT_LIGHT[3], anim)
     local fullDesc = I18n.cardDesc(inst)
     if not fullDesc or fullDesc == "" then fullDesc = I18n.t("card_info.no_desc") end
-    love.graphics.printf(fullDesc, panelX + PAD, statY, TEXT_W)
+    -- linha a linha com folga: a fonte pixelada encosta uma linha na outra no printf
+    local function para(font, str, x, y, w, draw)
+        local _, wrapped = font:getWrap(str, w)
+        local step = math.floor(font:getHeight() * 1.4 + 0.5)
+        if draw ~= false then
+            for i, ln in ipairs(wrapped) do love.graphics.print(ln, x, y + (i - 1) * step) end
+        end
+        return math.max(1, #wrapped) * step
+    end
+    statY = statY + para(descFont, fullDesc, panelX + PAD, statY, TEXT_W)
 
     if inst.effects and #inst.effects > 0 then
-        local effY = statY + 80
+        local effY = statY + 18
+        local bottom = panelY + panelH - 24
+        local effFont = FontManager.getFont(12)
+        love.graphics.setFont(effFont)
         love.graphics.setColor(Palette.AGED_GOLD[1], Palette.AGED_GOLD[2], Palette.AGED_GOLD[3], anim)
         love.graphics.print(I18n.t("card_info.effects"), panelX + PAD, effY)
+        effY = effY + effFont:getHeight() + 8
         love.graphics.setColor(Palette.PARCHMENT_LIGHT[1], Palette.PARCHMENT_LIGHT[2], Palette.PARCHMENT_LIGHT[3], anim)
-        love.graphics.setFont(descFont)
         for i, e in ipairs(inst.effects) do
-            local desc = I18n.effectDesc(e)
-            love.graphics.printf("- " .. desc, panelX + PAD + 8, effY + 16 * i, TEXT_W - 8)
+            local line = "- " .. I18n.effectDesc(e)
+            local h = para(effFont, line, panelX + PAD + 8, effY, TEXT_W - 8, false)
+            if effY + h > bottom then break end
+            para(effFont, line, panelX + PAD + 8, effY, TEXT_W - 8)
+            effY = effY + h + 4
             if i >= 4 then break end
         end
     end

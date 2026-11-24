@@ -17,7 +17,7 @@ TagSystem.CATALOG = {
     dexterity   = { category = "mechanic",  color = {0.50, 0.70, 0.50}, desc = "Ganha/usa dexterity" },
     channel     = { category = "mechanic",  color = {0.40, 0.60, 0.90}, desc = "Canaliza orb" },
     evoke       = { category = "mechanic",  color = {0.50, 0.30, 0.70}, desc = "Evoca orb" },
-    exhaust     = { category = "mechanic",  color = {0.55, 0.40, 0.55}, desc = "Exaurir (remove da run)" },
+    exhaust     = { category = "mechanic",  color = {0.55, 0.40, 0.55}, desc = "Exaurir (sai do baralho até o fim da batalha)" },
     innate      = { category = "mechanic",  color = {0.75, 0.75, 0.40}, desc = "Comeca na mao" },
     retain      = { category = "mechanic",  color = {0.75, 0.60, 0.30}, desc = "Nao descarta no fim do turno" },
     draw        = { category = "mechanic",  color = {0.60, 0.85, 0.85}, desc = "Compra cartas" },
