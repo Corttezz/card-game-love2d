@@ -77,11 +77,11 @@ return {
             ritual = {
                 { kind = "snuff", dur = 1.50, to = 0.95 },
                 { kind = "moon",  dur = 0.90, beam = true },
-                { kind = "sigil", dur = 1.50, n = 4 },
-                { kind = "tomb",  dur = 1.90 },
-                { kind = "land",  dur = 0.60, clip = "awaken", shake = 9, dust = 8, crows = 0, ring = "ice",
-                  particle = "shard", burst = 18, sound = "bossFrostShatter" },
-                { kind = "title", dur = 2.20 },
+                { kind = "runes", dur = 1.60, n = 5 },
+                { kind = "rise",  dur = 1.40, from = "floor", storm = "bossFrostStorm", clip = "rise" },
+                { kind = "land",  dur = 0.55, shake = 8, dust = 6, crows = 0, ring = "ice",
+                  particle = "shard", burst = 16, sound = "bossIceCrackle" },
+                { kind = "title", dur = 2.20, clip = "roar" },
                 { kind = "hud",   dur = 0 },
             },
             vitral = {

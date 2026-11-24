@@ -1270,7 +1270,8 @@ local function drawAssemble()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-local function startCracks(gx, gy, wdt)
+-- floor: rachaduras deitadas no chão, desenhadas atrás do chefe (ele as cobre).
+local function startCracks(gx, gy, wdt, floor)
     local list = {}
     local n = 7
     for i = 1, n do
@@ -1282,17 +1283,17 @@ local function startCracks(gx, gy, wdt)
         for sgi = 1, segs do
             local a2 = ang + (love.math.random() - 0.5) * 0.9
             x = x + math.cos(a2) * len / segs
-            y = y + math.sin(a2) * len / segs * 0.42
+            y = y + math.sin(a2) * len / segs * (floor and 0.28 or 0.42)
             pts[#pts + 1] = { x, y }
         end
         list[i] = { pts = pts, delay = love.math.random() * 0.12 }
     end
-    fx.cracks = { t = 0, list = list, grow = 0.45 }
+    fx.cracks = { t = 0, list = list, grow = 0.45, back = floor or nil }
 end
 
-local function drawCracks()
+local function drawCracks(back)
     local c = fx.cracks
-    if not c then return end
+    if not c or (c.back or false) ~= (back or false) then return end
     local P = px()
     local fade = c.fadeT and (1 - clamp01(c.fadeT / 2.4)) or 1
     if fade <= 0 then return end
@@ -2207,7 +2208,7 @@ Ent.bind({
     landed = function() return landed end,
     glowBlob = glowBlob, spawnFeather = spawnFeather, spawnDust = spawnDust,
     play = play, playLoop = playLoop, stopLoop = stopLoop, queueSfx = queueSfx,
-    startHit = startHit, startCracks = startCracks, ownAnim = ownAnim, footInfo = footInfo,
+    startHit = startHit, startCracks = function(gx, gy, wdt) startCracks(gx, gy, wdt, true) end, ownAnim = ownAnim, footInfo = footInfo,
     drawOwn = drawOwn, px = px, bayer = bayer, bossClip = bossClip,
     reduced = reducedMotion, mist = mistTarget,
     setHidden = function(v) bossHidden = v end,
@@ -2269,7 +2270,7 @@ local function enterStep(st)
         fly = nil
         fx.runes = nil
         if fx.roots and not fx.roots.retractT then fx.roots.retractT = 0 end
-        if st.cracks and stage and stage.bbox then
+        if st.cracks and stage and stage.bbox and not (fx.cracks and fx.cracks.back) then
             startCracks(stage.bbox.cx, stage.cy or stage.bbox.bottomY, stage.bbox.width or 120)
         end
         bossHidden = false
@@ -3041,6 +3042,7 @@ function BossCinematic.drawBack()
     drawRoots()
     drawRunes()
     Ent.drawBack(w, h)
+    drawCracks(true)
     drawFirewall(w, h)
     drawEclipse(w, h)
     if not (seq and seq.bossId == QUEEN_ID) then drawDawn(w, h) end
@@ -3080,7 +3082,7 @@ function BossCinematic.drawFront()
     if not stage then return end
     drawMist({ [3] = true })
     drawLavaPool()
-    drawCracks()
+    drawCracks(false)
     drawCrumble()
     drawDust()
     Ent.drawFront()
