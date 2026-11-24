@@ -19,7 +19,7 @@ end
 local function note(name, opts)
     if not seg or type(name) ~= "string" then return end
     local o = type(opts) == "table" and opts or {}
-    sounds[#sounds + 1] = ("snd %s %.4f %s %.3f %.3f"):format(seg, segFrame / (60 / STEP),
+    sounds[#sounds + 1] = ("snd %s %.4f %s %.3f %.3f"):format(seg, segFrame / 60,
         name, o.gain or o.volume or 1, o.pitch or 1)
 end
 
