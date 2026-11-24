@@ -58,6 +58,15 @@ CLIPS = {
                     "outward, the staff orb flaring with bright arcane light, "
                     "skull face tilting up, then settles into its floating "
                     "stance"),
+        "awaken": (8, "starts hunched with the skull bowed low and arms "
+                      "folded close, eye sockets dark, then slowly lifts the "
+                      "skull as the eye sockets ignite with icy light, arms "
+                      "spreading outward and the staff orb flaring, then "
+                      "settles into its floating stance"),
+        "descend": (8, "floats slowly downward from above with cape and "
+                       "robes billowing upward, arms spread wide, staff orb "
+                       "glowing, skull lifted, then settles into its "
+                       "floating stance"),
         "roar": (8, "raises the staff high overhead, orb blazing, cape "
                     "billowing wide, skull jaw opening in a silent scream, "
                     "then lowers the staff back into its stance"),
@@ -67,6 +76,14 @@ CLIPS = {
                       "swinging, cape sweeping behind, chest core flaring at "
                       "each step, horned skull lowered menacingly, then stops "
                       "in its standing stance"),
+        "break_free": (8, "strains with both arms pulled apart and down "
+                          "as if bound at the wrists, muscles tense and "
+                          "shaking, chest core flaring brighter, then flexes "
+                          "violently outward with arms thrown wide and up, "
+                          "then settles into its standing stance"),
+        "slam": (8, "crouches low and slams both fists into the ground in "
+                    "front of it, shoulders hunched, chest core blazing, "
+                    "then rises back up into its standing stance"),
         "roar": (8, "plants both feet, throws its horned skull back and roars, "
                     "chest core blazing, arms spread wide, cape flaring, then "
                     "settles back into its standing stance"),

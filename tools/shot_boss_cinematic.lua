@@ -38,10 +38,38 @@ function M.run(mode)
     love.timer.getTime = function() return simT + (realTime() - realBase) end
     love.timer.getDelta = function() return DT end
 
+    -- BOSS_CINE_SNDLOG=1: anota cada som (tempo do vídeo, nome, ganho, tom) em boss_cine_sounds.txt,
+    -- pra montar o áudio do vídeo depois. Sem áudio de verdade no modo headless.
+    local sndT0 = nil
+    if os.getenv("BOSS_CINE_SNDLOG") == "1" then
+        local sndLines = {}
+        local function note(kind, name, opts)
+            if not sndT0 or type(name) ~= "string" then return end
+            local o = type(opts) == "table" and opts or {}
+            sndLines[#sndLines + 1] = ("%s %.4f %s %.3f %.3f %s"):format(kind, simT - sndT0, name,
+                o.gain or o.volume or 1, o.pitch or 1, o.loop and "loop" or "-")
+            love.filesystem.write("boss_cine_sounds.txt", table.concat(sndLines, "\n"))
+        end
+        local noop = function() end
+        local function voice(name)
+            return setmetatable({ stop = function() note("stop", name) end, isPlaying = function() return true end,
+                getPitch = function() return 1 end, getDuration = function() return 600 end,
+                tell = function() return 0 end, getVolume = function() return 1 end },
+                { __index = function() return noop end })
+        end
+        local entry = { baseVolume = 1, instGain = {} }
+        local a = setmetatable({ sources = setmetatable({}, { __index = function() return entry end }) },
+            { __index = function() return noop end })
+        function a:play(name, opts) note("snd", name, opts) return voice(name) end
+        function a:playSound(name) note("snd", name) return voice(name) end
+        _G.audioSystem = a
+    end
+
     log("modulos")
     local Game = require("src.core.Game")
     local GameplayScene = require("src.scenes.GameplayScene")
     local BossCinematic = require("src.ui.BossCinematic")
+    BossCinematic.forceVariant = os.getenv("BOSS_CINE_VARIANT")
     local EnemyRenderer = require("src.ui.EnemyRenderer")
     local WorldRoad = require("src.ui.WorldRoad")
     local ScreenShake = require("src.systems.ScreenShake")
@@ -126,6 +154,7 @@ function M.run(mode)
     local every = math.max(1, math.floor(30 / fps + 0.5))
     local function record(phase, isDone, tail)
         local n, frame, t0 = 0, 0, simT
+        sndT0 = simT
         local lines = {}
         local tailLeft = tail or 0.5
         local skipped = false

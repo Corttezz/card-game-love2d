@@ -1,0 +1,1131 @@
+-- Passos extras das entradas de chefe (Lich da Torre e Tirano do Abismo).
+-- Vive à parte do BossCinematic: ele liga a API com Ent.bind e chama enter/update/draw.
+local InteriorFX = require("src.ui.InteriorFX")
+
+local Ent = {}
+
+Ent.KINDS = { snuff = true, moon = true, sigil = true, tomb = true, glass = true, wisps = true,
+              skull_wake = true, erupt = true, rumble = true, drop = true }
+
+local A = nil
+local E = {}
+local bits = {}
+local splashes = {}
+local imgs = {}
+local hallImgs = {}
+local lightShader, shaderTried = nil, false
+local lightQuad = nil
+
+local FADE = 1.2
+local ICE    = { 0.62, 0.86, 1.00 }
+local ICE_HI = { 0.90, 0.97, 1.00 }
+local VIOLET = { 0.66, 0.48, 1.00 }
+local WARM   = { 1.00, 0.74, 0.40 }
+local LAVA   = { 1.00, 0.46, 0.12 }
+local LAVA_HI = { 1.00, 0.86, 0.42 }
+
+function Ent.bind(api) A = api end
+
+local function clamp01(x) return math.max(0, math.min(1, x)) end
+local function lerp(a, b, k) return a + (b - a) * k end
+local function smooth(k) return k * k * (3 - 2 * k) end
+local function easeOut(k) return 1 - (1 - k) * (1 - k) end
+local function rnd(a, b) return a + love.math.random() * (b - a) end
+local function shake(i, d)
+    if _G.triggerShake and not A.reduced() then _G.triggerShake(i, d) end
+end
+
+local function H(hx, hy)
+    local st = A.stage()
+    local tr = st and st.tr
+    if not tr then return hx, hy end
+    return tr.ox + hx * tr.scale, tr.oy + hy * tr.scale
+end
+local function hs()
+    local st = A.stage()
+    return (st and st.tr and st.tr.scale) or 2
+end
+
+local function image(name)
+    local id = A.bossId()
+    local path = name:find("/", 1, true) and name
+        or ("assets/sprites/characters/enemies/" .. tostring(id) .. "/entrance/" .. name .. ".png")
+    if imgs[path] == nil then
+        if love.filesystem.getInfo(path) then
+            local im = love.graphics.newImage(path)
+            im:setFilter("nearest", "nearest")
+            imgs[path] = im
+        else
+            require("src.core.Debug").warn("[BossCineEntradas] sem sprite " .. path .. " — só brilho")
+            imgs[path] = false
+        end
+    end
+    return imgs[path] or nil
+end
+
+local function hallImage(hall)
+    if hallImgs[hall] == nil then
+        local p = "assets/sprites/scenes/castle_hall_" .. tostring(hall) .. ".png"
+        if love.filesystem.getInfo(p) then
+            local im = love.graphics.newImage(p)
+            im:setFilter("nearest", "nearest")
+            hallImgs[hall] = im
+        else
+            hallImgs[hall] = false
+        end
+    end
+    return hallImgs[hall] or nil
+end
+
+-- Luz que "fura" a escuridão: redesenha um pedaço do salão numa elipse,
+-- em degraus com dither 2x2 no pixel da arte (sem gradiente liso, sem retângulo).
+local LIGHT_GLSL = [[
+extern vec2 tex;
+extern vec4 ell;
+extern float steps;
+vec4 effect(vec4 col, Image t, vec2 uv, vec2 sc) {
+    vec2 hp = floor(uv * tex);
+    vec2 d = (hp + 0.5 - ell.xy) / ell.zw;
+    float q = 1.0 - dot(d, d);
+    if (q <= 0.0) discard;
+    float x2 = mod(hp.x, 2.0);
+    float y2 = mod(hp.y, 2.0);
+    float b = (2.0 * x2 + 3.0 * y2 - 4.0 * x2 * y2) / 4.0;
+    float k = clamp(floor(q * steps + b) / steps, 0.0, 1.0);
+    vec4 c = Texel(t, uv);
+    return vec4(c.rgb * col.rgb, c.a * col.a * k);
+}
+]]
+local function ensureShader()
+    if shaderTried then return lightShader end
+    shaderTried = true
+    local ok, sh = pcall(love.graphics.newShader, LIGHT_GLSL)
+    if ok then lightShader = sh else
+        require("src.core.Debug").warn("[BossCineEntradas] shader de luz falhou: " .. tostring(sh))
+    end
+    return lightShader
+end
+
+local function reveal(cx, cy, rx, ry, a, tint)
+    if a <= 0.01 then return end
+    local st = A.stage()
+    local tr = st and st.tr
+    local img = st and hallImage(st.hall)
+    tint = tint or { 1, 1, 1 }
+    local sh = ensureShader()
+    if not (img and tr and sh) then
+        local x, y = H(cx, cy)
+        A.glowBlob(x, y, rx * 2 * hs(), ry * 2 * hs(), tint, a * 0.35, 1)
+        return
+    end
+    local iw, ih = img:getDimensions()
+    local x0, y0 = math.max(0, math.floor(cx - rx)), math.max(0, math.floor(cy - ry))
+    local x1, y1 = math.min(iw, math.ceil(cx + rx)), math.min(ih, math.ceil(cy + ry))
+    if x1 <= x0 or y1 <= y0 then return end
+    lightQuad = lightQuad or love.graphics.newQuad(0, 0, 1, 1, iw, ih)
+    lightQuad:setViewport(x0, y0, x1 - x0, y1 - y0, iw, ih)
+    love.graphics.setShader(sh)
+    sh:send("tex", { iw, ih })
+    sh:send("ell", { cx, cy, rx, ry })
+    sh:send("steps", 4)
+    love.graphics.setColor(tint[1], tint[2], tint[3], math.min(1, a))
+    love.graphics.draw(img, lightQuad, tr.ox + x0 * tr.scale, tr.oy + y0 * tr.scale, 0, tr.scale, tr.scale)
+    love.graphics.setShader()
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function feet()
+    local st = A.stage()
+    if not (st and st.bbox) then return nil end
+    local _, _, s = A.footInfo()
+    return st.bbox.cx, (st.cy or st.bbox.bottomY), s or hs(), st.bbox
+end
+
+local function fadeK(e)
+    if not e or not e.fade then return 1 end
+    return 1 - clamp01(e.fade / (e.fadeDur or FADE))
+end
+
+local function startFade(e, dur)
+    if e and not e.fade then e.fade = 0; e.fadeDur = dur or FADE end
+end
+
+-- Pedaços de sprite que voam (gelo do túmulo, vitral, rochas).
+local function addBit(b)
+    b.rot = b.rot or 0
+    b.rv = b.rv or 0
+    b.life = b.life or 1.2
+    b.max = b.life
+    b.g = b.g or 700
+    b.grow = b.grow or 0
+    b.k = 1
+    bits[#bits + 1] = b
+end
+
+local function shatterImage(img, cx, bottomY, s, cell, speed, opts)
+    opts = opts or {}
+    local iw, ih = img:getDimensions()
+    local x0, y0 = cx - iw * s / 2, bottomY - ih * s
+    local data = opts.data
+    for gy = 0, ih - 1, cell do
+        for gx = 0, iw - 1, cell do
+            local w, h = math.min(cell, iw - gx), math.min(cell, ih - gy)
+            local keep = true
+            if data then
+                local px_, py_ = math.min(iw - 1, gx + math.floor(w / 2)), math.min(ih - 1, gy + math.floor(h / 2))
+                local _, _, _, al = data:getPixel(px_, py_)
+                keep = al > 0.3
+            end
+            if keep then
+                local bx = x0 + (gx + w / 2) * s
+                local by = y0 + (gy + h / 2) * s
+                local dx, dy = bx - cx, by - (bottomY - ih * s * 0.5)
+                local len = math.max(1, math.sqrt(dx * dx + dy * dy))
+                local sp = speed * rnd(0.5, 1.2)
+                addBit({ img = img, quad = love.graphics.newQuad(gx, gy, w, h, iw, ih),
+                         ox = w / 2, oy = h / 2, x = bx, y = by, s = s,
+                         vx = dx / len * sp + rnd(-40, 40), vy = dy / len * sp * 0.7 - rnd(80, 220),
+                         rv = rnd(-8, 8), life = rnd(0.8, 1.5), g = opts.g or 900,
+                         grow = opts.grow or 0 })
+            end
+        end
+    end
+end
+
+local ROCKS = { "rock_chunk", "rock_chunk_2", "rock_chunk_3", "rock_chunk_4" }
+local function rockImage()
+    return image(ROCKS[love.math.random(1, #ROCKS)]) or image("rock_chunk")
+end
+
+local function rocks(cx, cy, n, spread, s)
+    for _ = 1, n do
+        local rimg = rockImage()
+        local a = -math.pi * rnd(0.08, 0.92)
+        local sp = rnd(220, 520)
+        addBit({ img = rimg, x = cx + rnd(-spread, spread) * 0.3, y = cy - rnd(0, 10),
+                 ox = rimg and rimg:getWidth() / 2 or 0, oy = rimg and rimg:getHeight() / 2 or 0,
+                 s = s * rnd(0.45, 0.8), vx = math.cos(a) * sp, vy = math.sin(a) * sp,
+                 rv = rnd(-10, 10), life = rnd(0.9, 1.4), g = 1200, rock = true })
+    end
+end
+
+local function splash(x, y, s, delay, sx)
+    splashes[#splashes + 1] = { x = x, y = y, s = s, sx = sx or 1, t = -(delay or 0), dur = 0.75 }
+end
+
+local function crackSet(n, w, h)
+    local list = {}
+    for _ = 1, n do
+        local x, y = rnd(0.3, 0.7) * w, rnd(0.25, 0.75) * h
+        local pts = { { x, y } }
+        local ang = rnd(0, math.pi * 2)
+        for _ = 1, 5 + love.math.random(0, 3) do
+            ang = ang + rnd(-0.9, 0.9)
+            x = math.max(4, math.min(w - 4, x + math.cos(ang) * rnd(5, 11)))
+            y = math.max(4, math.min(h - 4, y + math.sin(ang) * rnd(5, 11)))
+            pts[#pts + 1] = { x, y }
+        end
+        list[#list + 1] = pts
+    end
+    return list
+end
+
+local function drawPixelLine(x1, y1, x2, y2, P)
+    local dx, dy = x2 - x1, y2 - y1
+    local n = math.max(1, math.floor(math.max(math.abs(dx), math.abs(dy)) / P))
+    for i = 0, n do
+        local x = math.floor((x1 + dx * i / n) / P) * P
+        local y = math.floor((y1 + dy * i / n) / P) * P
+        love.graphics.rectangle("fill", x, y, P, P)
+    end
+end
+
+----------------------------------------------------------------------------
+-- entrar nos passos
+----------------------------------------------------------------------------
+
+local function enterSnuff(st)
+    local stg = A.stage()
+    local cfg = InteriorFX.HALLS[(stg and stg.hall) or 2]
+    local fl = (cfg and cfg.flames) or {}
+    local order = {}
+    for i = 1, #fl do order[i] = i end
+    table.sort(order, function(a, b)
+        return math.abs(fl[a][1] + fl[a][3] / 2 - 200) > math.abs(fl[b][1] + fl[b][3] / 2 - 200)
+    end)
+    local dur = math.max(0.3, st.dur or 1.4)
+    local list = {}
+    for n, i in ipairs(order) do
+        local f = fl[i]
+        list[#list + 1] = { cx = f[1] + f[3] / 2, cy = f[2] + f[4] * 0.5,
+                            rx = math.max(f[3], 16) * 1.15, ry = math.max(f[4], 16) * 1.35,
+                            outAt = dur * (0.30 + 0.55 * (n - 1) / math.max(1, #order - 1)),
+                            seed = i * 1.7 }
+    end
+    E.snuff = { t = 0, dur = dur, list = list }
+    A.darkTo(st.to or 0.95, dur)
+end
+
+local function enterSigil(st)
+    local dur = math.max(0.4, st.dur or 1.4)
+    local n = st.n or 4
+    local ign = {}
+    for i = 1, n do
+        ign[i] = 0.25 + (i - 1) * (dur - 0.4) / n
+        A.queueSfx(ign[i], "bossRuneIgnite", "orbChannel", 0.85 + i * 0.07)
+    end
+    E.sigil = { t = 0, dur = dur, n = n, ign = ign }
+    A.play("bossRuneIgnite", "orbChannel", 0.6, 0)
+    A.mist(1, 1.0)
+end
+
+local function enterTomb(st)
+    local dur = math.max(0.6, st.dur or 1.8)
+    local tomb = { t = 0, dur = dur, rise = 0.34, hits = { 0.50, 0.66, 0.82 }, done = 0,
+                   cracks = { crackSet(2, 96, 160), crackSet(3, 96, 160), crackSet(4, 96, 160) } }
+    E.tomb = tomb
+    A.play("bossIceCrackle", nil, 0.62, 0)
+    A.queueSfx(0.05, "sceneStoneThud", nil, 0.7)
+    shake(4, dur * tomb.rise)
+    local fx_, fy, _, bb = feet()
+    if fx_ then A.spawnDust(fx_, fy, 10, bb.width or 120) end
+end
+
+local function burstTomb()
+    local tb = E.tomb
+    if not tb then return end
+    local img = image("ice_tomb")
+    local fx_, fy, s = feet()
+    if img and fx_ then
+        local ok, data = pcall(love.image.newImageData,
+            "assets/sprites/characters/enemies/" .. tostring(A.bossId()) .. "/entrance/ice_tomb.png")
+        shatterImage(img, fx_, fy + 4 * s, s, 12, 360, { data = ok and data or nil, g = 950 })
+    end
+    E.tomb = nil
+    A.play("bossFrostShatter", "impactIce")
+    A.queueSfx(0.06, "impactIce", nil, 0.8)
+end
+
+local function enterGlass(st)
+    E.glass = { t = 0, dur = math.max(0.4, st.dur or 1.0), at = st.burst or 0.45 }
+    A.play("bossIceCrackle", nil, 1.15, 0)
+    A.queueSfx(0.22, "bossIceCrackle", nil, 1.35)
+    shake(3, E.glass.dur * E.glass.at)
+end
+
+local function burstGlass()
+    local g = E.glass
+    if not g or g.burst then return end
+    g.burst = true
+    g.hole = 0
+    local stg = A.stage()
+    local img = stg and hallImage(stg.hall)
+    local s = hs()
+    if img then
+        local iw, ih = img:getDimensions()
+        local wx, wy = H(200, 60)
+        for gy = 10, 122, 8 do
+            for gx = 174, 222, 7 do
+                local bx, by = H(gx + 3.5, gy + 4)
+                local dx, dy = bx - wx, by - wy
+                addBit({ img = img, quad = love.graphics.newQuad(gx, gy, 7, 8, iw, ih), ox = 3.5, oy = 4,
+                         x = bx, y = by, s = s, vx = dx * rnd(1.2, 2.6) + rnd(-60, 60),
+                         vy = dy * rnd(0.6, 1.4) + rnd(-180, 40), rv = rnd(-9, 9),
+                         life = rnd(0.7, 1.1), g = 620, grow = rnd(0.4, 1.1), glass = true })
+            end
+        end
+    end
+    local wx, wy = H(200, 66)
+    A.startHit(wx, wy, "frost")
+    shake(10, 0.45)
+    InteriorFX.gust(1.0, 1.3)
+    A.play("shopCrystalShatter", "bossFrostShatter")
+    A.play("bossFrostShatter", nil, 1.25, 0)
+    A.mist(0.9, 0.6)
+end
+
+local function enterSkull(st)
+    E.skull = { t = 0, dur = math.max(0.6, st.dur or 1.6), eyesAt = st.eyes or 0.3, lavaAt = st.lava or 0.68 }
+    A.playLoop("bossEyesRumble")
+    shake(2, E.skull.dur)
+    A.mist(1, 1.0)
+end
+
+local function enterErupt(st)
+    local dur = math.max(0.6, st.dur or 1.9)
+    local pop = st.pop or 0.38
+    E.erupt = { t = 0, dur = dur, popAt = dur * pop, anim = A.ownAnim(st.clip, dur * (1 - pop)),
+                clip = st.clip }
+    local fx_, fy, _, bb = feet()
+    if fx_ then A.startCracks(fx_, fy, (bb.width or 120) * 1.3) end
+    A.play("bossEmergeTear", "sceneStoneThud", 0.75, 0)
+    shake(3, dur * pop)
+end
+
+local function popErupt()
+    local er = E.erupt
+    if not er or er.popped then return end
+    er.popped = true
+    local fx_, fy, s, bb = feet()
+    if not fx_ then return end
+    local wdt = bb.width or 120
+    E.crater = { t = 0 }
+    splash(fx_, fy + 2 * s, s * 1.2, 0, 1)
+    splash(fx_ - wdt * 0.42, fy + 3 * s, s * 0.8, 0.07, -1)
+    splash(fx_ + wdt * 0.42, fy + 3 * s, s * 0.8, 0.11, 1)
+    rocks(fx_, fy, 16, wdt, s)
+    for _ = 1, 30 do
+        local a = -math.pi * rnd(0.1, 0.9)
+        local sp = rnd(120, 360)
+        A.spawnFeather(fx_ + rnd(-0.4, 0.4) * wdt, fy - rnd(0, 12), math.cos(a) * sp, math.sin(a) * sp, "ember")
+    end
+    A.startHit(fx_, fy - 20 * s, "lava")
+    shake(14, 0.55)
+    A.play("bossLavaImplosion", "impactFire")
+    A.queueSfx(0.04, "impactFire", nil, 0.7)
+    A.darkTo(0.5, 0.35)
+    if A.bondDrag() then A.queueSfx(0.25, "tyrantChainDrag", "bossChainsRattle") end
+end
+
+local function enterRumble(st)
+    E.rumble = { t = 0, dur = math.max(0.4, st.dur or 1.5), next = 0.05, every = st.every or 0.32 }
+    A.playLoop("bossEyesRumble")
+    A.mist(1, 1.0)
+end
+
+local function enterDrop(st)
+    E.drop = { t = 0, dur = math.max(0.2, st.dur or 0.45), anim = A.ownAnim(st.clip, nil) }
+    A.play("bossWingPass", "sceneRustle", 0.55, 0)
+    A.bondDrag()
+end
+
+local function landDrop()
+    local fx_, fy, s, bb = feet()
+    E.drop = nil
+    if not fx_ then return end
+    local wdt = bb.width or 120
+    E.crater = { t = 0 }
+    splash(fx_ - wdt * 0.5, fy + 2 * s, s * 0.9, 0.02, -1)
+    splash(fx_ + wdt * 0.5, fy + 2 * s, s * 0.9, 0.05, 1)
+    splash(fx_, fy + 4 * s, s * 0.7, 0.12, 1)
+    rocks(fx_, fy, 20, wdt, s)
+    A.queueSfx(0.02, "impactFire", nil, 0.6)
+end
+
+function Ent.enter(st)
+    local k = st.kind
+    if k == "snuff" then enterSnuff(st)
+    elseif k == "moon" then
+        E.moon = { t = 0, rise = math.max(0.2, st.dur or 0.8), beam = st.beam ~= false,
+                   window = st.window ~= false }
+        A.play("bossEclipseUnveil", "orbChannel", 1.3, 0)
+        A.mist(0.8, 0.8)
+    elseif k == "sigil" then enterSigil(st)
+    elseif k == "tomb" then enterTomb(st)
+    elseif k == "glass" then enterGlass(st)
+    elseif k == "wisps" then
+        E.wisps = { t = 0, life = st.life or 2.0, n = st.n or 6, out = 0.9 }
+        A.play("orbChannel", nil, 0.65, 0)
+    elseif k == "skull_wake" then enterSkull(st)
+    elseif k == "erupt" then enterErupt(st)
+    elseif k == "rumble" then enterRumble(st)
+    elseif k == "drop" then enterDrop(st)
+    end
+end
+
+function Ent.exit(st)
+    local k = st.kind
+    if k == "tomb" then burstTomb()
+    elseif k == "glass" then burstGlass()
+    elseif k == "erupt" then
+        popErupt()
+        E.erupt = nil
+        A.setHidden(false)
+        A.setLanded(true)
+    elseif k == "rumble" then
+        E.rumble = nil
+        A.stopLoop("bossEyesRumble")
+    elseif k == "drop" then
+        landDrop()
+        A.setHidden(false)
+        A.setLanded(true)
+    elseif k == "skull_wake" then
+        A.stopLoop("bossEyesRumble")
+    end
+end
+
+-- Chamado em todo passo, inclusive os antigos (land/title encerram os efeitos daqui).
+function Ent.onStep(st)
+    if st.kind == "land" then
+        if E.snuff then E.snuff.relight = 0 end
+        if E.sigil then E.sigil.flash = 0; startFade(E.sigil, 0.9) end
+        if E.moon then startFade(E.moon, 1.6) end
+        if E.skull then startFade(E.skull, 1.4) end
+        A.stopLoop("bossEyesRumble")
+    elseif st.kind == "title" then
+        if E.crater then startFade(E.crater, 1.8) end
+        if E.wisps then startFade(E.wisps, 0.6) end
+    end
+end
+
+----------------------------------------------------------------------------
+-- update
+----------------------------------------------------------------------------
+
+local function tickFade(name, dt)
+    local e = E[name]
+    if e and e.fade then
+        e.fade = e.fade + dt
+        if e.fade >= (e.fadeDur or FADE) then E[name] = nil end
+    end
+end
+
+function Ent.update(dt)
+    if not A then return end
+    local reduced = A.reduced()
+    local sn = E.snuff
+    if sn then
+        sn.t = sn.t + dt
+        for _, c in ipairs(sn.list) do
+            if not c.out and sn.t >= c.outAt then
+                c.out = sn.t
+                A.play("sceneCloudPoof", nil, rnd(0.75, 0.95), 0)
+                local x, y = H(c.cx, c.cy - c.ry * 0.3)
+                for _ = 1, 7 do A.spawnFeather(x + rnd(-6, 6), y, rnd(-12, 12), rnd(-50, -22), "ash") end
+            end
+        end
+        if sn.relight then
+            sn.relight = sn.relight + dt
+            if sn.relight >= 0.9 then E.snuff = nil end
+        end
+    end
+    if E.moon then
+        local m = E.moon
+        m.t = m.t + dt
+        local fx_, fy = feet()
+        if m.beam and fx_ and not reduced and love.math.random() < dt * 9 then
+            local p = love.math.random()
+            local wx, wy = H(200, 110)
+            A.spawnFeather(lerp(wx, fx_, p) + rnd(-20, 20), lerp(wy, fy, p), rnd(-8, 8), rnd(6, 18), "spore")
+        end
+        tickFade("moon", dt)
+    end
+    if E.sigil then
+        local sg = E.sigil
+        sg.t = sg.t + dt
+        if sg.flash then sg.flash = sg.flash + dt end
+        tickFade("sigil", dt)
+    end
+    if E.tomb then
+        local tb = E.tomb
+        tb.t = tb.t + dt
+        local k = tb.t / tb.dur
+        while tb.done < #tb.hits and k >= tb.hits[tb.done + 1] do
+            tb.done = tb.done + 1
+            A.play("bossIceCrackle", nil, 0.95 + tb.done * 0.12, 0)
+            if tb.done == #tb.hits then A.queueSfx(0.05, "impactIce", nil, 1.1) end
+            shake(3 + tb.done * 2, 0.22)
+            local fx_, fy, s = feet()
+            if fx_ then
+                for _ = 1, 5 + tb.done * 3 do
+                    A.spawnFeather(fx_ + rnd(-30, 30) * s, fy - rnd(30, 140) * s,
+                        rnd(-140, 140), rnd(-160, -40), "shard")
+                end
+            end
+        end
+    end
+    if E.glass then
+        local g = E.glass
+        g.t = g.t + dt
+        if not g.burst and g.t >= g.dur * g.at then burstGlass() end
+        if g.hole then g.hole = g.hole + dt end
+        if g.burst and A.landed() then startFade(g, 1.4) end
+        tickFade("glass", dt)
+    end
+    if E.wisps then
+        local wp = E.wisps
+        wp.t = wp.t + dt
+        if wp.t >= wp.life then startFade(wp, wp.out) end
+        tickFade("wisps", dt)
+    end
+    if E.skull then
+        local sk = E.skull
+        sk.t = sk.t + dt
+        local k = sk.t / sk.dur
+        if not sk.eyes and k >= sk.eyesAt then
+            sk.eyes = sk.t
+            A.play("bossEyesIgnite", nil)
+            shake(5, 0.25)
+        end
+        if not sk.lava and k >= sk.lavaAt then
+            sk.lava = sk.t
+            A.play("bossLavaImplosion", "impactFire", 0.8, 0)
+            shake(8, 0.5)
+            InteriorFX.gust(0.8, 0.8)
+            local x, y = H(200, 108)
+            for _ = 1, 22 do
+                A.spawnFeather(x + rnd(-14, 14), y, rnd(-120, 120), rnd(-180, -40), "ember")
+            end
+        end
+        tickFade("skull", dt)
+    end
+    if E.erupt then
+        local er = E.erupt
+        er.t = er.t + dt
+        if not er.popped then
+            local fx_, fy, _, bb = feet()
+            if fx_ and not reduced then
+                local k = er.t / er.popAt
+                if love.math.random() < dt * (6 + 30 * k) then
+                    A.spawnFeather(fx_ + rnd(-0.5, 0.5) * (bb.width or 120) * k, fy - rnd(0, 6),
+                        rnd(-25, 25), rnd(-120, -50), "ember")
+                end
+            end
+            if er.t >= er.popAt then popErupt() end
+        elseif er.anim then
+            er.anim:update(dt)
+        end
+    end
+    if E.crater then
+        E.crater.t = E.crater.t + dt
+        local fx_, fy, _, bb = feet()
+        if fx_ and not reduced and love.math.random() < dt * 8 * fadeK(E.crater) then
+            A.spawnFeather(fx_ + rnd(-0.45, 0.45) * (bb.width or 120), fy - rnd(0, 4),
+                rnd(-15, 15), rnd(-70, -30), "ember")
+        end
+        tickFade("crater", dt)
+    end
+    if E.rumble then
+        local rb = E.rumble
+        rb.t = rb.t + dt
+        if rb.t >= rb.next then
+            rb.next = rb.next + rb.every * rnd(0.75, 1.25)
+            rb.flash = rb.t
+            A.play("sceneStoneThud", nil, rnd(0.55, 0.8), 0)
+            shake(4 + 4 * (rb.t / rb.dur), 0.22)
+            local s = hs()
+            for _ = 1, 3 + math.floor(3 * rb.t / rb.dur) do
+                local rimg = rockImage()
+                local x, y = H(rnd(40, 360), rnd(-12, 0))
+                local _, floorY = H(0, rnd(200, 240))
+                addBit({ img = rimg, x = x, y = y, ox = rimg and rimg:getWidth() / 2 or 0,
+                         oy = rimg and rimg:getHeight() / 2 or 0, s = s * rnd(0.35, 0.7),
+                         vx = rnd(-20, 20), vy = rnd(40, 160), rv = rnd(-6, 6), life = 1.6,
+                         g = 1100, rock = true, floor = floorY })
+            end
+        end
+        if not reduced and love.math.random() < dt * 30 then
+            local x, y = H(rnd(20, 380), -4)
+            A.spawnFeather(x, y, rnd(-10, 10), rnd(30, 80), "ash")
+        end
+    end
+    if E.drop then
+        E.drop.t = E.drop.t + dt
+        if E.drop.anim then E.drop.anim:update(dt) end
+    end
+    for i = #bits, 1, -1 do
+        local b = bits[i]
+        b.vy = b.vy + b.g * dt
+        b.x = b.x + b.vx * dt
+        b.y = b.y + b.vy * dt
+        b.rot = b.rot + b.rv * dt
+        b.life = b.life - dt
+        if b.grow > 0 then b.k = b.k + b.grow * dt end
+        if b.floor and b.y >= b.floor then
+            A.spawnDust(b.x, b.floor, 3, 30)
+            b.life = 0
+        end
+        if b.life <= 0 then table.remove(bits, i) end
+    end
+    for i = #splashes, 1, -1 do
+        local sp = splashes[i]
+        sp.t = sp.t + dt
+        if sp.t >= sp.dur then table.remove(splashes, i) end
+    end
+end
+
+function Ent.reset()
+    E = {}
+    bits = {}
+    splashes = {}
+end
+
+----------------------------------------------------------------------------
+-- desenho
+----------------------------------------------------------------------------
+
+local function drawSnuff()
+    local sn = E.snuff
+    if not sn then return end
+    local s = hs()
+    local tm = love.timer.getTime()
+    for _, c in ipairs(sn.list) do
+        local x, y = H(c.cx, c.cy)
+        if not c.out then
+            local fl = 0.86 + 0.14 * math.sin(tm * 11 + c.seed) * math.sin(tm * 7.3 + c.seed * 2)
+            reveal(c.cx, c.cy, c.rx, c.ry, 0.95 * fl, { 1, 0.92, 0.80 })
+            A.glowBlob(x, y, c.rx * 3.2 * s, c.ry * 2.6 * s, WARM, 0.30 * fl, 1 + math.floor(c.seed) % 3)
+        else
+            local k = 1 - clamp01((sn.t - c.out) / 0.45)
+            if k > 0 then
+                reveal(c.cx, c.cy, c.rx * 0.7, c.ry * 0.7, 0.6 * k, { 1, 0.55, 0.35 })
+                A.glowBlob(x, y, c.rx * 1.6 * s, c.ry * 1.4 * s, LAVA, 0.35 * k, 2)
+            end
+        end
+        if sn.relight then
+            local k = math.sin(clamp01(sn.relight / 0.9) * math.pi)
+            A.glowBlob(x, y, c.rx * 3.6 * s, c.ry * 3.0 * s, WARM, 0.45 * k, 3)
+        end
+    end
+end
+
+local function moonK()
+    local m = E.moon
+    if not m then return 0 end
+    local tm = love.timer.getTime()
+    return smooth(clamp01(m.t / m.rise)) * fadeK(m) * (0.92 + 0.08 * math.sin(tm * 3.1))
+end
+
+local function drawMoon()
+    local m = E.moon
+    if not m then return end
+    local k = moonK()
+    local s = hs()
+    if m.window then
+        reveal(200, 69, 34, 68, 0.95 * k, { 0.72, 0.86, 1.0 })
+        reveal(142, 78, 18, 44, 0.55 * k, { 0.66, 0.80, 1.0 })
+        reveal(258, 78, 18, 44, 0.55 * k, { 0.66, 0.80, 1.0 })
+    end
+    local mx, my = H(200, 52)
+    A.glowBlob(mx, my, 90 * s, 90 * s, ICE, 0.42 * k, 1)
+    A.glowBlob(mx, my, 34 * s, 34 * s, ICE_HI, 0.55 * k, 2)
+    if m.beam then
+        local fx_, fy, _, bb = feet()
+        if fx_ then
+            local bk = k * (0.85 + 0.15 * math.sin(love.timer.getTime() * 5.3))
+            local wx, wy = H(200, 112)
+            for i = 0, 9 do
+                local p = i / 9
+                local x, y = lerp(wx, fx_, p), lerp(wy, fy - 10 * s, p)
+                A.glowBlob(x, y, lerp(26, (bb.width or 120) / s * 0.9, p) * s, 34 * s, ICE, 0.22 * bk, 1 + i % 3)
+            end
+            A.glowBlob(fx_, fy, (bb.width or 120) * 1.8, 22 * s, ICE_HI, 0.30 * bk, 2)
+        end
+    end
+end
+
+local function drawGlassHole()
+    local g = E.glass
+    if not g then return end
+    local s = hs()
+    local tm = love.timer.getTime()
+    if not g.burst then
+        local k = clamp01(g.t / (g.dur * g.at))
+        local flick = (0.6 + 0.4 * math.abs(math.sin(tm * 23))) * k
+        reveal(200, 69, 34, 68, 0.9 * flick, { 0.78, 0.70, 1.0 })
+        local wx, wy = H(200, 69)
+        A.glowBlob(wx, wy, 80 * s, 150 * s, VIOLET, 0.35 * flick, 1)
+        return
+    end
+    -- buraco do vitral: céu de noite com a lua, em pixel
+    local a = fadeK(g)
+    local P = math.max(1, math.floor(s + 0.5))
+    local x0, y0 = H(176, 12)
+    local x1, y1 = H(224, 128)
+    love.graphics.setColor(0.03, 0.04, 0.10, 0.96 * a)
+    love.graphics.rectangle("fill", math.floor(x0), math.floor(y0 + 24 * s), math.floor(x1 - x0), math.floor(y1 - y0 - 24 * s))
+    love.graphics.arc("fill", math.floor((x0 + x1) / 2), math.floor(y0 + 24 * s), math.floor((x1 - x0) / 2), math.pi, math.pi * 2, 12)
+    local mx, my = H(200, 50)
+    love.graphics.setColor(0.86, 0.94, 1.0, a)
+    love.graphics.circle("fill", math.floor(mx), math.floor(my), math.floor(13 * s), 16)
+    love.graphics.setColor(0.70, 0.82, 0.95, a)
+    love.graphics.rectangle("fill", math.floor(mx - 5 * s), math.floor(my - 3 * s), 3 * P, 3 * P)
+    love.graphics.rectangle("fill", math.floor(mx + 3 * s), math.floor(my + 4 * s), 2 * P, 2 * P)
+    for i = 1, 7 do
+        local sx_, sy_ = H(180 + (i * 37) % 40, 70 + (i * 53) % 52)
+        local tw = 0.5 + 0.5 * math.sin(tm * 4 + i)
+        love.graphics.setColor(0.9, 0.95, 1, a * tw)
+        love.graphics.rectangle("fill", math.floor(sx_ / P) * P, math.floor(sy_ / P) * P, P, P)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawSigil(front)
+    local sg = E.sigil
+    if not sg then return end
+    local fx_, fy, s = feet()
+    if not fx_ then return end
+    local a = fadeK(sg)
+    local tm = love.timer.getTime()
+    local appear = easeOut(clamp01(sg.t / 0.4))
+    local img = image("sigil")
+    local sc = s * 0.95 * (0.6 + 0.4 * appear)
+    if not front then
+        if img then
+            local iw, ih = img:getDimensions()
+            love.graphics.setColor(0.45, 0.45, 0.55, appear * a)
+            love.graphics.draw(img, math.floor(fx_), math.floor(fy), 0, sc, sc, iw / 2, ih / 2)
+            love.graphics.setBlendMode("add")
+            local lit = 0
+            for i = 1, sg.n do if sg.t >= sg.ign[i] then lit = lit + 1 end end
+            local pulse = (0.35 + 0.45 * lit / sg.n) * (0.8 + 0.2 * math.sin(tm * 6))
+            love.graphics.setColor(VIOLET[1], VIOLET[2], VIOLET[3], pulse * appear * a)
+            love.graphics.draw(img, math.floor(fx_), math.floor(fy), 0, sc, sc, iw / 2, ih / 2)
+            love.graphics.setBlendMode("alpha")
+        end
+        A.glowBlob(fx_, fy, 150 * sc, 60 * sc, VIOLET, 0.35 * appear * a, 2)
+        if sg.t < 0.35 then
+            A.glowBlob(fx_, fy, 200 * s, 90 * s, ICE_HI, 0.6 * (1 - sg.t / 0.35), 3)
+        end
+        if sg.flash then
+            local k = 1 - clamp01(sg.flash / 0.5)
+            A.glowBlob(fx_, fy - 40 * s, 260 * s, 200 * s, ICE_HI, 0.7 * k, 1)
+        end
+    end
+    -- runas em órbita: atrás quando sin < 0, na frente quando >= 0
+    local rx = 128 * sc * 0.6
+    local ry = rx * 0.28
+    local lift = 26 * s * smooth(clamp01(sg.t / sg.dur))
+    local spread = sg.flash and (1 + sg.flash * 2.2) or 1
+    for i = 1, sg.n do
+        local ang = sg.t * 1.5 + (i - 1) * math.pi * 2 / sg.n
+        local depth = math.sin(ang)
+        if (depth >= 0) == (front == true) then
+            local x = fx_ + math.cos(ang) * rx * spread
+            local y = fy - 8 * s - lift + depth * ry * spread + math.sin(tm * 2 + i) * 2 * s
+            local rimg = image("assets/sprites/characters/enemies/tower_lich/mechanic/rune_" .. ((i - 1) % 4) .. ".png")
+            local lit = sg.t >= sg.ign[i]
+            local la = lit and 1 or 0.35
+            local rs = s * 0.9 * (0.85 + 0.15 * depth)
+            if lit then
+                local since = sg.t - sg.ign[i]
+                A.glowBlob(x, y, 46 * s, 46 * s, VIOLET, (0.45 + 0.5 * math.max(0, 1 - since * 3)) * a, 1 + i % 3)
+            end
+            if rimg then
+                local iw, ih = rimg:getDimensions()
+                love.graphics.setColor(la, la, la, appear * a)
+                love.graphics.draw(rimg, math.floor(x), math.floor(y), 0, rs, rs, iw / 2, ih / 2)
+                if lit then
+                    love.graphics.setBlendMode("add")
+                    love.graphics.setColor(ICE_HI[1], ICE_HI[2], ICE_HI[3], 0.35 * a)
+                    love.graphics.draw(rimg, math.floor(x), math.floor(y), 0, rs, rs, iw / 2, ih / 2)
+                    love.graphics.setBlendMode("alpha")
+                end
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawTomb(w)
+    local tb = E.tomb
+    if not tb then return end
+    local fx_, fy, s = feet()
+    local img = image("ice_tomb")
+    if not fx_ then return end
+    local tm = love.timer.getTime()
+    local k = tb.t / tb.dur
+    local up = easeOut(clamp01(k / tb.rise))
+    local floorY = math.floor(fy + 4 * s)
+    local iw, ih = 96, 160
+    if img then iw, ih = img:getDimensions() end
+    local x = fx_ - iw * s / 2
+    local y = fy + 4 * s - ih * s * up
+    local glow = 0.18 + 0.22 * tb.done + 0.1 * math.sin(tm * 9)
+    A.glowBlob(fx_, y + ih * s * 0.5, iw * s * 1.8, ih * s * 1.1, ICE, (0.25 + 0.1 * tb.done) * up, 1)
+    local sx, sy, sw, sh = love.graphics.getScissor()
+    love.graphics.intersectScissor(0, 0, w, floorY)
+    if img then
+        love.graphics.setColor(0.9, 0.95, 1, 1)
+        love.graphics.draw(img, math.floor(x), math.floor(y), 0, s, s)
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(ICE[1], ICE[2], ICE[3], glow)
+        love.graphics.draw(img, math.floor(x), math.floor(y), 0, s, s)
+        love.graphics.setBlendMode("alpha")
+    end
+    local P = math.max(1, math.floor(s + 0.5))
+    for lvl = 1, tb.done do
+        for _, pts in ipairs(tb.cracks[lvl]) do
+            for j = 1, #pts - 1 do
+                love.graphics.setColor(ICE_HI[1], ICE_HI[2], ICE_HI[3], 0.95)
+                drawPixelLine(x + pts[j][1] * s, y + pts[j][2] * s, x + pts[j + 1][1] * s, y + pts[j + 1][2] * s, P)
+            end
+        end
+    end
+    if sx then love.graphics.setScissor(sx, sy, sw, sh) else love.graphics.setScissor() end
+    if tb.done > 0 then
+        A.glowBlob(fx_, y + ih * s * 0.45, iw * s * 0.9, ih * s * 0.7, ICE_HI, 0.12 * tb.done, 2)
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawWisps(front)
+    local wp = E.wisps
+    if not wp then return end
+    local img = image("wisp")
+    local st = A.stage()
+    local bb = st and st.bbox
+    if not bb then return end
+    local s = hs()
+    local _, _, bs = A.footInfo()
+    bs = bs or s
+    local p = smooth(clamp01(wp.t / wp.life))
+    local sx_, sy_ = H(200, 56)
+    local cx = lerp(sx_, bb.cx, p)
+    local cy = lerp(sy_, bb.topY + (bb.bottomY - bb.topY) * 0.5, p)
+    local a = fadeK(wp) * smooth(clamp01(wp.t / 0.4))
+    local out = wp.fade and (1 + wp.fade * 3) or 1
+    local rx = (bb.width or 120) * 0.75 * out
+    local ry = rx * 0.32
+    for i = 1, wp.n do
+        local ang = wp.t * 2.3 + (i - 1) * math.pi * 2 / wp.n
+        local depth = math.sin(ang)
+        if (depth >= 0) == (front == true) then
+            local x = cx + math.cos(ang) * rx
+            local y = cy + depth * ry + math.sin(wp.t * 3 + i * 1.3) * 10 * s - (i % 3 - 1) * 18 * s
+            local sc = bs * 0.7 * (0.85 + 0.2 * depth)
+            A.glowBlob(x, y, 40 * sc, 40 * sc, ICE, 0.35 * a, 1 + i % 3)
+            if img then
+                local iw, ih = img:getDimensions()
+                local dir = -math.sin(ang) >= 0 and 1 or -1
+                love.graphics.setColor(1, 1, 1, a * (0.75 + 0.25 * depth))
+                love.graphics.draw(img, math.floor(x), math.floor(y), 0, sc * dir, sc, iw / 2, ih / 2)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawSkull()
+    local sk = E.skull
+    if not sk then return end
+    local s = hs()
+    local tm = love.timer.getTime()
+    local a = fadeK(sk)
+    local k = clamp01(sk.t / sk.dur)
+    local throb = 0.75 + 0.25 * math.sin(tm * 7)
+    reveal(200, 72, 50, 46, math.min(1, k * 1.6) * 0.6 * throb * a, { 1, 0.58, 0.42 })
+    if sk.eyes then
+        local e = easeOut(clamp01((sk.t - sk.eyes) / 0.25)) * a
+        local fl = 0.85 + 0.15 * math.sin(tm * 17)
+        for _, ex in ipairs({ 185, 215 }) do
+            local x, y = H(ex, 57)
+            A.glowBlob(x, y, 30 * s, 22 * s, LAVA, 0.75 * e * fl, 1)
+            A.glowBlob(x, y, 10 * s, 7 * s, LAVA_HI, 0.95 * e * fl, 2)
+        end
+        if sk.t - sk.eyes < 0.3 then
+            local x, y = H(200, 57)
+            A.glowBlob(x, y, 120 * s, 50 * s, LAVA_HI, 0.6 * (1 - (sk.t - sk.eyes) / 0.3) * a, 3)
+        end
+    end
+    if sk.lava then
+        local e = easeOut(clamp01((sk.t - sk.lava) / 0.35)) * a
+        local surge = 0.8 + 0.2 * math.sin(tm * 9)
+        reveal(200, 140, 22, 52, 0.95 * e * surge, { 1, 0.9, 0.75 })
+        reveal(143, 164, 22, 28, 0.8 * e * surge, { 1, 0.85, 0.7 })
+        reveal(257, 164, 22, 28, 0.8 * e * surge, { 1, 0.85, 0.7 })
+        local x, y = H(200, 140)
+        A.glowBlob(x, y, 60 * s, 120 * s, LAVA, 0.5 * e * surge, 1)
+        local mx, my = H(200, 106)
+        A.glowBlob(mx, my, 50 * s, 24 * s, LAVA_HI, 0.7 * e * surge, 2)
+    end
+end
+
+local function drawRumble()
+    local rb = E.rumble
+    if not (rb and rb.flash) then return end
+    local s = hs()
+    local k = 1 - clamp01((rb.t - rb.flash) / 0.35)
+    local grow = 0.4 + 0.6 * clamp01(rb.t / rb.dur)
+    if k <= 0 then return end
+    reveal(200, 120, 40, 70, 0.75 * k * grow, { 1, 0.6, 0.4 })
+    local x, y = H(200, 106)
+    A.glowBlob(x, y, 90 * s, 50 * s, LAVA, 0.45 * k * grow, 1)
+    for _, ex in ipairs({ 185, 215 }) do
+        local ex_, ey = H(ex, 57)
+        A.glowBlob(ex_, ey, 16 * s, 12 * s, LAVA_HI, 0.8 * k * grow, 2)
+    end
+end
+
+local function drawCrater()
+    local cr = E.crater
+    if not cr then return end
+    local fx_, fy, s = feet()
+    if not fx_ then return end
+    local a = fadeK(cr)
+    local pop = easeOut(clamp01(cr.t / 0.18))
+    local img = image("crater")
+    local tm = love.timer.getTime()
+    A.glowBlob(fx_, fy, 220 * s, 60 * s, LAVA, 0.45 * a * (0.85 + 0.15 * math.sin(tm * 6)), 1)
+    if img then
+        local iw, ih = img:getDimensions()
+        local sc = s * (0.7 + 0.3 * pop)
+        love.graphics.setColor(1, 1, 1, a)
+        love.graphics.draw(img, math.floor(fx_), math.floor(fy + 2 * s), 0, sc, sc, iw / 2, ih / 2)
+        love.graphics.setBlendMode("add")
+        love.graphics.setColor(LAVA[1], LAVA[2], LAVA[3], 0.3 * a * (0.7 + 0.3 * math.sin(tm * 8)))
+        love.graphics.draw(img, math.floor(fx_), math.floor(fy + 2 * s), 0, sc, sc, iw / 2, ih / 2)
+        love.graphics.setBlendMode("alpha")
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawEruptPre()
+    local er = E.erupt
+    if not er or er.popped then return end
+    local fx_, fy, s, bb = feet()
+    if not fx_ then return end
+    local k = clamp01(er.t / er.popAt)
+    local tm = love.timer.getTime()
+    local fl = 0.8 + 0.2 * math.sin(tm * 21)
+    A.glowBlob(fx_, fy, (bb.width or 120) * (0.6 + 1.4 * k), 30 * s * (0.5 + k), LAVA, 0.65 * k * fl, 1)
+    A.glowBlob(fx_, fy - 4 * s, (bb.width or 120) * 0.6 * k, 12 * s, LAVA_HI, 0.6 * k * fl, 2)
+end
+
+local function drawEruptActor(w)
+    local er = E.erupt
+    if not (er and er.popped and er.anim) then return end
+    local dx, dy, s = A.footInfo()
+    local st = A.stage()
+    if not dx then return end
+    local k = clamp01((er.t - er.popAt) / math.max(0.05, er.dur - er.popAt))
+    local e = easeOut(k)
+    local _, ih = er.anim:getSize()
+    local sh = ih * s
+    local y = dy + sh * 0.85 * (1 - e)
+    local floorY = math.floor((st.cy or (dy + sh)) + 3 * s)
+    local hot = 1 - e
+    A.drawBondAt(dx, y, s, er.anim, er.clip)
+    local sx, sy, sw, shh = love.graphics.getScissor()
+    love.graphics.intersectScissor(0, 0, w, floorY)
+    A.drawOwn(er.anim, dx, y, s, { 1, 1 - 0.45 * hot, 1 - 0.7 * hot, 1 }, 0.45 * hot + 0.06)
+    if sx then love.graphics.setScissor(sx, sy, sw, shh) else love.graphics.setScissor() end
+end
+
+local function drawDropActor()
+    local dp = E.drop
+    if not (dp and dp.anim) then return end
+    local dx, dy, s = A.footInfo()
+    if not dx then return end
+    local iw, ih = dp.anim:getSize()
+    local sh = ih * s
+    local fx_, fy = feet()
+    local k = clamp01(dp.t / dp.dur)
+    local y0 = -sh - 30
+    local function yAt(q) return lerp(y0, dy, q * q) end
+    -- sombra crescendo no chão
+    if fx_ then
+        love.graphics.setColor(0, 0, 0, 0.45 * k)
+        love.graphics.ellipse("fill", math.floor(fx_), math.floor(fy), iw * s * 0.35 * (0.4 + 0.6 * k), math.max(3, iw * s * 0.06))
+        A.glowBlob(fx_, fy, iw * s * 1.4, 26 * s, LAVA, 0.35 * k, 2)
+    end
+    local P = math.max(1, math.floor(s + 0.5))
+    local y = yAt(k)
+    for i = 1, 6 do
+        local lx = dx + iw * s * (0.15 + 0.7 * ((i * 0.37) % 1))
+        local len = (120 + 60 * (i % 3)) * k
+        love.graphics.setColor(LAVA_HI[1], LAVA_HI[2], LAVA_HI[3], 0.35)
+        love.graphics.rectangle("fill", math.floor(lx / P) * P, math.floor(y - len), P, math.floor(len))
+    end
+    for g = 3, 1, -1 do
+        local q = math.max(0, k - g * 0.07)
+        if q > 0 then
+            love.graphics.setBlendMode("add")
+            dp.anim:draw(dx, yAt(q), s, { LAVA[1], LAVA[2] * 0.6, LAVA[3] * 0.4, 0.28 / g })
+            love.graphics.setBlendMode("alpha")
+        end
+    end
+    A.drawBondAt(dx, y, s, dp.anim, nil)
+    A.drawOwn(dp.anim, dx, y, s, { 1, 1, 1, 1 }, 0.2)
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawSplashes()
+    local img = image("lava_splash")
+    for _, sp in ipairs(splashes) do
+        if sp.t >= 0 then
+            local k = sp.t / sp.dur
+            local sy = easeOut(clamp01(k * 3))
+            local a = 1 - clamp01((k - 0.45) / 0.55)
+            if img then
+                local iw, ih = img:getDimensions()
+                love.graphics.setColor(1, 1, 1, a)
+                love.graphics.draw(img, math.floor(sp.x), math.floor(sp.y), 0, sp.s * sp.sx, sp.s * sy, iw / 2, ih)
+                love.graphics.setBlendMode("add")
+                love.graphics.setColor(LAVA[1], LAVA[2], LAVA[3], 0.4 * a)
+                love.graphics.draw(img, math.floor(sp.x), math.floor(sp.y), 0, sp.s * sp.sx, sp.s * sy, iw / 2, ih)
+                love.graphics.setBlendMode("alpha")
+            else
+                A.glowBlob(sp.x, sp.y - 30 * sp.s, 60 * sp.s, 70 * sp.s * sy, LAVA, 0.6 * a, 1)
+            end
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+local function drawBits()
+    local P = A.px()
+    for _, b in ipairs(bits) do
+        local a = clamp01(b.life / b.max * 2)
+        local x, y = math.floor(b.x / P) * P, math.floor(b.y / P) * P
+        local rot = math.floor(b.rot / (math.pi / 8) + 0.5) * (math.pi / 8)
+        if b.img then
+            local sc = b.s * b.k
+            love.graphics.setColor(1, 1, 1, a)
+            if b.quad then
+                love.graphics.draw(b.img, b.quad, x, y, rot, sc, sc, b.ox, b.oy)
+                if b.glass then
+                    love.graphics.setBlendMode("add")
+                    love.graphics.setColor(VIOLET[1], VIOLET[2], VIOLET[3], 0.35 * a)
+                    love.graphics.draw(b.img, b.quad, x, y, rot, sc, sc, b.ox, b.oy)
+                    love.graphics.setBlendMode("alpha")
+                end
+            else
+                love.graphics.draw(b.img, x, y, rot, sc, sc, b.ox, b.oy)
+            end
+        elseif b.rock then
+            love.graphics.push()
+            love.graphics.translate(x, y)
+            love.graphics.rotate(rot)
+            love.graphics.setColor(0.16, 0.10, 0.09, a)
+            love.graphics.rectangle("fill", -2 * P, -P, 4 * P, 3 * P)
+            love.graphics.setColor(LAVA[1], LAVA[2], LAVA[3], a)
+            love.graphics.rectangle("fill", P, -P, P, P)
+            love.graphics.pop()
+        end
+    end
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Fundo: depois da escuridão, antes do chefe.
+function Ent.drawBack(w, h)
+    if not A then return end
+    drawSnuff()
+    drawGlassHole()
+    drawMoon()
+    drawSkull()
+    drawRumble()
+    drawCrater()
+    drawEruptPre()
+    drawSigil(false)
+end
+
+-- Atores: o chefe ainda escondido desenhado por nós (túmulo, erupção, queda).
+function Ent.drawActors(w, h)
+    if not A then return end
+    drawWisps(false)
+    drawTomb(w)
+    drawEruptActor(w)
+    drawDropActor()
+end
+
+-- Frente: tudo que passa na frente do chefe.
+function Ent.drawFront()
+    if not A then return end
+    drawSigil(true)
+    drawWisps(true)
+    drawSplashes()
+    drawBits()
+end
+
+return Ent

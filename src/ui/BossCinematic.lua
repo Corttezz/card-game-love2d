@@ -23,6 +23,8 @@ BossCinematic.INTRO_KINDS = { dark = true, eyes = true, flyby = true, land = tru
                               descend = true,
                               omen = true, unveil = true, coronation = true,
                               assemble = true }
+local Ent = require("src.ui.BossCineEntradas")
+for k in pairs(Ent.KINDS) do BossCinematic.INTRO_KINDS[k] = true end
 BossCinematic.DEATH_KINDS = { slowmo = true, burst = true, desat = true, hold = true,
                               lava = true,
                               crumble = true,
@@ -218,6 +220,9 @@ function BossCinematic.validate(id)
     end
     check(d.intro, BossCinematic.INTRO_KINDS, "intro")
     check(d.introReduced, BossCinematic.INTRO_KINDS, "introReduced")
+    for name, list in pairs(d.variants or {}) do
+        check(list, BossCinematic.INTRO_KINDS, "variants." .. tostring(name))
+    end
     check(d.death, BossCinematic.DEATH_KINDS, "death")
     check(d.deathReduced, BossCinematic.DEATH_KINDS, "deathReduced")
     return errs
@@ -248,6 +253,7 @@ local function finish()
     flakes = {}
     sfxQueue = {}
     stopAllLoops()
+    Ent.reset()
     EnemyRenderer.setTimeScale(1)
 end
 
@@ -318,6 +324,8 @@ function BossCinematic.startIntro(game)
     end
     local reduced = reducedMotion()
     local steps = (reduced and d.introReduced) or d.intro
+    local forced = BossCinematic.forceVariant
+    if forced and d.variants and d.variants[forced] then steps = d.variants[forced] end
     finish()
     clearFx()
     landed = false
@@ -2191,8 +2199,42 @@ local function queenDrawUI(w, h)
     drawCrownCard(w, h)
 end
 
+Ent.bind({
+    stage = function() return stage end,
+    bossId = function() return seq and seq.bossId end,
+    pal = function() return PAL end,
+    dark = function() return dark end,
+    landed = function() return landed end,
+    glowBlob = glowBlob, spawnFeather = spawnFeather, spawnDust = spawnDust,
+    play = play, playLoop = playLoop, stopLoop = stopLoop, queueSfx = queueSfx,
+    startHit = startHit, startCracks = startCracks, ownAnim = ownAnim, footInfo = footInfo,
+    drawOwn = drawOwn, px = px, bayer = bayer, bossClip = bossClip,
+    reduced = reducedMotion, mist = mistTarget,
+    setHidden = function(v) bossHidden = v end,
+    setLanded = function(v) landed = v end,
+    darkTo = function(to, dur)
+        darkEase = { from = dark, to = to, t = 0, dur = math.max(0.01, dur or 0.3) }
+    end,
+    bondDrag = function()
+        if stage and stage.hall and seq and T3.chained(seq.bossId) then
+            T3.bond = { id = seq.bossId, state = "drag", t = 0 }
+            return true
+        end
+        return false
+    end,
+    drawBondAt = function(x, y, s, anim, clip)
+        if not (T3.bond and anim and stage and stage.tr) then return end
+        local iw, ih = anim:getSize()
+        T3.BT.drawChainsAt(T3.bond.id, {
+            x = x, y = y, scale = s, iw = iw, ih = ih, groundY = y + ih * s,
+            clip = clip, frame = anim.currentFrame, hallTr = stage.tr,
+        })
+    end,
+})
+
 local function enterStep(st)
     local kind = st.kind
+    Ent.onStep(st)
     if queenEnter(st) then
     elseif kind == "dark" then
         darkEase = { from = dark, to = st.to or 0, t = 0, dur = math.max(0.01, st.dur or 0.3) }
@@ -2394,6 +2436,8 @@ local function enterStep(st)
                     backlit = st.backlit ~= false, anim = ownAnim(st.clip, st.dur) }
         play("bossDescendWings", nil)
         if st.lights then darkEase = { from = dark, to = st.lights, t = 0, dur = fx.desc.dur } end
+    elseif Ent.KINDS[kind] then
+        Ent.enter(st)
     else
         if not warnedKind[kind or "nil"] then
             warnedKind[kind or "nil"] = true
@@ -2404,6 +2448,7 @@ end
 
 local function exitStep(st)
     queenExit(st)
+    Ent.exit(st)
     if st.kind == "trophy" then require("src.ui.BossTrophy").stop() end
     if st.kind == "eyes" then eyes = nil; stopLoop("bossEyesRumble") end
     if st.kind == "flyby" then
@@ -2654,6 +2699,7 @@ function BossCinematic.update(dt, game, ctx)
         end
     end
     if fx.desc then fx.desc.t = fx.desc.t + dt; if fx.desc.anim then fx.desc.anim:update(dt) end end
+    Ent.update(dt)
     updateMist(dt)
     T3.updateBond(dt, game, ctx)
     queenUpdate(dt, game, ctx)
@@ -2994,6 +3040,7 @@ function BossCinematic.drawBack()
     drawMist({ [1] = true })
     drawRoots()
     drawRunes()
+    Ent.drawBack(w, h)
     drawFirewall(w, h)
     drawEclipse(w, h)
     if not (seq and seq.bossId == QUEEN_ID) then drawDawn(w, h) end
@@ -3006,6 +3053,7 @@ function BossCinematic.drawBack()
     drawAssemble()
     drawRise(w, h)
     drawDescend(w, h)
+    Ent.drawActors(w, h)
     drawWind()
     drawFly(w, h)
     drawEdge(w, h)
@@ -3035,6 +3083,7 @@ function BossCinematic.drawFront()
     drawCracks()
     drawCrumble()
     drawDust()
+    Ent.drawFront()
     if not (seq and seq.phase == "intro") then drawFeathers() end
     drawCrows()
     queenDrawFront()

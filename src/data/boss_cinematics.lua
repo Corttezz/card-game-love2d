@@ -72,6 +72,30 @@ return {
             { kind = "desat",  dur = 0,    peak = 0.45, rise = 0.30, fall = 0.80 },
             { kind = "hold",   dur = 0.90 },
         },
+        -- Propostas de entrada nova (#538), escolhidas por BossCinematic.forceVariant até o Daniel aprovar.
+        variants = {
+            ritual = {
+                { kind = "snuff", dur = 1.50, to = 0.95 },
+                { kind = "moon",  dur = 0.90, beam = true },
+                { kind = "sigil", dur = 1.50, n = 4 },
+                { kind = "tomb",  dur = 1.90 },
+                { kind = "land",  dur = 0.60, clip = "awaken", shake = 9, dust = 8, crows = 0, ring = "ice",
+                  particle = "shard", burst = 18, sound = "bossFrostShatter" },
+                { kind = "title", dur = 2.20 },
+                { kind = "hud",   dur = 0 },
+            },
+            vitral = {
+                { kind = "dark",    dur = 0.50, to = 0.90 },
+                { kind = "glass",   dur = 1.10 },
+                { kind = "moon",    dur = 0.50, beam = true, window = false },
+                { kind = "wisps",   dur = 0, life = 2.0, n = 6 },
+                { kind = "descend", dur = 2.00, u = 0.50, v = 0.20, clip = "descend", backlit = true },
+                { kind = "land",    dur = 0.55, clip = false, shake = 8, dust = 8, crows = 0, ring = "ice",
+                  particle = "shard", burst = 16, sound = "bossIceCrackle" },
+                { kind = "title",   dur = 2.20 },
+                { kind = "hud",     dur = 0 },
+            },
+        },
     },
 
     abyss_tyrant = {
@@ -114,6 +138,27 @@ return {
             { kind = "lava",   dur = 0 },
             { kind = "desat",  dur = 0,    peak = 0.35, rise = 0.30, fall = 0.80 },
             { kind = "hold",   dur = 0.90 },
+        },
+        -- Propostas de entrada nova (#538), escolhidas por BossCinematic.forceVariant até o Daniel aprovar.
+        variants = {
+            forja = {
+                { kind = "dark",       dur = 0.40, to = 0.92 },
+                { kind = "skull_wake", dur = 1.70 },
+                { kind = "erupt",      dur = 2.00, clip = "break_free", pop = 0.38 },
+                { kind = "land",       dur = 0.60, clip = "slam", shake = 12, dust = 14, crows = 0, ring = "lava",
+                  particle = "ember", burst = 24, cracks = true },
+                { kind = "title",      dur = 2.30 },
+                { kind = "hud",        dur = 0 },
+            },
+            queda = {
+                { kind = "dark",   dur = 0.40, to = 0.80 },
+                { kind = "rumble", dur = 1.60 },
+                { kind = "drop",   dur = 0.45 },
+                { kind = "land",   dur = 0.70, clip = "slam", shake = 16, dust = 18, crows = 0, ring = "lava",
+                  particle = "ember", burst = 26, cracks = true },
+                { kind = "title",  dur = 2.30 },
+                { kind = "hud",    dur = 0 },
+            },
         },
     },
 
