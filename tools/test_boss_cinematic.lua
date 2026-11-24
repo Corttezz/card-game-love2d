@@ -386,12 +386,18 @@ function M.run()
             return false
         end
         local cd = Data.rot_colossus
-        t:truthy("colosso: intro monta o corpo (assemble)", hasKind(cd.intro, "assemble")
-            and hasKind(cd.introReduced, "assemble"))
+        -- Entrada padrão: Casulo de Raízes (#538). A antiga (montagem em blocos) segue testada como variante.
+        t:truthy("colosso: intro e casulo (coracao + casulo)", hasKind(cd.intro, "heart_glow")
+            and hasKind(cd.intro, "cocoon"))
+        t:truthy("colosso (reduced): casulo tambem", hasKind(cd.introReduced, "heart_glow")
+            and hasKind(cd.introReduced, "cocoon"))
+        t:truthy("colosso (reduced): roteiro curto", BC.duration(cd.introReduced) < BC.duration(cd.intro) * 0.7)
+        local antiga = cd.variants and cd.variants.antiga
+        t:truthy("colosso: antiga monta o corpo (assemble)", hasKind(antiga, "assemble"))
         t:falsy("colosso: intro nao surge do nada (sem walk_in)", hasKind(cd.intro, "walk_in"))
         t:truthy("colosso: raizes vem das paredes e agarram",
             (function()
-                for _, st in ipairs(cd.intro) do
+                for _, st in ipairs(antiga or {}) do
                     if st.kind == "roots" then return st.from == "walls" and st.grasp == true end
                 end
                 return false
@@ -407,10 +413,26 @@ function M.run()
         stage5.hall = 5
         _G.gameSettings.reducedMotion = false
         BC.reset()
+        local gn = fakeBoss("rot_colossus")
+        t:truthy("colosso (casulo): entrada aceita", BC.startIntro(gn))
+        BC.setStage(stage5)
+        local nomN = BC.duration(cd.intro)
+        local eln, tShowN = 0, nil
+        while BC.isActive() and eln < nomN + 2 do
+            BC.update(DT, gn, { inHall = true })
+            eln = eln + DT
+            if not tShowN and not BC.hidesBoss() then tShowN = eln end
+        end
+        t:falsy("colosso (casulo): entrada termina", BC.isActive())
+        t:truthy("colosso (casulo): chefe so aparece quando o casulo estoura (" .. tostring(tShowN) .. ")",
+            tShowN ~= nil and tShowN > 3)
+        BC.reset()
+        BC.forceVariant = "antiga"
         local gc = fakeBoss("rot_colossus")
         t:truthy("colosso: entrada aceita", BC.startIntro(gc))
+        BC.forceVariant = nil
         BC.setStage(stage5)
-        local nomC = BC.duration(cd.intro)
+        local nomC = BC.duration(antiga)
         local elc, tShow, sawRoots, pieces, sawCracks, allArrived = 0, nil, false, 0, false, false
         local hiddenWhileAssembling = true
         while BC.isActive() and elc < nomC + 2 do
