@@ -23,6 +23,8 @@ const GAME = JSON.parse(fs.readFileSync(path.join(R, 'src/data/game.json'), 'utf
 const KEEP = [
   'favicon.ico', 'js/clarity.js', 'js/gtm.js', 'fonts/pixel.woff2', 'fonts/OFL.txt', 'img/og', 'img/blog', 'img/v3', 'img/v3b', 'img/gamecards', 'media/v3', 'media/v3b',
   'img/brand/icon_32.png', 'img/brand/icon_180.png', 'img/brand/icon_192.png', 'img/brand/icon_512.png',
+  'media/runemoire-trailer-c14v8.mp4', 'media/runemoire-trailer-c14v8.jpg',
+  // o v7 continua no ar para quem já tem o link
   'media/runemoire-trailer-c14v7.mp4', 'media/runemoire-trailer-c14v7.jpg',
   // o trailer de gameplay saiu da página, mas o endereço antigo continua no ar para links externos
   'media/runemoire-gameplay.mp4', 'media/runemoire-gameplay.jpg',
@@ -106,7 +108,7 @@ write('llms.txt', [
   '## Key pages', '',
   `- [Home (English)](${SITE}/): the game's own title screen, with a text summary, the trailer and an FAQ below it`,
   ...LANGS.slice(1).map((l) => `- [Home (${l.self})](${SITE}/${l.prefix}/)`),
-  `- [Trailer (MP4, 86 s)](${SITE}/media/runemoire-trailer-c14v7.mp4)`,
+  `- [Trailer (MP4, 86 s)](${SITE}/media/runemoire-trailer-c14v8.mp4)`,
   `- [Privacy](${SITE}/privacy/): only the email left for the launch notice is stored; usage analytics with Microsoft Clarity (session recordings and heatmaps)`, '',
   '## Blog', '',
   `- [Blog hub](${SITE}/blog/)${POSTS.length ? '' : ': first posts coming soon'}`,

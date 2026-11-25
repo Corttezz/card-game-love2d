@@ -27,8 +27,8 @@ const ui = (l, k) => UI[l.code]?.[k] ?? UI.en[k];
 // cartas renderizadas pelo próprio jogo (CardFrame, exportadas por tools/preview_cards em cada idioma)
 export const CARD_POOL = fs.readdirSync(path.join(R, 'public/img/gamecards/en')).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4)).sort();
 
-// o trailer (o mesmo do painel Jogar; corte 14 v7 desde 21/11, antes o de gameplay da v1): duração do arquivo e data de publicação
-const TRAILER = { src: '/media/runemoire-trailer-c14v7.mp4', poster: '/media/runemoire-trailer-c14v7.jpg', uploadDate: '2026-11-21', duration: 'PT1M26S' };
+// o trailer (o mesmo do painel Jogar; corte 14 v8 desde 24/11, v7 desde 21/11, antes o de gameplay da v1): duração do arquivo e data de publicação
+const TRAILER = { src: '/media/runemoire-trailer-c14v8.mp4', poster: '/media/runemoire-trailer-c14v8.jpg', uploadDate: '2026-11-24', duration: 'PT1M26S' };
 export const OG = '/img/og/og.png'; // uma arte só nos 5 idiomas (eram 5 cópias idênticas)
 const LANG_TAGS = LANGS.map((x) => x.html);
 // o CSS vai embutido no <head> (sem pedido bloqueante); o hash dele entra no style-src da CSP (worker/csp.gen.js)

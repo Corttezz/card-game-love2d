@@ -19,4 +19,7 @@ enc2() { # in out
 }
 enc2 "$SRC/runemoire_trailer_c14v7_1080p.mp4" "$OUT/runemoire-trailer-c14v7.mp4"
 ffmpeg -y -v error -ss 72 -i "$SRC/runemoire_trailer_c14v7_1080p.mp4" -frames:v 1 -vf "scale=1280:720:flags=lanczos" -q:v 3 "$OUT/runemoire-trailer-c14v7.jpg"
+# desde 24/11: corte 14 v8 (mesma duração e bitrate do v7)
+enc2 "$SRC/runemoire_trailer_c14v8_1080p.mp4" "$OUT/runemoire-trailer-c14v8.mp4"
+ffmpeg -y -v error -ss 72 -i "$SRC/runemoire_trailer_c14v8_1080p.mp4" -frames:v 1 -vf "scale=1280:720:flags=lanczos" -q:v 3 "$OUT/runemoire-trailer-c14v8.jpg"
 ls -la $OUT
